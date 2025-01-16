@@ -1,12 +1,23 @@
-import vscode from "vscode";
+
 import IBMi from "../IBMi";
 import { ComponentState, IBMiComponent } from "./component";
+
+interface ExtensionContextI {
+  extension: {
+    id: string
+  }
+}
 
 export class ComponentRegistry {
   private readonly components: Map<string, IBMiComponent[]> = new Map;
 
-  public registerComponent(context: vscode.ExtensionContext, component: IBMiComponent) {
-    const key = context.extension.id;
+  public registerComponent(context: ExtensionContextI|string, component: IBMiComponent) {
+    const key = typeof context === `object` ? context.extension.id : context;
+
+    if (typeof key !== `string`) {
+      throw new Error(`Invalid extension context.`);
+    }
+
     const extensionComponents = this.components.get(key);
     if (extensionComponents) {
       extensionComponents.push(component);
