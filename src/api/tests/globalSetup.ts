@@ -36,7 +36,7 @@ beforeAll(async () => {
         // console.log(`PROGRESS: ${message}`);
       },
       uiErrorHandler: async (connection, code, data) => {
-        console.log(`UI ERROR: ${code}: ${data}`);
+        console.log(`Connection warning: ${code}: ${JSON.stringify(data)}`);
         return false;
       },
     }

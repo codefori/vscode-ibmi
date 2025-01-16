@@ -1,0 +1,19 @@
+on:
+  pull_request:
+    paths:
+      - 'src/api/**'
+    
+jobs:
+  tester:
+    environment: testing_environment
+    name: Test runner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - run: npm ci
+      - run: npm run test
