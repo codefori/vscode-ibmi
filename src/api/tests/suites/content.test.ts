@@ -1,9 +1,9 @@
 
 import { expect, describe, it } from 'vitest';
-import { getConnection } from './state';
+import { getConnection } from '../state';
 import util, { TextDecoder } from 'util';
 import tmp from 'tmp';
-import { Tools } from '../Tools';
+import { Tools } from '../../Tools';
 import { posix } from 'path';
 
 describe('Content Tests', {concurrent: true}, () => {

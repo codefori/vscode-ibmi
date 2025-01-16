@@ -1,9 +1,9 @@
 import path from "path";
-import IBMi from "../IBMi";
-import { Tools } from "../Tools";
-import { IBMiObject } from "../types";
+import IBMi from "../../IBMi";
+import { Tools } from "../../Tools";
+import { IBMiObject } from "../../types";
 import { describe, it, expect } from 'vitest';
-import { getConnection } from "./state";
+import { getConnection } from "../state";
 
 const contents = {
   '37': [`Hello world`],

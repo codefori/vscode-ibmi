@@ -1,7 +1,7 @@
 
 import { expect, test, describe } from 'vitest'
-import { getConnection } from './state'
-import { Tools } from '../Tools';
+import { getConnection } from '../state'
+import { Tools } from '../../Tools';
 
 describe(`connection tests`, {concurrent: true}, () => {
   test('sendCommand', async () => {

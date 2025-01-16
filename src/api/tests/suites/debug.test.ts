@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { getConnection } from './state';
-import { getJavaHome } from '../configuration/DebugConfiguration';
+import { getConnection } from '../state';
+import { getJavaHome } from '../../configuration/DebugConfiguration';
 
 describe('Debug engine tests', () => {
   it('Check Java versions', async () => {
