@@ -12,22 +12,29 @@ import { CopyToImport } from "../components/copyToImport";
 import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { extensionComponentRegistry } from "../components/manager";
+import { JsonConfig, JsonStorage } from "./testConfigSetup";
+
+const testConfig = new JsonConfig();
+const testStorage = new JsonStorage();
 
 beforeAll(async () => {
-  const virtualStorage = new VirtualStorage();
+  const virtualStorage = testStorage;
 
   IBMi.GlobalStorage = new CodeForIStorage(virtualStorage);
-  IBMi.connectionManager.configMethod = new VirtualConfig();
+  IBMi.connectionManager.configMethod = testConfig;
+
+  await testStorage.load();
+  await testConfig.load();
 
   const conn = new IBMi();
 
   const customQsh = new CustomQSh();
   const cqshPath = path.join(__dirname, `..`, `components`, `cqsh`, `cqsh`);
-  customQsh.setLocalAssetPath(path.join(cqshPath));
+  customQsh.setLocalAssetPath(cqshPath);
 
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, customQsh);
-  extensionComponentRegistry.registerComponent(testingId, new GetNewLibl);
+  extensionComponentRegistry.registerComponent(testingId, new GetNewLibl());
   extensionComponentRegistry.registerComponent(testingId, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(testingId, new CopyToImport());
 
@@ -62,13 +69,15 @@ beforeAll(async () => {
   expect(result.success).toBeTruthy();
 
   setConnection(conn);
-}, 25000);
+}, 10000000);
 
 afterAll(async () => {
   const conn = getConnection();
 
   if (conn) {
     await conn.dispose();
+    await testStorage.save();
+    await testConfig.save();
   } else {
     assert.fail(`Connection was not set`);
   }
