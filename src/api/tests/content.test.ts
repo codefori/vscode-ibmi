@@ -6,7 +6,7 @@ import tmp from 'tmp';
 import { Tools } from '../Tools';
 import { posix } from 'path';
 
-describe('Content Tests', () => {
+describe('Content Tests', {concurrent: true}, () => {
   it('memberResolve', async () => {
     const connection = getConnection();
     const content = connection.getContent();

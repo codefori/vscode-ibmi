@@ -1,10 +1,9 @@
 
-import { expect, test } from 'vitest'
+import { expect, test, describe } from 'vitest'
 import { getConnection } from './state'
-import { describe } from 'node:test';
 import { Tools } from '../Tools';
 
-describe(`connection tests`, () => {
+describe(`connection tests`, {concurrent: true}, () => {
   test('sendCommand', async () => {
     const connection = getConnection();
 

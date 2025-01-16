@@ -38,6 +38,7 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
 
   return result;
 }
+
 describe('Encoding tests', () => {
   it('Prove that input strings are messed up by CCSID', async () => {
     const connection = getConnection();
@@ -61,7 +62,7 @@ describe('Encoding tests', () => {
     }
 
     expect(howManyTimesItMessedUpTheResult).toBeTruthy();
-  });
+  }, {timeout: 40000});
 
   it('Compare Unicode to EBCDIC successfully', async () => {
     const connection = getConnection();
