@@ -6,9 +6,9 @@ import { ComponentState, IBMiComponent } from "../component";
 
 export class CustomQSh implements IBMiComponent {
   static ID = "cqsh";
-  private static localAssetPath: string|undefined;
+  private localAssetPath: string|undefined;
 
-  static setLocalAssetPath(newPath: string) {
+  setLocalAssetPath(newPath: string) {
     this.localAssetPath = newPath;
   }
 
@@ -41,17 +41,17 @@ export class CustomQSh implements IBMiComponent {
   }
 
   async update(connection: IBMi): Promise<ComponentState> {
-    if (!CustomQSh.localAssetPath) {
+    if (!this.localAssetPath) {
       return `Error`;
     }
 
-    const assetExistsLocally = await exists(CustomQSh.localAssetPath);
+    const assetExistsLocally = await exists(this.localAssetPath);
 
     if (!assetExistsLocally) {
       return `Error`;
     }
 
-    await connection.getContent().uploadFiles([{ local: CustomQSh.localAssetPath, remote: this.installPath }]);
+    await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
 
     await connection.sendCommand({
       command: `chmod +x ${this.installPath}`,

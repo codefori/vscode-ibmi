@@ -113,9 +113,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
-  CustomQSh.setLocalAssetPath(path.join(context.extensionPath, `dist`, `cqsh`));
+  const customQsh = new CustomQSh();
+  customQsh.setLocalAssetPath(path.join(context.extensionPath, `dist`, customQsh.getFileName()));
 
-  extensionComponentRegistry.registerComponent(context, new CustomQSh());
+  extensionComponentRegistry.registerComponent(context, customQsh);
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(context, new CopyToImport());
