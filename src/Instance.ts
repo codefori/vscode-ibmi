@@ -26,7 +26,19 @@ export interface ConnectionOptions {
 
 export default class Instance {
   private connection: IBMi | undefined;
-  private outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(`Code for IBM i`);
+
+  private output = {
+    channel: vscode.window.createOutputChannel(`Code for IBM i`),
+    content: ``,
+    writeCount: 0
+  };
+
+  private resetOutput() {
+    this.output.channel.clear();
+    this.output.content = ``;
+    this.output.writeCount = 0;
+  }
+
   private storage: ConnectionStorage;
   private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
   private subscribers: Map<IBMiEvent, SubscriptionMap> = new Map;
@@ -45,9 +57,14 @@ export default class Instance {
   connect(options: ConnectionOptions): Promise<ConnectionResult> {
     const connection = new IBMi();
 
-    this.outputChannel.clear();
+    this.resetOutput();
     connection.appendOutput = (message) => {
-      this.outputChannel.append(message);
+      if (this.output.writeCount > 150) {
+        this.resetOutput();
+      }
+
+      this.output.channel.append(message);
+      this.output.writeCount++;
     }
 
     let result: ConnectionResult;
@@ -62,13 +79,12 @@ export default class Instance {
         let reconnect = choice === `Yes`;
         let collectLogs = choice === `No, get logs`;
 
-        // TODO: how to get output channel stuff?
-        // if (collectLogs) {
-        //   const logs = conn.getOutputChannelContent();
-        //   vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
-        //     vscode.window.showTextDocument(doc);
-        //   });
-        // }
+        if (collectLogs) {
+          const logs = this.output.content;
+          vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
+            vscode.window.showTextDocument(doc);
+          });
+        }
 
         this.disconnect();
 
