@@ -17,7 +17,7 @@ import { JsonConfig, JsonStorage } from "./testConfigSetup";
 const testConfig = new JsonConfig();
 const testStorage = new JsonStorage();
 
-beforeAll(async () => {
+export async function newConnection() {
   const virtualStorage = testStorage;
 
   IBMi.GlobalStorage = new CodeForIStorage(virtualStorage);
@@ -67,6 +67,20 @@ beforeAll(async () => {
 
   expect(result).toBeDefined();
   expect(result.success).toBeTruthy();
+
+  return conn;
+}
+
+beforeAll(async () => {
+  const virtualStorage = testStorage;
+
+  IBMi.GlobalStorage = new CodeForIStorage(virtualStorage);
+  IBMi.connectionManager.configMethod = testConfig;
+
+  await testStorage.load();
+  await testConfig.load();
+
+  const conn = await newConnection();
 
   setConnection(conn);
 }, 10000000);

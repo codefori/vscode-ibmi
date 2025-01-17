@@ -5,7 +5,7 @@ import { getJavaHome } from '../../configuration/DebugConfiguration';
 describe('Debug engine tests', () => {
   it('Check Java versions', async () => {
     const connection = getConnection();
-    
+
     if (connection.remoteFeatures.jdk80) {
       const jdk8 = getJavaHome(connection, '8');
       expect(jdk8).toBe(connection.remoteFeatures.jdk80);
