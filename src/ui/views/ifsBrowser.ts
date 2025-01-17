@@ -8,7 +8,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../../typings";
-import { fileToPath, findUriTabs, ifsFileToToolTip } from "../tools";
+import { VscodeTools } from "../tools";
 import IBMi from "../../api/IBMi";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
@@ -101,7 +101,7 @@ class IFSItem extends BrowserItem implements WithPath {
   constructor(readonly file: IFSFile, parameters: BrowserItemParameters) {
     super(file.name, parameters);
     this.path = file.path;
-    this.tooltip = ifsFileToToolTip(this.path, file);
+    this.tooltip = VscodeTools.ifsFileToToolTip(this.path, file);
   }
 
   sortBy(sort: SortOptions) {
@@ -520,7 +520,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                 for (const directory of directoriesToUpload) {
                   const name = path.basename(directory.fsPath);
                   progress.report({ message: l10n.t(`sending {0} directory...`, name) })
-                  await connection.getContent().uploadDirectory(fileToPath(directory), path.posix.join(root, name), { concurrency: 5 })
+                  await connection.getContent().uploadDirectory(VscodeTools.fileToPath(directory), path.posix.join(root, name), { concurrency: 5 })
                 }
               }
 
@@ -622,14 +622,14 @@ Please type "{0}" to confirm deletion.`, dirName);
           return;
         }
         // Check if the streamfile is currently open in an editor tab
-        oldFileTabs.push(...findUriTabs(node.resourceUri));
+        oldFileTabs.push(...VscodeTools.findUriTabs(node.resourceUri));
         if (oldFileTabs.find(tab => tab.isDirty)) {
           vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file has unsaved changes.")));
           return;
         }
       } else {
         // Check if there are streamfiles in the directory which are currently open in an editor tab
-        oldFileTabs.push(...findUriTabs(node.file.path));
+        oldFileTabs.push(...VscodeTools.findUriTabs(node.file.path));
         if (oldFileTabs.find(tab => tab.isDirty)) {
           vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The directory has file(s) with unsaved changes.")));
           return;

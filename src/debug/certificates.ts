@@ -8,7 +8,7 @@ import { instance } from '../instantiate';
 import IBMi from "../api/IBMi";
 import IBMiContent from '../api/IBMiContent';
 import { Tools } from '../api/Tools';
-import { fileToPath } from '../ui/tools';
+import { VscodeTools } from '../ui/tools';
 import { DebugConfiguration, SERVICE_CERTIFICATE, CLIENT_CERTIFICATE, getDebugServiceDetails, getJavaHome, DEBUG_CONFIG_FILE, LEGACY_CERT_DIRECTORY } from '../api/configuration/DebugConfiguration';
 
 type HostInfo = {
@@ -106,7 +106,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       password = imported.password;
       if (imported.localFile) {
         setProgress("importing local certificate");
-        await connection.getContent().uploadFiles([{ local: fileToPath(imported.localFile), remote: debugConfig.getRemoteServiceCertificatePath() }]);
+        await connection.getContent().uploadFiles([{ local: VscodeTools.fileToPath(imported.localFile), remote: debugConfig.getRemoteServiceCertificatePath() }]);
       }
       else if (imported.remoteFile) {
         setProgress("importing remote certificate");

@@ -7,6 +7,7 @@ import { ObjectFilters } from './api/configuration/config/ConnectionManager';
 import { DeploymentMethod, FileError, IBMiMember, IBMiObject, WithPath } from "./api/types";
 import { Ignore } from "ignore";
 import { WorkspaceFolder } from "vscode";
+import { VscodeTools } from "./ui/tools";
 
 export interface CodeForIBMi {
   instance: Instance,
@@ -14,6 +15,7 @@ export interface CodeForIBMi {
   deployTools: typeof DeployTools,
   evfeventParser: (lines: string[]) => Map<string, FileError[]>,
   tools: typeof Tools,
+  vscodeTools: typeof VscodeTools,
   componentRegistry: ComponentRegistry
 }
 

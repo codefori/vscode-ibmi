@@ -4,7 +4,7 @@ import { FileError } from "../typings";
 import Instance from "../Instance";
 import { getEvfeventFiles } from "../filesystems/local/actions";
 import { parseErrors } from "../api/errors/parser";
-import { findExistingDocumentByName, findExistingDocumentUri } from "./tools";
+import { VscodeTools } from "./tools";
 import IBMi from "../api/IBMi";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
@@ -175,7 +175,7 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
           // tabs like we do below.
           if (evfeventInfo.extension) {
             const baseName = file.split(`/`).pop();
-            const openFile = findExistingDocumentByName(`${baseName}.${evfeventInfo.extension}`);
+            const openFile = VscodeTools.findExistingDocumentByName(`${baseName}.${evfeventInfo.extension}`);
             if (openFile) {
               ileDiagnostics.set(openFile, diagnostics);
               continue;
@@ -185,10 +185,10 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
       }
 
       if (file.startsWith(`/`)) {
-        ileDiagnostics.set(findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
+        ileDiagnostics.set(VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
       }
       else {
-        const memberUri = findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
+        const memberUri = VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
         ileDiagnostics.set(memberUri, diagnostics);
       }
     }

@@ -1,6 +1,6 @@
 import path from "path";
 import vscode, { l10n } from "vscode";
-import { findUriTabs } from "../../ui/tools";
+import { VscodeTools } from "../../ui/tools";
 import IBMi from "../../api/IBMi";
 import { ReconnectMode } from "../../api/configuration/config/ConnectionManager";
 
@@ -36,7 +36,7 @@ export async function reconnectFS(uri: vscode.Uri) {
     return true;
   }
   else {
-    for (const tab of findUriTabs(uri)) {
+    for (const tab of VscodeTools.findUriTabs(uri)) {
       await vscode.window.tabGroups.close(tab);
     }
     return false;

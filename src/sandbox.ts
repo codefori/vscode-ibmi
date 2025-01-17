@@ -3,7 +3,7 @@ import querystring from "querystring";
 import { commands, ExtensionContext, l10n, Uri, window } from "vscode";
 import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
-import { getGitAPI } from "./ui/tools";
+import { VscodeTools } from "./ui/tools";
 import IBMi from "./api/IBMi";
 
 export async function registerUriHandler(context: ExtensionContext) {
@@ -107,7 +107,7 @@ export async function handleStartup() {
   // If Sandbox mode is enabled, then the server and username can be inherited from the branch name
   if (env.VSCODE_IBMI_SANDBOX) {
     try {
-      const gitAPI = getGitAPI();
+      const gitAPI = VscodeTools.getGitAPI();
       if (gitAPI && gitAPI.repositories && gitAPI.repositories.length > 0) {
         const repo = gitAPI.repositories[0];
         const branchName = repo.state.HEAD?.name;

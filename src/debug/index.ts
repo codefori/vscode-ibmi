@@ -11,7 +11,7 @@ import { Env, getEnvConfig } from "../filesystems/local/env";
 import * as certificates from "./certificates";
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
 import * as server from "./server";
-import { withContext } from "../ui/tools";
+import { VscodeTools } from "../ui/tools";
 import { getStoredPassword } from "../config/passwords";
 
 const debugExtensionId = `IBM.ibmidebug`;
@@ -257,7 +257,7 @@ export async function initialize(context: ExtensionContext) {
       if (connection) {
         const doSetup = await vscode.window.showWarningMessage(`Do you confirm you want to generate or import a new certificate for the Debug Service?`, { modal: true }, 'Generate', 'Import');
         if (doSetup) {
-          withContext("code-for-ibmi:debugWorking", async () => {
+          VscodeTools.withContext("code-for-ibmi:debugWorking", async () => {
             if (!(await server.getDebugServiceJob()) || await server.stopService(connection)) {
               const debugConfig = await new DebugConfiguration(connection).load();
               const clearResult = await connection.sendCommand({ command: `rm -f ${debugConfig.getRemoteServiceCertificatePath()} ${debugConfig.getRemoteClientCertificatePath()}` });
@@ -276,7 +276,7 @@ export async function initialize(context: ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, (doSetup?: 'Generate' | 'Import') =>
-      withContext("code-for-ibmi:debugWorking", async () => {
+      VscodeTools.withContext("code-for-ibmi:debugWorking", async () => {
         const connection = instance.getConnection();
         if (connection) {
           const ptfInstalled = server.debugPTFInstalled();
@@ -336,7 +336,7 @@ export async function initialize(context: ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, () =>
       vscode.window.withProgress({ title: "Downloading Debug Service Certificate", location: vscode.ProgressLocation.Window }, async () =>
-        await withContext("code-for-ibmi:debugWorking", async () => {
+        await VscodeTools.withContext("code-for-ibmi:debugWorking", async () => {
           const connection = instance.getConnection();
           if (connection) {
             const ptfInstalled = server.debugPTFInstalled();
