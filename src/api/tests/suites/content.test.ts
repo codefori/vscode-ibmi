@@ -11,7 +11,7 @@ describe('Content Tests', {concurrent: true}, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  })
+  }, 25000)
 
   afterAll(async () => {
     disposeConnection(connection);
