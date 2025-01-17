@@ -2,8 +2,8 @@ import path from "path";
 import IBMi from "../../IBMi";
 import { Tools } from "../../Tools";
 import { IBMiObject } from "../../types";
-import { describe, it, expect } from 'vitest';
-import { getConnection } from "../state";
+import { describe, it, expect, afterAll, beforeAll } from 'vitest';
+import { newConnection, disposeConnection } from "../globalSetup";
 
 const contents = {
   '37': [`Hello world`],
@@ -39,9 +39,17 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
   return result;
 }
 
-describe('Encoding tests', () => {
-  it('Prove that input strings are messed up by CCSID', async () => {
-    const connection = getConnection();
+describe('Encoding tests', {concurrent: true} ,() => {
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  })
+
+  afterAll(async () => {
+    disposeConnection(connection);
+  });
+
+  it('Prove that input strings are messed up by CCSID', {timeout: 40000}, async () => {
     let howManyTimesItMessedUpTheResult = 0;
 
     for (const strCcsid in contents) {
@@ -62,10 +70,9 @@ describe('Encoding tests', () => {
     }
 
     expect(howManyTimesItMessedUpTheResult).toBeTruthy();
-  }, {timeout: 40000});
+  });
 
   it('Compare Unicode to EBCDIC successfully', async () => {
-    const connection = getConnection();
 
     const sql = `select table_name, table_owner from qsys2.systables where table_schema = ? and table_name = ?`;
     const result = await connection?.runSQL(sql, { fakeBindings: [`QSYS2`, `SYSCOLUMNS`] });
@@ -73,7 +80,6 @@ describe('Encoding tests', () => {
   });
 
   it('Run variants through shells', async () => {
-    const connection = getConnection();
 
     const text = `Hello${connection?.variantChars.local}world`;
     const basicCommandA = `echo "${IBMi.escapeForShell(text)}"`;
@@ -107,8 +113,6 @@ describe('Encoding tests', () => {
   });
 
   it('streamfileResolve with dollar', async () => {
-    const connection = getConnection()!;
-
     await connection.withTempDirectory(async tempDir => {
       const tempFile = path.posix.join(tempDir, `$hello`);
       await connection.content.createStreamFile(tempFile);
@@ -121,8 +125,6 @@ describe('Encoding tests', () => {
 
   SHELL_CHARS.forEach(char => {
     it(`Test streamfiles with shell character ${char}`, async () => {
-      const connection = getConnection()!;
-
       const nameCombos = [`${char}ABC`, `ABC${char}`, `${char}ABC${char}`, `A${char}C`];
 
       await connection.withTempDirectory(async tempDir => {
@@ -140,7 +142,6 @@ describe('Encoding tests', () => {
     });
 
     it(`Test members with shell character ${char}`, async () => {
-      const connection = getConnection();
       const content = connection.getContent();
       const config = connection.getConfig()
 
@@ -176,8 +177,7 @@ describe('Encoding tests', () => {
   });
 
   it('Listing objects with variants', async () => {
-    const connection = getConnection();
-    const content = getConnection()?.content;
+    const content = connection.getContent();
     if (connection && content) {
       const tempLib = connection.config?.tempLibrary!;
       const ccsid = connection.getCcsid();
@@ -259,7 +259,6 @@ describe('Encoding tests', () => {
   });
 
   it('Library list supports dollar sign variant', async () => {
-    const connection = getConnection()!;
     const library = `TEST${connection.variantChars.local}LIB`;
     const sourceFile = `TEST${connection.variantChars.local}FIL`;
     const member = `TEST${connection.variantChars.local}MBR`;
@@ -290,7 +289,6 @@ describe('Encoding tests', () => {
   });
 
   it('Variant character in source names and commands', async () => {
-    const connection = getConnection();
     const config = connection.getConfig();
 
     const ccsidData = connection.getCcsids()!;

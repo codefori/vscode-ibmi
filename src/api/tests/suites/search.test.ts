@@ -1,11 +1,21 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll, beforeAll } from 'vitest';
 import { parseFilter } from '../../Filter';
 import { Search } from '../../Search';
-import { getConnection } from '../state';
+import IBMi from '../../IBMi';
+import { newConnection, disposeConnection } from '../globalSetup';
 
 describe('Search Tests', {concurrent: true}, () => {
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  })
+
+  afterAll(async () => {
+    disposeConnection(connection);
+  });
+
   it('Single member search', async () => {
-    const result = await Search.searchMembers(getConnection(), "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+    const result = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
     expect(result.term).toBe("IBM");
     expect(result.hits.length).toBe(1);
     const [hit] = result.hits;
@@ -24,7 +34,7 @@ describe('Search Tests', {concurrent: true}, () => {
   it('Generic name search', async () => {
     const memberFilter = "E*";
     const filter = parseFilter(memberFilter);
-    const result = await Search.searchMembers(getConnection(), "QSYSINC", "QRPGLESRC", "IBM", memberFilter);
+    const result = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", memberFilter);
     expect(result.hits.every(hit => filter.test(hit.path.split("/").at(-1)!))).toBe(true);
     expect(result.hits.every(hit => !hit.path.endsWith(`MBR`))).toBe(true);
   });
@@ -36,10 +46,10 @@ describe('Search Tests', {concurrent: true}, () => {
     const filter = parseFilter(memberFilter);
     const checkNames = (names: string[]) => names.every(filter.test);
 
-    const members = await getConnection().getContent().getMemberList({ library, sourceFile, members: memberFilter });
+    const members = await connection.getContent().getMemberList({ library, sourceFile, members: memberFilter });
     expect(checkNames(members.map(member => member.name))).toBe(true);
 
-    const result = await Search.searchMembers(getConnection(), "QSYSINC", "QRPGLESRC", "SQL", members);
+    const result = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "SQL", members);
     expect(result.hits.length).toBe(6);
     expect(checkNames(result.hits.map(hit => hit.path.split("/").at(-1)!))).toBe(true);
     expect(result.hits.every(hit => !hit.path.endsWith(`MBR`))).toBe(true);

@@ -1,12 +1,21 @@
 
-import { expect, test, describe } from 'vitest'
-import { getConnection } from '../state'
+import { expect, test, describe, afterAll, beforeAll, it } from 'vitest'
 import { Tools } from '../../Tools';
+import { disposeConnection, newConnection } from '../globalSetup';
+import IBMi from '../../IBMi';
+import { getJavaHome } from '../../configuration/DebugConfiguration';
 
 describe(`connection tests`, {concurrent: true}, () => {
-  test('sendCommand', async () => {
-    const connection = getConnection();
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  })
 
+  afterAll(async () => {
+    disposeConnection(connection);
+  });
+
+  test('sendCommand', async () => {
     const result = await connection.sendCommand({
       command: `echo "Hello world"`,
     });
@@ -16,8 +25,6 @@ describe(`connection tests`, {concurrent: true}, () => {
   })
 
   test('sendCommand with home directory', async () => {
-    const connection = getConnection();
-
     const resultA = await connection.sendCommand({
       command: `pwd`,
       directory: `/QSYS.LIB`
@@ -44,8 +51,6 @@ describe(`connection tests`, {concurrent: true}, () => {
   });
 
   test('sendCommand with environment variables', async () => {
-    const connection = getConnection();
-
     const result = await connection.sendCommand({
       command: `echo "$vara $varB $VARC"`,
       env: {
@@ -60,8 +65,6 @@ describe(`connection tests`, {concurrent: true}, () => {
   });
 
   test('getTempRemote', () => {
-    const connection = getConnection();
-
     const fileA = connection.getTempRemote(`/some/file`);
     const fileB = connection.getTempRemote(`/some/badfile`);
     const fileC = connection.getTempRemote(`/some/file`);
@@ -71,8 +74,6 @@ describe(`connection tests`, {concurrent: true}, () => {
   })
 
   test('parseMemberPath (simple)', () => {
-    const connection = getConnection();
-
     const memberA = connection.parserMemberPath(`/thelib/thespf/thembr.mbr`);
 
     expect(memberA?.asp).toBeUndefined();
@@ -84,8 +85,6 @@ describe(`connection tests`, {concurrent: true}, () => {
   })
 
   test('parseMemberPath (ASP)', () => {
-    const connection = getConnection();
-
     const memberA = connection.parserMemberPath(`/theasp/thelib/thespf/thembr.mbr`);
 
     expect(memberA?.asp).toBe(`THEASP`);
@@ -97,8 +96,6 @@ describe(`connection tests`, {concurrent: true}, () => {
   })
 
   test('parseMemberPath (no root)', () => {
-    const connection = getConnection();
-
     const memberA = connection.parserMemberPath(`thelib/thespf/thembr.mbr`);
 
     expect(memberA?.asp).toBe(undefined);
@@ -110,8 +107,6 @@ describe(`connection tests`, {concurrent: true}, () => {
   });
 
   test('parseMemberPath (no extension)', () => {
-    const connection = getConnection();
-
     const memberA = connection.parserMemberPath(`/thelib/thespf/thembr`);
 
     expect(memberA?.asp).toBe(undefined);
@@ -127,16 +122,12 @@ describe(`connection tests`, {concurrent: true}, () => {
   });
 
   test('parseMemberPath (invalid length)', () => {
-    const connection = getConnection();
-
     expect(
       () => { connection.parserMemberPath(`/thespf/thembr.mbr`) }
     ).toThrow(`Invalid path: /thespf/thembr.mbr. Use format LIB/SPF/NAME.ext`);
   });
 
   test('runCommand (ILE)', async () => {
-    const connection = getConnection();
-
     const result = await connection.runCommand({
       command: `DSPJOB OPTION(*DFNA)`,
       environment: `ile`
@@ -147,7 +138,7 @@ describe(`connection tests`, {concurrent: true}, () => {
   })
 
   test('runCommand (ILE, with error)', async () => {
-    const result = await getConnection().runCommand({
+    const result = await connection.runCommand({
       command: `CHKOBJ OBJ(QSYS/NOEXIST) OBJTYPE(*DTAARA)`,
       noLibList: true
     });
@@ -156,9 +147,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(result?.stderr).toBeTruthy();
   });
 
-  test('runCommand (ILE, custom library list)', async () => {
-    const connection = getConnection();
-    const config = connection.getConfig();
+  test('runCommand (ILE, custom library list)', async () => {    const config = connection.getConfig();
 
     const ogLibl = config!.libraryList.slice(0);
 
@@ -190,8 +179,6 @@ describe(`connection tests`, {concurrent: true}, () => {
   });
 
   test('runCommand (ILE, library list order from variable)', async () => {
-    const connection = getConnection();
-
     const result = await connection?.runCommand({
       command: `DSPLIBL`,
       environment: `ile`,
@@ -209,9 +196,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(qtempIndex < qsysincIndex).toBeTruthy();
   });
 
-  test('runCommand (ILE, library order from config)', async () => {
-    const connection = getConnection();
-    const config = connection.getConfig();
+  test('runCommand (ILE, library order from config)', async () => {    const config = connection.getConfig();
 
     const ogLibl = config!.libraryList.slice(0);
 
@@ -233,9 +218,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(qtempIndex < qsysincIndex).toBeTruthy();
   });
 
-  test('withTempDirectory and countFiles', async () => {
-    const connection = getConnection();
-    const content = connection.getContent()!;
+  test('withTempDirectory and countFiles', async () => {    const content = connection.getContent()!;
     let temp;
 
     await connection.withTempDirectory(async tempDir => {
@@ -265,8 +248,7 @@ describe(`connection tests`, {concurrent: true}, () => {
 
   test('upperCaseName', () => {
     {
-      const connection = getConnection();
-      const variantsBackup = connection.variantChars.local;
+    const variantsBackup = connection.variantChars.local;
 
       try {
         //CCSID 297 variants
@@ -285,5 +267,24 @@ describe(`connection tests`, {concurrent: true}, () => {
         connection.variantChars.local = variantsBackup;
       }
     }
-  })
+  });
+
+  it('Check Java versions', async () => {
+    if (connection.remoteFeatures.jdk80) {
+      const jdk8 = getJavaHome(connection, '8');
+      expect(jdk8).toBe(connection.remoteFeatures.jdk80);
+    }
+
+    if (connection.remoteFeatures.jdk11) {
+      const jdk11 = getJavaHome(connection, '11');
+      expect(jdk11).toBe(connection.remoteFeatures.jdk11);
+    }
+
+    if (connection.remoteFeatures.jdk17) {
+      const jdk17 = getJavaHome(connection, '17');
+      expect(jdk17).toBe(connection.remoteFeatures.jdk17);
+    }
+
+    expect(getJavaHome(connection, '666')).toBeUndefined();
+  });
 })

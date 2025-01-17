@@ -6,9 +6,6 @@ export default defineConfig({
     // ... Specify options here.
     fileParallelism: false,
     root: './src/api',
-    setupFiles: [
-      'tests/globalSetup.ts',
-    ],
     testTimeout: 10000
   },
 })

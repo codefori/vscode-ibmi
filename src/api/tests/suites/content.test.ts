@@ -1,14 +1,23 @@
 
-import { expect, describe, it } from 'vitest';
-import { getConnection } from '../state';
+import { expect, describe, it, afterAll, beforeAll } from 'vitest';
 import util, { TextDecoder } from 'util';
 import tmp from 'tmp';
 import { Tools } from '../../Tools';
 import { posix } from 'path';
+import IBMi from '../../IBMi';
+import { newConnection, disposeConnection } from '../globalSetup';
 
 describe('Content Tests', {concurrent: true}, () => {
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  })
+
+  afterAll(async () => {
+    disposeConnection(connection);
+  });
+
   it('memberResolve', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
 
     const member = await content?.memberResolve('MATH', [
@@ -27,7 +36,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('memberResolve (with invalid ASP)', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
 
     const member = await content?.memberResolve('MATH', [
@@ -46,7 +54,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('memberResolve with variants', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
     const config = connection.getConfig();
     const tempLib = config!.tempLibrary,
@@ -81,7 +88,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('memberResolve with bad name', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
 
     const member = await content?.memberResolve('BOOOP', [
@@ -94,7 +100,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('objectResolve .FILE', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
 
     const lib = await content?.objectResolve('MIH', [
@@ -106,7 +111,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('objectResolve .PGM', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
 
     const lib = await content?.objectResolve('CMRCV', [
@@ -118,7 +122,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('objectResolve .DTAARA with variants', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
     const config = connection.getConfig();
     const tempLib = config!.tempLibrary,
@@ -145,7 +148,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('objectResolve with bad name', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
 
     const lib = await content?.objectResolve('BOOOP', [
@@ -158,7 +160,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('streamfileResolve', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const streamfilePath = await content?.streamfileResolve(['git'], ['/QOpenSys/pkgs/sbin', '/QOpenSys/pkgs/bin']);
 
@@ -166,7 +168,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('streamfileResolve with bad name', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const streamfilePath = await content?.streamfileResolve(['sup'], ['/QOpenSys/pkgs/sbin', '/QOpenSys/pkgs/bin']);
 
@@ -174,7 +176,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('streamfileResolve with multiple names', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const streamfilePath = await content?.streamfileResolve(['sup', 'sup2', 'git'], ['/QOpenSys/pkgs/sbin', '/QOpenSys/pkgs/bin']);
 
@@ -182,7 +184,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('streamfileResolve with blanks in names', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
     const files = ['normalname', 'name with blank', 'name_with_quote\'', 'name_with_dollar$'];
     const dir = `/tmp/${Date.now()}`;
@@ -210,7 +211,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test downloadMemberContent', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const tmpFile = await util.promisify(tmp.file)();
     const memberContent = await content?.downloadMemberContent(undefined, 'QSYSINC', 'H', 'MATH', tmpFile);
@@ -219,7 +220,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test runSQL (basic select)', async () => {
-    const connection = getConnection();
 
     const rows = await connection.runSQL('select * from qiws.qcustcdt');
     expect(rows?.length).not.toBe(0);
@@ -230,7 +230,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test runSQL (bad basic select)', async () => {
-    const connection = getConnection();
 
     try {
       await connection.runSQL('select from qiws.qcustcdt');
@@ -242,7 +241,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test runSQL (with comments)', async () => {
-    const connection = getConnection();
 
     const rows = await connection.runSQL([
       '-- myselect',
@@ -255,7 +253,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test getTable', async () => {
-    const connection = getConnection();
     const content = connection.getContent();
 
     const rows = await content.getTable('qiws', 'qcustcdt', '*all');
@@ -268,7 +265,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test validateLibraryList', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const badLibs = await content.validateLibraryList(['SCOOBY', 'QSYSINC', 'BEEPBOOP']);
 
@@ -278,7 +275,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test getFileList', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const objects = await content?.getFileList('/');
 
@@ -291,7 +288,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test getFileList (non-existing file)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const objects = await content?.getFileList(`/tmp/${Date.now()}`);
 
@@ -299,8 +296,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test getFileList (special chars)', async () => {
-    const connection = getConnection();
-    const content = getConnection().getContent();
+    const content = connection.getContent();
     const files = ['name with blank', 'name_with_quote\'', 'name_with_dollar$'];
     const dir = `/tmp/${Date.now()}`;
     const dirWithSubdir = `${dir}/${files[0]}`;
@@ -326,7 +322,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test getObjectList (all objects)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const objects = await content?.getObjectList({ library: 'QSYSINC' });
 
@@ -334,7 +330,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test getObjectList (pgm filter)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const objects = await content?.getObjectList({ library: 'QSYSINC', types: ['*PGM'] });
 
@@ -346,7 +342,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test getObjectList (source files only)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const objects = await content?.getObjectList({ library: 'QSYSINC', types: ['*SRCPF'] });
 
@@ -358,7 +354,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test getObjectList (single source file only, detailed)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const objectsA = await content?.getObjectList({ library: 'QSYSINC', types: ['*SRCPF'], object: 'MIH' });
 
@@ -366,7 +362,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test getObjectList (source files only, named filter)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const objects = await content?.getObjectList({ library: 'QSYSINC', types: ['*SRCPF'], object: 'MIH' });
 
@@ -377,7 +373,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('getLibraries (simple filters)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const qsysLibraries = await content?.getLibraries({ library: 'QSYS*' });
     expect(qsysLibraries?.length).not.toBe(0);
@@ -394,7 +390,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('getLibraries (regexp filters)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const qsysLibraries = await content?.getLibraries({ library: '^.*SYS[^0-9]*$', filterType: 'regex' });
     expect(qsysLibraries?.length).not.toBe(0);
@@ -402,7 +398,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('getObjectList (advanced filtering)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
     const objects = await content?.getObjectList({ library: 'QSYSINC', object: 'L*OU*' });
 
     expect(objects?.length).not.toBe(0);
@@ -410,7 +406,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('getMemberList (SQL, no filter)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     let members = await content?.getMemberList({ library: 'qsysinc', sourceFile: 'mih', members: '*inxen' });
 
@@ -428,7 +424,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('getMemberList (advanced filtering)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const members = await content?.getMemberList({ library: 'QSYSINC', sourceFile: 'QRPGLESRC', members: 'SYS*,I*,*EX' });
     expect(members?.length).not.toBe(0);
@@ -440,7 +436,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('getQtempTable', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const queries = [
       `CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYSINC/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/DSPOBJD)')`,
@@ -473,7 +469,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('toCl', () => {
-    const command = getConnection().getContent().toCl("TEST", {
+    const command = connection.getContent().toCl("TEST", {
       ZERO: 0,
       NONE: '*NONE',
       EMPTY: `''`,
@@ -486,21 +482,21 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Check object (no exist)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const exists = await content?.checkObject({ library: 'QSYSINC', name: 'BOOOP', type: '*FILE' });
     expect(exists).toBe(false);
   });
 
   it('Check object (source member)', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const exists = await content?.checkObject({ library: 'QSYSINC', name: 'H', type: '*FILE', member: 'MATH' });
     expect(exists).toBeTruthy();
   });
 
   it('Check getMemberInfo', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const memberInfoA = await content?.getMemberInfo('QSYSINC', 'H', 'MATH');
     expect(memberInfoA).toBeTruthy();
@@ -527,7 +523,7 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('Test @clCommand + select statement', async () => {
-    const content = getConnection().getContent();
+    const content = connection.getContent();
 
     const [resultA] = await content.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
 
@@ -544,7 +540,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('should get attributes', async () => {
-    const connection = getConnection();
     const content = connection.getContent()
     await connection.withTempDirectory(async directory => {
       expect((await connection.sendCommand({ command: 'echo "I am a test file" > test.txt', directory })).code).toBe(0);
@@ -576,7 +571,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('should count members', async () => {
-    const connection = getConnection();
     const content = connection.getContent()
     const tempLib = connection.config?.tempLibrary;
     if (tempLib) {
@@ -608,7 +602,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('should create streamfile', async () => {
-    const connection = getConnection();
     const content = connection.getContent()
     await connection.withTempDirectory(async dir => {
       const file = posix.join(dir, Tools.makeid());
@@ -623,7 +616,6 @@ describe('Content Tests', {concurrent: true}, () => {
   });
 
   it('should handle long library name', async () => {
-    const connection = getConnection();
     const content = connection.getContent()
     const longName = Tools.makeid(18);
     const shortName = Tools.makeid(8);

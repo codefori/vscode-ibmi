@@ -1,14 +1,21 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { GetMemberInfo } from '../../components/getMemberInfo';
 import { GetNewLibl } from '../../components/getNewLibl';
 import { Tools } from '../../Tools';
-import { getConnection } from '../state';
+import IBMi from '../../IBMi';
+import { disposeConnection, newConnection } from '../globalSetup';
 
 describe('Component Tests', () => {
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  })
 
+  afterAll(async () => {
+    disposeConnection(connection);
+  });
 
   it('Get new libl', async () => {
-    const connection = getConnection();
     const component = connection.getComponent<GetNewLibl>(GetNewLibl.ID);
 
     if (component) {
@@ -20,7 +27,6 @@ describe('Component Tests', () => {
   });
 
   it('Check getMemberInfo', async () => {
-    const connection = getConnection();
     const component = connection?.getComponent<GetMemberInfo>(GetMemberInfo.ID)!;
 
     expect(component).toBeTruthy();

@@ -1,11 +1,8 @@
 import assert from "assert";
 import IBMi from "../IBMi";
 import { ENV_CREDS } from "./env";
-import { getConnection, setConnection } from "./state";
 import { afterAll, beforeAll, expect } from "vitest";
 import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
-import { VirtualConfig } from "../configuration/config/VirtualConfig";
-import { VirtualStorage } from "../configuration/storage/BaseStorage";
 import { CustomQSh } from "../components/cqsh";
 import path from "path";
 import { CopyToImport } from "../components/copyToImport";
@@ -71,28 +68,8 @@ export async function newConnection() {
   return conn;
 }
 
-beforeAll(async () => {
-  const virtualStorage = testStorage;
-
-  IBMi.GlobalStorage = new CodeForIStorage(virtualStorage);
-  IBMi.connectionManager.configMethod = testConfig;
-
-  await testStorage.load();
-  await testConfig.load();
-
-  const conn = await newConnection();
-
-  setConnection(conn);
-}, 10000000);
-
-afterAll(async () => {
-  const conn = getConnection();
-
-  if (conn) {
-    await conn.dispose();
-    await testStorage.save();
-    await testConfig.save();
-  } else {
-    assert.fail(`Connection was not set`);
-  }
-})
+export function disposeConnection(conn: IBMi) {
+  conn.dispose();
+  testStorage.save();
+  testConfig.save();
+}
