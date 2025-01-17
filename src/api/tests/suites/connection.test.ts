@@ -1,5 +1,5 @@
 
-import { expect, test, describe, afterAll, beforeAll, it } from 'vitest'
+import { expect, describe, afterAll, beforeAll, it } from 'vitest'
 import { Tools } from '../../Tools';
 import { disposeConnection, newConnection } from '../globalSetup';
 import IBMi from '../../IBMi';
@@ -15,7 +15,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     disposeConnection(connection);
   });
 
-  test('sendCommand', async () => {
+  it('sendCommand', async () => {
     const result = await connection.sendCommand({
       command: `echo "Hello world"`,
     });
@@ -24,7 +24,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(result.stdout).toBe('Hello world');
   })
 
-  test('sendCommand with home directory', async () => {
+  it('sendCommand with home directory', async () => {
     const resultA = await connection.sendCommand({
       command: `pwd`,
       directory: `/QSYS.LIB`
@@ -50,7 +50,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(resultC.stdout).not.toBe('/badnaughty');
   });
 
-  test('sendCommand with environment variables', async () => {
+  it('sendCommand with environment variables', async () => {
     const result = await connection.sendCommand({
       command: `echo "$vara $varB $VARC"`,
       env: {
@@ -64,7 +64,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(result.stdout).toBe('Hello world cool');
   });
 
-  test('getTempRemote', () => {
+  it('getTempRemote', () => {
     const fileA = connection.getTempRemote(`/some/file`);
     const fileB = connection.getTempRemote(`/some/badfile`);
     const fileC = connection.getTempRemote(`/some/file`);
@@ -73,7 +73,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(fileA).not.toBe(fileB);
   })
 
-  test('parseMemberPath (simple)', () => {
+  it('parseMemberPath (simple)', () => {
     const memberA = connection.parserMemberPath(`/thelib/thespf/thembr.mbr`);
 
     expect(memberA?.asp).toBeUndefined();
@@ -84,7 +84,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(memberA?.basename).toBe(`THEMBR.MBR`);
   })
 
-  test('parseMemberPath (ASP)', () => {
+  it('parseMemberPath (ASP)', () => {
     const memberA = connection.parserMemberPath(`/theasp/thelib/thespf/thembr.mbr`);
 
     expect(memberA?.asp).toBe(`THEASP`);
@@ -95,7 +95,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(memberA?.basename).toBe(`THEMBR.MBR`);
   })
 
-  test('parseMemberPath (no root)', () => {
+  it('parseMemberPath (no root)', () => {
     const memberA = connection.parserMemberPath(`thelib/thespf/thembr.mbr`);
 
     expect(memberA?.asp).toBe(undefined);
@@ -106,7 +106,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(memberA?.basename).toBe(`THEMBR.MBR`);
   });
 
-  test('parseMemberPath (no extension)', () => {
+  it('parseMemberPath (no extension)', () => {
     const memberA = connection.parserMemberPath(`/thelib/thespf/thembr`);
 
     expect(memberA?.asp).toBe(undefined);
@@ -121,13 +121,13 @@ describe(`connection tests`, {concurrent: true}, () => {
     ).toThrow(`Source Type extension is required.`);
   });
 
-  test('parseMemberPath (invalid length)', () => {
+  it('parseMemberPath (invalid length)', () => {
     expect(
       () => { connection.parserMemberPath(`/thespf/thembr.mbr`) }
     ).toThrow(`Invalid path: /thespf/thembr.mbr. Use format LIB/SPF/NAME.ext`);
   });
 
-  test('runCommand (ILE)', async () => {
+  it('runCommand (ILE)', async () => {
     const result = await connection.runCommand({
       command: `DSPJOB OPTION(*DFNA)`,
       environment: `ile`
@@ -137,7 +137,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(["JOBPTY", "OUTPTY", "ENDSEV", "DDMCNV", "BRKMSG", "STSMSG", "DEVRCYACN", "TSEPOOL", "PRTKEYFMT", "SRTSEQ"].every(attribute => result.stdout.includes(attribute))).toBe(true);
   })
 
-  test('runCommand (ILE, with error)', async () => {
+  it('runCommand (ILE, with error)', async () => {
     const result = await connection.runCommand({
       command: `CHKOBJ OBJ(QSYS/NOEXIST) OBJTYPE(*DTAARA)`,
       noLibList: true
@@ -147,7 +147,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(result?.stderr).toBeTruthy();
   });
 
-  test('runCommand (ILE, custom library list)', async () => {    const config = connection.getConfig();
+  it('runCommand (ILE, custom library list)', async () => {    const config = connection.getConfig();
 
     const ogLibl = config!.libraryList.slice(0);
 
@@ -178,7 +178,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(resultB.stdout.includes(`QSYSINC     USR`)).toBe(true);
   });
 
-  test('runCommand (ILE, library list order from variable)', async () => {
+  it('runCommand (ILE, library list order from variable)', async () => {
     const result = await connection?.runCommand({
       command: `DSPLIBL`,
       environment: `ile`,
@@ -196,7 +196,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(qtempIndex < qsysincIndex).toBeTruthy();
   });
 
-  test('runCommand (ILE, library order from config)', async () => {    const config = connection.getConfig();
+  it('runCommand (ILE, library order from config)', async () => {    const config = connection.getConfig();
 
     const ogLibl = config!.libraryList.slice(0);
 
@@ -218,7 +218,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(qtempIndex < qsysincIndex).toBeTruthy();
   });
 
-  test('withTempDirectory and countFiles', async () => {    const content = connection.getContent()!;
+  it('withTempDirectory and countFiles', async () => {    const content = connection.getContent()!;
     let temp;
 
     await connection.withTempDirectory(async tempDir => {
@@ -246,7 +246,7 @@ describe(`connection tests`, {concurrent: true}, () => {
     }
   });
 
-  test('upperCaseName', () => {
+  it('upperCaseName', () => {
     {
     const variantsBackup = connection.variantChars.local;
 
