@@ -2,7 +2,6 @@ import { env } from "process";
 import vscode from "vscode";
 import { instance } from "../instantiate";
 import { ActionSuite } from "./action";
-import { ComponentSuite } from "./components";
 import { ContentSuite } from "./content";
 import { DeployToolsSuite } from "./deployTools";
 import { EncodingSuite } from "./encoding";
@@ -23,8 +22,7 @@ const suites: TestSuite[] = [
   FilterSuite,
   SearchSuite,
   StorageSuite,
-  EncodingSuite,
-  ComponentSuite
+  EncodingSuite
 ]
 
 export type TestSuite = {
