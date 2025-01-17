@@ -199,6 +199,7 @@ export namespace VscodeTools {
     }
   }
 
+  // These are exported to not break the API from 'the great re-write'.
   export const qualifyPath = Tools.qualifyPath;
   export const unqualifyPath = Tools.unqualifyPath;
   export const escapePath = Tools.escapePath;
