@@ -106,7 +106,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       password = imported.password;
       if (imported.localFile) {
         setProgress("importing local certificate");
-        await connection.getContent().uploadFiles([{ local: VscodeTools.fileToPath(imported.localFile), remote: debugConfig.getRemoteServiceCertificatePath() }]);
+        await connection.getContent().uploadFiles([{ local: imported.localFile, remote: debugConfig.getRemoteServiceCertificatePath() }]);
       }
       else if (imported.remoteFile) {
         setProgress("importing remote certificate");

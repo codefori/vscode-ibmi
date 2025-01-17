@@ -139,15 +139,6 @@ export namespace VscodeTools {
     }
   }
 
-  export function fileToPath(file: string | vscode.Uri): string {
-    if (typeof file === "string") {
-      return Tools.fixWindowsPath(file);
-    }
-    else {
-      return file.fsPath;
-    }
-  }
-
   export function objectToToolTip(path: string, object: IBMiObject) {
     const tooltip = new MarkdownString(generateTooltipHtmlTable(path, {
       "Type": object.type,

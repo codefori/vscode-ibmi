@@ -520,7 +520,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                 for (const directory of directoriesToUpload) {
                   const name = path.basename(directory.fsPath);
                   progress.report({ message: l10n.t(`sending {0} directory...`, name) })
-                  await connection.getContent().uploadDirectory(VscodeTools.fileToPath(directory), path.posix.join(root, name), { concurrency: 5 })
+                  await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
                 }
               }
 

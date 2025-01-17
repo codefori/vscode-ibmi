@@ -19,7 +19,6 @@ export interface CodeForIBMi {
   componentRegistry: ComponentRegistry
 }
 
-
 export interface FilteredItem {
   filter: ObjectFilters
 }
@@ -38,6 +37,8 @@ export interface DeploymentParameters {
   remotePath: string
   ignoreRules?: Ignore
 }
+
+export type EditorPath = string | { fsPath: string };
 
 export * from "./api/types";
 export * from "./ui/types";
