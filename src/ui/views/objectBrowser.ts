@@ -11,7 +11,7 @@ import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
 import { CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
-import { VscodeTools } from "../tools";
+import { VscodeTools } from "../vscodeTools";
 import { DefaultOpenMode, ObjectFilters } from "../../api/configuration/config/ConnectionManager";
 import { BrowserItem, BrowserItemParameters } from "../types";
 

@@ -8,7 +8,7 @@ import { VsCodeConfig } from "./config/Configuration";
 import { ConnectionConfig } from "./api/configuration/config/ConnectionManager";
 import { EventEmitter } from "stream";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
-import { VscodeTools } from "./ui/tools";
+import { VscodeTools } from "./ui/vscodeTools";
 
 type IBMiEventSubscription = {
   func: Function,

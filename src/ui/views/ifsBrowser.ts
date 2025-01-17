@@ -8,7 +8,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../../typings";
-import { VscodeTools } from "../tools";
+import { VscodeTools } from "../vscodeTools";
 import IBMi from "../../api/IBMi";
 import { BrowserItem, BrowserItemParameters } from "../types";
 

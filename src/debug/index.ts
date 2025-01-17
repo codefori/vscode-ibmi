@@ -11,7 +11,7 @@ import { Env, getEnvConfig } from "../filesystems/local/env";
 import * as certificates from "./certificates";
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
 import * as server from "./server";
-import { VscodeTools } from "../ui/tools";
+import { VscodeTools } from "../ui/vscodeTools";
 import { getStoredPassword } from "../config/passwords";
 
 const debugExtensionId = `IBM.ibmidebug`;

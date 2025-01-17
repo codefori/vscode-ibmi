@@ -4,7 +4,7 @@ import Instance from "../Instance";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
 import path from "path";
-import { VscodeTools } from "../ui/tools";
+import { VscodeTools } from "../ui/vscodeTools";
 import IBMi from "../api/IBMi";
 import { DefaultOpenMode } from "../api/configuration/config/ConnectionManager";
 

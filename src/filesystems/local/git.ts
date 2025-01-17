@@ -3,7 +3,7 @@ import { getBranchLibraryName } from "./env";
 import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
 import IBMiContent from "../../api/IBMiContent";
-import { VscodeTools } from "../../ui/tools";
+import { VscodeTools } from "../../ui/vscodeTools";
 import { ConnectionConfig } from "../../api/configuration/config/ConnectionManager";
 
 const lastBranch: { [workspaceUri: string]: string } = {};

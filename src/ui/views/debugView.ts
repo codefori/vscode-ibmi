@@ -4,7 +4,7 @@ import { checkClientCertificate, debugKeyFileExists, remoteCertificatesExists } 
 import { DebugConfiguration, getDebugServiceDetails, SERVICE_CERTIFICATE } from "../../api/configuration/DebugConfiguration";
 import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../../debug/server";
 import { instance } from "../../instantiate";
-import { VscodeTools } from "../tools";
+import { VscodeTools } from "../vscodeTools";
 import { BrowserItem } from "../types";
 
 const title = "IBM i debugger";

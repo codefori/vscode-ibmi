@@ -4,7 +4,7 @@ import { FileError } from "../typings";
 import Instance from "../Instance";
 import { getEvfeventFiles } from "../filesystems/local/actions";
 import { parseErrors } from "../api/errors/parser";
-import { VscodeTools } from "./tools";
+import { VscodeTools } from "./vscodeTools";
 import IBMi from "../api/IBMi";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);

@@ -1,7 +1,7 @@
 import vscode, { commands, l10n } from "vscode";
 import { instance } from "../../instantiate";
 import { IBMiObject, WithLibrary } from "../../typings";
-import { VscodeTools } from "../tools";
+import { VscodeTools } from "../vscodeTools";
 import { ConnectionConfig } from "../../api/configuration/config/ConnectionManager";
 import IBMi from "../../api/IBMi";
 

@@ -34,7 +34,7 @@ import { SettingsUI } from "./webviews/settings";
 import { registerActionTools } from "./ui/actions";
 import IBMi from "./api/IBMi";
 import path from "path";
-import { VscodeTools } from "./ui/tools";
+import { VscodeTools } from "./ui/vscodeTools";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)

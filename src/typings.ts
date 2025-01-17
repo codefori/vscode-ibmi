@@ -7,7 +7,7 @@ import { ObjectFilters } from './api/configuration/config/ConnectionManager';
 import { DeploymentMethod, FileError, IBMiMember, IBMiObject, WithPath } from "./api/types";
 import { Ignore } from "ignore";
 import { WorkspaceFolder } from "vscode";
-import { VscodeTools } from "./ui/tools";
+import { VscodeTools } from "./ui/vscodeTools";
 
 export interface CodeForIBMi {
   instance: Instance,
