@@ -3,9 +3,9 @@ import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import vscode, { MarkdownString } from "vscode";
 import { API, GitExtension } from "../filesystems/local/gitApi";
-import { Tools } from '../api/Tools';
 import { IBMiObject, IBMiMember, IFSFile } from '../typings';
 import IBMi from '../api/IBMi';
+import { Tools } from '../api/Tools';
 
 let gitLookedUp: boolean;
 let gitAPI: API | undefined;
@@ -198,4 +198,18 @@ export namespace VscodeTools {
       return `Unknown`;
     }
   }
+
+  export const qualifyPath = Tools.qualifyPath;
+  export const unqualifyPath = Tools.unqualifyPath;
+  export const escapePath = Tools.escapePath;
+  export const distinct = Tools.distinct;
+  export const capitalize = Tools.capitalize;
+  export const sanitizeObjNamesForPase = Tools.sanitizeObjNamesForPase;
+  export const parseMessages = Tools.parseMessages;
+  export const parseQSysPath = Tools.parseQSysPath;
+  export const fileToPath = Tools.fileToPath;
+  export const fixWindowsPath = Tools.fixWindowsPath;
+  export const parseAttrDate = Tools.parseAttrDate;
+  export const normalizePath = Tools.normalizePath;
+  export const resolvePath = Tools.resolvePath;
 }

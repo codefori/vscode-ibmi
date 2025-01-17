@@ -34,7 +34,7 @@ import { SettingsUI } from "./webviews/settings";
 import { registerActionTools } from "./ui/actions";
 import IBMi from "./api/IBMi";
 import path from "path";
-import { VscodeTools } from "./ui/vscodeTools";
+import { VscodeTools } from "./ui/Tools";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -126,8 +126,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     instance, customUI: () => new CustomUI(),
     deployTools: DeployTools,
     evfeventParser: parseErrors,
-    tools: Tools,
-    vscodeTools: VscodeTools,
+    tools: VscodeTools,
     componentRegistry: extensionComponentRegistry
   };
 }

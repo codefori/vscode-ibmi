@@ -8,7 +8,7 @@ import { isSEPSupported } from "../../debug/server";
 import { extensionComponentRegistry } from "../../api/components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
-import { VscodeTools } from "../../ui/vscodeTools";
+import { VscodeTools } from "../../ui/Tools";
 import IBMi from "../../api/IBMi";
 import { ConnectionConfig, ConnectionManager } from "../../api/configuration/config/ConnectionManager";
 import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
