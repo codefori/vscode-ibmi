@@ -4,7 +4,7 @@ import { checkClientCertificate, debugKeyFileExists, remoteCertificatesExists } 
 import { DebugConfiguration, getDebugServiceDetails, SERVICE_CERTIFICATE } from "../../api/configuration/DebugConfiguration";
 import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../../debug/server";
 import { instance } from "../../instantiate";
-import { withContext } from "../tools";
+import { VscodeTools } from "../vscodeTools";
 import { BrowserItem } from "../types";
 
 const title = "IBM i debugger";
@@ -49,9 +49,9 @@ export function initializeDebugBrowser(context: vscode.ExtensionContext) {
     debugTreeViewer,
     vscode.commands.registerCommand("code-for-ibmi.debug.refresh", updateDebugBrowser),
     vscode.commands.registerCommand("code-for-ibmi.debug.refresh.item", (item: DebugItem) => debugBrowser.refresh(item)),
-    vscode.commands.registerCommand("code-for-ibmi.debug.job.start", (item: DebugJobItem) => withContext(`code-for-ibmi:debugWorking`, () => item.start())),
-    vscode.commands.registerCommand("code-for-ibmi.debug.job.stop", (item: DebugJobItem) => withContext(`code-for-ibmi:debugWorking`, () => item.stop())),
-    vscode.commands.registerCommand("code-for-ibmi.debug.job.restart", async (item: DebugJobItem) => withContext(`code-for-ibmi:debugWorking`, async () => await item.stop() && item.start())),
+    vscode.commands.registerCommand("code-for-ibmi.debug.job.start", (item: DebugJobItem) => VscodeTools.withContext(`code-for-ibmi:debugWorking`, () => item.start())),
+    vscode.commands.registerCommand("code-for-ibmi.debug.job.stop", (item: DebugJobItem) => VscodeTools.withContext(`code-for-ibmi:debugWorking`, () => item.stop())),
+    vscode.commands.registerCommand("code-for-ibmi.debug.job.restart", async (item: DebugJobItem) => VscodeTools.withContext(`code-for-ibmi:debugWorking`, async () => await item.stop() && item.start())),
   );
 }
 
@@ -68,7 +68,7 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   async getChildren(item?: DebugItem) {
-    return withContext(`code-for-ibmi:debugWorking`, async () => item?.getChildren?.() || this.getRootItems());
+    return VscodeTools.withContext(`code-for-ibmi:debugWorking`, async () => item?.getChildren?.() || this.getRootItems());
   }
 
   private async getRootItems() {

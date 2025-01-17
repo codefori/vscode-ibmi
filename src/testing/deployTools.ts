@@ -10,7 +10,7 @@ import { Tools } from "../api/Tools";
 import { DeployTools } from "../filesystems/local/deployTools";
 import { instance } from "../instantiate";
 import { Action, DeploymentMethod } from "../typings";
-import { md5Hash } from "../ui/tools";
+import { VscodeTools } from "../ui/vscodeTools";
 import { runAction } from "../ui/actions";
 
 type FileInfo = {
@@ -260,7 +260,7 @@ async function getLocalFilesInfo() {
     const localFiles: FilesInfo = new Map;
     for await (const file of await vscode.workspace.findFiles(new vscode.RelativePattern(fakeProject.localPath!, "**/*"))) {
         const path = posix.join(basename(fakeProject.localPath!.path), posix.relative(fakeProject.localPath!.path, file.path));
-        localFiles.set(path, { date: "unused", md5: md5Hash(file) });
+        localFiles.set(path, { date: "unused", md5: VscodeTools.md5Hash(file) });
     }
     return localFiles;
 }

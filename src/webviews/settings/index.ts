@@ -8,7 +8,7 @@ import { isSEPSupported } from "../../debug/server";
 import { extensionComponentRegistry } from "../../api/components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
-import { withContext } from "../../ui/tools";
+import { VscodeTools } from "../../ui/vscodeTools";
 import IBMi from "../../api/IBMi";
 import { ConnectionConfig, ConnectionManager } from "../../api/configuration/config/ConnectionManager";
 import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
@@ -262,7 +262,7 @@ export class SettingsUI {
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings`, requiresValidation: true });
 
-        await withContext(EDITING_CONTEXT, async () => {
+        await VscodeTools.withContext(EDITING_CONTEXT, async () => {
           const page = await ui.loadPage<any>(`Settings: ${config.name}`);
           if (page) {
             page.panel.dispose();
@@ -375,7 +375,7 @@ export class SettingsUI {
                 { id: `removeAuth`, label: vscode.l10n.t(`Remove auth methods`) }
               );
 
-            await withContext(EDITING_CONTEXT, async () => {
+            await VscodeTools.withContext(EDITING_CONTEXT, async () => {
               const page = await ui.loadPage<LoginSettings>(vscode.l10n.t(`Login Settings: "{0}"`, name));
               if (page && page.data) {
                 page.panel.dispose();

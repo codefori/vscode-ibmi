@@ -2,13 +2,13 @@ import * as vscode from "vscode";
 import { ConnectionData, IBMiEvent } from "./typings";
 import IBMi, { ConnectionResult } from "./api/IBMi";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
-import { withContext } from "./ui/tools";
 import { handleConnectionResults, messageCallback } from "./ui/connection";
 import { VsStorage } from "./config/Storage";
 import { VsCodeConfig } from "./config/Configuration";
 import { ConnectionConfig } from "./api/configuration/config/ConnectionManager";
 import { EventEmitter } from "stream";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
+import { VscodeTools } from "./ui/vscodeTools";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -26,7 +26,19 @@ export interface ConnectionOptions {
 
 export default class Instance {
   private connection: IBMi | undefined;
-  private outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(`Code for IBM i`);
+
+  private output = {
+    channel: vscode.window.createOutputChannel(`Code for IBM i`),
+    content: ``,
+    writeCount: 0
+  };
+
+  private resetOutput() {
+    this.output.channel.clear();
+    this.output.content = ``;
+    this.output.writeCount = 0;
+  }
+
   private storage: ConnectionStorage;
   private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
   private subscribers: Map<IBMiEvent, SubscriptionMap> = new Map;
@@ -45,9 +57,14 @@ export default class Instance {
   connect(options: ConnectionOptions): Promise<ConnectionResult> {
     const connection = new IBMi();
 
-    this.outputChannel.clear();
+    this.resetOutput();
     connection.appendOutput = (message) => {
-      this.outputChannel.append(message);
+      if (this.output.writeCount > 150) {
+        this.resetOutput();
+      }
+
+      this.output.channel.append(message);
+      this.output.writeCount++;
     }
 
     let result: ConnectionResult;
@@ -62,13 +79,12 @@ export default class Instance {
         let reconnect = choice === `Yes`;
         let collectLogs = choice === `No, get logs`;
 
-        // TODO: how to get output channel stuff?
-        // if (collectLogs) {
-        //   const logs = conn.getOutputChannelContent();
-        //   vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
-        //     vscode.window.showTextDocument(doc);
-        //   });
-        // }
+        if (collectLogs) {
+          const logs = this.output.content;
+          vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
+            vscode.window.showTextDocument(doc);
+          });
+        }
 
         this.disconnect();
 
@@ -78,7 +94,7 @@ export default class Instance {
       }
     };
 
-    return withContext("code-for-ibmi:connecting", async () => {
+    return VscodeTools.withContext("code-for-ibmi:connecting", async () => {
       while (true) {
         let customError: string|undefined;
         await vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: options.data.name, cancellable: true}, async (p, cancelToken) => {

@@ -11,7 +11,7 @@ import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
 import { CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
-import { findUriTabs, memberToToolTip, objectToToolTip, sourcePhysicalFileToToolTip } from "../tools";
+import { VscodeTools } from "../vscodeTools";
 import { DefaultOpenMode, ObjectFilters } from "../../api/configuration/config/ConnectionManager";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
@@ -307,7 +307,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
   }
 
   getToolTip() {
-    return sourcePhysicalFileToToolTip(getConnection(), this.path, this.object);
+    return VscodeTools.sourcePhysicalFileToToolTip(getConnection(), this.path, this.object);
   }
 }
 
@@ -326,7 +326,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
     this.updateDescription();
 
     this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isLibrary ? '_library' : ''}${this.isProtected() ? `_readonly` : ``}`;
-    this.tooltip = objectToToolTip(this.path, object);
+    this.tooltip = VscodeTools.objectToToolTip(this.path, object);
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -378,7 +378,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 
     this.resourceUri = getMemberUri(member, { readonly });
     this.path = this.resourceUri.path.substring(1);
-    this.tooltip = memberToToolTip(this.path, member);
+    this.tooltip = VscodeTools.memberToToolTip(this.path, member);
 
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
@@ -710,7 +710,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       let newNameOK;
 
       // Check if the member is currently open in an editor tab.
-      const oldMemberTabs = findUriTabs(oldUri);
+      const oldMemberTabs = VscodeTools.findUriTabs(oldUri);
 
       // If the member is currently open in an editor tab, and 
       // the member has unsaved changes, then prevent the renaming operation.

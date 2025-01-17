@@ -3,13 +3,13 @@ import { getBranchLibraryName } from "./env";
 import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
 import IBMiContent from "../../api/IBMiContent";
-import { getGitAPI } from "../../ui/tools";
+import { VscodeTools } from "../../ui/vscodeTools";
 import { ConnectionConfig } from "../../api/configuration/config/ConnectionManager";
 
 const lastBranch: { [workspaceUri: string]: string } = {};
 
 export function getGitBranch(workspaceFolder: WorkspaceFolder) {
-  const gitApi = getGitAPI();
+  const gitApi = VscodeTools.getGitAPI();
   if (gitApi) {
     const repo = gitApi.getRepository(workspaceFolder.uri);
     if (repo) {
@@ -19,7 +19,7 @@ export function getGitBranch(workspaceFolder: WorkspaceFolder) {
 }
 
 export function setupGitEventHandler(context: ExtensionContext) {
-  const gitApi = getGitAPI();
+  const gitApi = VscodeTools.getGitAPI();
 
   if (gitApi) {
     gitApi.onDidOpenRepository((repo) => {

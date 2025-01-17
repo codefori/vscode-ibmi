@@ -4,7 +4,7 @@ import Instance from "../Instance";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
 import path from "path";
-import { findExistingDocument, findExistingDocumentUri } from "../ui/tools";
+import { VscodeTools } from "../ui/vscodeTools";
 import IBMi from "../api/IBMi";
 import { DefaultOpenMode } from "../api/configuration/config/ConnectionManager";
 
@@ -36,7 +36,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
 
       const uri = getUriFromPath(path, options);
 
-      const existingUri = findExistingDocumentUri(uri);
+      const existingUri = VscodeTools.findExistingDocumentUri(uri);
 
       if (existingUri) {
         const existingOptions = parseFSOptions(existingUri);
@@ -89,7 +89,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
     commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: Uri) => {
       let doc: TextDocument | undefined;
       if (uri) {
-        doc = findExistingDocument(uri);
+        doc = VscodeTools.findExistingDocument(uri);
       } else {
         const editor = window.activeTextEditor;
         doc = editor?.document;

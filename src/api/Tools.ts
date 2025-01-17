@@ -2,6 +2,7 @@
 import os from "os";
 import path from "path";
 import { IBMiMessage, IBMiMessages, QsysPath } from './types';
+import { EditorPath } from "../typings";
 
 export namespace Tools {
   export class SqlError extends Error {
@@ -296,6 +297,15 @@ export namespace Tools {
     }
 
     return statements;
+  }
+
+  export function fileToPath(file: EditorPath): string {
+    if (typeof file === "string") {
+      return Tools.fixWindowsPath(file);
+    }
+    else {
+      return file.fsPath;
+    }
   }
 
   export function fixWindowsPath(path: string) {

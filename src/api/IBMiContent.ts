@@ -10,6 +10,7 @@ import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
 import { ObjectTypes } from './import/Objects';
+import { EditorPath } from '../typings';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -1043,19 +1044,19 @@ export default class IBMiContent {
     }
   }
 
-  async uploadFiles(files: { local: string, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
-    await this.ibmi.client!.putFiles(files.map(f => { return { local: f.local, remote: f.remote } }), options);
+  async uploadFiles(files: { local: EditorPath, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    await this.ibmi.client!.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
   }
 
-  async downloadFile(localFile: string, remoteFile: string) {
-    await this.ibmi.client!.getFile(localFile, remoteFile);
+  async downloadFile(localFile: EditorPath, remoteFile: string) {
+    await this.ibmi.client!.getFile(Tools.fileToPath(localFile), remoteFile);
   }
 
-  async uploadDirectory(localDirectory: string, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client!.putDirectory(localDirectory, remoteDirectory, options);
+  async uploadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    await this.ibmi.client!.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  async downloadDirectory(localDirectory: string, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client!.getDirectory(localDirectory, remoteDirectory, options);
+  async downloadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    await this.ibmi.client!.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 }

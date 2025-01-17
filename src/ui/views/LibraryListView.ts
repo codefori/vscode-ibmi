@@ -1,7 +1,7 @@
 import vscode, { commands, l10n } from "vscode";
 import { instance } from "../../instantiate";
 import { IBMiObject, WithLibrary } from "../../typings";
-import { objectToToolTip } from "../tools";
+import { VscodeTools } from "../vscodeTools";
 import { ConnectionConfig } from "../../api/configuration/config/ConnectionManager";
 import IBMi from "../../api/IBMi";
 
@@ -302,7 +302,7 @@ class LibraryListNode extends vscode.TreeItem implements WithLibrary {
       ((context === `currentLibrary` ? `${l10n.t(`(current library)`)}` : ``)
         + (object.text !== `` && showDescInLibList ? ` ${object.text}` : ``)
         + (object.attribute !== `` ? ` (*${object.attribute})` : ``)).trim();
-    this.tooltip = objectToToolTip([object.library, object.name].join(`/`), object);
+    this.tooltip = VscodeTools.objectToToolTip([object.library, object.name].join(`/`), object);
   }
 }
 

@@ -7,6 +7,7 @@ import { ObjectFilters } from './api/configuration/config/ConnectionManager';
 import { DeploymentMethod, FileError, IBMiMember, IBMiObject, WithPath } from "./api/types";
 import { Ignore } from "ignore";
 import { WorkspaceFolder } from "vscode";
+import { VscodeTools } from "./ui/vscodeTools";
 
 export interface CodeForIBMi {
   instance: Instance,
@@ -14,9 +15,9 @@ export interface CodeForIBMi {
   deployTools: typeof DeployTools,
   evfeventParser: (lines: string[]) => Map<string, FileError[]>,
   tools: typeof Tools,
+  vscodeTools: typeof VscodeTools,
   componentRegistry: ComponentRegistry
 }
-
 
 export interface FilteredItem {
   filter: ObjectFilters
@@ -36,6 +37,8 @@ export interface DeploymentParameters {
   remotePath: string
   ignoreRules?: Ignore
 }
+
+export type EditorPath = string | { fsPath: string };
 
 export * from "./api/types";
 export * from "./ui/types";
