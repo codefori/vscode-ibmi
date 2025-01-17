@@ -3,13 +3,13 @@ import { GetMemberInfo } from '../../components/getMemberInfo';
 import { GetNewLibl } from '../../components/getNewLibl';
 import { Tools } from '../../Tools';
 import IBMi from '../../IBMi';
-import { disposeConnection, newConnection } from '../globalSetup';
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 
 describe('Component Tests', () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  })
+  }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     disposeConnection(connection);

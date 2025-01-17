@@ -1,7 +1,4 @@
-import assert from "assert";
 import IBMi from "../IBMi";
-import { ENV_CREDS } from "./env";
-import { afterAll, beforeAll, expect } from "vitest";
 import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
 import { CustomQSh } from "../components/cqsh";
 import path from "path";
@@ -11,8 +8,17 @@ import { GetNewLibl } from "../components/getNewLibl";
 import { extensionComponentRegistry } from "../components/manager";
 import { JsonConfig, JsonStorage } from "./testConfigSetup";
 
+export const testStorage = new JsonStorage();
 const testConfig = new JsonConfig();
-const testStorage = new JsonStorage();
+
+export const CONNECTION_TIMEOUT = process.env.VITE_CONNECTION_TIMEOUT ? parseInt(process.env.VITE_CONNECTION_TIMEOUT) : 25000;
+
+const ENV_CREDS = {
+  host: process.env.VITE_SERVER || `localhost`,
+  user: process.env.VITE_DB_USER,
+  password: process.env.VITE_DB_PASS,
+  port: parseInt(process.env.VITE_DB_PORT || `22`)
+}
 
 export async function newConnection() {
   const virtualStorage = testStorage;
@@ -62,13 +68,18 @@ export async function newConnection() {
     }
   );
 
-  expect(result).toBeDefined();
-  expect(result.success).toBeTruthy();
+  if (!result.success) {
+    throw new Error(`Failed to connect to IBMi`);
+  }
 
   return conn;
 }
 
-export function disposeConnection(conn: IBMi) {
+export function disposeConnection(conn?: IBMi) {
+  if (!conn) {
+    return;
+  }
+
   conn.dispose();
   testStorage.save();
   testConfig.save();

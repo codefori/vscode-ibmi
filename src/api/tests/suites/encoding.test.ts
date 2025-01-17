@@ -3,7 +3,7 @@ import IBMi from "../../IBMi";
 import { Tools } from "../../Tools";
 import { IBMiObject } from "../../types";
 import { describe, it, expect, afterAll, beforeAll } from 'vitest';
-import { newConnection, disposeConnection } from "../globalSetup";
+import { newConnection, disposeConnection } from "../connection";
 
 const contents = {
   '37': [`Hello world`],
@@ -43,7 +43,7 @@ describe('Encoding tests', {concurrent: true} ,() => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  })
+  }, 25000)
 
   afterAll(async () => {
     disposeConnection(connection);

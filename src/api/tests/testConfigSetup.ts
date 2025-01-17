@@ -44,8 +44,12 @@ export class JsonStorage extends BaseStorage {
     super();
   }
 
+  exists() {
+    return existsSync(storagePath);
+  }
+
   public async load() {
-    if (existsSync(storagePath)) {
+    if (this.exists()) {
       const data = await import(storagePath);
       for (const key in data) {
         this.globalState.set(key, data[key]);

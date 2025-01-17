@@ -5,7 +5,7 @@ import tmp from 'tmp';
 import { Tools } from '../../Tools';
 import { posix } from 'path';
 import IBMi from '../../IBMi';
-import { newConnection, disposeConnection } from '../globalSetup';
+import { newConnection, disposeConnection } from '../connection';
 
 describe('Content Tests', {concurrent: true}, () => {
   let connection: IBMi

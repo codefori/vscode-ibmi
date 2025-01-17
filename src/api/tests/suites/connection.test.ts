@@ -1,7 +1,7 @@
 
 import { expect, describe, afterAll, beforeAll, it } from 'vitest'
 import { Tools } from '../../Tools';
-import { disposeConnection, newConnection } from '../globalSetup';
+import { disposeConnection, newConnection } from '../connection';
 import IBMi from '../../IBMi';
 import { getJavaHome } from '../../configuration/DebugConfiguration';
 
@@ -9,7 +9,7 @@ describe(`connection tests`, {concurrent: true}, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  })
+  }, 25000)
 
   afterAll(async () => {
     disposeConnection(connection);
