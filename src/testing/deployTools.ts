@@ -10,7 +10,7 @@ import { Tools } from "../api/Tools";
 import { DeployTools } from "../filesystems/local/deployTools";
 import { instance } from "../instantiate";
 import { Action, DeploymentMethod } from "../typings";
-import { VscodeTools } from "../ui/vscodeTools";
+import { VscodeTools } from "../ui/Tools";
 import { runAction } from "../ui/actions";
 
 type FileInfo = {

@@ -4,7 +4,7 @@ import vscode, { Uri, WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
 import { LocalLanguageActions } from './LocalLanguageActions';
 import { Deployment } from './deployment';
-import { VscodeTools } from '../../ui/vscodeTools';
+import { VscodeTools } from '../../ui/Tools';
 import { DeploymentMethod } from '../../api/types';
 import { DeploymentParameters } from '../../typings';
 

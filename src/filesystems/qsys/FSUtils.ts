@@ -1,6 +1,6 @@
 import path from "path";
 import vscode, { l10n } from "vscode";
-import { VscodeTools } from "../../ui/vscodeTools";
+import { VscodeTools } from "../../ui/Tools";
 import IBMi from "../../api/IBMi";
 import { ReconnectMode } from "../../api/configuration/config/ConnectionManager";
 

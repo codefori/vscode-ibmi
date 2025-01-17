@@ -8,7 +8,7 @@ import { instance } from '../instantiate';
 import IBMi from "../api/IBMi";
 import IBMiContent from '../api/IBMiContent';
 import { Tools } from '../api/Tools';
-import { VscodeTools } from '../ui/vscodeTools';
+import { VscodeTools } from '../ui/Tools';
 import { DebugConfiguration, SERVICE_CERTIFICATE, CLIENT_CERTIFICATE, getDebugServiceDetails, getJavaHome, DEBUG_CONFIG_FILE, LEGACY_CERT_DIRECTORY } from '../api/configuration/DebugConfiguration';
 
 type HostInfo = {
