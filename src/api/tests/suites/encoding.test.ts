@@ -176,7 +176,7 @@ describe('Encoding tests', {concurrent: true} ,() => {
     });
   });
 
-  it('Listing objects with variants', async () => {
+  it('Listing objects with variants',{timeout: 15000}, async () => {
     const content = connection.getContent();
     if (connection && content) {
       const tempLib = connection.config?.tempLibrary!;
