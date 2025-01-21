@@ -27,4 +27,3 @@ export type EditorPath = string | { fsPath: string };
 
 export * from "./api/types";
 export * from "./ui/types";
-export * from "./filesystems/local/types";
