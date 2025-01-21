@@ -1,9 +1,10 @@
 export abstract class BaseStorage {
   protected readonly globalState: any;
 
-  constructor() {
-    this.globalState = new Map<string, any>();
-  }
+  constructor(globalState: any) {  
+    this.globalState = globalState;  
+  }  
+
 
   keys(): readonly string[] {
     return Array.from(this.globalState.keys());
@@ -22,10 +23,8 @@ export abstract class BaseStorage {
   }
 }
 
-export class VirtualStorage extends BaseStorage {
-  protected readonly globalState: Map<string, any> = new Map<string, any>();
-
-  constructor() {
-    super();
-  }
-}
+export class VirtualStorage extends BaseStorage {  
+  constructor() {  
+    super(new Map<string, any>());  
+  }  
+}  
