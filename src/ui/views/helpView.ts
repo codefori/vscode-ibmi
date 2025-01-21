@@ -124,25 +124,25 @@ async function openNewIssue() {
 
 async function downloadLogs() {
   const connection = instance.getConnection();
-  const config = instance.getConfig();
-  const content = instance.getContent();
   const logs: any[] = [];
 
-  if (connection && config && content) {
+  if (connection) {
+    const content = connection.getContent();
     await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: vscode.l10n.t(`Gathering logs...`),
     }, async () => {
-      // const codeForIBMiLog = connection.getOutputChannelContent();
-      // if (codeForIBMiLog !== undefined) {
-      //   logs.push({
-      //     label: vscode.l10n.t(`Code for IBM i Log`),
-      //     detail: `${connection?.currentUser}@${connection?.currentHost}`,
-      //     picked: true,
-      //     fileName: 'CodeForIBMi.txt',
-      //     fileContent: Buffer.from(codeForIBMiLog, 'utf8')
-      //   });
-      // }
+      
+      const codeForIBMiLog = instance.getOutputContent();
+      if (codeForIBMiLog !== undefined) {
+        logs.push({
+          label: vscode.l10n.t(`Code for IBM i Log`),
+          detail: `${connection?.currentUser}@${connection?.currentHost}`,
+          picked: true,
+          fileName: 'CodeForIBMi.txt',
+          fileContent: Buffer.from(codeForIBMiLog, 'utf8')
+        });
+      }
 
       const debugConfig = await new DebugConfiguration(connection).load();
       try {

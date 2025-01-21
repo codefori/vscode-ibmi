@@ -33,12 +33,6 @@ export default class Instance {
     writeCount: 0
   };
 
-  private resetOutput() {
-    this.output.channel.clear();
-    this.output.content = ``;
-    this.output.writeCount = 0;
-  }
-
   private storage: ConnectionStorage;
   private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
   private subscribers: Map<IBMiEvent, SubscriptionMap> = new Map;
@@ -52,6 +46,20 @@ export default class Instance {
     IBMi.connectionManager.configMethod = new VsCodeConfig();
 
     this.emitter.event(e => this.processEvent(e));
+  }
+
+  focusOutput() {
+    this.output.channel.show();
+  }
+
+  getOutputContent() {
+    return this.output.content;
+  }
+
+  private resetOutput() {
+    this.output.channel.clear();
+    this.output.content = ``;
+    this.output.writeCount = 0;
   }
 
   connect(options: ConnectionOptions): Promise<ConnectionResult> {
