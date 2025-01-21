@@ -1,12 +1,11 @@
 import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
-import { MemberItem, QsysFsOptions, WithPath } from "../typings";
+import { DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
 import Instance from "../Instance";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
 import path from "path";
 import { VscodeTools } from "../ui/Tools";
 import IBMi from "../api/IBMi";
-import { DefaultOpenMode } from "../api/configuration/config/ConnectionManager";
 
 const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;

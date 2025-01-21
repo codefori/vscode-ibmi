@@ -1,11 +1,23 @@
 import { TreeItemCollapsibleState, TreeItem, ThemeIcon, ThemeColor, ProviderResult, MarkdownString } from "vscode"
-import { FocusOptions } from "../api/types"
+import { FocusOptions, IBMiMember, IBMiObject, ObjectFilters, WithPath } from "../api/types"
 
 export type BrowserItemParameters = {
   icon?: string
   color?: string
   state?: TreeItemCollapsibleState
   parent?: BrowserItem
+}
+
+export interface FilteredItem {
+  filter: ObjectFilters
+}
+
+export interface ObjectItem extends FilteredItem, WithPath {
+  object: IBMiObject
+}
+
+export interface MemberItem extends FilteredItem, WithPath {
+  member: IBMiMember
 }
 
 export class BrowserItem extends TreeItem {

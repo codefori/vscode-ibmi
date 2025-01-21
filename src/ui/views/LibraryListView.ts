@@ -1,8 +1,7 @@
 import vscode, { commands, l10n } from "vscode";
 import { instance } from "../../instantiate";
-import { IBMiObject, WithLibrary } from "../../typings";
+import { ConnectionConfig, IBMiObject, WithLibrary } from "../../typings";
 import { VscodeTools } from "../Tools";
-import { ConnectionConfig } from "../../api/configuration/config/ConnectionManager";
 import IBMi from "../../api/IBMi";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode> {

@@ -13,9 +13,10 @@ import { CachedServerSettings, CodeForIStorage } from './configuration/storage/C
 import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
-import { ConnectionManager, ConnectionConfig } from './configuration/config/ConnectionManager';
+import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
 import { EventEmitter } from 'stream';
+import { ConnectionConfig } from './configuration/config/types';
 
 export interface MemberParts extends IBMiMember {
   basename: string

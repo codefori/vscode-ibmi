@@ -1,11 +1,10 @@
 import * as vscode from "vscode";
-import { ConnectionData, IBMiEvent } from "./typings";
+import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
 import IBMi, { ConnectionResult } from "./api/IBMi";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
 import { handleConnectionResults, messageCallback } from "./ui/connection";
 import { VsStorage } from "./config/Storage";
 import { VsCodeConfig } from "./config/Configuration";
-import { ConnectionConfig } from "./api/configuration/config/ConnectionManager";
 import { EventEmitter } from "stream";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 import { VscodeTools } from "./ui/Tools";
