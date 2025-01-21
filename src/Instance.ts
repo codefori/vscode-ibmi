@@ -71,6 +71,7 @@ export default class Instance {
       }
 
       this.output.channel.append(message);
+      this.output.content += message;
       this.output.writeCount++;
     }
 
