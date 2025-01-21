@@ -4,7 +4,7 @@ import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
 import IBMiContent from "../../api/IBMiContent";
 import { VscodeTools } from "../../ui/Tools";
-import { ConnectionConfig } from "../../api/configuration/config/ConnectionManager";
+import { ConnectionConfig } from "../../typings";
 
 const lastBranch: { [workspaceUri: string]: string } = {};
 

@@ -4,7 +4,7 @@
   "description": "Types for vscode-ibmi",
   "typings": "./typings.d.ts",
   "scripts": {
-    "prepublish": "rm -rf filesystems schemas views webviews languages testing",
+    "prepublish": "rm -rf schemas ui/views webviews/*/* languages testing",
     "deploy": "npm publish --access public"
   },
   "repository": {

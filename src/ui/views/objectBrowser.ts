@@ -9,10 +9,9 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../../typings";
+import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
-import { DefaultOpenMode, ObjectFilters } from "../../api/configuration/config/ConnectionManager";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
 const URI_LIST_SEPARATOR = "\r\n";

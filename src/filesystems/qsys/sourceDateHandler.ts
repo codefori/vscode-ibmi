@@ -4,7 +4,7 @@ import { DiffComputer } from "vscode-diff";
 
 import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
-import { SourceDateMode } from "../../api/configuration/config/ConnectionManager";
+import { SourceDateMode } from "../../typings";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);

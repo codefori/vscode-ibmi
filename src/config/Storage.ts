@@ -2,18 +2,13 @@ import * as vscode from 'vscode';
 import { BaseStorage } from '../api/configuration/storage/BaseStorage';
 
 export class VsStorage extends BaseStorage {
-  declare protected readonly globalState;
+  declare protected readonly globalState: vscode.Memento;
   private connectionName: string = "";
 
   constructor(context: vscode.ExtensionContext) {
-    super();
+    super(context.globalState);
     this.globalState = context.globalState;
   }
-
-  setConnectionName(connectionName: string) {
-    this.connectionName = connectionName;
-  }
-
   public keys(): readonly string[] {
     return this.globalState.keys();
   }

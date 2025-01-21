@@ -1,4 +1,3 @@
-import { ObjectFilters } from "./configuration/config/ConnectionManager";
 
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
@@ -146,18 +145,6 @@ export interface WithLibrary {
 
 export type FocusOptions = { select?: boolean; focus?: boolean; expand?: boolean | number }
 
-export interface FilteredItem {
-  filter: ObjectFilters
-}
-
-export interface ObjectItem extends FilteredItem, WithPath {
-  object: IBMiObject
-}
-
-export interface MemberItem extends FilteredItem, WithPath {
-  member: IBMiMember
-}
-
 export type IBMiMessage = {
   id: string
   text: string
@@ -194,3 +181,5 @@ export type SearchHitLine = {
   number: number
   content: string
 }
+
+export * from "./configuration/config/types";

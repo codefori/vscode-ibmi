@@ -3,7 +3,7 @@ import { commands, window } from "vscode";
 import { CustomUI } from "../CustomUI";
 import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
-import { CommandProfile } from "../../api/configuration/config/ConnectionManager";
+import { CommandProfile } from "../../typings";
 
 export class CommandProfileUi {
   static async show(currentName?: string) {

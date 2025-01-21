@@ -30,7 +30,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       }, `Read more`);
 
       if (chosen === `Read more`) {
-        commands.executeCommand(`open`, `https://codefori.github.io/docs/#/pages/tips/setup`);
+        commands.executeCommand(`open`, `https://codefori.github.io/docs/tips/setup/#error-in-shell-configuration`);
       }
       break;
 

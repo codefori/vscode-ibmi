@@ -1,11 +1,10 @@
 import * as vscode from "vscode";
-import { ConnectionData, IBMiEvent } from "./typings";
+import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
 import IBMi, { ConnectionResult } from "./api/IBMi";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
 import { handleConnectionResults, messageCallback } from "./ui/connection";
 import { VsStorage } from "./config/Storage";
 import { VsCodeConfig } from "./config/Configuration";
-import { ConnectionConfig } from "./api/configuration/config/ConnectionManager";
 import { EventEmitter } from "stream";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 import { VscodeTools } from "./ui/Tools";
@@ -33,12 +32,6 @@ export default class Instance {
     writeCount: 0
   };
 
-  private resetOutput() {
-    this.output.channel.clear();
-    this.output.content = ``;
-    this.output.writeCount = 0;
-  }
-
   private storage: ConnectionStorage;
   private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
   private subscribers: Map<IBMiEvent, SubscriptionMap> = new Map;
@@ -54,6 +47,20 @@ export default class Instance {
     this.emitter.event(e => this.processEvent(e));
   }
 
+  focusOutput() {
+    this.output.channel.show();
+  }
+
+  getOutputContent() {
+    return this.output.content;
+  }
+
+  private resetOutput() {
+    this.output.channel.clear();
+    this.output.content = ``;
+    this.output.writeCount = 0;
+  }
+
   connect(options: ConnectionOptions): Promise<ConnectionResult> {
     const connection = new IBMi();
 
@@ -64,6 +71,7 @@ export default class Instance {
       }
 
       this.output.channel.append(message);
+      this.output.content += message;
       this.output.writeCount++;
     }
 
