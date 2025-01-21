@@ -1,0 +1,51 @@
+{
+  "connectionSettings": [
+    {
+      "name": "testsystem",
+      "host": "",
+      "objectFilters": [],
+      "libraryList": [
+        "QGPL",
+        "QTEMP",
+        "QDEVELOP",
+        "QBLDSYS",
+        "QBLDSYSR"
+      ],
+      "autoClearTempData": false,
+      "customVariables": [],
+      "connectionProfiles": [],
+      "commandProfiles": [],
+      "ifsShortcuts": [
+        "/home/LIAMA"
+      ],
+      "autoSortIFSShortcuts": false,
+      "homeDirectory": "/home/LIAMA",
+      "tempLibrary": "ILEDITOR",
+      "tempDir": "/tmp",
+      "currentLibrary": "QGPL",
+      "sourceASP": "",
+      "sourceFileCCSID": "*FILE",
+      "autoConvertIFSccsid": false,
+      "hideCompileErrors": [],
+      "enableSourceDates": false,
+      "sourceDateMode": "diff",
+      "sourceDateGutter": false,
+      "encodingFor5250": "default",
+      "terminalFor5250": "default",
+      "setDeviceNameFor5250": false,
+      "connectringStringFor5250": "localhost",
+      "autoSaveBeforeAction": false,
+      "showDescInLibList": false,
+      "debugPort": "8005",
+      "debugSepPort": "8008",
+      "debugUpdateProductionFiles": false,
+      "debugEnableDebugTracing": false,
+      "readOnlyMode": false,
+      "quickConnect": true,
+      "defaultDeploymentMethod": "",
+      "protectedPaths": [],
+      "showHiddenFiles": true,
+      "lastDownloadLocation": "/Users/barry"
+    }
+  ]
+}

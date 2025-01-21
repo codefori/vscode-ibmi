@@ -1,10 +1,11 @@
 import path from "path";
 import { commands, TreeItem, Uri, WorkspaceFolder, window, Disposable } from "vscode";
-import { CompileTools } from "../api/CompileTools";
-import { ConnectionConfiguration } from "../api/Configuration";
-import { refreshDiagnosticsFromServer } from "../api/errors/diagnostics";
-import Instance from "../api/Instance";
-import { BrowserItem, Action, DeploymentMethod } from "../typings";
+import { refreshDiagnosticsFromServer } from "../ui/diagnostics";
+import Instance from "../Instance";
+import { Action, DeploymentMethod } from "../typings";
+import { runAction } from "../ui/actions";
+import IBMi from "../api/IBMi";
+import { BrowserItem } from "../ui/types";
 
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [
@@ -43,7 +44,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
                   break;
                 case `Save automatically`:
                   config.autoSaveBeforeAction = true;
-                  await ConnectionConfiguration.update(config);
+                  await IBMi.connectionManager.update(config);
                   await editor.document.save();
                   canRun = true;
                   break;
@@ -55,7 +56,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
           }
 
           if (canRun && [`member`, `streamfile`, `file`, 'object'].includes(uri.scheme)) {
-            return await CompileTools.runAction(instance, uri, action, method, browserItem, workspaceFolder);
+            return await runAction(instance, uri, action, method, browserItem, workspaceFolder);
           }
         }
         else {

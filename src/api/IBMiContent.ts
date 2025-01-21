@@ -4,14 +4,13 @@ import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
 import * as node_ssh from "node-ssh";
-import { MarkdownString, Uri, window } from 'vscode';
-import { GetMemberInfo } from '../components/getMemberInfo';
-import { ObjectTypes } from '../filesystems/qsys/Objects';
-import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SpecialAuthorities } from '../typings';
-import { ConnectionConfiguration } from './Configuration';
+import { GetMemberInfo } from './components/getMemberInfo';
+import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SpecialAuthorities } from './types';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
+import { ObjectTypes } from './import/Objects';
+import { EditorPath } from '../typings';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -29,7 +28,7 @@ export type SortOptions = {
 export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
-  private get config(): ConnectionConfiguration.Parameters {
+  private get config() {
     return this.ibmi.getConfig();
   }
 
@@ -104,7 +103,7 @@ export default class IBMiContent {
    * @param encoding Optional encoding to write.
    */
   async writeStreamfileRaw(originalPath: string, content: Uint8Array, encoding?: string) {
-    const client = this.ibmi.client;
+    const client = this.ibmi.client!;
     const features = this.ibmi.remoteFeatures;
     const tmpobj = await tmpFile();
 
@@ -212,7 +211,7 @@ export default class IBMiContent {
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
 
-    const client = this.ibmi.client;
+    const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
 
     let retry = false;
@@ -247,7 +246,8 @@ export default class IBMiContent {
         if (copyResult.code === 0) {
           const messages = Tools.parseMessages(copyResult.stderr);
           if (messages.findId("CPIA083")) {
-            window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
+            // TODO: what do we do about this, really?
+            // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
           }
           return true;
         } else {
@@ -1004,55 +1004,6 @@ export default class IBMiContent {
     return { valid: !Boolean(missing.length), missing };
   }
 
-  objectToToolTip(path: string, object: IBMiObject) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
-      "Type": object.type,
-      "Attribute": object.attribute,
-      "Text": object.text,
-      "Size": object.size,
-      "Created": safeIsoValue(object.created),
-      "Changed": safeIsoValue(object.changed),
-      "Created by": object.created_by,
-      "Owner": object.owner,
-      "IASP": object.asp
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
-  }
-
-  async sourcePhysicalFileToToolTip(path: string, object: IBMiObject) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
-      "Text": object.text,
-      "Members": await this.countMembers(object),
-      "Length": object.sourceLength,
-      "CCSID": (await this.getAttributes(object, "CCSID"))?.CCSID || '?',
-      "IASP": object.asp
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
-  }
-
-  memberToToolTip(path: string, member: IBMiMember) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
-      "Text": member.text,
-      "Lines": member.lines,
-      "Created": safeIsoValue(member.created),
-      "Changed": safeIsoValue(member.changed)
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
-  }
-
-  ifsFileToToolTip(path: string, ifsFile: IFSFile) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
-      "Size": ifsFile.size,
-      "Modified": ifsFile.modified ? safeIsoValue(new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000)) : ``,
-      "Owner": ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
-  }
-
   async getSshCcsid() {
     const sql = `
     with SSH_DETAIL (id, iid) as (
@@ -1093,27 +1044,19 @@ export default class IBMiContent {
     }
   }
 
-  async uploadFiles(files: { local: string | Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
-    await this.ibmi.client.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
+  async uploadFiles(files: { local: EditorPath, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    await this.ibmi.client!.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
   }
 
-  async downloadFile(localFile: string | Uri, remoteFile: string) {
-    await this.ibmi.client.getFile(Tools.fileToPath(localFile), remoteFile);
+  async downloadFile(localFile: EditorPath, remoteFile: string) {
+    await this.ibmi.client!.getFile(Tools.fileToPath(localFile), remoteFile);
   }
 
-  async uploadDirectory(localDirectory: string | Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+  async uploadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    await this.ibmi.client!.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  async downloadDirectory(localDirectory: string | Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
-  }
-}
-
-function safeIsoValue(date: Date | undefined) {
-  try {
-    return date ? date.toISOString().slice(0, 19).replace(`T`, ` `) : ``;
-  } catch (e) {
-    return `Unknown`;
+  async downloadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    await this.ibmi.client!.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 }

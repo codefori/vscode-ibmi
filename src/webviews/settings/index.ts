@@ -1,15 +1,16 @@
 import { existsSync } from "fs";
 import vscode from "vscode";
-import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "../../api/Configuration";
-import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
-import { GlobalStorage } from '../../api/Storage';
+import { ComplexTab, CustomUI, Section } from "../CustomUI";
 import { Tools } from "../../api/Tools";
-import { isManaged } from "../../api/debug";
-import * as certificates from "../../api/debug/certificates";
-import { isSEPSupported } from "../../api/debug/server";
-import { extensionComponentRegistry } from "../../components/manager";
+import { isManaged } from "../../debug";
+import * as certificates from "../../debug/certificates";
+import { isSEPSupported } from "../../debug/server";
+import { extensionComponentRegistry } from "../../api/components/manager";
 import { instance } from "../../instantiate";
-import { ConnectionData, Server } from '../../typings';
+import { ConnectionConfig, ConnectionData, Server } from '../../typings';
+import { VscodeTools } from "../../ui/Tools";
+import IBMi from "../../api/IBMi";
+import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
 
@@ -35,20 +36,20 @@ export class SettingsUI {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
-        const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
+        const connectionSettings = await IBMi.connectionManager.getAll();
         const connection = instance.getConnection();
         const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
 
-        let config: ConnectionConfiguration.Parameters;
+        let config: ConnectionConfig;
 
         if (connectionSettings && server) {
-          config = await ConnectionConfiguration.load(server.name);
+          config = await IBMi.connectionManager.load(server.name);
 
         } else {
           config = instance.getConfig()!;
           if (connection && config) {
             // Reload config to initialize any new config parameters.
-            config = await ConnectionConfiguration.load(config.name);
+            config = await IBMi.connectionManager.load(config.name);
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
             return;
@@ -181,7 +182,7 @@ export class SettingsUI {
           const debugServiceConfig: Map<string, string> = new Map()
             .set("Debug port", config.debugPort);
 
-          if (await isSEPSupported()) {
+          if (await isSEPSupported(connection)) {
             debugServiceConfig.set("SEP debug port", config.debugSepPort)
           }
           debuggerTab.addParagraph(`<ul>${Array.from(debugServiceConfig.entries()).map(([label, value]) => `<li><code>${label}</code>: ${value}</li>`).join("")}</ul>`);
@@ -260,7 +261,7 @@ export class SettingsUI {
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings`, requiresValidation: true });
 
-        await Tools.withContext(EDITING_CONTEXT, async () => {
+        await VscodeTools.withContext(EDITING_CONTEXT, async () => {
           const page = await ui.loadPage<any>(`Settings: ${config.name}`);
           if (page) {
             page.panel.dispose();
@@ -320,7 +321,7 @@ export class SettingsUI {
                   Object.assign(config, data);
                   await instance.setConfig(config);
                   if (removeCachedSettings)
-                    GlobalStorage.get().deleteServerSettingsCache(config.name);
+                    IBMi.GlobalStorage.deleteServerSettingsCache(config.name);
 
                   if (connection) {
                     if (restart) {
@@ -352,9 +353,9 @@ export class SettingsUI {
         if (server) {
           const name = server.name;
 
-          const connection = ConnectionManager.getByName(name);
+          const connection = await IBMi.connectionManager.getByName(name);
           if (connection) {
-            const storedPassword = await ConnectionManager.getStoredPassword(context, name);
+            const storedPassword = await getStoredPassword(context, name);
             let { data: stored, index } = connection;
             const privateKeyPath = stored.privateKeyPath ? Tools.resolvePath(stored.privateKeyPath) : undefined;
             const privateKeyWarning = !privateKeyPath || existsSync(privateKeyPath) ? "" : "<b>⚠️ This private key doesn't exist on this system! ⚠️</b></br></br>";
@@ -373,7 +374,7 @@ export class SettingsUI {
                 { id: `removeAuth`, label: vscode.l10n.t(`Remove auth methods`) }
               );
 
-            await Tools.withContext(EDITING_CONTEXT, async () => {
+            await VscodeTools.withContext(EDITING_CONTEXT, async () => {
               const page = await ui.loadPage<LoginSettings>(vscode.l10n.t(`Login Settings: "{0}"`, name));
               if (page && page.data) {
                 page.panel.dispose();
@@ -383,7 +384,7 @@ export class SettingsUI {
 
                 switch (chosenButton) {
                   case `removeAuth`:
-                    await ConnectionManager.deleteStoredPassword(context, name);
+                    await deleteStoredPassword(context, name);
                     data.privateKeyPath = undefined;
                     vscode.window.showInformationMessage(vscode.l10n.t(`Authentication methods removed for "{0}".`, name));
                     break;
@@ -394,7 +395,7 @@ export class SettingsUI {
                       if (data.password !== storedPassword) {
                         // New password was entered, so store the password
                         // and remove the private key path from the data
-                        await ConnectionManager.setStoredPassword(context, name, data.password);
+                        await setStoredPassword(context, name, data.password);
                         vscode.window.showInformationMessage(vscode.l10n.t(`Password updated and will be used for "{0}".`, name));
                       }
                     } else if (data.privateKeyPath?.trim()) {
@@ -402,7 +403,7 @@ export class SettingsUI {
                       // then remove the password from the data and
                       // use the keypath instead
                       data.privateKeyPath = Tools.normalizePath(data.privateKeyPath);
-                      await ConnectionManager.deleteStoredPassword(context, name);
+                      await deleteStoredPassword(context, name);
                       vscode.window.showInformationMessage(vscode.l10n.t(`Private key updated and will be used for "{0}".`, name));
                     }
                     else {
@@ -418,8 +419,8 @@ export class SettingsUI {
                 delete data.buttons;
 
                 stored = Object.assign(stored, data);
-                await ConnectionManager.updateByIndex(index, stored);
-                GlobalStorage.get().deleteServerSettingsCache(server.name);
+                await IBMi.connectionManager.updateByIndex(index, stored);
+                IBMi.GlobalStorage.deleteServerSettingsCache(server.name);
                 vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
               }
             });

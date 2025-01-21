@@ -1,10 +1,10 @@
 import { env } from "process";
 import querystring from "querystring";
 import { commands, ExtensionContext, l10n, Uri, window } from "vscode";
-import { ConnectionConfiguration, ConnectionManager } from "./api/Configuration";
-import { Tools } from "./api/Tools";
 import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
+import { VscodeTools } from "./ui/Tools";
+import IBMi from "./api/IBMi";
 
 export async function registerUriHandler(context: ExtensionContext) {
   context.subscriptions.push(
@@ -64,11 +64,11 @@ export async function registerUriHandler(context: ExtensionContext) {
                     await initialSetup(connectionData.username);
 
                     if (save) {
-                      const existingConnection = ConnectionManager.getByName(connectionData.name);
+                      const existingConnection = IBMi.connectionManager.getByName(connectionData.name);
 
                       if (!existingConnection) {
                         // New connection!
-                        await ConnectionManager.storeNew(connectionData);
+                        await IBMi.connectionManager.storeNew(connectionData);
                       }
                     }
 
@@ -107,7 +107,7 @@ export async function handleStartup() {
   // If Sandbox mode is enabled, then the server and username can be inherited from the branch name
   if (env.VSCODE_IBMI_SANDBOX) {
     try {
-      const gitAPI = Tools.getGitAPI();
+      const gitAPI = VscodeTools.getGitAPI();
       if (gitAPI && gitAPI.repositories && gitAPI.repositories.length > 0) {
         const repo = gitAPI.repositories[0];
         const branchName = repo.state.HEAD?.name;
@@ -203,7 +203,7 @@ async function initialSetup(username: string) {
         },
       );
 
-      await ConnectionConfiguration.update(config);
+      await IBMi.connectionManager.update(config);
       commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
       commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
     }

@@ -9,7 +9,7 @@ export const SearchSuite: TestSuite = {
   tests: [
     {
       name: "Single member search", test: async () => {
-        const result = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+        const result = await Search.searchMembers(instance.getConnection()!, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
         assert.strictEqual(result.term, "IBM");
         assert.strictEqual(result.hits.length, 1);
         const [hit] = result.hits;
@@ -29,7 +29,7 @@ export const SearchSuite: TestSuite = {
       name: "Generic name search", test: async () => {
         const memberFilter = "E*";
         const filter = parseFilter(memberFilter);
-        const result = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "IBM", memberFilter);
+        const result = await Search.searchMembers(instance.getConnection()!, "QSYSINC", "QRPGLESRC", "IBM", memberFilter);
         assert.ok(result.hits.every(hit => filter.test(hit.path.split("/").at(-1)!)));
         assert.ok(result.hits.every(hit => !hit.path.endsWith(`MBR`)));
       }
@@ -45,7 +45,7 @@ export const SearchSuite: TestSuite = {
         const members = await getConnection().content.getMemberList({ library, sourceFile, members: memberFilter });
         assert.ok(checkNames(members.map(member => member.name)));
 
-        const result = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "SQL", members);
+        const result = await Search.searchMembers(instance.getConnection()!, "QSYSINC", "QRPGLESRC", "SQL", members);
         assert.strictEqual(result.hits.length, 6);
         assert.ok(checkNames(result.hits.map(hit => hit.path.split("/").at(-1)!)));
         assert.ok(result.hits.every(hit => !hit.path.endsWith(`MBR`)));

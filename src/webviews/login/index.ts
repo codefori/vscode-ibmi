@@ -1,9 +1,10 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
-import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
-import { CustomUI, Section } from "../../api/CustomUI";
+import { CustomUI, Section } from "../CustomUI";
 import { Tools } from "../../api/Tools";
 import { instance, safeDisconnect } from "../../instantiate";
 import { ConnectionData } from '../../typings';
+import IBMi from "../../api/IBMi";
+import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
 
 type NewLoginSettings = ConnectionData & {
   savePassword: boolean
@@ -60,7 +61,7 @@ export class Login {
       data.readyTimeout = Number(data.readyTimeout);
       data.privateKeyPath = data.privateKeyPath?.trim() ? Tools.normalizePath(data.privateKeyPath) : undefined;
       if (data.name) {
-        const existingConnection = ConnectionManager.getByName(data.name);
+        const existingConnection = await IBMi.connectionManager.getByName(data.name);
 
         if (existingConnection) {
           vscode.window.showErrorMessage(`Connection with name ${data.name} already exists.`);
@@ -75,15 +76,15 @@ export class Login {
           };
 
           if (data.savePassword && data.password) {
-            await ConnectionManager.setStoredPassword(context, data.name, data.password);
+            await setStoredPassword(context, data.name, data.password);
           }
 
-          await ConnectionManager.storeNew(newConnection);
+          await IBMi.connectionManager.storeNew(newConnection);
 
-          const config = await ConnectionConfiguration.load(data.name)
+          const config = await IBMi.connectionManager.load(data.name)
           config.tempLibrary = data.tempLibrary;
           config.tempDir = data.tempDir;
-          ConnectionConfiguration.update(config);
+          IBMi.connectionManager.update(config);
           vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
 
           switch (data.buttons) {
@@ -94,7 +95,7 @@ export class Login {
               vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
               const toDoOnConnected: Function[] = [];
               if (!data.password && !data.privateKeyPath && await promptPassword(context, data)) {
-                toDoOnConnected.push(() => ConnectionManager.setStoredPassword(context, data.name, data.password!));
+                toDoOnConnected.push(() => setStoredPassword(context, data.name, data.password!));
               }
 
               if (data.password || data.privateKeyPath) {
@@ -119,7 +120,7 @@ export class Login {
                     }
 
                   } else {
-                    vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error}`);
+                    vscode.window.showErrorMessage(`Not connected to ${data.host}!`);
                   }
                 } catch (e) {
                   vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e}`);
@@ -153,19 +154,19 @@ export class Login {
       }
     }
 
-    const connection = ConnectionManager.getByName(name);
+    const connection = await IBMi.connectionManager.getByName(name);
     if (connection) {
       const toDoOnConnected: Function[] = [];
       const connectionConfig = connection.data;
       if (connectionConfig.privateKeyPath) {
         // If connecting with a private key, remove the password
-        await ConnectionManager.deleteStoredPassword(context, connectionConfig.name);
+        await deleteStoredPassword(context, connectionConfig.name);
       } else {
         // Assume connection with a password, but prompt if we don't have one        
-        connectionConfig.password = await ConnectionManager.getStoredPassword(context, connectionConfig.name);
+        connectionConfig.password = await getStoredPassword(context, connectionConfig.name);
         if (!connectionConfig.password) {
           if (await promptPassword(context, connectionConfig)) {
-            toDoOnConnected.push(() => ConnectionManager.setStoredPassword(context, connectionConfig.name, connectionConfig.password!));
+            toDoOnConnected.push(() => setStoredPassword(context, connectionConfig.name, connectionConfig.password!));
           }
         }
 
@@ -179,7 +180,7 @@ export class Login {
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
-          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error}`);
+          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}!`);
         }
 
         return true;

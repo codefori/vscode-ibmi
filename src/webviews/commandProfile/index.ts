@@ -1,14 +1,16 @@
 import { commands, window } from "vscode";
-import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
-import { CustomUI } from "../../api/CustomUI";
-import { instance } from "../../instantiate";
 
-export class CommandProfile {
+import { CustomUI } from "../CustomUI";
+import { instance } from "../../instantiate";
+import IBMi from "../../api/IBMi";
+import { CommandProfile } from "../../typings";
+
+export class CommandProfileUi {
   static async show(currentName?: string) {
     let config = instance.getConfig();
     const connection = instance.getConnection();
 
-    let currentSettings: ConnectionConfiguration.CommandProfile = {
+    let currentSettings: CommandProfile = {
       name: ``,
       command: ``
     };
@@ -45,7 +47,7 @@ export class CommandProfile {
             config!.commandProfiles.push(page.data);
           }
 
-          await ConnectionConfiguration.update(config!);
+          await IBMi.connectionManager.update(config!);
           commands.executeCommand(`code-for-ibmi.refreshProfileView`);
 
         } else {

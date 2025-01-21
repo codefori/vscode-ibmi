@@ -1,8 +1,8 @@
 import assert from "assert";
 import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
-import { GetMemberInfo } from "../components/getMemberInfo";
-import { GetNewLibl } from "../components/getNewLibl";
+import { GetMemberInfo } from "../api/components/getMemberInfo";
+import { GetNewLibl } from "../api/components/getNewLibl";
 import { instance } from "../instantiate";
 
 export const ComponentSuite: TestSuite = {
