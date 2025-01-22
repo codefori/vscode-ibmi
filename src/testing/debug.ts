@@ -1,6 +1,6 @@
 import assert from "assert";
 import { TestSuite } from ".";
-import { getJavaHome } from "../api/debug/config";
+import { getJavaHome } from "../api/configuration/DebugConfiguration";
 import { instance } from "../instantiate";
 
 export const DebugSuite: TestSuite = {
@@ -24,7 +24,7 @@ export const DebugSuite: TestSuite = {
           assert.strictEqual(jdk11, connection.remoteFeatures.jdk17);
         }
 
-        assert.throws(() => getJavaHome(connection, '666'));
+        assert.strictEqual(getJavaHome(connection, '666'), undefined);
       }
     }
   ]

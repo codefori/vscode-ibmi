@@ -1,5 +1,5 @@
 import { commands, window, Uri, l10n, Disposable } from "vscode";
-import Instance from "../api/Instance";
+import Instance from "../Instance";
 
 let selectedForCompare: Uri;
 

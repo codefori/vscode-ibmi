@@ -2,9 +2,9 @@ import fs from "fs";
 import tmp from "tmp";
 import util from "util";
 import vscode from "vscode";
-import { GlobalConfiguration } from "../../api/Configuration";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
+import IBMi from "../../api/IBMi";
 
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -33,7 +33,7 @@ export class ExtendedIBMiContent {
     const config = instance.getConfig();
     const connection = instance.getConnection();
     if (connection && config && content) {
-      const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
+      const sourceColourSupport = IBMi.connectionManager.get<boolean>(`showSeuColors`);
       const tempLib = config.tempLibrary;
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
@@ -128,12 +128,12 @@ export class ExtendedIBMiContent {
 
       const sourceDates = this.sourceDateHandler.sourceDateMode === `edit` ? this.sourceDateHandler.baseDates.get(alias) || [] : this.sourceDateHandler.calcNewSourceDates(alias, body);
 
-      const client = connection.client;
+      const client = connection.client!;
 
       const { library, file, name } = connection.parserMemberPath(uri.path);
       const tempRmt = connection.getTempRemote(library + file + name);
       if (tempRmt) {
-        const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
+        const sourceColourSupport = IBMi.connectionManager.get<boolean>(`showSeuColors`);
         const tmpobj = await tmpFile();
 
         const sourceData = body.split(`\n`);

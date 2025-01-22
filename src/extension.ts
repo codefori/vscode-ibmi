@@ -1,40 +1,40 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, commands, languages, window, workspace } from "vscode";
+import { ExtensionContext, commands, extensions, languages, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import { CustomUI } from "./api/CustomUI";
+import { CustomUI } from "./webviews/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
-
-import { CompileTools } from "./api/CompileTools";
-import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./api/Configuration";
-import IBMi from "./api/IBMi";
-import { GlobalStorage } from "./api/Storage";
+import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import { Tools } from "./api/Tools";
-import * as Debug from './api/debug';
+import * as Debug from './debug';
 import { parseErrors } from "./api/errors/parser";
-import { DeployTools } from "./api/local/deployTools";
-import { Deployment } from "./api/local/deployment";
-import { CopyToImport } from "./components/copyToImport";
-import { CustomQSh } from "./components/cqsh";
-import { GetMemberInfo } from "./components/getMemberInfo";
-import { GetNewLibl } from "./components/getNewLibl";
-import { extensionComponentRegistry } from "./components/manager";
+import { DeployTools } from "./filesystems/local/deployTools";
+import { Deployment } from "./filesystems/local/deployment";
+import { CopyToImport } from "./api/components/copyToImport";
+import { CustomQSh } from "./api/components/cqsh";
+import { GetMemberInfo } from "./api/components/getMemberInfo";
+import { GetNewLibl } from "./api/components/getNewLibl";
+import { extensionComponentRegistry } from "./api/components/manager";
 import { IFSFS } from "./filesystems/ifsFs";
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
 import { CodeForIBMi, ConnectionData } from "./typings";
-import { initializeConnectionBrowser } from "./views/ConnectionBrowser";
-import { LibraryListProvider } from "./views/LibraryListView";
-import { ProfilesView } from "./views/ProfilesView";
-import { initializeDebugBrowser } from "./views/debugView";
-import { HelpView } from "./views/helpView";
-import { initializeIFSBrowser } from "./views/ifsBrowser";
-import { initializeObjectBrowser } from "./views/objectBrowser";
-import { initializeSearchView } from "./views/searchView";
+import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
+import { LibraryListProvider } from "./ui/views/LibraryListView";
+import { ProfilesView } from "./ui/views/ProfilesView";
+import { initializeDebugBrowser } from "./ui/views/debugView";
+import { HelpView } from "./ui/views/helpView";
+import { initializeIFSBrowser } from "./ui/views/ifsBrowser";
+import { initializeObjectBrowser } from "./ui/views/objectBrowser";
+import { initializeSearchView } from "./ui/views/searchView";
 import { SettingsUI } from "./webviews/settings";
+import { registerActionTools } from "./ui/actions";
+import IBMi from "./api/IBMi";
+import path from "path";
+import { VscodeTools } from "./ui/Tools";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -42,12 +42,13 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
   await loadAllofExtension(context);
+
   const updateLastConnectionAndServerCache = () => {
-    const connections = ConnectionManager.getAll();
-    const lastConnections = (GlobalStorage.get().getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
-    GlobalStorage.get().setLastConnections(lastConnections);
+    const connections = IBMi.connectionManager.getAll();
+    const lastConnections = (IBMi.GlobalStorage.getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
+    IBMi.GlobalStorage.setLastConnections(lastConnections);
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
-    GlobalStorage.get().deleteStaleServerSettingsCache(connections);
+    IBMi.GlobalStorage.deleteStaleServerSettingsCache(connections);
     commands.executeCommand(`code-for-ibmi.refreshConnections`);
   };
 
@@ -71,13 +72,14 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       `profilesView`,
       new ProfilesView(context)
     ),
+    
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
       if (connection) {
         const config = instance.getConfig();
         if (config) {
-          Object.assign(config, (await ConnectionConfiguration.load(config.name)));
+          Object.assign(config, (await IBMi.connectionManager.load(config.name)));
         }
       }
     }),
@@ -87,8 +89,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&")
   );
 
-  CompileTools.register(context);
-  GlobalStorage.initialize(context);
+  registerActionTools(context);
   Debug.initialize(context);
   Deployment.initialize(context);
   updateLastConnectionAndServerCache();
@@ -113,7 +114,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
-  extensionComponentRegistry.registerComponent(context, new CustomQSh());
+  const customQsh = new CustomQSh();
+  customQsh.setLocalAssetPath(path.join(context.extensionPath, `dist`, customQsh.getFileName()));
+
+  extensionComponentRegistry.registerComponent(context, customQsh);
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(context, new CopyToImport());
@@ -122,7 +126,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     instance, customUI: () => new CustomUI(),
     deployTools: DeployTools,
     evfeventParser: parseErrors,
-    tools: Tools,
+    tools: VscodeTools,
     componentRegistry: extensionComponentRegistry
   };
 }

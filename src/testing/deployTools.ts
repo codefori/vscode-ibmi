@@ -6,11 +6,12 @@ import { EOL } from "os";
 import { basename, posix } from "path";
 import vscode from "vscode";
 import { TestSuite } from ".";
-import { CompileTools } from "../api/CompileTools";
 import { Tools } from "../api/Tools";
-import { DeployTools } from "../api/local/deployTools";
+import { DeployTools } from "../filesystems/local/deployTools";
 import { instance } from "../instantiate";
 import { Action, DeploymentMethod } from "../typings";
+import { VscodeTools } from "../ui/Tools";
+import { runAction } from "../ui/actions";
 
 type FileInfo = {
     md5: string
@@ -162,7 +163,7 @@ export const DeployToolsSuite: TestSuite = {
                     ]
                 };
 
-                await CompileTools.runAction(instance, vscode.Uri.joinPath(fakeProject.localPath!, "hello.txt"), action);
+                await runAction(instance, vscode.Uri.joinPath(fakeProject.localPath!, "hello.txt"), action);
 
                 const localRoot = vscode.workspace.getWorkspaceFolder(fakeProject.localPath!)?.uri;
                 assert.ok(localRoot, "No workspace folder");
@@ -259,7 +260,7 @@ async function getLocalFilesInfo() {
     const localFiles: FilesInfo = new Map;
     for await (const file of await vscode.workspace.findFiles(new vscode.RelativePattern(fakeProject.localPath!, "**/*"))) {
         const path = posix.join(basename(fakeProject.localPath!.path), posix.relative(fakeProject.localPath!.path, file.path));
-        localFiles.set(path, { date: "unused", md5: Tools.md5Hash(file) });
+        localFiles.set(path, { date: "unused", md5: VscodeTools.md5Hash(file) });
     }
     return localFiles;
 }

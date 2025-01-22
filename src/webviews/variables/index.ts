@@ -1,7 +1,7 @@
 import vscode from "vscode";
-import { ConnectionConfiguration } from "../../api/Configuration";
-import { CustomUI } from "../../api/CustomUI";
+import { CustomUI } from "../CustomUI";
 import { instance } from "../../instantiate";
+import IBMi from "../../api/IBMi";
 
 export class VariablesUI {
 
@@ -85,7 +85,7 @@ export class VariablesUI {
             if (id >= 0) {
               allVariables.splice(id, 1);
               config.customVariables = allVariables;
-              await ConnectionConfiguration.update(config);
+              await IBMi.connectionManager.update(config);
             }
             break;
 
@@ -104,7 +104,7 @@ export class VariablesUI {
             }
 
             config.customVariables = allVariables;
-            await ConnectionConfiguration.update(config);
+            await IBMi.connectionManager.update(config);
             break;
         }
 

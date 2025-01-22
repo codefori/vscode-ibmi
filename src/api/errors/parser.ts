@@ -1,5 +1,5 @@
 import { Parser, ISequentialFileReader } from "@ibm/ibmi-eventf-parser";
-import { FileError } from "../../typings";
+import { FileError } from "../types";
 
 class EvfEventFileReader implements ISequentialFileReader {
   lines: string[];

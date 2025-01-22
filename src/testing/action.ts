@@ -4,13 +4,14 @@ import vscode from "vscode";
 import { TestSuite } from ".";
 import { CompileTools } from "../api/CompileTools";
 import { Tools } from "../api/Tools";
-import { LocalLanguageActions } from "../api/local/LocalLanguageActions";
-import { DeployTools } from "../api/local/deployTools";
-import { getEnvConfig } from "../api/local/env";
+import { LocalLanguageActions } from "../filesystems/local/LocalLanguageActions";
+import { DeployTools } from "../filesystems/local/deployTools";
+import { getEnvConfig } from "../filesystems/local/env";
 import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { Action, IBMiObject } from "../typings";
 import { File, Folder, createFolder } from "./deployTools";
+import { runAction } from "../ui/actions";
 
 export const helloWorldProject: Folder = {
   name: `DeleteMe_${Tools.makeid()}`,
@@ -92,7 +93,7 @@ export const ActionSuite: TestSuite = {
           name: `Create Display File (CRTDSPF)`,
         };
 
-        const success = await CompileTools.runAction(instance, uri, action, `all`);
+        const success = await runAction(instance, uri, action, `all`);
         console.log(success);
         assert.ok(success);
       }
@@ -157,7 +158,7 @@ export const ActionSuite: TestSuite = {
           ],
         };
         const uri = getMemberUri({ library: tempLib, file: 'QRPGLESRC', name: 'THEBADONE', extension: 'RPGLE' })
-        const success = await CompileTools.runAction(instance, uri, action, `all`);
+        const success = await runAction(instance, uri, action, `all`);
         assert.strictEqual(success, false);
       }
     }
@@ -165,7 +166,7 @@ export const ActionSuite: TestSuite = {
 };
 
 async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: string) {
-  const actionRan = await CompileTools.runAction(instance, uri, action, `all`);
+  const actionRan = await runAction(instance, uri, action, `all`);
   assert.ok(actionRan);
 
   const keysToCompare = [`library`, `name`, `type`, `text`, `attribute`, `sourceFile`, `memberCount`];

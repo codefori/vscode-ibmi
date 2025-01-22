@@ -1,11 +1,11 @@
 
 import * as vscode from "vscode";
-import { GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
-import Instance from "./api/Instance";
-import { Terminal } from './api/Terminal';
-import { getDebugServiceDetails } from './api/debug/config';
-import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
-import { setupGitEventHandler } from './api/local/git';
+import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
+import Instance from "./Instance";
+import { Terminal } from './ui/Terminal';
+import { getDebugServiceDetails } from './api/configuration/DebugConfiguration';
+import { debugPTFInstalled, isDebugEngineRunning } from './debug/server';
+import { setupGitEventHandler } from './filesystems/local/git';
 import { registerActionsCommands } from './commands/actions';
 import { registerCompareCommands } from './commands/compare';
 import { registerConnectionCommands } from './commands/connection';
@@ -15,6 +15,7 @@ import { QSysFS } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import IBMi from "./api/IBMi";
 
 export let instance: Instance;
 
@@ -97,7 +98,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   );
 
   // Color provider
-  if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
+  if (IBMi.connectionManager.get<boolean>(`showSeuColors`)) {
     SEUColorProvider.intitialize(context);
   }
 
@@ -108,22 +109,23 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 }
 
 async function updateConnectedBar() {
-  const config = instance.getConnection()?.getConfig();
-  if (config) {
+  const connection = instance.getConnection();
+  if (connection) {
+    const config = connection.getConfig();
     connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
-  }
 
-  const debugRunning = await isDebugEngineRunning();
-  connectedBarItem.tooltip = new vscode.MarkdownString([
-    `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
-    `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
-    `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
-    debugPTFInstalled() ?
-      `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
-      :
-      `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
-  ].join(`\n\n---\n\n`), true);
-  connectedBarItem.tooltip.isTrusted = true;
+    const debugRunning = await isDebugEngineRunning();
+    connectedBarItem.tooltip = new vscode.MarkdownString([
+      `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
+      `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
+      `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
+      debugPTFInstalled() ?
+        `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
+        :
+        `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
+    ].join(`\n\n---\n\n`), true);
+    connectedBarItem.tooltip.isTrusted = true;
+  }
 }
 
 async function onConnected() {
