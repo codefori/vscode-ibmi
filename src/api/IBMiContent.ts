@@ -615,6 +615,7 @@ export default class IBMiContent {
       asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
     } as IBMiObject))
       .filter(object => !filters.types || filters.types.length < 1 
+                        || filters.types.includes('*ALL')
                         || (filters.types.includes('*SRCPF') && object.sourceFile)
                         || filters.types.includes(object.type))
       .filter(object => objectFilter || nameFilter.test(object.name))
