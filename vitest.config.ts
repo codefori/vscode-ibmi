@@ -2,12 +2,10 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  test: {
+  test: { 
     // ... Specify options here.
-    fileParallelism: false,
     root: './src/api',
-    setupFiles: [
-      'tests/globalSetup.ts',
-    ],
+    globalSetup: [`tests/setup.ts`],
+    testTimeout: 10000,
   },
 })
