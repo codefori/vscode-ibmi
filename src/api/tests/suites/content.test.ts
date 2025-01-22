@@ -430,7 +430,7 @@ describe('Content Tests', {concurrent: true}, () => {
     expect(members?.length).not.toBe(0);
     expect(members!.map(m => m.name).every(n => n.startsWith('SYS') || n.startsWith('I') || n.endsWith('EX'))).toBe(true);
 
-    const membersRegex = await content?.getMemberList({ library: 'QSYSINC', sourceFile: 'QRPGLESRC', members: '^QSY(?!RTV).*$' });
+    const membersRegex = await content?.getMemberList({ library: 'QSYSINC', sourceFile: 'QRPGLESRC', members: '^QSY(?!RTV).*$', filterType: 'regex' });
     expect(membersRegex?.length).not.toBe(0);
     expect(membersRegex!.map(m => m.name).every(n => n.startsWith('QSY') && !n.includes('RTV'))).toBe(true);
   });
