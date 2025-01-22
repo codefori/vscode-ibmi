@@ -1098,12 +1098,12 @@ export default class IBMi {
    */
   getTempRemote(key: string) {
     if (this.tempRemoteFiles[key] !== undefined) {
-      console.log(`Using existing temp: ${this.tempRemoteFiles[key]}`);
+      // console.log(`Using existing temp: ${this.tempRemoteFiles[key]}`);
       return this.tempRemoteFiles[key];
     } else
       if (this.config) {
         let value = path.posix.join(this.config.tempDir, `vscodetemp-${Tools.makeid()}`);
-        console.log(`Using new temp: ${value}`);
+        // console.log(`Using new temp: ${value}`);
         this.tempRemoteFiles[key] = value;
         return value;
       }

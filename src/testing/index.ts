@@ -2,15 +2,9 @@ import { env } from "process";
 import vscode from "vscode";
 import { instance } from "../instantiate";
 import { ActionSuite } from "./action";
-import { ComponentSuite } from "./components";
-import { ConnectionSuite } from "./connection";
 import { ContentSuite } from "./content";
-import { DebugSuite } from "./debug";
 import { DeployToolsSuite } from "./deployTools";
 import { EncodingSuite } from "./encoding";
-import { FilterSuite } from "./filter";
-import { ILEErrorSuite } from "./ileErrors";
-import { SearchSuite } from "./search";
 import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
@@ -18,17 +12,11 @@ import { Server } from "../typings";
 
 const suites: TestSuite[] = [
   ActionSuite,
-  ConnectionSuite,
   ContentSuite,
-  DebugSuite,
   DeployToolsSuite,
   ToolsSuite,
-  ILEErrorSuite,
-  FilterSuite,
-  SearchSuite,
   StorageSuite,
-  EncodingSuite,
-  ComponentSuite
+  EncodingSuite
 ]
 
 export type TestSuite = {
