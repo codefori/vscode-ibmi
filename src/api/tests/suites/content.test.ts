@@ -5,13 +5,13 @@ import tmp from 'tmp';
 import { Tools } from '../../Tools';
 import { posix } from 'path';
 import IBMi from '../../IBMi';
-import { newConnection, disposeConnection } from '../connection';
+import { newConnection, disposeConnection, CONNECTION_TIMEOUT } from '../connection';
 
 describe('Content Tests', {concurrent: true}, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, 25000)
+  }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     disposeConnection(connection);

@@ -2,13 +2,13 @@ import { describe, it, expect, afterAll, beforeAll } from 'vitest';
 import { parseFilter } from '../../Filter';
 import { Search } from '../../Search';
 import IBMi from '../../IBMi';
-import { newConnection, disposeConnection } from '../connection';
+import { newConnection, disposeConnection, CONNECTION_TIMEOUT } from '../connection';
 
 describe('Search Tests', {concurrent: true}, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, 25000)
+  }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     disposeConnection(connection);
