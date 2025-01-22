@@ -38,10 +38,13 @@ export class JsonConfig extends Config {
 }
 
 export class JsonStorage extends BaseStorage {
-  protected readonly globalState: Map<string, any> = new Map<string, any>();
+  protected readonly globalState: Map<string, any>;
 
   constructor() {
-    super();
+    const newState = new Map<string, any>()
+    super(newState);
+    
+    this.globalState = newState;
   }
 
   exists() {
