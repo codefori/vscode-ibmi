@@ -2,6 +2,11 @@ on:
   pull_request:
     paths:
       - 'src/api/**'
+  push: 
+    branches: 
+      - master
+    paths:
+      - 'src/api/**'
     
 jobs:
   tester:
@@ -17,6 +22,7 @@ jobs:
           node-version: 18
       - run: npm ci
       - run: npm run test
+        if: contains(env.VITE_SERVER, '.')
         env:
           VITE_SERVER: ${{ secrets.VITE_SERVER }}
           VITE_DB_USER: ${{ secrets.VITE_DB_USER }}
