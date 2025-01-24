@@ -5,7 +5,7 @@ import tmp from 'tmp';
 import util from 'util';
 import * as node_ssh from "node-ssh";
 import { GetMemberInfo } from './components/getMemberInfo';
-import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SpecialAuthorities } from './types';
+import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, ProgramExportImportInfo, QsysPath, SpecialAuthorities } from './types';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -630,6 +630,34 @@ export default class IBMiContent {
           return ((ObjectTypes.get(a.type) || 0) - (ObjectTypes.get(b.type) || 0)) || a.name.localeCompare(b.name);
         }
       });
+  }
+
+  /**
+   * @param object IBMiObject to get export and import info for
+   * @returns an array of ProgramExportImportInfo
+   */
+  async getProgramExportImportInfo(object: IBMiObject): Promise<ProgramExportImportInfo[]> {
+    const statement = [
+      `select PROGRAM_LIBRARY, PROGRAM_NAME, OBJECT_TYPE, SYMBOL_NAME, SYMBOL_USAGE,`,
+      `  ARGUMENT_OPTIMIZATION, DATA_ITEM_SIZE`,
+      `from qsys2.program_export_import_info`,
+      `where program_library = '${object.library}' and program_name = '${object.name}' `,
+      `and object_type = '${object.type}'`
+    ].join("\n");
+    const results = await this.ibmi.runSQL(statement);
+    if (results.length) {
+      return results.map(result => ({
+        program_library: result.PROGRAM_LIBRARY,
+        program_name: result.PROGRAM_NAME,
+        object_type: result.OBJECT_TYPE,
+        symbol_name: result.SYMBOL_NAME,
+        symbol_usage: result.SYMBOL_USAGE,
+        argument_optimization: result.ARGUMENT_OPTIMIZATION,
+        data_item_size: result.DATA_ITEM_SIZE
+      } as ProgramExportImportInfo));
+    } else {
+      return [];
+    }
   }
 
   /**

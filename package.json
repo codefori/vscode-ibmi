@@ -1699,6 +1699,13 @@
 				"category": "IBM i",
 				"icon": "$(debug)",
 				"enablement": "code-for-ibmi:testing"
+			},
+			{
+				"command": "code-for-ibmi.generateBinderSource",
+				"title": "Generate binder source",
+				"category": "IBM i",
+				"icon": "$(debug)",
+				"enablement": "code-for-ibmi:connected"
 			}
 		],
 		"keybindings": [
@@ -2932,6 +2939,11 @@
 					"command": "code-for-ibmi.debug.setup.local",
 					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_localissue$/",
 					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.generateBinderSource",
+					"when": "view == objectBrowser && viewItem =~ /^object.(pgm|srvpgm).*/",
+					"group": "1_objActions@6"
 				}
 			],
 			"explorer/context": [
