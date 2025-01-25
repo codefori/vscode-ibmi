@@ -1704,7 +1704,7 @@
 				"command": "code-for-ibmi.generateBinderSource",
 				"title": "Generate binder source",
 				"category": "IBM i",
-				"icon": "$(debug)",
+				"icon": "$(plus)",
 				"enablement": "code-for-ibmi:connected"
 			}
 		],
@@ -2318,6 +2318,10 @@
 				},
 				{
 					"command": "code-for-ibmi.searchIFSBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.generateBinderSource",
 					"when": "never"
 				}
 			],
