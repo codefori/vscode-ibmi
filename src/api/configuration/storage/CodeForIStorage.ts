@@ -1,4 +1,4 @@
-import { ConnectionData } from "../../types";
+import { AspInfo, ConnectionData } from "../../types";
 import { BaseStorage } from "./BaseStorage";
 const SERVER_SETTINGS_CACHE_PREFIX = `serverSettingsCache_`;
 const SERVER_SETTINGS_CACHE_KEY = (name: string) => SERVER_SETTINGS_CACHE_PREFIX + name;
@@ -16,7 +16,7 @@ export type LastConnection = {
 
 export type CachedServerSettings = {
   lastCheckedOnVersion: string | undefined;
-  aspInfo: { [id: number]: string }
+  iAspInfo: AspInfo[];
   qccsid: number | null;
   jobCcsid: number | null
   remoteFeatures: { [name: string]: string | undefined }
