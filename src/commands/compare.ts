@@ -3,6 +3,8 @@ import Instance from "../Instance";
 
 let selectedForCompare: Uri;
 
+const VSCODE_DIFF_COMMAND = `vscode.diff`;
+
 export function registerCompareCommands(instance: Instance): Disposable[] {
   return [
     commands.registerCommand(`code-for-ibmi.selectForCompare`, async (node) => {
@@ -32,7 +34,7 @@ export function registerCompareCommands(instance: Instance): Disposable[] {
         }
 
         if (uri) {
-          commands.executeCommand(`diff`, selectedForCompare, uri);
+          commands.executeCommand(VSCODE_DIFF_COMMAND, selectedForCompare, uri);
         } else {
           window.showErrorMessage(`No compare to path provided.`);
         }
@@ -66,7 +68,7 @@ export function registerCompareCommands(instance: Instance): Disposable[] {
         if (editor) {
           activeFile = editor.document.uri;
           if (activeFile) {
-            commands.executeCommand(`diff`, activeFile, selectedFile);
+            commands.executeCommand(VSCODE_DIFF_COMMAND, activeFile, selectedFile);
           } else {
             window.showInformationMessage(l10n.t(`No file is open or selected`));
           }
@@ -109,7 +111,7 @@ async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `me
         compareWith = `/${compareWith}`;
       }
       let uri = Uri.parse(`${scheme}:${compareWith}`);
-      commands.executeCommand(`vscode.diff`, currentFile, uri);
+      commands.executeCommand(VSCODE_DIFF_COMMAND, currentFile, uri);
     }
   } else {
     window.showInformationMessage(l10n.t(`No file is open or selected`));
