@@ -2942,7 +2942,7 @@
 				},
 				{
 					"command": "code-for-ibmi.generateBinderSource",
-					"when": "view == objectBrowser && viewItem =~ /^object.(pgm|srvpgm).*/",
+					"when": "view == objectBrowser && viewItem =~ /^object.(module|srvpgm).*/",
 					"group": "1_objActions@6"
 				}
 			],

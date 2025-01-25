@@ -192,4 +192,13 @@ export interface ProgramExportImportInfo {
   data_item_size: number
 }
 
+export interface ModuleExport {
+  module_library: string, 
+  module_name: string, 
+  module_attr: string, 
+  symbol_name: string, 
+  symbol_type: string,
+  argument_optimization: string,
+}
+
 export * from "./configuration/config/types";

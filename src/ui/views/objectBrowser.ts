@@ -9,7 +9,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, ProgramExportImportInfo, WithLibrary } from "../../typings";
+import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ModuleExport, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, ProgramExportImportInfo, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
@@ -542,17 +542,21 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.generateBinderSource`, async (node: ObjectBrowserObjectItem) => {
-      const contentApi = getContent();
-      const exports: ProgramExportImportInfo[] = (await contentApi.getProgramExportImportInfo(node.object)).filter(info => info.symbol_usage === '*PROCEXP');
-      let content = [
+      const contentApi: IBMiContent = getContent();
+      let exports: ProgramExportImportInfo[] | ModuleExport[] = [];
+      if (node.object.type === '*MODULE') {
+        exports = (await contentApi.getModuleExports(node.object)).filter(exp => exp.symbol_type === 'PROCEDURE');
+      } else {
+        exports = (await contentApi.getProgramExportImportInfo(node.object)).filter(info => info.symbol_usage === '*PROCEXP');
+      }
+      const content = [
         `/*  Binder source generated from ${node}  */`,
         ``,
-        `STRPGMEXP PGMLVL(*CURRENT)`,
+        `STRPGMEXP PGMLVL(*CURRENT) /* SIGNATURE("") */`,
         ...exports.map(info => `  EXPORT SYMBOL("${info.symbol_name}")`),
         `ENDPGMEXP`,
       ].join("\n");
-
-      const textDoc = await vscode.workspace.openTextDocument({ language: 'bnd', content });  
+      const textDoc = await vscode.workspace.openTextDocument({ language: 'bnd', content });
       await vscode.window.showTextDocument(textDoc);
     }),
 

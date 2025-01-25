@@ -5,7 +5,7 @@ import tmp from 'tmp';
 import util from 'util';
 import * as node_ssh from "node-ssh";
 import { GetMemberInfo } from './components/getMemberInfo';
-import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, ProgramExportImportInfo, QsysPath, SpecialAuthorities } from './types';
+import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, ProgramExportImportInfo, ModuleExport, QsysPath, SpecialAuthorities } from './types';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -658,6 +658,34 @@ export default class IBMiContent {
     } else {
       return [];
     }
+  }
+
+  /**
+   * @param object IBMiObject to get module exports for
+   * @returns an array of ModuleExport
+   */
+  async getModuleExports(object: IBMiObject): Promise<ModuleExport[]> {
+    const name: string = Tools.makeid().toUpperCase();
+    const results = await this.runStatements(...[
+      `@DSPMOD MODULE(${object.library}/${object.name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${name})`,
+      [
+        `select EXLBNM as MODULE_LIBRARY, EXMONM as MODULE_NAME, EXMOAT as MODULE_ATTR, EXSYNM as SYMBOL_NAME,`,
+        `  case EXSYTY when '0' then 'PROCEDURE' when '1' then 'DATA' end as SYMBOL_TYPE, EXOPPP as ARGUMENT_OPTIMIZATION`,
+        ` from QTEMP.${name}`
+      ].join("\n")
+    ]);
+    let exports: ModuleExport[] = [];
+    if (results.length) {
+      exports = results.map(result => ({
+        module_library: result.MODULE_LIBRARY,
+        module_name: result.MODULE_NAME,
+        module_attr: result.MODULE_ATTR,
+        symbol_name: result.SYMBOL_NAME,
+        symbol_type: result.SYMBOL_TYPE,
+        argument_optimization: result.ARGUMENT_OPTIMIZATION
+      } as ModuleExport));
+    }
+    return exports;
   }
 
   /**
