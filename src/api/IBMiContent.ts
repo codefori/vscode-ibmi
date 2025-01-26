@@ -637,14 +637,18 @@ export default class IBMiContent {
    * @returns an array of ProgramExportImportInfo
    */
   async getProgramExportImportInfo(object: IBMiObject): Promise<ProgramExportImportInfo[]> {
-    const statement = [
-      `select PROGRAM_LIBRARY, PROGRAM_NAME, OBJECT_TYPE, SYMBOL_NAME, SYMBOL_USAGE,`,
-      `  ARGUMENT_OPTIMIZATION, DATA_ITEM_SIZE`,
-      `from qsys2.program_export_import_info`,
-      `where program_library = '${object.library}' and program_name = '${object.name}' `,
-      `and object_type = '${object.type}'`
-    ].join("\n");
-    const results = await this.ibmi.runSQL(statement);
+    if (!['*PGM', '*SRVPGM'].includes(object.type)) {
+      return [];
+    }
+    const results = await this.ibmi.runSQL(
+      [
+        `select PROGRAM_LIBRARY, PROGRAM_NAME, OBJECT_TYPE, SYMBOL_NAME, SYMBOL_USAGE,`,
+        `  ARGUMENT_OPTIMIZATION, DATA_ITEM_SIZE`,
+        `from qsys2.program_export_import_info`,
+        `where program_library = '${object.library}' and program_name = '${object.name}' `,
+        `and object_type = '${object.type}'`
+      ].join("\n")
+    );
     if (results.length) {
       return results.map(result => ({
         program_library: result.PROGRAM_LIBRARY,
@@ -666,17 +670,19 @@ export default class IBMiContent {
    */
   async getModuleExports(object: IBMiObject): Promise<ModuleExport[]> {
     const name: string = Tools.makeid().toUpperCase();
-    const results = await this.runStatements(...[
+    if (object.type != '*MODULE') {
+      return [];
+    }
+    const results = await this.runStatements(
       `@DSPMOD MODULE(${object.library}/${object.name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${name})`,
       [
         `select EXLBNM as MODULE_LIBRARY, EXMONM as MODULE_NAME, EXMOAT as MODULE_ATTR, EXSYNM as SYMBOL_NAME,`,
         `  case EXSYTY when '0' then 'PROCEDURE' when '1' then 'DATA' end as SYMBOL_TYPE, EXOPPP as ARGUMENT_OPTIMIZATION`,
         ` from QTEMP.${name}`
       ].join("\n")
-    ]);
-    let exports: ModuleExport[] = [];
+    );
     if (results.length) {
-      exports = results.map(result => ({
+      return results.map(result => ({
         module_library: result.MODULE_LIBRARY,
         module_name: result.MODULE_NAME,
         module_attr: result.MODULE_ATTR,
@@ -685,7 +691,7 @@ export default class IBMiContent {
         argument_optimization: result.ARGUMENT_OPTIMIZATION
       } as ModuleExport));
     }
-    return exports;
+    return [];
   }
 
   /**
