@@ -1,9 +1,6 @@
 import * as path from 'path';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { IBMiMember, SearchHit, SearchResults, CommandResult } from '../typings';
-import { GetMemberInfo } from '../components/getMemberInfo';
-import { GlobalConfiguration } from './Configuration';
-import Instance from './Instance';
 import { Tools } from './Tools';
 import IBMi from './IBMi';
 
