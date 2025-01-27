@@ -37,7 +37,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   },
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
+    names: [`git`, `grep`, `tn5250`, `pfgrep`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -180,6 +180,7 @@ export default class IBMi {
     this.remoteFeatures = {
       git: undefined,
       grep: undefined,
+      pfgrep: undefined,
       tn5250: undefined,
       setccsid: undefined,
       md5sum: undefined,
