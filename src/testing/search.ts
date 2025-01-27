@@ -9,7 +9,8 @@ export const SearchSuite: TestSuite = {
   tests: [
     {
       name: "Single member search", test: async () => {
-        const result = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+        const connection = instance.getConnection()!;
+        const result = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
         assert.strictEqual(result.term, "IBM");
         assert.strictEqual(result.hits.length, 1);
         const [hit] = result.hits;
@@ -27,25 +28,28 @@ export const SearchSuite: TestSuite = {
     },
     {
       name: "Generic name search", test: async () => {
+        const connection = instance.getConnection()!;
         const memberFilter = "E*";
         const filter = parseFilter(memberFilter);
-        const result = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "IBM", memberFilter);
+        const result = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", memberFilter);
         assert.ok(result.hits.every(hit => filter.test(hit.path.split("/").at(-1)!)));
         assert.ok(result.hits.every(hit => !hit.path.endsWith(`MBR`)));
       }
     },
     {
       name: "Filtered members list search", test: async () => {
+        const connection = instance.getConnection()!;
         const library = "QSYSINC";
         const sourceFile = "QRPGLESRC";
-        const memberFilter = "S*,T*";
+        // Be stricter in the filter to try to make sure we have six results
+        const memberFilter = "SQL*,T*";
         const filter = parseFilter(memberFilter);
         const checkNames = (names: string[]) => names.every(filter.test);
 
-        const members = await getConnection().content.getMemberList({ library, sourceFile, members: memberFilter });
+        const members = await getConnection().getContent().getMemberList({ library, sourceFile, members: memberFilter });
         assert.ok(checkNames(members.map(member => member.name)));
 
-        const result = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "SQL", members);
+        const result = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "SQL", members);
         assert.strictEqual(result.hits.length, 6);
         assert.ok(checkNames(result.hits.map(hit => hit.path.split("/").at(-1)!)));
         assert.ok(result.hits.every(hit => !hit.path.endsWith(`MBR`)));
@@ -53,12 +57,13 @@ export const SearchSuite: TestSuite = {
     },
     {
       name: "pfgrep vs. qsh grep equivalency", test: async () => {
-        const pfgrep = getConnection().remoteFeatures.pfgrep;
+        const connection = instance.getConnection()!;
+        const pfgrep = connection.remoteFeatures.pfgrep;
         // This test only needs to run if pfgrep is installed
         if (pfgrep) {
-          const resultPfgrep = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+          const resultPfgrep = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
           getConnection().remoteFeatures.pfgrep = undefined;
-          const resultQsh = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+          const resultQsh = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
           getConnection().remoteFeatures.pfgrep = pfgrep;
           assert.deepEqual(resultPfgrep, resultQsh);
         } else {
