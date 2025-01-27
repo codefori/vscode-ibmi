@@ -6,6 +6,7 @@ import { Tools } from '../../Tools';
 import { posix } from 'path';
 import IBMi from '../../IBMi';
 import { newConnection, disposeConnection, CONNECTION_TIMEOUT } from '../connection';
+import { ModuleExport, ProgramExportImportInfo } from '../../types';
 
 describe('Content Tests', {concurrent: true}, () => {
   let connection: IBMi
@@ -642,4 +643,56 @@ describe('Content Tests', {concurrent: true}, () => {
       throw new Error(`Failed to create schema "${longName}"`);
     }
   });
+
+  it('getModuleExport', async () => {
+    const content = connection.getContent();
+    const config = connection.getConfig();
+    const tempLib = config!.tempLibrary;
+    const id: string = `${Tools.makeid().toUpperCase()}`;
+    const source: string = `/tmp/vscodetemp-${id}.clle`;
+    await content.runStatements(
+      `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+                       LINE => 'PGM', 
+                       OVERWRITE => 'NONE', 
+                       END_OF_LINE => 'CRLF')`,
+      `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+                       LINE => 'ENDPGM', 
+                       OVERWRITE => 'APPEND', 
+                       END_OF_LINE => 'CRLF')`,
+      `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
+      `select 1 from sysibm.sysdummy1`
+    );
+    let exports: ModuleExport[] = await content.getModuleExports({
+      library: `${tempLib}`,
+      name: `${id}`,
+      type: `*MODULE`,
+      text: ``
+    });
+    
+    expect(exports.length).toBe(1);
+    expect(exports.at(0)?.symbol_name).toBe(id);
+
+    await connection!.runCommand({
+      command: `DLTF FILE(${tempLib}/${id})`,
+      environment: 'ile'
+    });
+    await connection!.runCommand({
+      command: `DEL OBJLNK('${source}')`,
+      environment: 'ile'
+    });
+  });
+
+  it('getProgramExportImportInfo', async () => {
+    const content = connection.getContent();
+    const info: ProgramExportImportInfo[] = (await content.getProgramExportImportInfo({
+      library: `QSYS2`,
+      name: `QCMDEXC2`,
+      type: `*SRVPGM`,
+      text: ``
+    })).filter(info => info.symbol_usage === '*PROCEXP');
+
+    expect(info.length).toBeGreaterThanOrEqual(1);
+    expect(info.at(0)?.symbol_name).toBe('QCMDEXC_1');
+  });
+
 });
