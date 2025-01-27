@@ -11,10 +11,6 @@ const writeFileAsync = util.promisify(fs.writeFile);
 
 const DEFAULT_RECORD_LENGTH = 80;
 
-// Translate x'25' to x'2F' and back, or x'25' will become x'0A' (linefeed)!
-const SEU_GREEN_UL_RI = `x'25'`;
-const SEU_GREEN_UL_RI_temp = `x'2F'`;
-
 export class ExtendedIBMiContent {
   constructor(readonly sourceDateHandler: SourceDateHandler) {
 
@@ -33,7 +29,6 @@ export class ExtendedIBMiContent {
     const config = instance.getConfig();
     const connection = instance.getConnection();
     if (connection && config && content) {
-      const sourceColourSupport = IBMi.connectionManager.get<boolean>(`showSeuColors`);
       const tempLib = config.tempLibrary;
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
@@ -49,17 +44,10 @@ export class ExtendedIBMiContent {
         this.sourceDateHandler.recordLengths.set(alias, recordLength);
       }
 
-      let rows;
-      if (sourceColourSupport)
-        rows = await connection.runSQL(
-          `select srcdat, rtrim(translate(srcdta, ${SEU_GREEN_UL_RI_temp}, ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`,
-          {forceSafe: true}
-        );
-      else
-        rows = await connection.runSQL(
-          `select srcdat, srcdta from ${aliasPath}`,
-          {forceSafe: true}
-        );
+      let rows = await connection.runSQL(
+        `select srcdat, srcdta from ${aliasPath}`,
+        {forceSafe: true}
+      );
 
       if (rows.length === 0) {
         rows.push({
@@ -133,7 +121,6 @@ export class ExtendedIBMiContent {
       const { library, file, name } = connection.parserMemberPath(uri.path);
       const tempRmt = connection.getTempRemote(library + file + name);
       if (tempRmt) {
-        const sourceColourSupport = IBMi.connectionManager.get<boolean>(`showSeuColors`);
         const tmpobj = await tmpFile();
 
         const sourceData = body.split(`\n`);
@@ -150,16 +137,9 @@ export class ExtendedIBMiContent {
             sourceData[i] = sourceData[i].substring(0, recordLength);
           }
 
-          // We only want to do the translate when source colours at enabled.
-          // For large sources, translate adds a bunch of time to the saving process.
-          if (sourceColourSupport)
-            rows.push(
-              `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, translate('${escapeString(sourceData[i])}', ${SEU_GREEN_UL_RI}, ${SEU_GREEN_UL_RI_temp}))`,
-            );
-          else
-            rows.push(
-              `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${escapeString(sourceData[i])}')`,
-            );
+          rows.push(
+            `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${escapeString(sourceData[i])}')`,
+          );
 
         }
 
