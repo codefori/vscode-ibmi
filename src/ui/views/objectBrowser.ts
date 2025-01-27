@@ -959,11 +959,12 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
       }
 
       if (parameters.path) {
-        const config = getConfig();
+        const connection = getConnection();
 
         const pathParts = parameters.path.split(`/`);
         if (pathParts[1] !== `*ALL`) {
-          const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? vscode.l10n.t(`(in ASP {0})`, config.sourceASP) : ``);
+          const selectedAsp = connection.getCurrentIAspName();
+          const aspText = (selectedAsp ? vscode.l10n.t(`(in ASP {0})`, selectedAsp) : ``);
 
           const list = IBMi.GlobalStorage.getPreviousSearchTerms();
           const listHeader: vscode.QuickPickItem[] = [
@@ -1348,7 +1349,6 @@ function storeMemberList(path: string, list: string[]) {
 }
 
 async function doSearchInSourceFile(searchTerm: string, path: string, filter?: ObjectFilters) {
-  const content = getContent();
   const [library, sourceFile] = path.split(`/`);
   try {
     await vscode.window.withProgress({

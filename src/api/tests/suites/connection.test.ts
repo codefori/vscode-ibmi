@@ -307,4 +307,11 @@ describe(`connection tests`, {concurrent: true}, () => {
 
     expect(getJavaHome(connection, '666')).toBeUndefined();
   });
+
+  it('getLibraryIAsp against QSYSINC', async () => {
+    const library = `QSYSINC`;
+
+    const asp = await connection.lookupLibraryIAsp(library);
+    expect(asp).toBeUndefined(); // Because QSYSINC is not an iASP
+  })
 })

@@ -13,7 +13,6 @@ export interface ConnectionConfig extends ConnectionProfile {
   autoSortIFSShortcuts: boolean;
   tempLibrary: string;
   tempDir: string;
-  sourceASP: string;
   sourceFileCCSID: string;
   autoConvertIFSccsid: boolean;
   hideCompileErrors: string[];

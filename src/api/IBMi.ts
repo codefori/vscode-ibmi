@@ -14,7 +14,7 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
+import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
 import { EventEmitter } from 'stream';
 import { ConnectionConfig } from './configuration/config/types';
 
@@ -96,12 +96,15 @@ export default class IBMi {
   currentConnectionName: string = ``;
   private tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
+
   /**
    * Used to store ASP numbers and their names
    * Their names usually maps up to a directory in
    * the root of the IFS, thus why we store it.
    */
-  aspInfo: { [id: number]: string } = {};
+  private iAspInfo: AspInfo[] = [];
+  private currentAsp: string|undefined;
+
   remoteFeatures: { [name: string]: string | undefined };
 
   variantChars: {
@@ -770,11 +773,11 @@ export default class IBMi {
 
       if (this.sqlRunnerAvailable()) {
         // Check for ASP information?
-        if (quickConnect() && cachedServerSettings?.aspInfo) {
-          this.aspInfo = cachedServerSettings.aspInfo;
+        if (quickConnect() && cachedServerSettings?.iAspInfo) {
+          this.iAspInfo = cachedServerSettings.iAspInfo;
         } else {
           callbacks.progress({
-            message: `Checking for ASP information.`
+            message: `Checking for iASP information.`
           });
 
           //This is mostly a nice to have. We grab the ASP info so user's do
@@ -782,8 +785,14 @@ export default class IBMi {
           try {
             const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
             resultSet.forEach(row => {
+              // Does not ever include SYSBAS/SYSTEM, only iASPs
               if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
+                this.iAspInfo.push({
+                  id: Number(row.ASP_NUMBER),
+                  name: String(row.DEVICE_DESCRIPTION_NAME),
+                  type: String(row.ASP_TYPE),
+                  rdbName: String(row.RDB_NAME)
+                });
               }
             });
           } catch (e) {
@@ -793,6 +802,12 @@ export default class IBMi {
             });
           }
         }
+
+        callbacks.progress({
+          message: `Fetching current iASP information.`
+        });
+
+        this.currentAsp = await this.getUserProfileAsp();
 
         // Fetch conversion values?
         if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
@@ -935,7 +950,7 @@ export default class IBMi {
 
       IBMi.GlobalStorage.setServerSettingsCache(this.currentConnectionName, {
         lastCheckedOnVersion: currentExtensionVersion,
-        aspInfo: this.aspInfo,
+        iAspInfo: this.iAspInfo,
         qccsid: this.qccsid,
         jobCcsid: this.userJobCcsid,
         remoteFeatures: this.remoteFeatures,
@@ -1405,5 +1420,67 @@ export default class IBMi {
 
   debugPTFInstalled() {
     return this.remoteFeatures[`startDebugService.sh`] !== undefined;
+  }
+
+  private async getUserProfileAsp(): Promise<string|undefined> {
+    const [currentRdb] = await this.runSQL(`values current_server`);
+
+    if (currentRdb) {
+      const key = Object.keys(currentRdb)[0];
+      const rdbName = currentRdb[key];
+      const currentAsp = this.iAspInfo.find(asp => asp.rdbName === rdbName);
+
+      if (currentAsp) {
+        return currentAsp.name;
+      }
+    }
+  }
+
+  getAllIAsps() {
+    return this.iAspInfo;
+  }
+
+  getIAspDetail(by: string|number) {
+    let asp: AspInfo|undefined;
+    if (typeof by === 'string') {
+      asp = this.iAspInfo.find(asp => asp.name === by);
+    } else {
+      asp = this.iAspInfo.find(asp => asp.id === by);
+    }
+
+    if (asp) {
+      return asp;
+    }
+  }
+
+  getIAspName(by: string|number): string|undefined {
+    return this.getIAspDetail(by)?.name;
+  }
+
+  getCurrentIAspName() {
+    return this.currentAsp;
+  }
+
+  private libraryAsps: { [library: string]: number } = {};
+  async lookupLibraryIAsp(library: string) {
+    let foundNumber: number|undefined = this.libraryAsps[library];
+
+    if (!foundNumber) {
+      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}'))`);
+      const iaspNumber = Number(row?.IASP_NUMBER);
+      if (iaspNumber >= 0) {
+        this.libraryAsps[library] = iaspNumber;
+        foundNumber = iaspNumber;
+      }
+    }
+
+    return this.getIAspName(foundNumber);
+  }
+
+  getLibraryIAsp(library: string) {
+    const found = this.libraryAsps[library];
+    if (found >= 0) {
+      return this.getIAspName(found);
+    }
   }
 }

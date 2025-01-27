@@ -112,7 +112,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
                 }
                 break;
               case `streamfile`:
-                detail.asp = (config.sourceASP && config.sourceASP.length > 0) ? config.sourceASP : undefined;
+                detail.asp = connection.getCurrentIAspName();
                 detail.lib = config.currentLibrary;
                 break;
             }

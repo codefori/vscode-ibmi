@@ -138,7 +138,6 @@ export default class IBMiContent {
    * Download the contents of a source member
    */
   async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string) {
-    asp = asp || this.config.sourceASP;
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
@@ -206,7 +205,6 @@ export default class IBMiContent {
    * Upload to a member
    */
   async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array) {
-    asp = asp || this.config.sourceASP;
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
@@ -374,6 +372,8 @@ export default class IBMiContent {
       `;
       const results = await this.ibmi.runSQL(statement);
 
+      const asp = this.ibmi.getIAspName(Number(results[0]?.IASP_NUMBER));
+
       objects = results.map(object => ({
         library: 'QSYS',
         name: this.ibmi.sysNameInLocal(String(object.NAME)),
@@ -387,7 +387,7 @@ export default class IBMiContent {
         changed: new Date(Number(object.CHANGED)),
         created_by: object.CREATED_BY,
         owner: object.OWNER,
-        asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
+        asp
       } as IBMiObject));
     } else {
       let results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
@@ -599,6 +599,8 @@ export default class IBMiContent {
 
     const objects = (await this.runStatements(createOBJLIST.join(`\n`)));
 
+    const asp = this.ibmi.getIAspName(Number(objects[0]?.IASP_NUMBER));
+
     return objects.map(object => ({
       library: localLibrary,
       name: Boolean(object.IS_SOURCE) ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
@@ -612,7 +614,7 @@ export default class IBMiContent {
       changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
-      asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
+      asp
     } as IBMiObject))
       .filter(object => !filters.types || filters.types.length < 1 
                         || filters.types.includes('*ALL')
@@ -674,7 +676,7 @@ export default class IBMiContent {
 
     const results = await this.ibmi.runSQL(statement);
     if (results.length) {
-      const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
+      const asp = this.ibmi.getIAspName(Number(results[0]?.ASP));
       return results.map(result => ({
         asp,
         library,
@@ -794,7 +796,7 @@ export default class IBMiContent {
     // Escape names for shell
     const pathList = files
       .map(file => {
-        const asp = file.asp || this.config.sourceASP;
+        const asp = file.asp || this.ibmi.getCurrentIAspName();
         if (asp && asp.length > 0) {
           return [
             Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
@@ -1046,19 +1048,19 @@ export default class IBMiContent {
     }
   }
 
-  async uploadFiles(files: { local: EditorPath, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
-    await this.ibmi.client!.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
+  uploadFiles(files: { local: EditorPath, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    return this.ibmi.client!.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
   }
 
-  async downloadFile(localFile: EditorPath, remoteFile: string) {
-    await this.ibmi.client!.getFile(Tools.fileToPath(localFile), remoteFile);
+  downloadFile(localFile: EditorPath, remoteFile: string) {
+    return this.ibmi.client!.getFile(Tools.fileToPath(localFile), remoteFile);
   }
 
-  async uploadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client!.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+  uploadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    return this.ibmi.client!.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  async downloadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client!.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+  downloadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    return this.ibmi.client!.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 }

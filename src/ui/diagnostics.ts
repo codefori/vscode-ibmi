@@ -151,7 +151,8 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
           if (relativeCompilePath) {
             if (connection) {
               // Belive it or not, sometimes if the deploy directory is symlinked into as ASP, this can be a problem
-              const aspNames = Object.values(connection.aspInfo);
+              const aspNames = connection.getAllIAsps().map(asp => asp.name);
+              
               for (const aspName of aspNames) {
                 const aspRoot = `/${aspName}`;
                 if (relativeCompilePath.startsWith(aspRoot)) {
