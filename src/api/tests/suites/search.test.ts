@@ -54,4 +54,19 @@ describe('Search Tests', {concurrent: true}, () => {
     expect(checkNames(result.hits.map(hit => hit.path.split("/").at(-1)!))).toBe(true);
     expect(result.hits.every(hit => !hit.path.endsWith(`MBR`))).toBe(true);
   });
+
+  it('Filtered members list search', async () => {
+    const pfgrep = connection.remoteFeatures.pfgrep;
+    // This test only needs to run if pfgrep is installed
+    if (pfgrep) {
+      const resultPfgrep = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+      connection.remoteFeatures.pfgrep = undefined;
+      const resultQsh = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+      connection.remoteFeatures.pfgrep = pfgrep;
+      // XXX: Do a deep equals here (without having to reimplement one)
+      expect(resultPfgrep.hits[0].lines[0] == resultQsh.hits[0].lines[0]);
+    } else {
+      expect(true)
+    }
+  });
 });
