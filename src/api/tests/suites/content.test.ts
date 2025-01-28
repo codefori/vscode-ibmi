@@ -662,18 +662,13 @@ describe('Content Tests', {concurrent: true}, () => {
       `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
       `select 1 from sysibm.sysdummy1`
     );
-    let exports: ModuleExport[] = await content.getModuleExports({
-      library: `${tempLib}`,
-      name: `${id}`,
-      type: `*MODULE`,
-      text: ``
-    });
+    let exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
     
     expect(exports.length).toBe(1);
     expect(exports.at(0)?.symbol_name).toBe(id);
 
     await connection!.runCommand({
-      command: `DLTF FILE(${tempLib}/${id})`,
+      command: `DLTMOD MODULE(${tempLib}/${id})`,
       environment: 'ile'
     });
     await connection!.runCommand({
@@ -684,15 +679,41 @@ describe('Content Tests', {concurrent: true}, () => {
 
   it('getProgramExportImportInfo', async () => {
     const content = connection.getContent();
-    const info: ProgramExportImportInfo[] = (await content.getProgramExportImportInfo({
-      library: `QSYS2`,
-      name: `QCMDEXC2`,
-      type: `*SRVPGM`,
-      text: ``
-    })).filter(info => info.symbol_usage === '*PROCEXP');
+    const config = connection.getConfig();
+    const tempLib = config!.tempLibrary;
+    const id: string = `${Tools.makeid().toUpperCase()}`;
+    const source: string = `/tmp/vscodetemp-${id}.clle`;
+    await content.runStatements(
+      `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+                       LINE => 'PGM', 
+                       OVERWRITE => 'NONE', 
+                       END_OF_LINE => 'CRLF')`,
+      `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+                       LINE => 'ENDPGM', 
+                       OVERWRITE => 'APPEND', 
+                       END_OF_LINE => 'CRLF')`,
+      `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
+      `@CRTSRVPGM SRVPGM(${tempLib}/${id}) MODULE(${tempLib}/${id}) EXPORT(*ALL)`,
+      `select 1 from sysibm.sysdummy1`
+    );
 
-    expect(info.length).toBeGreaterThanOrEqual(1);
-    expect(info.at(0)?.symbol_name).toBe('QCMDEXC_1');
+    const info: ProgramExportImportInfo[] = (await content.getProgramExportImportInfo(tempLib, id, '*SRVPGM'))
+      .filter(info => info.symbol_usage === '*PROCEXP');
+
+    expect(info.length).toBe(1);
+    expect(info.at(0)?.symbol_name).toBe(id);
+
+    await connection!.runCommand({
+      command: `DLTSRVPGM SRVPGM(${tempLib}/${id})`,
+      environment: 'ile'
+    });
+    await connection!.runCommand({
+      command: `DLTMOD MODULE(${tempLib}/${id})`,
+      environment: 'ile'
+    });
+    await connection!.runCommand({
+      command: `DEL OBJLNK('${source}')`,
+      environment: 'ile'
+    });
   });
-
 });
