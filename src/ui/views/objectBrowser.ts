@@ -4,7 +4,7 @@ import path, { basename, dirname } from "path";
 import vscode from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
-import IBMiContent, { SortOptions, SortOrder } from "../../api/IBMiContent";
+import { SortOptions, SortOrder } from "../../api/IBMiContent";
 import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
@@ -542,12 +542,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.generateBinderSource`, async (node: ObjectBrowserObjectItem) => {
-      const contentApi: IBMiContent = getContent();
+      const contentApi = getContent();
       let exports: ProgramExportImportInfo[] | ModuleExport[] = [];
       if (node.object.type === '*MODULE') {
-        exports = (await contentApi.getModuleExports(node.object)).filter(exp => exp.symbol_type === 'PROCEDURE');
+        exports = (await contentApi.getModuleExports(node.object.library, node.object.name))
+          .filter(exp => exp.symbol_type === 'PROCEDURE');
       } else {
-        exports = (await contentApi.getProgramExportImportInfo(node.object)).filter(info => info.symbol_usage === '*PROCEXP');
+        exports = (await contentApi.getProgramExportImportInfo(node.object.library, node.object.name, node.object.type))
+          .filter(info => info.symbol_usage === '*PROCEXP');
       }
       const content = [
         `/*  Binder source generated from ${node}  */`,

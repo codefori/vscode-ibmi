@@ -636,8 +636,8 @@ export default class IBMiContent {
    * @param object IBMiObject to get export and import info for
    * @returns an array of ProgramExportImportInfo
    */
-  async getProgramExportImportInfo(object: IBMiObject): Promise<ProgramExportImportInfo[]> {
-    if (!['*PGM', '*SRVPGM'].includes(object.type)) {
+  async getProgramExportImportInfo(library: string, name: string, type: string): Promise<ProgramExportImportInfo[]> {
+    if (!['*PGM', '*SRVPGM'].includes(type)) {
       return [];
     }
     const results = await this.ibmi.runSQL(
@@ -645,8 +645,8 @@ export default class IBMiContent {
         `select PROGRAM_LIBRARY, PROGRAM_NAME, OBJECT_TYPE, SYMBOL_NAME, SYMBOL_USAGE,`,
         `  ARGUMENT_OPTIMIZATION, DATA_ITEM_SIZE`,
         `from qsys2.program_export_import_info`,
-        `where program_library = '${object.library}' and program_name = '${object.name}' `,
-        `and object_type = '${object.type}'`
+        `where program_library = '${library}' and program_name = '${name}' `,
+        `and object_type = '${type}'`
       ].join("\n")
     );
     if (results.length) {
@@ -668,17 +668,14 @@ export default class IBMiContent {
    * @param object IBMiObject to get module exports for
    * @returns an array of ModuleExport
    */
-  async getModuleExports(object: IBMiObject): Promise<ModuleExport[]> {
-    const name: string = Tools.makeid().toUpperCase();
-    if (object.type != '*MODULE') {
-      return [];
-    }
+  async getModuleExports(library: string, name: string): Promise<ModuleExport[]> {
+    const outfile: string = Tools.makeid().toUpperCase();
     const results = await this.runStatements(
-      `@DSPMOD MODULE(${object.library}/${object.name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${name})`,
+      `@DSPMOD MODULE(${library}/${name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${outfile})`,
       [
         `select EXLBNM as MODULE_LIBRARY, EXMONM as MODULE_NAME, EXMOAT as MODULE_ATTR, EXSYNM as SYMBOL_NAME,`,
         `  case EXSYTY when '0' then 'PROCEDURE' when '1' then 'DATA' end as SYMBOL_TYPE, EXOPPP as ARGUMENT_OPTIMIZATION`,
-        ` from QTEMP.${name}`
+        ` from QTEMP.${outfile}`
       ].join("\n")
     );
     if (results.length) {
