@@ -11,7 +11,7 @@ If you are making a pull request which fixes a bug, adds a feature or changes do
 If you want to help but you're unsure what to work on, here are two easy places to start:
 
 * Check out the 'good first issue' tag [in our issues](https://github.com/codefori/vscode-ibmi/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
-* See what improvements can be made to [our documentation](https://github.com/codefori/vscode-ibmi/tree/master/docs).
+* See what improvements can be made to [our documentation](https://github.com/codefori/docs).
 
 # Previous contributors
 
@@ -60,3 +60,4 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@marcin-ogon](https://github.com/marcin-ogon)
 * [@Detrytus59](https://github.com/Detrytus59)
 * [@janfh](https://github.com/janfh)
+* [@MohitKambli](https://github.com/MohitKambli)
