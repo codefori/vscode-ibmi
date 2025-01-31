@@ -1,9 +1,9 @@
 import { parse as parsePath } from "path";
 import { parse, ParsedUrlQueryInput, stringify } from "querystring";
 import vscode, { FilePermission, FileSystemError } from "vscode";
-import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
+import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
@@ -101,8 +101,8 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
         const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;
         const connection = instance.getConnection();
-        if (path !== '/' && connection) {
-            const member = type === vscode.FileType.File ? parsePath(path).name : undefined;
+        if (connection && type === vscode.FileType.File) {
+            const member = parsePath(path).name;
             const qsysPath = { ...Tools.parseQSysPath(path), member };
             const attributes = await this.getMemberAttributes(connection, qsysPath);
             if (attributes) {
@@ -129,7 +129,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
-        const loadAttributes = async () => await connection.content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+        const loadAttributes = async () => await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
 
         path.asp = path.asp || this.getLibraryASP(connection, path.library);
         let attributes = await loadAttributes();
