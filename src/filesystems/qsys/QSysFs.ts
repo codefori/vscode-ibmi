@@ -242,19 +242,23 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-        const content = instance.getConnection()?.content;
-        if (content) {
-            const qsysPath = Tools.parseQSysPath(uri.path);
-            if (qsysPath.name) {
-                return (await content.getMemberList({ library: qsysPath.library, sourceFile: qsysPath.name }))
-                    .map(member => [`${member.name}${member.extension ? `.${member.extension}` : ''}`, vscode.FileType.File]);
-            }
-            else if (qsysPath.library) {
-                return (await content.getObjectList({ library: qsysPath.library, types: ["*SRCPF"] }))
-                    .map(srcPF => [srcPF.name, vscode.FileType.Directory]);
-            }
-            else if (uri.path === '/') {
-                return (await content.getLibraries({ library: '*' })).map(library => [library.name, vscode.FileType.Directory]);
+        const connection = instance.getConnection();
+        if (connection) {
+            const content = connection.getContent();
+            if (content) {
+                const qsysPath = Tools.parseQSysPath(uri.path);
+                if (qsysPath.name) {
+                    return (await content.getMemberList({ library: qsysPath.library, sourceFile: qsysPath.name }))
+                        .map(member => [`${member.name}${member.extension ? `.${member.extension}` : ''}`, vscode.FileType.File]);
+                }
+                else if (qsysPath.library) {
+                    return (await content.getObjectList({ library: qsysPath.library, types: ["*SRCPF"] }))
+                        .map(srcPF => [srcPF.name, vscode.FileType.Directory]);
+                }
+                else if (uri.path === '/') {
+                    return (await connection.runSQL(`select OBJNAME from table (QSYS2.OBJECT_STATISTICS ('*ALLSIMPLE', 'LIB', '*ALLSIMPLE'))`))
+                        .map(row => [row.OBJNAME as string, vscode.FileType.Directory]);
+                }
             }
         }
         throw FileSystemError.FileNotFound(uri);
