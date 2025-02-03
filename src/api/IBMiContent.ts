@@ -1015,6 +1015,11 @@ export default class IBMiContent {
     `;
 
     const [result] = await this.ibmi.runSQL(sql);
+    
+    if (!result) {
+      return this.ibmi.getCcsids().qccsid;
+    }
+
     return Number(result.CCSID === IBMi.CCSID_NOCONVERSION ? result.DEFAULT_CCSID : result.CCSID);
   }
 
