@@ -13,7 +13,7 @@ export class GetNewLibl implements IBMiComponent {
   }
 
   getIdentification() {
-    return { name: GetNewLibl.ID, version: this.installedVersion };
+    return { name: GetNewLibl.ID, version: this.currentVersion };
   }
 
   async getRemoteState(connection: IBMi): Promise<ComponentState> {
@@ -45,6 +45,7 @@ export class GetNewLibl implements IBMiComponent {
       });
 
       if (!result.code) {
+        this.installedVersion = this.currentVersion;
         return `Installed`;
       } else {
         return `Error`;

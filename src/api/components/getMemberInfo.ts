@@ -15,7 +15,7 @@ export class GetMemberInfo implements IBMiComponent {
   }
 
   getIdentification() {
-    return { name: GetMemberInfo.ID, version: this.installedVersion };
+    return { name: GetMemberInfo.ID, version: this.currentVersion };
   }
 
   async getRemoteState(connection: IBMi): Promise<ComponentState> {
@@ -47,6 +47,7 @@ export class GetMemberInfo implements IBMiComponent {
       if (result.code) {
         return `Error`;
       } else {
+        this.installedVersion = this.currentVersion;
         return `Installed`;
       }
     });

@@ -23,6 +23,10 @@ export class CustomQSh implements IBMiComponent {
     return `${id.name}_${id.version}`;
   }
 
+  async setInstallDirectory(installDirectory: string): Promise<void> {
+    this.installPath = path.posix.join(installDirectory, this.getFileName());
+  }
+
   async getRemoteState(connection: IBMi, installDirectory: string): Promise<ComponentState> {
     this.installPath = path.posix.join(installDirectory, this.getFileName());
     const result = await connection.content.testStreamFile(this.installPath, "x");

@@ -458,9 +458,10 @@ export default class IBMi {
       }
 
       callbacks.progress({ message: `Checking Code for IBM i components.` });
-      await this.componentManager.startup();
 
-      const componentStates = await this.componentManager.getState();
+      this.componentManager.startup(cachedServerSettings?.installedComponents);
+
+      const componentStates = await this.componentManager.getInstallState();
       this.appendOutput(`\nCode for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
@@ -895,6 +896,7 @@ export default class IBMi {
         qccsid: this.qccsid,
         jobCcsid: this.userJobCcsid,
         remoteFeatures: this.remoteFeatures,
+        installedComponents: this.componentManager.getInstallState(),
         remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
         badDataAreasChecked: true,
         libraryListValidated: true,
@@ -1284,7 +1286,7 @@ export default class IBMi {
   }
 
   getComponentStates() {
-    return this.componentManager.getState();
+    return this.componentManager.getInstallState();
   }
 
   /**
