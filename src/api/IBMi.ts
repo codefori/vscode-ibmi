@@ -459,7 +459,7 @@ export default class IBMi {
 
       callbacks.progress({ message: `Checking Code for IBM i components.` });
 
-      this.componentManager.startup(cachedServerSettings?.installedComponents);
+      this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
       const componentStates = await this.componentManager.getInstallState();
       this.appendOutput(`\nCode for IBM i components:\n`);
