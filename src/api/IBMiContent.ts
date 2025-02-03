@@ -1,16 +1,16 @@
 import { parse } from 'csv-parse/sync';
 import fs from 'fs';
+import * as node_ssh from "node-ssh";
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import * as node_ssh from "node-ssh";
-import { GetMemberInfo } from './components/getMemberInfo';
-import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SpecialAuthorities } from './types';
+import { EditorPath } from '../typings';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
+import { GetMemberInfo } from './components/getMemberInfo';
 import { ObjectTypes } from './import/Objects';
-import { EditorPath } from '../typings';
+import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SpecialAuthorities } from './types';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -614,10 +614,10 @@ export default class IBMiContent {
       owner: object.OWNER,
       asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
     } as IBMiObject))
-      .filter(object => !filters.types || filters.types.length < 1 
-                        || filters.types.includes('*ALL')
-                        || (filters.types.includes('*SRCPF') && object.sourceFile)
-                        || filters.types.includes(object.type))
+      .filter(object => !filters.types || filters.types.length < 1
+        || filters.types.includes('*ALL')
+        || (filters.types.includes('*SRCPF') && object.sourceFile)
+        || filters.types.includes(object.type))
       .filter(object => objectFilter || nameFilter.test(object.name))
       .sort((a, b) => {
         if (a.library.localeCompare(b.library) != 0) {
@@ -1009,13 +1009,13 @@ export default class IBMiContent {
   async getSshCcsid() {
     const sql = `
     with SSH_DETAIL (id, iid) as (
-      select substring(job_name, locate('/', job_name, 15)+1, 10) as id, internal_job_id as iid from qsys2.netstat_job_info j where local_address = '0.0.0.0' and local_port = 22
+      select substring(job_name, locate('/', job_name, locate('/', job_name) + 1) + 1, 10) as id, internal_job_id as iid from qsys2.netstat_job_info j where local_address = '0.0.0.0' and local_port = ${this.ibmi.currentPort}
     )
     select DEFAULT_CCSID, CCSID from table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => (select id from SSH_DETAIL), DETAILED_INFO => 'ALL')) where INTERNAL_JOB_ID = (select iid from SSH_DETAIL)
     `;
 
     const [result] = await this.ibmi.runSQL(sql);
-    
+
     if (!result) {
       return this.ibmi.getCcsids().qccsid;
     }
