@@ -896,7 +896,7 @@ export default class IBMi {
         qccsid: this.qccsid,
         jobCcsid: this.userJobCcsid,
         remoteFeatures: this.remoteFeatures,
-        installedComponents: this.componentManager.getInstallState(),
+        installedComponents: componentStates,
         remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
         badDataAreasChecked: true,
         libraryListValidated: true,
