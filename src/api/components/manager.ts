@@ -53,22 +53,6 @@ export class ComponentManager {
     });
   }
 
-  public shouldUpdate(lastInstalled: ComponentInstallState[] = []) {
-    return this.getComponentIds().some(c => {
-      const installed = lastInstalled.find(i => i.id.name === c.name);
-      if (!installed) {
-        return true;
-      };
-
-      const sameVersion = (installed.id.version === c.version);
-      if (!sameVersion) {
-        return true;
-      }
-
-      return false;
-    });
-  }
-
   public async startup(lastInstalled: ComponentInstallState[] = []) {
     const components = Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
     for (const component of components) {
