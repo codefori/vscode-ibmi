@@ -145,15 +145,6 @@ export class Login {
    * @param context
    */
   static async LoginToPrevious(name: string, context: vscode.ExtensionContext, reloadServerSettings?: boolean) {
-    const existingConnection = instance.getConnection();
-    if (existingConnection) {
-      // If the user is already connected and trying to connect to a different system, disconnect them first
-      if (name !== existingConnection.currentConnectionName) {
-        vscode.window.showInformationMessage(`Disconnecting from ${existingConnection.currentHost}.`);
-        if (!await safeDisconnect()) return false;
-      }
-    }
-
     const connection = await IBMi.connectionManager.getByName(name);
     if (connection) {
       const toDoOnConnected: Function[] = [];

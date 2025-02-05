@@ -225,7 +225,14 @@ export default class Instance {
     this.fire({event: `connected`, connection});
   }
 
-  getConnection() {
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link IBMi.getActiveConnection()} instead
+   */
+  getConnection(): IBMi|undefined {
+    return this.connections[0];
+  }
+
+  getActiveConnection() {
     return this.connection;
   }
 

@@ -71,7 +71,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     ...registerConnectionCommands(context, instance),
 
-    onCodeForIBMiConfigurationChange("connectionSettings", updateConnectedBar),
+    onCodeForIBMiConfigurationChange("connectionSettings", (v) => {updateConnectedBar()}),
 
     ...registerOpenCommands(instance),
 
@@ -108,8 +108,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   }
 }
 
-async function updateConnectedBar() {
-  const connection = instance.getConnection();
+async function updateConnectedBar(connection: IBMi|undefined = instance.getActiveConnection()) {
   if (connection) {
     const config = connection.getConfig();
     connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
@@ -128,14 +127,14 @@ async function updateConnectedBar() {
   }
 }
 
-async function onConnected() {
-  const config = instance.getConnection()?.getConfig();
+async function onConnected(connection: IBMi = instance.getActiveConnection()!) {
+  const config = connection.getConfig();
   [
     connectedBarItem,
     disconnectBarItem,
   ].forEach(barItem => barItem.show());
 
-  updateConnectedBar();
+  updateConnectedBar(connection);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
