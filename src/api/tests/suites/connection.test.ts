@@ -75,7 +75,7 @@ describe(`connection tests`, {concurrent: true}, () => {
   })
 
   it('parseMemberPath (simple)', () => {
-    const memberA = connection.parserMemberPath(`/thelib/thespf/thembr.mbr`);
+    const memberA = connection.parserMemberPath(`/hostname/thelib/thespf/thembr.mbr`);
 
     expect(memberA?.asp).toBeUndefined();
     expect(memberA?.library).toBe(`THELIB`);
@@ -83,10 +83,11 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(memberA?.name).toBe(`THEMBR`);
     expect(memberA?.extension).toBe(`MBR`);
     expect(memberA?.basename).toBe(`THEMBR.MBR`);
+    expect(memberA?.hostname).toBe(`hostname`);
   })
 
   it('parseMemberPath (ASP)', () => {
-    const memberA = connection.parserMemberPath(`/theasp/thelib/thespf/thembr.mbr`);
+    const memberA = connection.parserMemberPath(`/hostname/theasp/thelib/thespf/thembr.mbr`);
 
     expect(memberA?.asp).toBe(`THEASP`);
     expect(memberA?.library).toBe(`THELIB`);
@@ -94,10 +95,11 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(memberA?.name).toBe(`THEMBR`);
     expect(memberA?.extension).toBe(`MBR`);
     expect(memberA?.basename).toBe(`THEMBR.MBR`);
+    expect(memberA?.hostname).toBe(`hostname`);
   })
 
   it('parseMemberPath (no root)', () => {
-    const memberA = connection.parserMemberPath(`thelib/thespf/thembr.mbr`);
+    const memberA = connection.parserMemberPath(`hostname/thelib/thespf/thembr.mbr`);
 
     expect(memberA?.asp).toBe(undefined);
     expect(memberA?.library).toBe(`THELIB`);
@@ -105,10 +107,11 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(memberA?.name).toBe(`THEMBR`);
     expect(memberA?.extension).toBe(`MBR`);
     expect(memberA?.basename).toBe(`THEMBR.MBR`);
+    expect(memberA?.hostname).toBe(`hostname`);
   });
 
   it('parseMemberPath (no extension)', () => {
-    const memberA = connection.parserMemberPath(`/thelib/thespf/thembr`);
+    const memberA = connection.parserMemberPath(`/hostname/thelib/thespf/thembr`);
 
     expect(memberA?.asp).toBe(undefined);
     expect(memberA?.library).toBe(`THELIB`);
@@ -116,16 +119,17 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(memberA?.name).toBe(`THEMBR`);
     expect(memberA?.extension).toBe("");
     expect(memberA?.basename).toBe(`THEMBR`);
+    expect(memberA?.hostname).toBe(`hostname`);
 
     expect(
-      () => { connection.parserMemberPath(`/thelib/thespf/thembr`, true) }
+      () => { connection.parserMemberPath(`/hostname/thelib/thespf/thembr`, true) }
     ).toThrow(`Source Type extension is required.`);
   });
 
   it('parseMemberPath (invalid length)', () => {
     expect(
-      () => { connection.parserMemberPath(`/thespf/thembr.mbr`) }
-    ).toThrow(`Invalid path: /thespf/thembr.mbr. Use format LIB/SPF/NAME.ext`);
+      () => { connection.parserMemberPath(`/hostname/thespf/thembr.mbr`) }
+    ).toThrow(`Invalid path: /hostname/thespf/thembr.mbr. Use format hostname/LIB/SPF/NAME.ext`);
   });
 
   it('runCommand (ILE)', async () => {

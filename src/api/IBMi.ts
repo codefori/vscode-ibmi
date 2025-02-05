@@ -20,7 +20,8 @@ import { ConnectionConfig } from './configuration/config/types';
 import { EditorPath } from '../typings';
 
 export interface MemberParts extends IBMiMember {
-  basename: string
+  basename: string,
+  hostname: string
 }
 
 export type ConnectionMessageType = 'info' | 'warning' | 'error';
@@ -1141,14 +1142,19 @@ export default class IBMi {
     const upperCasedString = this.upperCaseName(string);
     const path = upperCasedString.startsWith(`/`) ? upperCasedString.substring(1).split(`/`) : upperCasedString.split(`/`);
 
+    // Possibles:
+    // hostname/LIB/MBR/SPF
+    // hostname/ASP/LIB/MBR/SPF
+
     const parsedPath = parsePath(upperCasedString);
     const name = parsedPath.name;
     const file = path[path.length - 2];
     const library = path[path.length - 3];
-    const asp = path[path.length - 4];
+    const asp = path.length === 5 ? path[path.length - 4] : undefined;
+    const hostname = asp ? path[path.length - 5] : path[path.length - 4];
 
-    if (!library || !file || !name) {
-      throw new Error(`Invalid path: ${string}. Use format LIB/SPF/NAME.ext`);
+    if (!library || !file || !name || !hostname) {
+      throw new Error(`Invalid path: ${string}. Use format hostname/LIB/SPF/NAME.ext`);
     }
     if (asp && !this.validQsysName(asp)) {
       throw new Error(`Invalid ASP name: ${asp}`);
@@ -1179,6 +1185,7 @@ export default class IBMi {
     }
 
     return {
+      hostname,
       library,
       file,
       extension,

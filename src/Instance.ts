@@ -33,28 +33,6 @@ export default class Instance {
     return this.connections[this.activeConnection];
   }
 
-  public setActiveConnection(name: string) {
-    const index = this.connections.findIndex(c => c.currentConnectionName === name);
-    if (index !== -1) {
-      const shouldRefresh = this.activeConnection !== index;
-      this.activeConnection = index;
-
-      if (shouldRefresh) {
-        this.refreshUi();
-        this.fire({event: `switched`, connection: this.connection});
-      }
-
-      vscode.window.showInformationMessage(`Switched to connection ${name}.`);
-    } else {
-      this.activeConnection = -1;
-      this.fire({event: `switched`, connection: undefined});
-    }
-  }
-
-  private validateActiveIndex() {
-    this.activeConnection = this.connections.length - 1;
-  }
-
   private output = {
     channel: vscode.window.createOutputChannel(`Code for IBM i`),
     content: ``,
@@ -209,6 +187,32 @@ export default class Instance {
     }
 
     this.refreshUi();
+  }
+
+  getConnectionByHost(host: string) {
+    return this.connections.find(c => c.currentHost === host);
+  }
+
+  public setActiveConnection(name: string) {
+    const index = this.connections.findIndex(c => c.currentConnectionName === name);
+    if (index !== -1) {
+      const shouldRefresh = this.activeConnection !== index;
+      this.activeConnection = index;
+
+      if (shouldRefresh) {
+        this.refreshUi();
+        this.fire({event: `switched`, connection: this.connection});
+      }
+
+      vscode.window.showInformationMessage(`Switched to connection ${name}.`);
+    } else {
+      this.activeConnection = -1;
+      this.fire({event: `switched`, connection: undefined});
+    }
+  }
+
+  private validateActiveIndex() {
+    this.activeConnection = this.connections.length - 1;
   }
 
   private async addConnection(connection: IBMi) {
