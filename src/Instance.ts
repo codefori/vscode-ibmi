@@ -41,11 +41,13 @@ export default class Instance {
 
       if (shouldRefresh) {
         this.refreshUi();
+        this.fire({event: `switched`, connection: this.connection});
       }
 
       vscode.window.showInformationMessage(`Switched to connection ${name}.`);
     } else {
       this.activeConnection = -1;
+      this.fire({event: `switched`, connection: undefined});
     }
   }
 

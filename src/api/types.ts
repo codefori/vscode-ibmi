@@ -133,7 +133,7 @@ export interface QsysFsOptions {
   readonly?: boolean
 }
 
-export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
+export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy" | "switched"
 
 export interface WithPath {
   path: string
