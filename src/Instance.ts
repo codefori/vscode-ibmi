@@ -15,6 +15,7 @@ type IBMiEventSubscription = {
 };
 
 type SubscriptionMap = Map<string, IBMiEventSubscription>
+type IBMiEventData = {event: IBMiEvent, connection?: IBMi};
 
 export interface ConnectionOptions {
   data: ConnectionData, 
@@ -24,7 +25,11 @@ export interface ConnectionOptions {
 }
 
 export default class Instance {
-  private connection: IBMi | undefined;
+  private connections: IBMi[] = [];
+
+  private get connection(): IBMi|undefined {
+    return this.connections[0];
+  }
 
   private output = {
     channel: vscode.window.createOutputChannel(`Code for IBM i`),
@@ -33,7 +38,7 @@ export default class Instance {
   };
 
   private storage: ConnectionStorage;
-  private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
+  private emitter: vscode.EventEmitter<IBMiEventData> = new vscode.EventEmitter();
   private subscribers: Map<IBMiEvent, SubscriptionMap> = new Map;
 
   private deprecationCount = 0; //TODO: remove in v3.0.0
@@ -94,7 +99,7 @@ export default class Instance {
           });
         }
 
-        this.disconnect();
+        this.disconnect(conn);
 
         if (reconnect) {
           await this.connect({...options, reconnecting: true});
@@ -133,11 +138,11 @@ export default class Instance {
         });
 
         if (result.success) {
-          await this.setConnection(connection);
+          await this.addConnection(connection);
           break;
 
         } else {
-          await this.disconnect();
+          await this.disconnect(connection);
           if (options.reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
             modal: true,
             detail: `Reconnection has failed. Would you like to try again?\n\n${customError || `No error provided.`}`
@@ -160,8 +165,10 @@ export default class Instance {
     });
   }
 
-  async disconnect() {
-    await this.setConnection();
+  async disconnect(connection: IBMi|undefined = this.connection) {
+    if (connection) {
+      connection.dispose();
+    }
       
     await Promise.all([
       vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
@@ -170,32 +177,30 @@ export default class Instance {
     ]);
   }
 
-  private async setConnection(connection?: IBMi) {
-    if (this.connection) {
-      await this.connection.dispose();
-    }
+  private async addConnection(connection: IBMi) {
+    connection.setDisconnectedCallback(async (conn) => {
+      const existingConnection = this.connections.findIndex(c => c.currentConnectionName === conn.currentConnectionName);
+      if (existingConnection !== -1) {
+        this.connections.splice(existingConnection, 1);
+      }
 
-    if (connection) {
-      connection.setDisconnectedCallback(async () => {
-        this.setConnection();
-        this.fire(`disconnected`);
-      });
+      this.fire({event: `disconnected`, connection: conn});
+    });
 
-      this.connection = connection;
-      this.storage.setConnectionName(connection.currentConnectionName);
-      await IBMi.GlobalStorage.setLastConnection(connection.currentConnectionName);
-      this.fire(`connected`);
-    }
-    else {
-      this.connection = undefined;
-      this.storage.setConnectionName("");
-    }
-
-    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, connection !== undefined);
+    this.connections.push(connection);
+    this.storage.setConnectionName(connection.currentConnectionName);
+    await IBMi.GlobalStorage.setLastConnection(connection.currentConnectionName);
+    this.fire({event: `connected`, connection});
+    
+    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, this.connection !== undefined);
   }
 
   getConnection() {
     return this.connection;
+  }
+
+  getConnections() {
+    return this.connections;
   }
 
   async setConfig(newConfig: ConnectionConfig) {
@@ -253,21 +258,21 @@ export default class Instance {
     console.warn("[Code for IBM i] Deprecation warning: you are using Instance::onEvent which is deprecated and will be removed in v3.0.0. Please use Instance::subscribe instead.");
   }
 
-  fire(event: IBMiEvent) {
-    this.emitter?.fire(event);
+  fire(data: IBMiEventData) {
+    this.emitter?.fire(data);
   }
 
-  async processEvent(event: IBMiEvent) {
-    const eventSubscribers = this.getSubscribers(event)
-    console.time(event);
+  async processEvent(data: IBMiEventData) {
+    const eventSubscribers = this.getSubscribers(data.event)
+    console.time(data.event);
     for (const [identity, callable] of eventSubscribers.entries()) {
       try {
         console.time(identity);
-        await callable.func();
+        await callable.func(data.connection);
         console.timeEnd(identity);
       }
       catch (error) {
-        console.error(`${event} event function ${identity} failed`, error);
+        console.error(`${data.event} event function ${identity} failed`, error);
       }
       finally {
         if (callable.transient) {
@@ -275,6 +280,6 @@ export default class Instance {
         }
       }
     }
-    console.timeEnd(event);
+    console.timeEnd(data.event);
   }
 }
