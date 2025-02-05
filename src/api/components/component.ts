@@ -7,6 +7,11 @@ export type ComponentIdentification = {
   version: number
 }
 
+export type ComponentInstallState = {
+  id: ComponentIdentification
+  state: ComponentState
+}
+
 /**
  * Defines a component that is managed per IBM i.
  * 
@@ -37,6 +42,8 @@ export type IBMiComponent = {
    * @returns a human-readable name
    */
   getIdentification(): ComponentIdentification;
+
+  setInstallDirectory?(installDirectory: string): Promise<void>;
 
   /**
    * @returns the component's {@link ComponentState state} on the IBM i

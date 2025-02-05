@@ -1,6 +1,6 @@
 
 import IBMi from "../IBMi";
-import { ComponentState, IBMiComponent } from "./component";
+import { ComponentIdentification, ComponentInstallState, ComponentState, IBMiComponent } from "./component";
 
 interface ExtensionContextI {
   extension: {
@@ -37,11 +37,13 @@ export const extensionComponentRegistry = new ComponentRegistry();
 export class ComponentManager {
   private readonly registered: Map<string, IBMiComponentRuntime> = new Map;
 
-  constructor(private readonly connection: IBMi) {
+  constructor(private readonly connection: IBMi) {}
 
+  public getComponentIds(): ComponentIdentification[] {
+    return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat()).map(c => c.getIdentification());
   }
 
-  public getState() {
+  public getInstallState(): ComponentInstallState[] {
     return Array.from(this.registered.keys()).map(k => {
       const comp = this.registered.get(k)!;
       return {
@@ -51,11 +53,22 @@ export class ComponentManager {
     });
   }
 
-  public async startup() {
+  public async startup(lastInstalled: ComponentInstallState[] = []) {
     const components = Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
     for (const component of components) {
       await component.reset?.();
-      this.registered.set(component.getIdentification().name, await new IBMiComponentRuntime(this.connection, component).check());
+      const newComponent = new IBMiComponentRuntime(this.connection, component);
+
+      const installed = lastInstalled.find(i => i.id.name === component.getIdentification().name);
+      const sameVersion = installed && (installed.id.version === component.getIdentification().version);
+
+      if (!installed || !sameVersion) {
+        await newComponent.check();
+      } else {
+        newComponent.overrideState(installed.state);
+      }
+
+      this.registered.set(component.getIdentification().name, newComponent);
     }
   }
 
@@ -90,6 +103,12 @@ class IBMiComponentRuntime {
 
   getState() {
     return this.state;
+  }
+
+  async overrideState(newState: ComponentState) {
+    const installDir = await this.getInstallDirectory();
+    await this.component.setInstallDirectory?.(installDir);
+    this.state = newState;
   }
 
   async check() {

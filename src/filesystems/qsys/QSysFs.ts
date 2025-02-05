@@ -1,9 +1,9 @@
 import { parse as parsePath } from "path";
 import { parse, ParsedUrlQueryInput, stringify } from "querystring";
 import vscode, { FilePermission, FileSystemError } from "vscode";
-import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
+import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
@@ -101,8 +101,8 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
         const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;
         const connection = instance.getConnection();
-        if (path !== '/' && connection) {
-            const member = type === vscode.FileType.File ? parsePath(path).name : undefined;
+        if (connection && type === vscode.FileType.File) {
+            const member = parsePath(path).name;
             const qsysPath = { ...Tools.parseQSysPath(path), member };
             const attributes = await this.getMemberAttributes(connection, qsysPath);
             if (attributes) {
@@ -129,7 +129,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
-        const loadAttributes = async () => await connection.content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+        const loadAttributes = async () => await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
 
         path.asp = path.asp || this.getLibraryASP(connection, path.library);
         let attributes = await loadAttributes();
@@ -242,19 +242,23 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-        const content = instance.getConnection()?.content;
-        if (content) {
-            const qsysPath = Tools.parseQSysPath(uri.path);
-            if (qsysPath.name) {
-                return (await content.getMemberList({ library: qsysPath.library, sourceFile: qsysPath.name }))
-                    .map(member => [`${member.name}${member.extension ? `.${member.extension}` : ''}`, vscode.FileType.File]);
-            }
-            else if (qsysPath.library) {
-                return (await content.getObjectList({ library: qsysPath.library, types: ["*SRCPF"] }))
-                    .map(srcPF => [srcPF.name, vscode.FileType.Directory]);
-            }
-            else if (uri.path === '/') {
-                return (await content.getLibraries({ library: '*' })).map(library => [library.name, vscode.FileType.Directory]);
+        const connection = instance.getConnection();
+        if (connection) {
+            const content = connection.getContent();
+            if (content) {
+                const qsysPath = Tools.parseQSysPath(uri.path);
+                if (qsysPath.name) {
+                    return (await content.getMemberList({ library: qsysPath.library, sourceFile: qsysPath.name }))
+                        .map(member => [`${member.name}${member.extension ? `.${member.extension}` : ''}`, vscode.FileType.File]);
+                }
+                else if (qsysPath.library) {
+                    return (await content.getObjectList({ library: qsysPath.library, types: ["*SRCPF"] }))
+                        .map(srcPF => [srcPF.name, vscode.FileType.Directory]);
+                }
+                else if (uri.path === '/') {
+                    return (await connection.runSQL(`select OBJNAME from table (QSYS2.OBJECT_STATISTICS ('*ALLSIMPLE', 'LIB', '*ALLSIMPLE'))`))
+                        .map(row => [row.OBJNAME as string, vscode.FileType.Directory]);
+                }
             }
         }
         throw FileSystemError.FileNotFound(uri);
