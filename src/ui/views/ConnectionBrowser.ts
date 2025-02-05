@@ -24,9 +24,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     connectionTreeViewer,
     vscode.commands.registerCommand(`code-for-ibmi.connect`, () => {
-      if (!connectionBrowser.attemptingConnection) {
-        Login.show(context);
-      }
+      Login.show(context);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.connectToPrevious`, async () => {
@@ -37,40 +35,33 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.connectTo`, async (name?: string | Server, reloadServerSettings?: boolean) => {
-      if (!connectionBrowser.attemptingConnection) {
-        connectionBrowser.attemptingConnection = true;
-
-        if (!name) {
-          const lastConnections = IBMi.GlobalStorage.getLastConnections() || [];
-          if (lastConnections && lastConnections.length) {
-            name = (await vscode.window.showQuickPick([{ kind: vscode.QuickPickItemKind.Separator, label: vscode.l10n.t(`Last connection`) },
-            ...lastConnections.map(lc => ({ label: lc.name, description: vscode.l10n.t(`Last used: {0}`, new Date(lc.timestamp).toLocaleString()) }))],
-              { title: vscode.l10n.t(`Last IBM i connections`) }
-            ))?.label;
-          }
+      if (!name) {
+        const lastConnections = IBMi.GlobalStorage.getLastConnections() || [];
+        if (lastConnections && lastConnections.length) {
+          name = (await vscode.window.showQuickPick([{ kind: vscode.QuickPickItemKind.Separator, label: vscode.l10n.t(`Last connection`) },
+          ...lastConnections.map(lc => ({ label: lc.name, description: vscode.l10n.t(`Last used: {0}`, new Date(lc.timestamp).toLocaleString()) }))],
+            { title: vscode.l10n.t(`Last IBM i connections`) }
+          ))?.label;
         }
-
-        switch (typeof name) {
-          case `string`: // Name of connection object
-            await Login.LoginToPrevious(name, context, reloadServerSettings);
-            break;
-          case `object`: // A Server object
-            await Login.LoginToPrevious(name.name, context, reloadServerSettings);
-            break;
-          default:
-            vscode.window.showErrorMessage(vscode.l10n.t(`Use the Server Browser to select which system to connect to.`));
-            break;
-        }
-
-        connectionBrowser.attemptingConnection = false;
       }
+
+      switch (typeof name) {
+        case `string`: // Name of connection object
+          await Login.LoginToPrevious(name, context, reloadServerSettings);
+          break;
+        case `object`: // A Server object
+          await Login.LoginToPrevious(name.name, context, reloadServerSettings);
+          break;
+        default:
+          vscode.window.showErrorMessage(vscode.l10n.t(`Use the Server Browser to select which system to connect to.`));
+          break;
+      }
+
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.connectToAndReload`, async (server: Server) => {
-      if (!connectionBrowser.attemptingConnection && server) {
-        const reloadServerSettings = true;
-        vscode.commands.executeCommand(`code-for-ibmi.connectTo`, server.name, reloadServerSettings);
-      }
+      const reloadServerSettings = true;
+      vscode.commands.executeCommand(`code-for-ibmi.connectTo`, server.name, reloadServerSettings);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.refreshConnections`, () => {
@@ -78,7 +69,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.renameConnection`, async (server: Server) => {
-      if (!connectionBrowser.attemptingConnection && server) {
+      if (server) {
         const existingConnections = await IBMi.connectionManager.getAll();
         const newName = await vscode.window.showInputBox({
           prompt: vscode.l10n.t(`Rename connection "{0}"`, server.name),
@@ -126,7 +117,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             connectionBrowser.refresh();
           } catch (e: any) {
             vscode.window.showErrorMessage(
-              vscode.l10n.t(`Error renaming connection "{0}"! {1}`, server.name,  e.message || String(e)));
+              vscode.l10n.t(`Error renaming connection "{0}"! {1}`, server.name, e.message || String(e)));
           }
         }
       }
@@ -149,7 +140,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
         toBeDeleted.push(...connectionTreeViewer.selection);
       }
 
-      if (!connectionBrowser.attemptingConnection && toBeDeleted.length) {
+      if (toBeDeleted.length) {
         const message = toBeDeleted.length === 1 ? vscode.l10n.t(`Are you sure you want to delete the connection "{0}"?`, toBeDeleted[0].name) : vscode.l10n.t("Are you sure you want to delete these {0} connections?", toBeDeleted.length);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(server => `- ${server.name}`).join("\n");
         if (await vscode.window.showWarningMessage(message, { modal: true, detail }, vscode.l10n.t(`Yes`))) {
@@ -204,7 +195,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             ],
               {
                 canPickMany: true,
-                title: vscode.l10n.t(`Select the settings to copy from "{0}" to "{1}"`, server.name,  newConnectionName)
+                title: vscode.l10n.t(`Select the settings to copy from "{0}" to "{1}"`, server.name, newConnectionName)
               }))?.map(picked => picked.copy);
           }
         } while (newConnectionName && !copyOperations);
@@ -246,7 +237,6 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
 }
 
 class ConnectionBrowser implements vscode.TreeDataProvider<ServerItem> {
-  public attemptingConnection: boolean = false;
   private readonly _emitter: vscode.EventEmitter<ServerItem | undefined | null | void> = new vscode.EventEmitter();
   readonly onDidChangeTreeData: vscode.Event<ServerItem | undefined | null | void> = this._emitter.event;
 
@@ -277,21 +267,22 @@ class ServerItem extends vscode.TreeItem implements Server {
       .find(settings => connection.name === settings.name)
       ?.readOnlyMode
 
-    this.contextValue = `server`;
-
     if (currentlyConnected) {
+      this.contextValue = `serverConnected`;
       this.description = `Currently connected`;
-      this.iconPath = new vscode.ThemeIcon(`check`, new vscode.ThemeColor("notificationsInfoIcon.foreground"));
+      this.iconPath = new vscode.ThemeIcon(`pass-filled`, new vscode.ThemeColor("notificationsInfoIcon.foreground"));
 
       this.command = {
         command: `code-for-ibmi.switchToConnection`,
         title: vscode.l10n.t(`Switch to connection`),
         arguments: [this]
       };
+
     } else {
+      this.contextValue = `server`;
       this.description = `${connection.username}@${connection.host}`;
       this.tooltip = lastConnected ? vscode.l10n.t(` (previous connection)`) : "";
-      this.iconPath = new vscode.ThemeIcon(readOnly ? `lock` : `remote`, lastConnected ? new vscode.ThemeColor("notificationsWarningIcon.foreground") : undefined);
+      this.iconPath = new vscode.ThemeIcon(readOnly ? `lock` : `circle-large-outline`, lastConnected ? new vscode.ThemeColor("notificationsWarningIcon.foreground") : undefined);
 
       this.command = {
         command: `code-for-ibmi.connectTo`,
