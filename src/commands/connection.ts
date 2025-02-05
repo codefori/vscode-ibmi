@@ -23,7 +23,7 @@ export function registerConnectionCommands(context: ExtensionContext, instance: 
       }
     ),
     commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?: boolean) => {
-      if (instance.getConnection()) {
+      if (instance.getActiveConnection()) {
         await safeDisconnect();
       } else if (!silent) {
         window.showErrorMessage(`Not currently connected to any system.`);
