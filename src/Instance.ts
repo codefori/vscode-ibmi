@@ -42,6 +42,8 @@ export default class Instance {
       if (shouldRefresh) {
         this.refreshUi();
       }
+
+      vscode.window.showInformationMessage(`Switched to connection ${name}.`);
     } else {
       this.activeConnection = -1;
     }
@@ -91,7 +93,8 @@ export default class Instance {
       vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
       vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
       vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, this.getConnections().length),
+      vscode.commands.executeCommand("code-for-ibmi.refreshConnections"),
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, this.getActiveConnections().length),
       refreshDebugSensitiveItems()
     ]);
   }
@@ -236,7 +239,7 @@ export default class Instance {
     return this.connection;
   }
 
-  getConnections() {
+  getActiveConnections() {
     return this.connections;
   }
 

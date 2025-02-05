@@ -236,6 +236,11 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
           connectionBrowser.refresh();
         }
       }
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.switchToConnection`, async (server?: Server) => {
+      if (server) {
+        instance.setActiveConnection(server.name);
+      }
     })
   );
 }
@@ -258,29 +263,42 @@ class ConnectionBrowser implements vscode.TreeDataProvider<ServerItem> {
   }
 
   async getChildren(): Promise<ServerItem[]> {
+    const activeConnections = instance.getActiveConnections();
     const lastConnection = IBMi.GlobalStorage.getLastConnections()?.[0];
     return IBMi.connectionManager.getAll()
-      .map(connection => new ServerItem(connection, connection.name === lastConnection?.name));
+      .map(connection => new ServerItem(connection, connection.name === lastConnection?.name, activeConnections.some(c => connection.name === c.currentConnectionName)));
   }
 }
 
 class ServerItem extends vscode.TreeItem implements Server {
-  constructor(readonly connection: ConnectionData, lastConnected?: boolean) {
+  constructor(readonly connection: ConnectionData, lastConnected?: boolean, currentlyConnected?: boolean) {
     super(connection.name, vscode.TreeItemCollapsibleState.None);
     const readOnly = (IBMi.connectionManager.get<ConnectionConfig[]>(`connectionSettings`) || [])
       .find(settings => connection.name === settings.name)
       ?.readOnlyMode
 
     this.contextValue = `server`;
-    this.description = `${connection.username}@${connection.host}`;
-    this.tooltip = lastConnected ? vscode.l10n.t(` (previous connection)`) : "";
-    this.iconPath = new vscode.ThemeIcon(readOnly ? `lock` : `remote`, lastConnected ? new vscode.ThemeColor("notificationsWarningIcon.foreground") : undefined);
 
-    this.command = {
-      command: `code-for-ibmi.connectTo`,
-      title: vscode.l10n.t(`Connect`),
-      arguments: [this]
-    };
+    if (currentlyConnected) {
+      this.description = `Currently connected`;
+      this.iconPath = new vscode.ThemeIcon(`check`, new vscode.ThemeColor("notificationsInfoIcon.foreground"));
+
+      this.command = {
+        command: `code-for-ibmi.switchToConnection`,
+        title: vscode.l10n.t(`Switch to connection`),
+        arguments: [this]
+      };
+    } else {
+      this.description = `${connection.username}@${connection.host}`;
+      this.tooltip = lastConnected ? vscode.l10n.t(` (previous connection)`) : "";
+      this.iconPath = new vscode.ThemeIcon(readOnly ? `lock` : `remote`, lastConnected ? new vscode.ThemeColor("notificationsWarningIcon.foreground") : undefined);
+
+      this.command = {
+        command: `code-for-ibmi.connectTo`,
+        title: vscode.l10n.t(`Connect`),
+        arguments: [this]
+      };
+    }
   }
 
   get name() {

@@ -31,7 +31,7 @@ export function registerConnectionCommands(context: ExtensionContext, instance: 
     }),
 
     commands.registerCommand(`code-for-ibmi.switchActiveConnection`, () => {
-      const availableConnections = instance.getConnections();
+      const availableConnections = instance.getActiveConnections();
 
       if (availableConnections.length === 0) {
         window.showErrorMessage(`No connections found.`);
