@@ -247,8 +247,6 @@ export default class IBMi {
 
       this.appendOutput(`Code for IBM i, version ${currentExtensionVersion}\n\n`);
 
-      let tempLibrarySet = false;
-
       callbacks.progress({
         message: `Loading configuration.`
       });
@@ -428,10 +426,17 @@ export default class IBMi {
           message: `Checking installed components on host IBM i: Java`
         });
         const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
-        this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
-        this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
-        this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
-        this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
+        [
+          this.remoteFeatures.jdk80,
+          this.remoteFeatures.jdk11,
+          this.remoteFeatures.openjdk11,
+          this.remoteFeatures.jdk17
+        ] = await Promise.all([
+          javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`),
+          javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`),
+          javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`),
+          javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`)
+        ]);
       }
 
       if (this.remoteFeatures.uname) {
@@ -453,9 +458,10 @@ export default class IBMi {
       }
 
       callbacks.progress({ message: `Checking Code for IBM i components.` });
-      await this.componentManager.startup();
 
-      const componentStates = await this.componentManager.getState();
+      await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
+
+      const componentStates = await this.componentManager.getInstallState();
       this.appendOutput(`\nCode for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
@@ -506,64 +512,14 @@ export default class IBMi {
       }
 
       callbacks.progress({
-        message: `Checking temporary library configuration.`
+        message: `Checking temporary directory and temporary library configuration.`
       });
 
-      //Next, we need to check the temp lib (where temp outfile data lives) exists
-      const createdTempLib = await this.runCommand({
-        command: `CRTLIB LIB(${this.config.tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
-        noLibList: true
-      });
 
-      if (createdTempLib.code === 0) {
-        tempLibrarySet = true;
-      } else {
-        const messages = Tools.parseMessages(createdTempLib.stderr);
-        if (messages.findId(`CPF2158`) || messages.findId(`CPF2111`)) { //Already exists, hopefully ok :)
-          tempLibrarySet = true;
-        }
-        else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
-          const tempLibExists = await this.runCommand({
-            command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-            noLibList: true
-          });
-
-          if (tempLibExists.code === 0) {
-            //We're all good if no errors
-            tempLibrarySet = true;
-          } else if (currentLibrary && !currentLibrary.startsWith(`Q`)) {
-            //Using ${currentLibrary} as the temporary library for temporary data.
-            this.config.tempLibrary = currentLibrary;
-            tempLibrarySet = true;
-          }
-        }
-      }
-
-      callbacks.progress({
-        message: `Checking temporary directory configuration.`
-      });
-
-      let tempDirSet = false;
-      // Next, we need to check if the temp directory exists
-      let result = await this.sendCommand({
-        command: `[ -d "${this.config.tempDir}" ]`
-      });
-
-      if (result.code === 0) {
-        // Directory exists
-        tempDirSet = true;
-      } else {
-        // Directory does not exist, try to create it
-        let result = await this.sendCommand({
-          command: `mkdir -p ${this.config.tempDir}`
-        });
-        if (result.code === 0) {
-          // Directory created
-          tempDirSet = true;
-        } else {
-          // Directory not created
-        }
-      }
+      const [tempLibrarySet, tempDirSet] = await Promise.all([
+        this.ensureTempLibraryExists(currentLibrary),
+        this.ensureTempDirectory()
+      ]);
 
       if (!tempDirSet) {
         this.config.tempDir = `/tmp`;
@@ -618,19 +574,20 @@ export default class IBMi {
           message: `Checking for bad data areas.`
         });
 
-        const QCPTOIMPF = await this.runCommand({
-          command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-          noLibList: true
-        });
+        const [QCPTOIMPF, QCPFRMIMPF] = await Promise.all([
+          this.runCommand({
+            command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+            noLibList: true
+          }),
+          this.runCommand({
+            command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+            noLibList: true
+          })
+        ]);
 
         if (QCPTOIMPF?.code === 0) {
           callbacks.uiErrorHandler(this, `QCPTOIMPF_exists`);
         }
-
-        const QCPFRMIMPF = await this.runCommand({
-          command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-          noLibList: true
-        });
 
         if (QCPFRMIMPF?.code === 0) {
           callbacks.uiErrorHandler(this, `QCPFRMIMPF_exists`);
@@ -939,6 +896,7 @@ export default class IBMi {
         qccsid: this.qccsid,
         jobCcsid: this.userJobCcsid,
         remoteFeatures: this.remoteFeatures,
+        installedComponents: componentStates,
         remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
         badDataAreasChecked: true,
         libraryListValidated: true,
@@ -973,6 +931,74 @@ export default class IBMi {
     finally {
       IBMi.connectionManager.update(this.config!);
     }
+  }
+
+  private async ensureTempLibraryExists(fallbackTempLib: string) {
+    let tempLibrarySet: boolean = false;
+
+    if (!this.config) {
+      return false;
+    }
+
+    const createdTempLib = await this.runCommand({
+      command: `CRTLIB LIB(${this.config.tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
+      noLibList: true
+    });
+
+    if (createdTempLib.code === 0) {
+      tempLibrarySet = true;
+    } else {
+      const messages = Tools.parseMessages(createdTempLib.stderr);
+      if (messages.findId(`CPF2158`) || messages.findId(`CPF2111`)) { //Already exists, hopefully ok :)
+        tempLibrarySet = true;
+      }
+      else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
+        const tempLibExists = await this.runCommand({
+          command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+          noLibList: true
+        });
+
+        if (tempLibExists.code === 0) {
+          //We're all good if no errors
+          tempLibrarySet = true;
+        } else if (fallbackTempLib && !fallbackTempLib.startsWith(`Q`)) {
+          //Using ${currentLibrary} as the temporary library for temporary data.
+          this.config.tempLibrary = fallbackTempLib;
+          tempLibrarySet = true;
+        }
+      }
+    }
+
+    return tempLibrarySet;
+  }
+
+  private async ensureTempDirectory() {
+    let tempDirSet: boolean = false;
+
+    if (!this.config) {
+      return false;
+    }
+
+    let result = await this.sendCommand({
+      command: `[ -d "${this.config.tempDir}" ]`
+    });
+
+    if (result.code === 0) {
+      // Directory exists
+      tempDirSet = true;
+    } else {
+      // Directory does not exist, try to create it
+      let result = await this.sendCommand({
+        command: `mkdir -p ${this.config.tempDir}`
+      });
+      if (result.code === 0) {
+        // Directory created
+        tempDirSet = true;
+      } else {
+        // Directory not created
+      }
+    }
+    return tempDirSet;
   }
 
   /**
@@ -1260,7 +1286,7 @@ export default class IBMi {
   }
 
   getComponentStates() {
-    return this.componentManager.getState();
+    return this.componentManager.getInstallState();
   }
 
   /**
