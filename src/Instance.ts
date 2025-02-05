@@ -8,6 +8,7 @@ import { VsCodeConfig } from "./config/Configuration";
 import { EventEmitter } from "stream";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 import { VscodeTools } from "./ui/Tools";
+import { refreshDebugSensitiveItems } from "./debug/server";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -35,7 +36,12 @@ export default class Instance {
   public setActiveConnection(name: string) {
     const index = this.connections.findIndex(c => c.currentConnectionName === name);
     if (index !== -1) {
+      const shouldRefresh = this.activeConnection !== index;
       this.activeConnection = index;
+
+      if (shouldRefresh) {
+        this.refreshUi();
+      }
     } else {
       this.activeConnection = -1;
     }
@@ -78,6 +84,16 @@ export default class Instance {
     this.output.channel.clear();
     this.output.content = ``;
     this.output.writeCount = 0;
+  }
+
+  public refreshUi() {
+    Promise.all([
+      vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, this.getConnections().length),
+      refreshDebugSensitiveItems()
+    ]);
   }
 
   connect(options: ConnectionOptions): Promise<ConnectionResult> {
@@ -154,6 +170,8 @@ export default class Instance {
         if (result.success) {
           await this.addConnection(connection);
           this.validateActiveIndex();
+
+          this.refreshUi();
           break;
 
         } else {
@@ -184,12 +202,8 @@ export default class Instance {
     if (connection) {
       connection.dispose();
     }
-      
-    await Promise.all([
-      vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
-      vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
-      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
-    ]);
+
+    this.refreshUi();
   }
 
   private async addConnection(connection: IBMi) {
@@ -204,11 +218,11 @@ export default class Instance {
     });
 
     this.connections.push(connection);
+    this.validateActiveIndex();
+
     this.storage.setConnectionName(connection.currentConnectionName);
     await IBMi.GlobalStorage.setLastConnection(connection.currentConnectionName);
     this.fire({event: `connected`, connection});
-    
-    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, this.connection !== undefined);
   }
 
   getConnection() {

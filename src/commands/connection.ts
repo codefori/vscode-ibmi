@@ -29,5 +29,27 @@ export function registerConnectionCommands(context: ExtensionContext, instance: 
         window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
+
+    commands.registerCommand(`code-for-ibmi.switchActiveConnection`, () => {
+      const availableConnections = instance.getConnections();
+
+      if (availableConnections.length === 0) {
+        window.showErrorMessage(`No connections found.`);
+        return;
+      }
+
+      if (availableConnections.length === 1) {
+        window.showInformationMessage(`Only one connection found. Automatically connecting.`);
+        return;
+      }
+
+      const connectionNames = availableConnections.map(c => c.currentConnectionName);
+
+      window.showQuickPick(connectionNames, {placeHolder: `Select a connection to switch to`}).then(async (selectedConnection) => {
+        if (selectedConnection) {
+          instance.setActiveConnection(selectedConnection);
+        }
+      });
+    })
   ]
 }

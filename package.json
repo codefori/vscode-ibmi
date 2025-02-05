@@ -902,6 +902,11 @@
 		},
 		"commands": [
 			{
+				"command": "code-for-ibmi.switchActiveConnection",
+				"title": "Switch Active Connection",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.setToDefault",
 				"title": "Reset to Default Profile",
 				"category": "IBM i",
