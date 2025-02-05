@@ -27,8 +27,22 @@ export interface ConnectionOptions {
 export default class Instance {
   private connections: IBMi[] = [];
 
+  private activeConnection = -1;
   private get connection(): IBMi|undefined {
-    return this.connections[0];
+    return this.connections[this.activeConnection];
+  }
+
+  public setActiveConnection(name: string) {
+    const index = this.connections.findIndex(c => c.currentConnectionName === name);
+    if (index !== -1) {
+      this.activeConnection = index;
+    } else {
+      this.activeConnection = -1;
+    }
+  }
+
+  private validateActiveIndex() {
+    this.activeConnection = this.connections.length - 1;
   }
 
   private output = {
@@ -139,6 +153,7 @@ export default class Instance {
 
         if (result.success) {
           await this.addConnection(connection);
+          this.validateActiveIndex();
           break;
 
         } else {
@@ -179,12 +194,13 @@ export default class Instance {
 
   private async addConnection(connection: IBMi) {
     connection.setDisconnectedCallback(async (conn) => {
+      this.fire({event: `disconnected`, connection: conn});
+
       const existingConnection = this.connections.findIndex(c => c.currentConnectionName === conn.currentConnectionName);
       if (existingConnection !== -1) {
         this.connections.splice(existingConnection, 1);
+        this.validateActiveIndex();
       }
-
-      this.fire({event: `disconnected`, connection: conn});
     });
 
     this.connections.push(connection);
