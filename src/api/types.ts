@@ -183,22 +183,22 @@ export type SearchHitLine = {
 }
 
 export interface ProgramExportImportInfo {
-  program_library: string, 
-  program_name: string, 
-  object_type: string, 
-  symbol_name: string, 
-  symbol_usage: string,
-  argument_optimization: string,
-  data_item_size: number
+  programLibrary: string, 
+  programName: string, 
+  objectType: string, 
+  symbolName: string, 
+  symbolUsage: string,
+  argumentOptimization: string,
+  dataItemSize: number
 }
 
 export interface ModuleExport {
-  module_library: string, 
-  module_name: string, 
-  module_attr: string, 
-  symbol_name: string, 
-  symbol_type: string,
-  argument_optimization: string,
+  moduleLibrary: string, 
+  moduleName: string, 
+  moduleAttr: string, 
+  symbolName: string, 
+  symbolType: string,
+  argumentOptimization: string,
 }
 
 export * from "./configuration/config/types";

@@ -649,19 +649,15 @@ export default class IBMiContent {
         `and object_type = '${type}'`
       ].join("\n")
     );
-    if (results.length) {
-      return results.map(result => ({
-        program_library: result.PROGRAM_LIBRARY,
-        program_name: result.PROGRAM_NAME,
-        object_type: result.OBJECT_TYPE,
-        symbol_name: result.SYMBOL_NAME,
-        symbol_usage: result.SYMBOL_USAGE,
-        argument_optimization: result.ARGUMENT_OPTIMIZATION,
-        data_item_size: result.DATA_ITEM_SIZE
-      } as ProgramExportImportInfo));
-    } else {
-      return [];
-    }
+    return results.map(result => ({
+      programLibrary: result.PROGRAM_LIBRARY,
+      programName: result.PROGRAM_NAME,
+      objectType: result.OBJECT_TYPE,
+      symbolName: result.SYMBOL_NAME,
+      symbolUsage: result.SYMBOL_USAGE,
+      argumentOptimization: result.ARGUMENT_OPTIMIZATION,
+      dataItemSize: result.DATA_ITEM_SIZE
+    } as ProgramExportImportInfo));
   }
 
   /**
@@ -678,17 +674,14 @@ export default class IBMiContent {
         ` from QTEMP.${outfile}`
       ].join("\n")
     );
-    if (results.length) {
-      return results.map(result => ({
-        module_library: result.MODULE_LIBRARY,
-        module_name: result.MODULE_NAME,
-        module_attr: result.MODULE_ATTR,
-        symbol_name: result.SYMBOL_NAME,
-        symbol_type: result.SYMBOL_TYPE,
-        argument_optimization: result.ARGUMENT_OPTIMIZATION
-      } as ModuleExport));
-    }
-    return [];
+    return results.map(result => ({
+      moduleLibrary: result.MODULE_LIBRARY,
+      moduleName: result.MODULE_NAME,
+      moduleAttr: result.MODULE_ATTR,
+      symbolName: result.SYMBOL_NAME,
+      symbolType: result.SYMBOL_TYPE,
+      argumentOptimization: result.ARGUMENT_OPTIMIZATION
+    } as ModuleExport));
   }
 
   /**

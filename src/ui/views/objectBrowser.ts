@@ -546,16 +546,16 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       let exports: ProgramExportImportInfo[] | ModuleExport[] = [];
       if (node.object.type === '*MODULE') {
         exports = (await contentApi.getModuleExports(node.object.library, node.object.name))
-          .filter(exp => exp.symbol_type === 'PROCEDURE');
+          .filter(exp => exp.symbolType === 'PROCEDURE');
       } else {
         exports = (await contentApi.getProgramExportImportInfo(node.object.library, node.object.name, node.object.type))
-          .filter(info => info.symbol_usage === '*PROCEXP');
+          .filter(info => info.symbolUsage === '*PROCEXP');
       }
       const content = [
         `/*  Binder source generated from ${node}  */`,
         ``,
         `STRPGMEXP PGMLVL(*CURRENT) /* SIGNATURE("") */`,
-        ...exports.map(info => `  EXPORT SYMBOL("${info.symbol_name}")`),
+        ...exports.map(info => `  EXPORT SYMBOL("${info.symbolName}")`),
         `ENDPGMEXP`,
       ].join("\n");
       const textDoc = await vscode.workspace.openTextDocument({ language: 'bnd', content });
