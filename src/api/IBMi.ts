@@ -17,6 +17,7 @@ import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
 import { EventEmitter } from 'stream';
 import { ConnectionConfig } from './configuration/config/types';
+import { EditorPath } from '../typings';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -1431,5 +1432,33 @@ export default class IBMi {
 
   debugPTFInstalled() {
     return this.remoteFeatures[`startDebugService.sh`] !== undefined;
+  }
+
+  /**
+   * @deprecated Use {@link IBMiContent.uploadFiles} instead.
+   */
+  uploadFiles(files: { local: EditorPath, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    return this.content.uploadFiles(files, options);
+  }
+
+  /**
+   * @deprecated Use {@link IBMiContent.downloadFiles} instead.
+   */
+  downloadFile(localFile: EditorPath, remoteFile: string) {
+    return this.content.downloadFile(localFile, remoteFile);
+  }
+
+  /**
+   * @deprecated Use {@link IBMiContent.uploadDirectory} instead.
+   */
+  uploadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    return this.content.uploadDirectory(localDirectory, remoteDirectory, options);
+  }
+
+  /**
+   * @deprecated Use {@link IBMiContent.downloadDirectory} instead.
+   */
+  downloadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    return this.content.downloadDirectory(localDirectory, remoteDirectory, options);
   }
 }
