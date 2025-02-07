@@ -85,7 +85,7 @@ export const DeployToolsSuite: TestSuite = {
     name: `Deploy Tools API tests`,
     notConcurrent: true,
     before: async () => {
-        const features = instance.getConnection()?.remoteFeatures;
+        const features = instance.getActiveConnection()?.remoteFeatures;
         assert.ok(features?.stat, "stat is required to run deploy tools test suite");
         assert.ok(features?.md5sum, "md5sum is required to run deploy tools test suite");
 
@@ -210,7 +210,7 @@ export const DeployToolsSuite: TestSuite = {
         }
 
         if (fakeProject.remotePath && await instance.getContent()?.isDirectory(fakeProject.remotePath)) {
-            await instance.getConnection()?.sendCommand({ command: `rm -rf ${fakeProject.remotePath}` })
+            await instance.getActiveConnection()?.sendCommand({ command: `rm -rf ${fakeProject.remotePath}` })
         }
     },
 }
@@ -269,9 +269,9 @@ async function getRemoteFilesInfo() {
     const remoteFiles: FilesInfo = new Map;
 
     //Get dates
-    const stat = (await instance.getConnection()?.sendCommand({
+    const stat = (await instance.getActiveConnection()?.sendCommand({
         directory: fakeProject.remotePath,
-        command: `find . -type f -exec ${instance.getConnection()?.remoteFeatures.stat} '{}' --printf="%n %s\\n" \\;`
+        command: `find . -type f -exec ${instance.getActiveConnection()?.remoteFeatures.stat} '{}' --printf="%n %s\\n" \\;`
     }));
     assert.strictEqual(0, stat?.code, "Remote stat call failed");
     stat?.stdout.split("\n")
@@ -279,9 +279,9 @@ async function getRemoteFilesInfo() {
         .forEach(([file, date]) => remoteFiles.set(file.substring(2), { date, md5: "" }));
 
     //Get md5 sums
-    const md5sum = (await instance.getConnection()?.sendCommand({
+    const md5sum = (await instance.getActiveConnection()?.sendCommand({
         directory: fakeProject.remotePath,
-        command: `${instance.getConnection()?.remoteFeatures.md5sum} $(find . -type f);`
+        command: `${instance.getActiveConnection()?.remoteFeatures.md5sum} $(find . -type f);`
     }));
     assert.strictEqual(0, md5sum?.code, "Remote md5sum call failed");
     md5sum?.stdout.split("\n")

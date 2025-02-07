@@ -37,7 +37,7 @@ export const ActionSuite: TestSuite = {
   before: async () => {
     const config = instance.getConfig();
     const storage = instance.getStorage();
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
 
     const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
     const tempDir = instance.getConfig()?.tempDir;
@@ -64,7 +64,7 @@ export const ActionSuite: TestSuite = {
   tests: [
     {
       name: `Variable expansion test`, test: async () => {
-        const connection = instance.getConnection()!;
+        const connection = instance.getActiveConnection()!;
         const result = await CompileTools.runCommand(connection, {
           command: 'echo "&CURLIB &MYTEXT"',
           env: { '&MYTEXT': `&BRANCHLIB &BRANCH`, '&BRANCHLIB': 'MYLIB', '&BRANCH': 'my/lib' },
@@ -118,7 +118,7 @@ export const ActionSuite: TestSuite = {
       name: `Create Bound RPG Program (from member, custom action)`, test: async () => {
         const config = instance.getConfig();
         const content = instance.getContent();
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const tempLib = config!.tempLibrary;
 
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(HELLO) SRCTYPE(RPGLE)` });
@@ -142,7 +142,7 @@ export const ActionSuite: TestSuite = {
       name: `Create Bound RPG Program failure (from member, custom action)`, test: async () => {
         const config = instance.getConfig();
         const content = instance.getContent();
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const tempLib = config!.tempLibrary;
 
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(THEBADONE) SRCTYPE(RPGLE)` });
@@ -184,6 +184,6 @@ async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: s
     sourceFile: false
   } as IBMiObject));
 
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   await connection?.runCommand({ command: `DLTOBJ OBJ(${library}/HELLO) OBJTYPE(*PGM)` });
 }

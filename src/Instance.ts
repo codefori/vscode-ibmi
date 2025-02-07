@@ -189,8 +189,8 @@ export default class Instance {
     this.refreshUi();
   }
 
-  getConnectionByHost(host: string) {
-    return this.connections.find(c => c.currentHost === host);
+  getConnectionById(id: string) {
+    return this.connections.find(c => c.id === id);
   }
 
   public setActiveConnection(name: string) {
@@ -242,7 +242,7 @@ export default class Instance {
   }
 
   getActiveConnection() {
-    return this.connection;
+    return this.connection!;
   }
 
   getActiveConnections() {

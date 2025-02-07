@@ -30,7 +30,7 @@ export const ContentSuite: TestSuite = {
           `}`
         ].join(`\n`);
 
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const config = instance.getConfig()!;
 
         assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);

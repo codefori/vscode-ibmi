@@ -12,7 +12,7 @@ export async function registerUriHandler(context: ExtensionContext) {
       async handleUri(uri: Uri) {
         console.log(uri);
 
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
 
         switch (uri.path) {
           case `/connect`:

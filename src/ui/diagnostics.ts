@@ -101,7 +101,7 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
 }
 
 export function handleEvfeventLines(lines: string[], instance: Instance, evfeventInfo: EvfEventInfo) {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   const config = instance.getConfig();
   const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 

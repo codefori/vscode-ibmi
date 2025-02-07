@@ -19,7 +19,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const config = instance.getConfig();
         const storage = instance.getStorage();
         if (connection && storage && config) {
@@ -76,7 +76,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async () => {
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const content = instance.getContent();
         const config = instance.getConfig();
         if (connection && content && config) {
@@ -120,7 +120,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary: WithLibrary) => {
         const content = instance.getContent();
         const config = instance.getConfig();
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         if (content && config && connection) {
           const addingLib = connection.upperCaseName(newLibrary.library);
 
@@ -161,7 +161,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       vscode.commands.registerCommand(`code-for-ibmi.removeFromLibraryList`, async (node: LibraryListNode) => {
         if (node) {
           //Running from right click
-          const connection = instance.getConnection();
+          const connection = instance.getActiveConnection();
           const config = instance.getConfig();
           if (connection && config) {
             let libraryList = config.libraryList;
@@ -183,7 +183,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         if (node) {
           //Running from right click
           const config = instance.getConfig();
-          const connection = instance.getConnection();
+          const connection = instance.getActiveConnection();
           if (connection && config) {
             const libraryList = config.libraryList;
 
@@ -204,7 +204,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         if (node) {
           //Running from right click
           const config = instance.getConfig();
-          const connection = instance.getConnection();
+          const connection = instance.getActiveConnection();
           if (connection && config) {
             const libraryList = config.libraryList;
             const index = libraryList.findIndex(library => connection.upperCaseName(library) === node.library);
@@ -241,7 +241,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       vscode.commands.registerCommand(`code-for-ibmi.setCurrentLibrary`, async (node: WithLibrary) => {
         const library = node.library;
         if (library) {
-          const connection = instance.getConnection();
+          const connection = instance.getActiveConnection();
           const content = instance.getContent();
           const config = instance.getConfig();
           const storage = instance.getStorage();
@@ -273,11 +273,11 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
   async getChildren(): Promise<LibraryListNode[]> {
     const items = [];
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     if (connection) {
       const content = instance.getContent();
       const config = instance.getConfig();
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       if (connection && content && config) {
         const currentLibrary = connection.upperCaseName(config.currentLibrary);
 
@@ -306,7 +306,7 @@ class LibraryListNode extends vscode.TreeItem implements WithLibrary {
 }
 
 async function changeCurrentLibrary(library: string) {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   const config = instance.getConfig();
   const storage = instance.getStorage();
   if (connection && config && storage) {

@@ -131,10 +131,11 @@ class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   getFilters(): BrowserItem[] {
+    const connection = instance.getActiveConnection();
     const config = getConfig();
     const filters = config.objectFilters;
     if (filters.length) {
-      return filters.map(filter => new ObjectBrowserFilterItem(filter));
+      return filters.map(filter => new ObjectBrowserFilterItem(connection, filter));
     } else {
       return [new CreateFilterItem()];
     }
@@ -169,7 +170,7 @@ class CreateFilterItem extends BrowserItem {
 
 class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
   readonly library: string;
-  constructor(filter: ObjectFilters) {
+  constructor(readonly connection: IBMi, filter: ObjectFilters) {
     super(filter, filter.name, { icon: filter.protected ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
     this.library = parseFilter(filter.library, filter.filterType).noFilter ? filter.library : '';
     this.contextValue = `filter${this.library ? "_library" : ''}${this.isProtected() ? `_readonly` : ``}`;
@@ -189,7 +190,7 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
     else {
       return (await getContent().getLibraries(this.filter))
         .map(object => {
-          return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(this, object) : new ObjectBrowserObjectItem(this, object);
+          return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(this.connection, this, object) : new ObjectBrowserObjectItem(this.connection, this, object);
         });
     }
   }
@@ -217,7 +218,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
   readonly sort: SortOptions = { order: "name", ascending: true };
   readonly path: string;
 
-  constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
+  constructor(readonly connection: IBMi, parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     super(parent.filter, correctCase(object.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
 
@@ -228,6 +229,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
+      authority: connection.id,
       path: `/${object.library}/${object.name}.${type}`,
     });
   }
@@ -314,7 +316,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
   readonly path: string;
   readonly library: string;
 
-  constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
+  constructor(readonly connection: IBMi, parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     const icon = Object.entries(objectIcons).find(([key]) => key === type.toUpperCase())?.[1] || objectIcons[``];
     const isLibrary = type === 'LIB';
@@ -330,6 +332,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
       path: `/${object.library}/${object.name}.${type}`,
+      authority: connection.id,
       fragment: object.attribute
     });
 
@@ -375,7 +378,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.contextValue = `member${readonly ? `_readonly` : ``}`;
     this.description = member.text;
 
-    this.resourceUri = getMemberUri(member, { readonly });
+    this.resourceUri = getMemberUri(member, { readonly, connection: parent.connection });
     this.path = this.resourceUri.path.substring(1);
     this.tooltip = VscodeTools.memberToToolTip(this.path, member);
 
@@ -1319,7 +1322,7 @@ function getConfig() {
 }
 
 function getConnection() {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   if (connection) {
     return connection;
   }
@@ -1391,7 +1394,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: O
         memberFilter = filter?.member;
       }
 
-      const results = await Search.searchMembers(instance.getConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
+      const results = await Search.searchMembers(instance.getActiveConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
       clearInterval(messageTimeout)
       if (results.hits.length) {
         const objectNamesLower = IBMi.connectionManager.get(`ObjectBrowser.showNamesInLowercase`);
@@ -1422,7 +1425,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: O
 async function listObjects(item: ObjectBrowserFilterItem, filter?: ObjectFilters) {
   return (await getContent().getObjectList(filter || item.filter, objectSortOrder()))
     .map(object => {
-      return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(item, object) : new ObjectBrowserObjectItem(item, object);
+      return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(item.connection, item, object) : new ObjectBrowserObjectItem(item.connection, item, object);
     });
 }
 

@@ -73,7 +73,7 @@ export namespace Terminal {
   }
 
   async function selectAndOpen(context: vscode.ExtensionContext, options?: { openType?: TerminalType, currentDirectory?: string }) {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     const configuration = instance.getConfig();
     if (connection && configuration) {
       const type = options?.openType || (await vscode.window.showQuickPick(typeItems, {

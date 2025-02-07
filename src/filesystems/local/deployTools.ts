@@ -330,7 +330,7 @@ export namespace DeployTools {
   }
 
   export function buildPossibleDeploymentDirectory(workspace: vscode.WorkspaceFolder) {
-    const user = instance.getConnection()?.currentUser;
+    const user = instance.getActiveConnection()?.currentUser;
     //User should not be empty but we'll keep tmp as a fallback location
     return user ? path.posix.join('/', 'home', user, 'builds', workspace.name) : path.posix.join('/', 'tmp', 'builds', workspace.name);
   }

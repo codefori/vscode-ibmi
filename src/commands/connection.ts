@@ -9,7 +9,7 @@ export function registerConnectionCommands(context: ExtensionContext, instance: 
   return [
     commands.registerCommand(`code-for-ibmi.connectDirect`,
       async (connectionData: ConnectionData, reloadSettings = false, savePassword = false): Promise<boolean> => {
-        const existingConnection = instance.getConnection();
+        const existingConnection = instance.getActiveConnection();
 
         if (existingConnection) {
           return false;

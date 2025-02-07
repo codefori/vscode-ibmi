@@ -116,7 +116,7 @@ async function setupUserFixture(connectionName: string, fixture: ConnectionFixtu
 
   await vscode.commands.executeCommand(`code-for-ibmi.connectTo`, connectionName, true);
 
-  let connection = instance.getConnection();
+  let connection = instance.getActiveConnection();
   if (!connection) {
     configuringFixture = false;
     return `Failed to connect to ${connectionName}`;
@@ -227,7 +227,7 @@ async function testSuiteRunner(suite: TestSuite, withGap?: boolean) {
 };
 
 async function runTest(test: TestCase) {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
 
   if (connection) {
     console.log(`Running ${test.name}`);

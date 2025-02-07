@@ -229,7 +229,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
   }
 
   private async moveOrCopyItems(ifsBrowserItems: IFSItem[], toDirectory: IFSDirectoryItem) {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     ifsBrowserItems = ifsBrowserItems.filter(item => item.path !== toDirectory.path && (item.parent && item.parent instanceof IFSItem && item.parent.path !== toDirectory.path));
     if (connection && ifsBrowserItems.length) {
       const dndBehavior = getDragDropBehavior();
@@ -274,7 +274,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
   }
 
   private async copyMembers(memberUris: vscode.Uri[], toDirectory: IFSDirectoryItem) {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     if (connection && memberUris && memberUris.length) {
       try {
         for (let uri of memberUris) {
@@ -423,7 +423,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToBottom`, (node: IFSShortcutItem) => ifsBrowser.moveShortcut(node, "bottom")),
 
     vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node?: IFSDirectoryItem) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
       if (connection && config) {
         const value = `${node?.path || config.homeDirectory}/`;
@@ -480,7 +480,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node: IFSDirectoryItem, files?: vscode.Uri[]) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
 
       if (config && connection) {
@@ -540,7 +540,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
       if (connection && config) {
         if (items || singleItem) {
@@ -635,7 +635,7 @@ Please type "{0}" to confirm deletion.`, dirName);
           return;
         }
       }
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
       if (config && connection) {
         const homeDirectory = config.homeDirectory;
@@ -685,7 +685,7 @@ Please type "{0}" to confirm deletion.`, dirName);
     }),
     vscode.commands.registerCommand(`code-for-ibmi.copyIFS`, async (node: IFSItem) => {
       const config = instance.getConfig();
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
 
       if (config && connection) {
         const homeDirectory = config.homeDirectory;
@@ -713,7 +713,7 @@ Please type "{0}" to confirm deletion.`, dirName);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node?: IFSItem) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
 
       if (connection?.remoteFeatures.grep && config) {
@@ -773,7 +773,7 @@ Please type "{0}" to confirm deletion.`, dirName);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.ifs.find`, async (node?: IFSItem) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
 
       if (connection?.remoteFeatures.find && config) {
@@ -833,7 +833,7 @@ Please type "{0}" to confirm deletion.`, dirName);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node: IFSItem, nodes?: IFSItem[]) => {
-      const ibmi = instance.getConnection();
+      const ibmi = instance.getActiveConnection();
       if (ibmi) {
         const items = (nodes || [node]).filter(reduceIFSPath);
         const saveIntoDirectory = items.length > 1 || items[0].file.type === "directory";
@@ -945,7 +945,7 @@ async function doSearchInStreamfiles(searchTerm: string, searchPath: string) {
       progress.report({
         message: l10n.t(`"{0}" in {1}.`, searchTerm, searchPath)
       });
-      const results = await Search.searchIFS(instance.getConnection()!, searchPath, searchTerm);
+      const results = await Search.searchIFS(instance.getActiveConnection()!, searchPath, searchTerm);
       if (results?.hits.length) {
         openIFSSearchResults(searchPath, results);
       } else {
@@ -967,7 +967,7 @@ async function doFindStreamfiles(findTerm: string, findPath: string) {
       progress.report({
         message: l10n.t(`Finding filenames with "{0}" in {1}.`, findTerm, findPath)
       });
-      const results = (await Search.findIFS(instance.getConnection()!, findPath, findTerm));
+      const results = (await Search.findIFS(instance.getActiveConnection()!, findPath, findTerm));
       if (results?.hits.length) {
         openIFSSearchResults(findPath, results);
       } else {

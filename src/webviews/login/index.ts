@@ -20,7 +20,7 @@ export class Login {
    * @param {} context
    */
   static async show(context: vscode.ExtensionContext) {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     if (connection) {
       if (!safeDisconnect()) return;
     }

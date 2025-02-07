@@ -51,7 +51,7 @@ export namespace Deployment {
       `Initialize deployment`,
       () => {
         const workspaces = vscode.workspace.workspaceFolders;
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const config = instance.getConfig();
         const storage = instance.getStorage();
 
@@ -104,7 +104,7 @@ export namespace Deployment {
   }
 
   export function getConnection(): IBMi {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     if (!connection) {
       throw new Error("Please connect to an IBM i");
     }

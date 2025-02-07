@@ -29,23 +29,21 @@ export class ExtendedIBMiContent {
    * @param {string} mbr 
    */
   async downloadMemberContentWithDates(uri: vscode.Uri) {
-    const content = instance.getContent();
-    const config = instance.getConfig();
-    const connection = instance.getConnection();
-    if (connection && config && content) {
+    const connection = instance.getConnectionById(uri.authority);
+    if (connection) {
       const sourceColourSupport = IBMi.connectionManager.get<boolean>(`showSeuColors`);
-      const tempLib = config.tempLibrary;
+      const tempLib = connection.getConfig().tempLibrary;
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
       const { library, file, name } = connection.parserMemberPath(uri.path);
       try {
-        await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${library}"."${file}"("${name}")`);
+        await connection.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${library}"."${file}"("${name}")`);
       } catch (e) {
         console.log(e);
       }
 
       if (!this.sourceDateHandler.recordLengths.has(alias)) {
-        let recordLength = await this.getRecordLength(aliasPath, library, file);
+        let recordLength = await this.getRecordLength(connection, aliasPath, library, file);
         this.sourceDateHandler.recordLengths.set(alias, recordLength);
       }
 
@@ -89,22 +87,19 @@ export class ExtendedIBMiContent {
    * @param {string} lib
    * @param {string} spf
    */
-  private async getRecordLength(aliasPath: string, lib: string, spf: string): Promise<number> {
-    const content = instance.getContent();
+  private async getRecordLength(connection: IBMi, aliasPath: string, lib: string, spf: string): Promise<number> {
     let recordLength: number = DEFAULT_RECORD_LENGTH;
 
-    if (content) {
-      const result = await content.runSQL(`select length(SRCDTA) as LENGTH from ${aliasPath} limit 1`);
+    const result = await connection.runSQL(`select length(SRCDTA) as LENGTH from ${aliasPath} limit 1`);
+    if (result.length > 0) {
+      recordLength = Number(result[0].LENGTH);
+    } else {
+      const result = await connection.runSQL(`select row_length-12 as LENGTH
+                                              from QSYS2.SYSTABLES
+                                            where SYSTEM_TABLE_SCHEMA = '${lib}' and SYSTEM_TABLE_NAME = '${spf}'
+                                            limit 1`);
       if (result.length > 0) {
         recordLength = Number(result[0].LENGTH);
-      } else {
-        const result = await content.runSQL(`select row_length-12 as LENGTH
-                                               from QSYS2.SYSTABLES
-                                              where SYSTEM_TABLE_SCHEMA = '${lib}' and SYSTEM_TABLE_NAME = '${spf}'
-                                              limit 1`);
-        if (result.length > 0) {
-          recordLength = Number(result[0].LENGTH);
-        }
       }
     }
 
@@ -117,12 +112,11 @@ export class ExtendedIBMiContent {
    * @param {string} body 
    */
   async uploadMemberContentWithDates(uri: vscode.Uri, body: string) {
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
-    if (connection && config) {
+    const connection = instance.getConnectionById(uri.authority);
+    if (connection) {
       const setccsid = connection.remoteFeatures.setccsid;
 
-      const tempLib = config.tempLibrary;
+      const tempLib = connection.getConfig().tempLibrary;
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
 
@@ -137,7 +131,7 @@ export class ExtendedIBMiContent {
         const tmpobj = await tmpFile();
 
         const sourceData = body.split(`\n`);
-        const recordLength = this.sourceDateHandler.recordLengths.get(alias) || await this.getRecordLength(aliasPath, library, file);
+        const recordLength = this.sourceDateHandler.recordLengths.get(alias) || await this.getRecordLength(connection, aliasPath, library, file);
 
         const decimalSequence = sourceData.length >= 10000;
 

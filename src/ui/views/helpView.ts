@@ -34,7 +34,7 @@ export class HelpView implements vscode.TreeDataProvider<vscode.TreeItem> {
       new HelpIssueItem()
     ];
 
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     if (connection) {
       children.push(new HelpLogItem());
     }
@@ -123,7 +123,7 @@ async function openNewIssue() {
 }
 
 async function downloadLogs() {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   const logs: any[] = [];
 
   if (connection) {
@@ -244,7 +244,7 @@ function getExtensions(active: boolean) {
 }
 
 async function getRemoteSection() {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   const config = instance.getConfig();
   const content = instance.getContent();
   if (connection && config && content) {
