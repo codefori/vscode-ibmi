@@ -45,7 +45,8 @@ class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   getShortCuts() {
-    return instance.getConfig()?.ifsShortcuts.map(directory => new IFSShortcutItem(directory)) || [];
+    const connection = instance.getActiveConnection();
+    return connection?.getConfig().ifsShortcuts.map(directory => new IFSShortcutItem(connection, directory)) || [];
   }
 
   getParent(item: BrowserItem) {
@@ -133,7 +134,7 @@ class IFSFileItem extends IFSItem {
     this.contextValue = "streamfile";
     this.iconPath = vscode.ThemeIcon.File;
 
-    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
+    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile`, authority: ifsParent.connection.id });
 
     this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
@@ -148,7 +149,7 @@ class IFSFileItem extends IFSItem {
 }
 
 class IFSDirectoryItem extends IFSItem {
-  constructor(file: IFSFile, parent?: IFSDirectoryItem) {
+  constructor(readonly connection: IBMi, file: IFSFile, parent?: IFSDirectoryItem) {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
     const protectedDir = isProtected(this.file.path);
     this.contextValue = `directory${protectedDir ? `_protected` : ``}`;
@@ -156,16 +157,17 @@ class IFSDirectoryItem extends IFSItem {
   }
 
   async getChildren(): Promise<BrowserItem[]> {
-    const content = instance.getContent();
-    if (content) {
+    const connection = instance.getActiveConnection();
+    if (connection) {
+      const content = connection.getContent();
       try {
-        const showHidden = instance.getConfig()?.showHiddenFiles;
+        const showHidden = connection.getConfig().showHiddenFiles;
         const filterIFSFile = (file: IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
         const objects = await content.getFileList(this.path, this.sort, handleFileListErrors);
         const directories = objects.filter(f => filterIFSFile(f, "directory"));
         const streamFiles = objects.filter(f => filterIFSFile(f, "streamfile"));
         await storeIFSList(this.path, streamFiles.map(o => o.name));
-        return [...directories.map(directory => new IFSDirectoryItem(directory, this)),
+        return [...directories.map(directory => new IFSDirectoryItem(this.connection, directory, this)),
         ...streamFiles.map(file => new IFSFileItem(file, this))];
       } catch (e: any) {
         console.log(e);
@@ -178,8 +180,8 @@ class IFSDirectoryItem extends IFSItem {
 }
 
 class IFSShortcutItem extends IFSDirectoryItem {
-  constructor(readonly shortcut: string) {
-    super({ name: shortcut, path: shortcut, type: "directory" })
+  constructor(readonly connection: IBMi, readonly shortcut: string) {
+    super(connection, { name: shortcut, path: shortcut, type: "directory" })
 
     const protectedDir = isProtected(this.file.path);
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
