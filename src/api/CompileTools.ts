@@ -10,6 +10,7 @@ export interface ILELibrarySettings {
 
 export namespace CompileTools {
   export const NEWLINE = `\r\n`;
+  export const DID_NOT_RUN = -123;
 
   function expandVariables(variables: Variable) {
     for (const key in variables) {
@@ -48,10 +49,15 @@ export namespace CompileTools {
     }
   }
 
+  interface RunCommandEvents {
+    writeEvent?: (content: string) => void;
+    commandConfirm?: (command: string) => Promise<string>;
+  }
+
   /**
    * Execute a command
    */
-  export async function runCommand(connection: IBMi, options: RemoteCommand, writeEvent?: (content: string) => void): Promise<CommandResult> {
+  export async function runCommand(connection: IBMi, options: RemoteCommand, events: RunCommandEvents = {}): Promise<CommandResult> {
     const config = connection.getConfig();
     if (config && connection) {
       const cwd = options.cwd;
@@ -75,26 +81,30 @@ export namespace CompileTools {
         variables
       );
 
+      if (events.commandConfirm) {
+        commandString = await events.commandConfirm(commandString);
+      }
+
       if (commandString) {
         const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
-        if (writeEvent) {
+        if (events.writeEvent) {
           if (options.environment === `ile` && !options.noLibList) {
-            writeEvent(`Current library: ` + ileSetup.currentLibrary + NEWLINE);
-            writeEvent(`Library list: ` + ileSetup.libraryList.join(` `) + NEWLINE);
+            events.writeEvent(`Current library: ` + ileSetup.currentLibrary + NEWLINE);
+            events.writeEvent(`Library list: ` + ileSetup.libraryList.join(` `) + NEWLINE);
           }
           if (options.cwd) {
-            writeEvent(`Working directory: ` + options.cwd + NEWLINE);
+            events.writeEvent(`Working directory: ` + options.cwd + NEWLINE);
           }
-          writeEvent(`Commands:\n${commands.map(command => `\t${command}\n`).join(``)}` + NEWLINE);
+          events.writeEvent(`Commands:\n${commands.map(command => `\t${command}\n`).join(``)}` + NEWLINE);
         }
 
-        const callbacks: StandardIO = writeEvent ? {
+        const callbacks: StandardIO = events.writeEvent ? {
           onStdout: (data) => {
-            writeEvent(data.toString().replaceAll(`\n`, NEWLINE));
+            events.writeEvent!(data.toString().replaceAll(`\n`, NEWLINE));
           },
           onStderr: (data) => {
-            writeEvent(data.toString().replaceAll(`\n`, NEWLINE));
+            events.writeEvent!(data.toString().replaceAll(`\n`, NEWLINE));
           }
         } : {};
 
@@ -148,18 +158,19 @@ export namespace CompileTools {
 
         commandResult.command = commandString;
         return commandResult;
+        
+      } else {
+        return {
+          code: DID_NOT_RUN,
+          command: options.command,
+          stdout: ``,
+          stderr: `Command execution failed. (No command)`,
+        };
       }
     }
     else {
       throw new Error("Please connect to an IBM i");
     }
-
-    return {
-      code: 1,
-      command: options.command,
-      stdout: ``,
-      stderr: `Command execution failed. (Internal)`,
-    };
   }
 
   function buildLibraryList(config: ILELibrarySettings): string[] {

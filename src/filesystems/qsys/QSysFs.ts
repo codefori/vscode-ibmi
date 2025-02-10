@@ -1,9 +1,9 @@
 import { parse as parsePath } from "path";
 import { parse, ParsedUrlQueryInput, stringify } from "querystring";
 import vscode, { FilePermission, FileSystemError } from "vscode";
-import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
+import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
@@ -99,8 +99,8 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
         const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;
         const connection = instance.getConnection();
-        if (path !== '/' && connection) {
-            const member = type === vscode.FileType.File ? parsePath(path).name : undefined;
+        if (connection && type === vscode.FileType.File) {
+            const member = parsePath(path).name;
             const qsysPath = { ...Tools.parseQSysPath(path), member };
             const attributes = await this.getMemberAttributes(connection, qsysPath);
             if (attributes) {
@@ -220,8 +220,9 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-        const content = instance.getConnection()?.getContent();
-        if (content) {
+        const connection = instance.getConnection();
+        if (connection) {
+            const content = connection.getContent();
             const qsysPath = Tools.parseQSysPath(uri.path);
             if (qsysPath.name) {
                 return (await content.getMemberList({ library: qsysPath.library, sourceFile: qsysPath.name }))
@@ -232,7 +233,8 @@ export class QSysFS implements vscode.FileSystemProvider {
                     .map(srcPF => [srcPF.name, vscode.FileType.Directory]);
             }
             else if (uri.path === '/') {
-                return (await content.getLibraries({ library: '*' })).map(library => [library.name, vscode.FileType.Directory]);
+                return (await connection.runSQL(`select OBJNAME from table (QSYS2.OBJECT_STATISTICS ('*ALLSIMPLE', 'LIB', '*ALLSIMPLE'))`))
+                    .map(row => [row.OBJNAME as string, vscode.FileType.Directory]);
             }
         }
         throw FileSystemError.FileNotFound(uri);

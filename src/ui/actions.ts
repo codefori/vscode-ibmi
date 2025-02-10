@@ -256,8 +256,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
         let actionName = chosenAction.name;
         let hasRun = false;
 
-        let commandString = chosenAction.command;
-        if (commandString) {
+        const commandConfirm = async (commandString: string): Promise<string> => {
           const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
           const promptedCommands = [];
           for (let command of commands) {
@@ -269,7 +268,8 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
             promptedCommands.push(command);
             if (!command) break;
           }
-          commandString = !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
+
+          return !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
         }
 
         const exitCode = await new Promise<number>(resolve =>
@@ -334,21 +334,26 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
                       }
                     }
 
-                    const commandResult = await CompileTools.runCommand(connection, {
-                      title: chosenAction.name,
-                      environment,
-                      command: chosenAction.command,
-                      cwd: remoteCwd,
-                      env: variables,
-                    }, (content) => writeEmitter.fire(content));
+                    const commandResult = await CompileTools.runCommand(connection,
+                      {
+                        title: chosenAction.name,
+                        environment,
+                        command: chosenAction.command,
+                        cwd: remoteCwd,
+                        env: variables,
+                      }, {
+                        writeEvent: (content) => writeEmitter.fire(content),
+                        commandConfirm
+                      }
+                    );
 
-                    const useLocalEvfevent =
-                      fromWorkspace && chosenAction.postDownload &&
-                      (chosenAction.postDownload.includes(`.evfevent`) || chosenAction.postDownload.includes(`.evfevent/`));
-
-                    if (commandResult) {
+                    if (commandResult && commandResult.code !== CompileTools.DID_NOT_RUN) {
                       hasRun = true;
                       const isIleCommand = environment === `ile`;
+
+                      const useLocalEvfevent =
+                        fromWorkspace && chosenAction.postDownload &&
+                        (chosenAction.postDownload.includes(`.evfevent`) || chosenAction.postDownload.includes(`.evfevent/`));
 
                       const possibleObject = getObjectFromCommand(commandResult.command);
                       if (isIleCommand && possibleObject) {
@@ -373,102 +378,104 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
                           writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
                         }
                       }
-                    }
 
-                    if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
-                      if (fromWorkspace) {
-                        const remoteDir = remoteCwd;
-                        const localDir = fromWorkspace.uri;
+                      if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
+                        if (fromWorkspace) {
+                          const remoteDir = remoteCwd;
+                          const localDir = fromWorkspace.uri;
 
-                        const postDownloads: { type: vscode.FileType, localPath: string, remotePath: string }[] = [];
-                        const downloadDirectories = new Set<vscode.Uri>();
-                        for (const download of chosenAction.postDownload) {
-                          const remotePath = path.posix.join(remoteDir, download);
-                          const localPath = vscode.Uri.joinPath(localDir, download).path;
+                          const postDownloads: { type: vscode.FileType, localPath: string, remotePath: string }[] = [];
+                          const downloadDirectories = new Set<vscode.Uri>();
+                          for (const download of chosenAction.postDownload) {
+                            const remotePath = path.posix.join(remoteDir, download);
+                            const localPath = vscode.Uri.joinPath(localDir, download).path;
 
-                          let type: vscode.FileType;
-                          if (await content.isDirectory(remotePath)) {
-                            downloadDirectories.add(vscode.Uri.joinPath(localDir, download));
-                            type = vscode.FileType.Directory;
-                          }
-                          else {
-                            const directory = path.parse(download).dir;
-                            if (directory) {
-                              downloadDirectories.add(vscode.Uri.joinPath(localDir, directory));
+                            let type: vscode.FileType;
+                            if (await content.isDirectory(remotePath)) {
+                              downloadDirectories.add(vscode.Uri.joinPath(localDir, download));
+                              type = vscode.FileType.Directory;
                             }
-                            type = vscode.FileType.File;
+                            else {
+                              const directory = path.parse(download).dir;
+                              if (directory) {
+                                downloadDirectories.add(vscode.Uri.joinPath(localDir, directory));
+                              }
+                              type = vscode.FileType.File;
+                            }
+
+                            postDownloads.push({ remotePath, localPath, type })
                           }
 
-                          postDownloads.push({ remotePath, localPath, type })
-                        }
-
-                        //Clear and create every local download directories
-                        for (const downloadPath of downloadDirectories) {
-                          try {
-                            const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
-                            if (stat.type !== vscode.FileType.Directory) {
-                              if (await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")) {
-                                await vscode.workspace.fs.delete(downloadPath);
+                          //Clear and create every local download directories
+                          for (const downloadPath of downloadDirectories) {
+                            try {
+                              const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
+                              if (stat.type !== vscode.FileType.Directory) {
+                                if (await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")) {
+                                  await vscode.workspace.fs.delete(downloadPath);
+                                  throw new Error("Create directory");
+                                }
+                              }
+                              else if (stat.type === vscode.FileType.Directory) {
+                                await vscode.workspace.fs.delete(downloadPath, { recursive: true });
                                 throw new Error("Create directory");
                               }
                             }
-                            else if (stat.type === vscode.FileType.Directory) {
-                              await vscode.workspace.fs.delete(downloadPath, { recursive: true });
-                              throw new Error("Create directory");
+                            catch (e) {
+                              //Either fs.stat did not find the folder or it wasn't a folder and it's been deleted above
+                              try {
+                                await vscode.workspace.fs.createDirectory(downloadPath)
+                              }
+                              catch (error) {
+                                vscode.window.showWarningMessage(`Failed to create download path ${downloadPath}: ${error}`);
+                                console.log(error);
+                                closeEmitter.fire(1);
+                              }
                             }
                           }
-                          catch (e) {
-                            //Either fs.stat did not find the folder or it wasn't a folder and it's been deleted above
-                            try {
-                              await vscode.workspace.fs.createDirectory(downloadPath)
+
+                          // Then we download the files that is specified.
+                          const downloads = postDownloads.map(
+                            async (postDownload) => {
+                              const content = connection.getContent();
+                              if (postDownload.type === vscode.FileType.Directory) {
+                                return content.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
+                              } else {
+                                return content.downloadFile(postDownload.localPath, postDownload.remotePath);
+                              }
                             }
-                            catch (error) {
-                              vscode.window.showWarningMessage(`Failed to create download path ${downloadPath}: ${error}`);
-                              console.log(error);
+                          );
+
+                          await Promise.all(downloads)
+                            .then(async result => {
+                              // Done!
+                              writeEmitter.fire(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}\n`);
+
+                              // Process locally downloaded evfevent files:
+                              if (useLocalEvfevent) {
+                                refreshDiagnosticsFromLocal(instance, evfeventInfo);
+                                problemsFetched = true;
+                              }
+                            })
+                            .catch(error => {
+                              vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
+                              writeEmitter.fire(`Failed to download a file after Action: ${error.message}\n`);
                               closeEmitter.fire(1);
-                            }
-                          }
+                            });
                         }
-
-                        // Then we download the files that is specified.
-                        const downloads = postDownloads.map(
-                          async (postDownload) => {
-                            const content = connection.getContent();
-                            if (postDownload.type === vscode.FileType.Directory) {
-                              return content.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
-                            } else {
-                              return content.downloadFile(postDownload.localPath, postDownload.remotePath);
-                            }
-                          }
-                        );
-
-                        await Promise.all(downloads)
-                          .then(async result => {
-                            // Done!
-                            writeEmitter.fire(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}\n`);
-
-                            // Process locally downloaded evfevent files:
-                            if (useLocalEvfevent) {
-                              refreshDiagnosticsFromLocal(instance, evfeventInfo);
-                              problemsFetched = true;
-                            }
-                          })
-                          .catch(error => {
-                            vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
-                            writeEmitter.fire(`Failed to download a file after Action: ${error.message}\n`);
-                            closeEmitter.fire(1);
-                          });
                       }
-                    }
 
-                    if (problemsFetched && viewControl === `problems`) {
-                      commands.executeCommand(`workbench.action.problems.focus`);
+                      if (problemsFetched && viewControl === `problems`) {
+                        commands.executeCommand(`workbench.action.problems.focus`);
+                      }
+                    } else {
+                      writeEmitter.fire(`Command did not run.` + CompileTools.NEWLINE);
                     }
 
                   } catch (e) {
                     writeEmitter.fire(`${e}\n`);
                     vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
-                    closeEmitter.fire(1);
+                    successful = false;
                   }
 
                   closeEmitter.fire(successful ? 0 : 1);
@@ -570,82 +577,82 @@ function getObjectFromCommand(baseCommand?: string): CommandObject | undefined {
 }
 
 
-  /**
-   * @param  name action's name
-   * @param command action's command string
-   * @return the new command
-   */
-  async function showCustomInputs(name: string, command: string, title?: string): Promise<string> {
-    const components = [];
-    let loop = true;
+/**
+ * @param  name action's name
+ * @param command action's command string
+ * @return the new command
+ */
+async function showCustomInputs(name: string, command: string, title?: string): Promise<string> {
+  const components = [];
+  let loop = true;
 
-    let end = 0;
-    while (loop) {
-      const idx = command.indexOf(`\${`, end);
+  let end = 0;
+  while (loop) {
+    const idx = command.indexOf(`\${`, end);
 
-      if (idx >= 0) {
-        const start = idx;
-        end = command.indexOf(`}`, start);
+    if (idx >= 0) {
+      const start = idx;
+      end = command.indexOf(`}`, start);
 
-        if (end >= 0) {
-          let currentInput = command.substring(start + 2, end);
+      if (end >= 0) {
+        let currentInput = command.substring(start + 2, end);
 
-          const [name, label, initialValue] = currentInput.split(`|`);
-          components.push({
-            name,
-            label,
-            initialValue: initialValue || ``,
-            start,
-            end: end + 1
-          });
-        } else {
-          loop = false;
-        }
+        const [name, label, initialValue] = currentInput.split(`|`);
+        components.push({
+          name,
+          label,
+          initialValue: initialValue || ``,
+          start,
+          end: end + 1
+        });
       } else {
         loop = false;
       }
+    } else {
+      loop = false;
     }
-
-    if (components.length) {
-      const commandUI = new CustomUI();
-
-      if (title) {
-        commandUI.addHeading(title, 2);
-      }
-
-      for (const component of components) {
-        if (component.initialValue.includes(`,`)) {
-          //Select box
-          commandUI.addSelect(component.name, component.label, component.initialValue.split(`,`).map((value, index) => (
-            {
-              selected: index === 0,
-              value,
-              description: value,
-              text: `Select ${value}`,
-            }
-          )));
-        } else {
-          //Input box
-          commandUI.addInput(component.name, component.label, '', { default: component.initialValue });
-        }
-      }
-
-      commandUI.addButtons({ id: `execute`, label: `Execute` }, { id: `cancel`, label: `Cancel` });
-
-      const page = await commandUI.loadPage<any>(name);
-      if (page) {
-        page.panel.dispose();
-        if (page.data && page.data.buttons !== `cancel`) {
-          const dataEntries = Object.entries(page.data);
-          for (const component of components.reverse()) {
-            const value = dataEntries.find(([key]) => key === component.name)?.[1];
-            command = command.substring(0, component.start) + value + command.substring(component.end);
-          }
-        } else {
-          command = '';
-        }
-      }
-    }
-
-    return command;
   }
+
+  if (components.length) {
+    const commandUI = new CustomUI();
+
+    if (title) {
+      commandUI.addHeading(title, 2);
+    }
+
+    for (const component of components) {
+      if (component.initialValue.includes(`,`)) {
+        //Select box
+        commandUI.addSelect(component.name, component.label, component.initialValue.split(`,`).map((value, index) => (
+          {
+            selected: index === 0,
+            value,
+            description: value,
+            text: `Select ${value}`,
+          }
+        )));
+      } else {
+        //Input box
+        commandUI.addInput(component.name, component.label, '', { default: component.initialValue });
+      }
+    }
+
+    commandUI.addButtons({ id: `execute`, label: `Execute` }, { id: `cancel`, label: `Cancel` });
+
+    const page = await commandUI.loadPage<any>(name);
+    if (page) {
+      page.panel.dispose();
+      if (page.data && page.data.buttons !== `cancel`) {
+        const dataEntries = Object.entries(page.data);
+        for (const component of components.reverse()) {
+          const value = dataEntries.find(([key]) => key === component.name)?.[1];
+          command = command.substring(0, component.start) + value + command.substring(component.end);
+        }
+      } else {
+        command = '';
+      }
+    }
+  }
+
+  return command;
+}

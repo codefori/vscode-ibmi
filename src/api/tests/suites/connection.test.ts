@@ -4,6 +4,7 @@ import { Tools } from '../../Tools';
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 import IBMi from '../../IBMi';
 import { getJavaHome } from '../../configuration/DebugConfiguration';
+import { CompileTools } from '../../CompileTools';
 
 describe(`connection tests`, {concurrent: true}, () => {
   let connection: IBMi
@@ -216,6 +217,25 @@ describe(`connection tests`, {concurrent: true}, () => {
 
     // Test that QSYSINC is before QSYS2
     expect(qtempIndex < qsysincIndex).toBeTruthy();
+  });
+
+  it('runCommand (ILE, variable expansion)', async () => {    const config = connection.getConfig();
+
+    const result = await CompileTools.runCommand(connection, 
+      {
+        command: `CRTDTAARA DTAARA(&SCOOBY/TEST) TYPE(*CHAR) LEN(10)`,
+        environment: `ile`,
+        env: {'&SCOOBY': `QTEMP`},
+      },
+      {
+        commandConfirm: async (command) => {
+          expect(command).toBe(`CRTDTAARA DTAARA(QTEMP/TEST) TYPE(*CHAR) LEN(10)`);
+          return command;
+        }
+      }
+    );
+
+    expect(result?.code).toBe(0);
   });
 
   it('withTempDirectory and countFiles', async () => {    const content = connection.getContent()!;
