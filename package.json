@@ -2971,7 +2971,7 @@
 		"@types/tar": "^6.1.4",
 		"@types/tmp": "^0.2.3",
 		"@types/vscode": "^1.90.0",
-		"esbuild": "^0.19.2",
+		"esbuild": "^0.25.0",
 		"esbuild-loader": "^3.0.1",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
