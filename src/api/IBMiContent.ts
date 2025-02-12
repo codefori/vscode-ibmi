@@ -251,12 +251,10 @@ export default class IBMiContent {
         } else {
           if (!retry) {
             const messages = Tools.parseMessages(copyResult.stderr);
-            if (messages.findId("CPFA0A9")) {
+            if (messages.findId("CPFA0A9") && asp) {
               //The member may be located on SYSBAS
-              if (asp) {
                 path = Tools.qualifyPath(library, sourceFile, member);
                 retry = true;
-              }
             }
             else {
               throw new Error(`Failed uploading member: ${copyResult.stderr}`);
