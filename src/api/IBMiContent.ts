@@ -154,7 +154,7 @@ export default class IBMiContent {
    */
   async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
   async downloadMemberContent(aspOrLibrary: string | undefined, libraryOrSourceFile: string, sourceFileOrMember: string, memberOrLocalPath?: string, localPath?: string): Promise<string> {
-    const smallSignature = Boolean(aspOrLibrary && libraryOrSourceFile && sourceFileOrMember && !memberOrLocalPath);
+    const smallSignature = Boolean(aspOrLibrary && libraryOrSourceFile && sourceFileOrMember && ((memberOrLocalPath && !localPath) || !memberOrLocalPath));
     const library = this.ibmi.upperCaseName(smallSignature ? String(aspOrLibrary) : libraryOrSourceFile);
     const sourceFile = this.ibmi.upperCaseName(smallSignature ? libraryOrSourceFile : sourceFileOrMember);
     const member = this.ibmi.upperCaseName(smallSignature ? sourceFileOrMember : String(memberOrLocalPath));
