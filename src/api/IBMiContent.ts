@@ -352,8 +352,6 @@ export default class IBMiContent {
       `;
       const results = await this.ibmi.runSQL(statement);
 
-      const asp = this.ibmi.getIAspName(Number(results[0]?.IASP_NUMBER));
-
       objects = results.map(object => ({
         library: 'QSYS',
         name: this.ibmi.sysNameInLocal(String(object.NAME)),
@@ -367,7 +365,7 @@ export default class IBMiContent {
         changed: new Date(Number(object.CHANGED)),
         created_by: object.CREATED_BY,
         owner: object.OWNER,
-        asp
+        asp: this.ibmi.getIAspName(Number(object.IASP_NUMBER))
       } as IBMiObject));
     } else {
       let results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
@@ -578,8 +576,6 @@ export default class IBMiContent {
     }
 
     const objects = (await this.runStatements(createOBJLIST.join(`\n`)));
-
-    const asp = this.ibmi.getIAspName(Number(objects[0]?.IASP_NUMBER));
 
     return objects.map(object => ({
       library: localLibrary,

@@ -128,8 +128,7 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
         path.asp = path.asp || await connection.lookupLibraryIAsp(path.library);
-        let attributes = await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
-        return attributes;
+        return await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
     }
 
     parseMemberPath(connection: IBMi, path: string) {
