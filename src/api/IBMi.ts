@@ -105,6 +105,7 @@ export default class IBMi {
    */
   private iAspInfo: AspInfo[] = [];
   private currentAsp: string|undefined;
+  private libraryAsps = new Map<string, number>();
 
   remoteFeatures: { [name: string]: string | undefined };
 
@@ -1487,26 +1488,26 @@ export default class IBMi {
   getCurrentIAspName() {
     return this.currentAsp;
   }
-
-  private libraryAsps: { [library: string]: number } = {};
-  async lookupLibraryIAsp(library: string) {
-    let foundNumber: number|undefined = this.libraryAsps[library];
+  async lookupLibraryIAsp(library: string): Promise<string|undefined> {
+    let foundNumber = this.libraryAsps.get(library);
 
     if (!foundNumber) {
       const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}'))`);
       const iaspNumber = Number(row?.IASP_NUMBER);
       if (iaspNumber >= 0) {
-        this.libraryAsps[library] = iaspNumber;
+        this.libraryAsps.set(library, iaspNumber);
         foundNumber = iaspNumber;
       }
     }
 
-    return this.getIAspName(foundNumber);
+    if (foundNumber) {
+      return this.getIAspName(foundNumber);
+    }
   }
 
   getLibraryIAsp(library: string) {
-    const found = this.libraryAsps[library];
-    if (found >= 0) {
+    const found = this.libraryAsps.get(library);
+    if (found && found >= 0) {
       return this.getIAspName(found);
     }
   }
