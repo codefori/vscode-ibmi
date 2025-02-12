@@ -90,7 +90,7 @@ export default class IBMiContent {
   }
 
   /**
-   * @deprecated Use downloadStreamfileRaw instead
+   * @deprecated Use {@link IBMiContent.downloadStreamfileRaw()} instead
    */
   async downloadStreamfile(remotePath: string, localPath?: string) {
     const raw = await this.downloadStreamfileRaw(remotePath, localPath);
@@ -127,7 +127,7 @@ export default class IBMiContent {
 
   /**
    * Write utf8 content to a streamfile
-   * @deprecated Use writeStreamfileRaw instead
+   * @deprecated Use {@link IBMiContent.writeStreamfileRaw()} instead
    */
   async writeStreamfile(originalPath: string, content: string) {
     const buffer = Buffer.from(content, `utf8`);
@@ -135,12 +135,29 @@ export default class IBMiContent {
   }
 
   /**
-   * Download the contents of a source member
+   * Download the content of a source member
+   * 
+   * @param library 
+   * @param sourceFile 
+   * @param member 
+   * @param localPath 
    */
-  async downloadMemberContent(library: string, sourceFile: string, member: string, localPath?: string) {
-    library = this.ibmi.upperCaseName(library);
-    sourceFile = this.ibmi.upperCaseName(sourceFile);
-    member = this.ibmi.upperCaseName(member);
+  async downloadMemberContent(library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.downloadMemberContent()} without the `asp` parameter instead.
+   * 
+   * @param asp 
+   * @param library 
+   * @param sourceFile 
+   * @param member 
+   * @param localPath 
+   */
+  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
+  async downloadMemberContent(aspOrLibrary: string | undefined, libraryOrSourceFile: string, sourceFileOrMember: string, memberOrLocalPath?: string, localPath?: string): Promise<string> {
+    const smallSignature = Boolean(aspOrLibrary && libraryOrSourceFile && sourceFileOrMember && !memberOrLocalPath);
+    const library = this.ibmi.upperCaseName(smallSignature ? String(aspOrLibrary) : libraryOrSourceFile);
+    const sourceFile = this.ibmi.upperCaseName(smallSignature ? libraryOrSourceFile : sourceFileOrMember);
+    const member = this.ibmi.upperCaseName(smallSignature ? sourceFileOrMember : String(memberOrLocalPath));
 
     const asp = await this.ibmi.lookupLibraryIAsp(library);
     const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
@@ -197,18 +214,35 @@ export default class IBMiContent {
 
   /**
    * Upload to a member
+   * 
+   * @param library 
+   * @param sourceFile 
+   * @param member 
+   * @param content 
    */
-  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array) {
-    library = this.ibmi.upperCaseName(library);
-    sourceFile = this.ibmi.upperCaseName(sourceFile);
-    member = this.ibmi.upperCaseName(member);
+  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
+  
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.uploadMemberContent()} without the `asp` parameter instead.
+   * @param asp 
+   * @param library 
+   * @param sourceFile 
+   * @param member 
+   * @param content 
+   */
+  async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
+  async uploadMemberContent(aspOrLibrary: string | undefined, libraryOrFile: string, sourceFileOrMember: string, memberOrContent: string | Uint8Array, content?: string | Uint8Array): Promise<boolean> {
+    const fullSignature = Boolean(content);
+    const library = this.ibmi.upperCaseName(fullSignature ? libraryOrFile : String(aspOrLibrary));
+    const sourceFile = this.ibmi.upperCaseName(fullSignature ? sourceFileOrMember : libraryOrFile);
+    const member = this.ibmi.upperCaseName(fullSignature ? String(memberOrContent) : sourceFileOrMember);
     const asp = await this.ibmi.lookupLibraryIAsp(library);
 
     const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
 
     try {
-      await writeFileAsync(tmpobj, content, `utf8`);
+      await writeFileAsync(tmpobj, content || memberOrContent, `utf8`);
       const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
