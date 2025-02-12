@@ -41,9 +41,7 @@ async function createTempRpgle(connection: IBMi) {
 
   const baseContent = `**FREE\ndsply 'hello world';`;
 
-  const uploadResult = await content?.uploadMemberContent(LIBNAME, SPFNAME, MBRNAME, baseContent);
-
-  return uploadResult;
+  return await content?.uploadMemberContent(LIBNAME, SPFNAME, MBRNAME, baseContent);
 }
 
 describe(`iASP tests`, { concurrent: true }, () => {
