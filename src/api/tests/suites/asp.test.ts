@@ -1,8 +1,8 @@
 import assert from "assert";
-import { describe, beforeAll, afterAll, expect, it, beforeEach } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import IBMi from "../../IBMi";
-import { newConnection, CONNECTION_TIMEOUT, disposeConnection } from "../connection";
 import { Search } from "../../Search";
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from "../connection";
 
 const LIBNAME = `VSCODELIBT`;
 const SPFNAME = `VSCODESPFT`;
@@ -20,7 +20,10 @@ function checkAsps(connection: IBMi) {
 
 async function ensureLibExists(connection: IBMi) {
   const detail = connection.getIAspDetail(connection.getCurrentIAspName()!)!;
-  const res = await connection.runCommand({ command: `CRTLIB LIB(${LIBNAME}) ASP(${detail.id})` });
+  const res = await connection.runCommand({ command: `CRTLIB LIB(${LIBNAME}) ASPDEV(${detail.name})` });
+  if (res.code) {
+    assert.strictEqual(res.code, 0, res.stderr || res.stdout);
+  }
 }
 
 async function createTempRpgle(connection: IBMi) {
@@ -38,7 +41,7 @@ async function createTempRpgle(connection: IBMi) {
 
   const baseContent = `**FREE\ndsply 'hello world';`;
 
-  const uploadResult = await content?.uploadMemberContent(undefined, LIBNAME, SPFNAME, MBRNAME, baseContent);
+  const uploadResult = await content?.uploadMemberContent(LIBNAME, SPFNAME, MBRNAME, baseContent);
 
   return uploadResult;
 }
@@ -48,7 +51,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
   let skipAsp = false;
   beforeAll(async () => {
     connection = await newConnection();
-    if (await checkAsps(connection)) {
+    if (checkAsps(connection)) {
       await ensureLibExists(connection);
       await createTempRpgle(connection);
     } else {
@@ -58,6 +61,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
+    await connection.runCommand({ command: `DLTLIB LIB(${LIBNAME})` });
     disposeConnection(connection);
   });
 
@@ -68,7 +72,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
   });
 
   it('Read members in ASP and base', async () => {
-    const aspMbrContents = await connection.getContent()?.downloadMemberContent(undefined, LIBNAME, SPFNAME, MBRNAME);
+    const aspMbrContents = await connection.getContent()?.downloadMemberContent(LIBNAME, SPFNAME, MBRNAME);
 
     assert.ok(aspMbrContents);
   });
@@ -81,7 +85,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
 
   it('can resolve member info from ASP', async () => {
     const resolved = await connection.getContent().memberResolve(MBRNAME, [
-      { library: `QSYS`, name: `QSYSINC` }, 
+      { library: `QSYS`, name: `QSYSINC` },
       { library: LIBNAME, name: SPFNAME }
     ]);
 
