@@ -801,7 +801,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
 
         try {
-          contentApi.uploadMemberContent(asp, library, file, name, data);
+          contentApi.uploadMemberContent(library, file, name, data);
           vscode.window.showInformationMessage(vscode.l10n.t(`Member was uploaded.`));
         } catch (e: any) {
           vscode.window.showErrorMessage(vscode.l10n.t(`Error uploading content to member! {0}`, e));

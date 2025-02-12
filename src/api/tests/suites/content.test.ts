@@ -1,11 +1,11 @@
 
-import { expect, describe, it, afterAll, beforeAll } from 'vitest';
-import util, { TextDecoder } from 'util';
-import tmp from 'tmp';
-import { Tools } from '../../Tools';
 import { posix } from 'path';
+import tmp from 'tmp';
+import util from 'util';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from '../../IBMi';
-import { newConnection, disposeConnection, CONNECTION_TIMEOUT } from '../connection';
+import { Tools } from '../../Tools';
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 
 describe('Content Tests', {concurrent: true}, () => {
   let connection: IBMi
@@ -214,7 +214,7 @@ describe('Content Tests', {concurrent: true}, () => {
     const content = connection.getContent();
 
     const tmpFile = await util.promisify(tmp.file)();
-    const memberContent = await content?.downloadMemberContent(undefined, 'QSYSINC', 'H', 'MATH', tmpFile);
+    const memberContent = await content?.downloadMemberContent('QSYSINC', 'H', 'MATH', tmpFile);
 
     expect(memberContent).toBeTruthy();
   });

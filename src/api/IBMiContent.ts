@@ -137,14 +137,15 @@ export default class IBMiContent {
   /**
    * Download the contents of a source member
    */
-  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string) {
+  async downloadMemberContent(library: string, sourceFile: string, member: string, localPath?: string) {
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
 
-    let retry = false;
-    let path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+    const asp = await this.ibmi.lookupLibraryIAsp(library);
+    const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
     const tempRmt = this.getTempRemote(path);
+    let retry = false;
     while (true) {
       let copyResult: CommandResult;
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
@@ -181,13 +182,6 @@ export default class IBMiContent {
               const result = await this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` });
               retry = !result.code || result.code === 0;
               break;
-            case "CPFA0A9":
-              //The member may be located on SYSBAS
-              if (asp) {
-                path = Tools.qualifyPath(library, sourceFile, member);
-                retry = true;
-              }
-              break;
             default:
               retry = false;
               break;
@@ -204,63 +198,51 @@ export default class IBMiContent {
   /**
    * Upload to a member
    */
-  async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array) {
+  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array) {
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
+    const asp = await this.ibmi.lookupLibraryIAsp(library);
 
     const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
 
-    let retry = false;
     try {
       await writeFileAsync(tmpobj, content, `utf8`);
-      let path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+      const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
 
-      while (true) {
-        let copyResult: CommandResult;
-        if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-          copyResult = { code: 0, stdout: '', stderr: '' };
-          try {
-            await this.ibmi.runSQL([
-              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-              `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-              `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
-            ].join("\n"));
-          } catch (error: any) {
-            copyResult.code = -1;
-            copyResult.stderr = String(error);
-          }
+      let copyResult: CommandResult;
+      if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+        copyResult = { code: 0, stdout: '', stderr: '' };
+        try {
+          await this.ibmi.runSQL([
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
+          ].join("\n"));
+        } catch (error: any) {
+          copyResult.code = -1;
+          copyResult.stderr = String(error);
         }
-        else {
-          copyResult = await this.ibmi.runCommand({
-            command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-            noLibList: true
-          });
-        }
+      }
+      else {
+        copyResult = await this.ibmi.runCommand({
+          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          noLibList: true
+        });
+      }
 
-        if (copyResult.code === 0) {
-          const messages = Tools.parseMessages(copyResult.stderr);
-          if (messages.findId("CPIA083")) {
-            // TODO: what do we do about this, really?
-            // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
-          }
-          return true;
-        } else {
-          if (!retry) {
-            const messages = Tools.parseMessages(copyResult.stderr);
-            if (messages.findId("CPFA0A9") && asp) {
-              //The member may be located on SYSBAS
-                path = Tools.qualifyPath(library, sourceFile, member);
-                retry = true;
-            }
-            else {
-              throw new Error(`Failed uploading member: ${copyResult.stderr}`);
-            }
-          }
+      if (copyResult.code === 0) {
+        const messages = Tools.parseMessages(copyResult.stderr);
+        if (messages.findId("CPIA083")) {
+          // TODO: what do we do about this, really?
+          // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
         }
+        return true;
+      } else {
+        throw new Error(`Failed uploading member: ${copyResult.stderr}`);
       }
     } catch (error) {
       console.log(`Failed uploading member: ` + error);

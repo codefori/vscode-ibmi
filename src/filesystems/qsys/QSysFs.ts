@@ -149,7 +149,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             try {
                 memberContent = this.extendedMemberSupport ?
                     await this.extendedContent.downloadMemberContentWithDates(uri) :
-                    await contentApi.downloadMemberContent(asp, library, file, member);
+                    await contentApi.downloadMemberContent(library, file, member);
             }
             catch (error) {
                 if (await this.stat(uri)) { //Check if exists on an iASP and retry if so
@@ -203,7 +203,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                 this.savedAsMembers.delete(uri.path);
                 this.extendedMemberSupport ?
                     await this.extendedContent.uploadMemberContentWithDates(uri, content.toString()) :
-                    await contentApi.uploadMemberContent(asp, library, file, member, content);
+                    await contentApi.uploadMemberContent(library, file, member, content);
             }
         }
         else {
