@@ -594,7 +594,7 @@ export default class IBMiContent {
       changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
-      asp
+      asp: this.ibmi.getIAspName(Number(object.IASP_NUMBER))
     } as IBMiObject))
       .filter(object => !filters.types || filters.types.length < 1
         || filters.types.includes('*ALL')
