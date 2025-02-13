@@ -93,36 +93,43 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
         const path = uri.path;
-        const pathLength = path.split(`/`).length;
-        if (pathLength > 5 || !path.startsWith('/')) {
+        const pathParts = path.split(`/`).filter(Boolean);
+        if (pathParts.length > 4 || !path.startsWith('/')) {
             throw new vscode.FileSystemError("Invalid member path");
         }
-        const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;
+
+        let type = vscode.FileType.File;
         const connection = instance.getConnection();
-        if (connection && type === vscode.FileType.File) {
-            const member = parsePath(path).name;
-            const qsysPath = { ...Tools.parseQSysPath(path), member };
-            const attributes = await this.getMemberAttributes(connection, qsysPath);
-            if (attributes) {
-                return {
-                    ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
-                    mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
-                    size: Number(attributes.DATA_SIZE),
-                    type,
-                    permissions: member && !this.savedAsMembers.has(uri.path) ? getFilePermission(uri) : undefined
+        if (connection) {
+            const filePathLength = connection.getIAspDetail(pathParts[0]) ? 4 : 3;
+            if(pathParts.length < filePathLength){
+                type = vscode.FileType.Directory;
+            }
+            
+            if (type === vscode.FileType.File) {
+                const member = parsePath(path).name;
+                const qsysPath = { ...Tools.parseQSysPath(path), member };
+                const attributes = await this.getMemberAttributes(connection, qsysPath);
+                if (attributes) {
+                    return {
+                        ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
+                        mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
+                        size: Number(attributes.DATA_SIZE),
+                        type,
+                        permissions: member && !this.savedAsMembers.has(uri.path) ? getFilePermission(uri) : undefined
+                    }
+                } else {
+                    throw FileSystemError.FileNotFound(uri);
                 }
-            } else {
-                throw FileSystemError.FileNotFound(uri);
             }
         }
-        else {
-            return {
-                ctime: 0,
-                mtime: 0,
-                size: 0,
-                type,
-                permissions: getFilePermission(uri)
-            }
+
+        return {
+            ctime: 0,
+            mtime: 0,
+            size: 0,
+            type,
+            permissions: getFilePermission(uri)
         }
     }
 
@@ -185,7 +192,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         if (connection && contentApi) {
             let { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
             asp = asp || await connection.lookupLibraryIAsp(library);
-            
+
             if (!content.length) { //Coming from "Save as"
                 const addMember = await connection.runCommand({
                     command: `ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
