@@ -194,6 +194,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
             else {
                 if (await reconnectFS(uri)) {
+                    this.updateMemberSupport(); //this needs to be done right after reconnecting, before the member is read (the connect event may be triggered too late at this point)
                     return this.readFile(uri, true);
                 }
                 else {
