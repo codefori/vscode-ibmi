@@ -417,11 +417,6 @@
 					"default": true,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
 				},
-				"code-for-ibmi.showSeuColors": {
-					"type": "boolean",
-					"default": false,
-					"description": "If enabled, will colourise lines like SEU. Only supports source members. Requires restart if changed."
-				},
 				"code-for-ibmi.clearOutputEveryTime": {
 					"type": "boolean",
 					"default": true,
