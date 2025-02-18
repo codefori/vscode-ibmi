@@ -121,9 +121,13 @@ export namespace Search {
         });
 
         if (grepRes.code == 0) {
+          const hits = parseGrepOutput(grepRes.stdout);
+          for (var i = 0; i < hits.length; i++) {
+            hits[i].file = await connection.content.getFileInfo(hits[i].path)
+          };
           return {
             term: searchTerm,
-            hits: parseGrepOutput(grepRes.stdout)
+            hits: hits
           }
         }
       } else {

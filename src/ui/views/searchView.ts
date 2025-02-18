@@ -1,5 +1,6 @@
 import path from 'path';
 import vscode from "vscode";
+import { VscodeTools } from "../Tools";
 import { DefaultOpenMode, SearchHit, SearchHitLine, SearchResults, WithPath } from "../../typings";
 
 export function initializeSearchView(context: vscode.ExtensionContext) {
@@ -78,7 +79,7 @@ class HitSource extends vscode.TreeItem implements WithPath {
     this.iconPath = vscode.ThemeIcon.File;
     this.path = result.path;
     this._readonly = result.readonly;
-    this.tooltip = result.path;
+    this.tooltip = result.file ? VscodeTools.ifsFileToToolTip(this.path, result.file) : result.path;
 
     if (hits) {
       this.description = `${hits} hit${hits === 1 ? `` : `s`}`;
