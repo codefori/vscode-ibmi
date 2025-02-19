@@ -209,14 +209,6 @@
 								"default": "QTEMP",
 								"description": "Library used as the current library and &CURLIB variable when running actions."
 							},
-							"sourceASP": {
-								"type": [
-									"string",
-									"null"
-								],
-								"default": null,
-								"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise. You can ignore this column if you have access to `QSYS2.ASP_INFO` as Code for IBM i will fetch ASP information automatically."
-							},
 							"sourceFileCCSID": {
 								"type": "string",
 								"default": "*FILE",

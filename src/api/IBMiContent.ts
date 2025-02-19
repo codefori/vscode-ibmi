@@ -90,7 +90,7 @@ export default class IBMiContent {
   }
 
   /**
-   * @deprecated Use downloadStreamfileRaw instead
+   * @deprecated Use {@link IBMiContent.downloadStreamfileRaw()} instead
    */
   async downloadStreamfile(remotePath: string, localPath?: string) {
     const raw = await this.downloadStreamfileRaw(remotePath, localPath);
@@ -127,7 +127,7 @@ export default class IBMiContent {
 
   /**
    * Write utf8 content to a streamfile
-   * @deprecated Use writeStreamfileRaw instead
+   * @deprecated Use {@link IBMiContent.writeStreamfileRaw()} instead
    */
   async writeStreamfile(originalPath: string, content: string) {
     const buffer = Buffer.from(content, `utf8`);
@@ -135,17 +135,34 @@ export default class IBMiContent {
   }
 
   /**
-   * Download the contents of a source member
+   * Download the content of a source member
+   * 
+   * @param library 
+   * @param sourceFile 
+   * @param member 
+   * @param localPath 
    */
-  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string) {
-    asp = asp || this.config.sourceASP;
-    library = this.ibmi.upperCaseName(library);
-    sourceFile = this.ibmi.upperCaseName(sourceFile);
-    member = this.ibmi.upperCaseName(member);
+  async downloadMemberContent(library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.downloadMemberContent()} without the `asp` parameter instead.
+   * 
+   * @param asp 
+   * @param library 
+   * @param sourceFile 
+   * @param member 
+   * @param localPath 
+   */
+  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
+  async downloadMemberContent(aspOrLibrary: string | undefined, libraryOrSourceFile: string, sourceFileOrMember: string, memberOrLocalPath?: string, localPath?: string): Promise<string> {
+    const smallSignature = Boolean(aspOrLibrary && libraryOrSourceFile && sourceFileOrMember && ((memberOrLocalPath && !localPath) || !memberOrLocalPath));
+    const library = this.ibmi.upperCaseName(smallSignature ? String(aspOrLibrary) : libraryOrSourceFile);
+    const sourceFile = this.ibmi.upperCaseName(smallSignature ? libraryOrSourceFile : sourceFileOrMember);
+    const member = this.ibmi.upperCaseName(smallSignature ? sourceFileOrMember : String(memberOrLocalPath));
 
-    let retry = false;
-    let path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+    const asp = await this.ibmi.lookupLibraryIAsp(library);
+    const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
     const tempRmt = this.getTempRemote(path);
+    let retry = false;
     while (true) {
       let copyResult: CommandResult;
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
@@ -182,13 +199,6 @@ export default class IBMiContent {
               const result = await this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` });
               retry = !result.code || result.code === 0;
               break;
-            case "CPFA0A9":
-              //The member may be located on SYSBAS
-              if (asp) {
-                path = Tools.qualifyPath(library, sourceFile, member);
-                retry = true;
-              }
-              break;
             default:
               retry = false;
               break;
@@ -204,67 +214,69 @@ export default class IBMiContent {
 
   /**
    * Upload to a member
+   * 
+   * @param library 
+   * @param sourceFile 
+   * @param member 
+   * @param content 
    */
-  async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array) {
-    asp = asp || this.config.sourceASP;
-    library = this.ibmi.upperCaseName(library);
-    sourceFile = this.ibmi.upperCaseName(sourceFile);
-    member = this.ibmi.upperCaseName(member);
+  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
+  
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.uploadMemberContent()} without the `asp` parameter instead.
+   * @param asp 
+   * @param library 
+   * @param sourceFile 
+   * @param member 
+   * @param content 
+   */
+  async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
+  async uploadMemberContent(aspOrLibrary: string | undefined, libraryOrFile: string, sourceFileOrMember: string, memberOrContent: string | Uint8Array, content?: string | Uint8Array): Promise<boolean> {
+    const fullSignature = Boolean(content);
+    const library = this.ibmi.upperCaseName(fullSignature ? libraryOrFile : String(aspOrLibrary));
+    const sourceFile = this.ibmi.upperCaseName(fullSignature ? sourceFileOrMember : libraryOrFile);
+    const member = this.ibmi.upperCaseName(fullSignature ? String(memberOrContent) : sourceFileOrMember);
+    const asp = await this.ibmi.lookupLibraryIAsp(library);
 
     const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
 
-    let retry = false;
     try {
-      await writeFileAsync(tmpobj, content, `utf8`);
-      let path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+      await writeFileAsync(tmpobj, content || memberOrContent, `utf8`);
+      const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
 
-      while (true) {
-        let copyResult: CommandResult;
-        if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-          copyResult = { code: 0, stdout: '', stderr: '' };
-          try {
-            await this.ibmi.runSQL([
-              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-              `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-              `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
-            ].join("\n"));
-          } catch (error: any) {
-            copyResult.code = -1;
-            copyResult.stderr = String(error);
-          }
+      let copyResult: CommandResult;
+      if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+        copyResult = { code: 0, stdout: '', stderr: '' };
+        try {
+          await this.ibmi.runSQL([
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
+          ].join("\n"));
+        } catch (error: any) {
+          copyResult.code = -1;
+          copyResult.stderr = String(error);
         }
-        else {
-          copyResult = await this.ibmi.runCommand({
-            command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-            noLibList: true
-          });
-        }
+      }
+      else {
+        copyResult = await this.ibmi.runCommand({
+          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          noLibList: true
+        });
+      }
 
-        if (copyResult.code === 0) {
-          const messages = Tools.parseMessages(copyResult.stderr);
-          if (messages.findId("CPIA083")) {
-            // TODO: what do we do about this, really?
-            // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
-          }
-          return true;
-        } else {
-          if (!retry) {
-            const messages = Tools.parseMessages(copyResult.stderr);
-            if (messages.findId("CPFA0A9")) {
-              //The member may be located on SYSBAS
-              if (asp) {
-                path = Tools.qualifyPath(library, sourceFile, member);
-                retry = true;
-              }
-            }
-            else {
-              throw new Error(`Failed uploading member: ${copyResult.stderr}`);
-            }
-          }
+      if (copyResult.code === 0) {
+        const messages = Tools.parseMessages(copyResult.stderr);
+        if (messages.findId("CPIA083")) {
+          // TODO: what do we do about this, really?
+          // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
         }
+        return true;
+      } else {
+        throw new Error(`Failed uploading member: ${copyResult.stderr}`);
       }
     } catch (error) {
       console.log(`Failed uploading member: ` + error);
@@ -387,7 +399,7 @@ export default class IBMiContent {
         changed: new Date(Number(object.CHANGED)),
         created_by: object.CREATED_BY,
         owner: object.OWNER,
-        asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
+        asp: this.ibmi.getIAspName(Number(object.IASP_NUMBER))
       } as IBMiObject));
     } else {
       let results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
@@ -612,7 +624,7 @@ export default class IBMiContent {
       changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
-      asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
+      asp: this.ibmi.getIAspName(Number(object.IASP_NUMBER))
     } as IBMiObject))
       .filter(object => !filters.types || filters.types.length < 1
         || filters.types.includes('*ALL')
@@ -674,7 +686,7 @@ export default class IBMiContent {
 
     const results = await this.ibmi.runSQL(statement);
     if (results.length) {
-      const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
+      const asp = this.ibmi.getIAspName(Number(results[0]?.ASP));
       return results.map(result => ({
         asp,
         library,
@@ -794,7 +806,7 @@ export default class IBMiContent {
     // Escape names for shell
     const pathList = files
       .map(file => {
-        const asp = file.asp || this.config.sourceASP;
+        const asp = file.asp || this.ibmi.getCurrentIAspName();
         if (asp && asp.length > 0) {
           return [
             Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
@@ -1051,19 +1063,19 @@ export default class IBMiContent {
     }
   }
 
-  async uploadFiles(files: { local: EditorPath, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
-    await this.ibmi.client!.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
+  uploadFiles(files: { local: EditorPath, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    return this.ibmi.client!.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
   }
 
-  async downloadFile(localFile: EditorPath, remoteFile: string) {
-    await this.ibmi.client!.getFile(Tools.fileToPath(localFile), remoteFile);
+  downloadFile(localFile: EditorPath, remoteFile: string) {
+    return this.ibmi.client!.getFile(Tools.fileToPath(localFile), remoteFile);
   }
 
-  async uploadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client!.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+  uploadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    return this.ibmi.client!.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  async downloadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client!.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+  downloadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    return this.ibmi.client!.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 }
