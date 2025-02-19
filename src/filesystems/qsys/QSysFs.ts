@@ -84,7 +84,6 @@ export class QSysFS implements vscode.FileSystemProvider {
         if (connection && config?.enableSourceDates) {
             if (connection.sqlRunnerAvailable()) {
                 this.extendedMemberSupport = true;
-                this.sourceDateHandler.changeSourceDateMode(config.sourceDateMode);
             } else {
                 vscode.window.showErrorMessage(`Source date support is enabled, but the remote system does not support SQL. Source date support will be disabled.`);
             }
