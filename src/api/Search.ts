@@ -156,9 +156,13 @@ export namespace Search {
         });
 
         if (findRes.code == 0 && findRes.stdout) {
+          const hits = parseFindOutput(findRes.stdout);
+          for (var i = 0; i < hits.length; i++) {
+            hits[i].file = await connection.content.getFileInfo(hits[i].path)
+          };
           return {
             term: findTerm,
-            hits: parseFindOutput(findRes.stdout)
+            hits: hits
           }
         }
       } else {
