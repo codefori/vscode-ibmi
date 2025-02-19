@@ -70,7 +70,7 @@ export class GetMemberInfo implements IBMiComponent {
 
     if (results.length === 1 && results[0].ISSOURCE === 'Y') {
       const result = results[0];
-      const asp = connection.aspInfo[Number(results[0].ASP)];
+      const asp = connection.getIAspName(Number(results[0]?.ASP))
       return {
         asp,
         library: result.LIBRARY,
@@ -102,7 +102,7 @@ export class GetMemberInfo implements IBMiComponent {
     }
 
     return results.filter(row => row.ISSOURCE === 'Y').map(result => {
-      const asp = connection.aspInfo[Number(result.ASP)];
+      const asp = connection.getIAspName(Number(result.ASP));
       return {
         asp,
         library: result.LIBRARY,

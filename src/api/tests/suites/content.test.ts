@@ -1,11 +1,11 @@
 
-import { expect, describe, it, afterAll, beforeAll } from 'vitest';
-import util, { TextDecoder } from 'util';
-import tmp from 'tmp';
-import { Tools } from '../../Tools';
 import { posix } from 'path';
+import tmp from 'tmp';
+import util from 'util';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from '../../IBMi';
-import { newConnection, disposeConnection, CONNECTION_TIMEOUT } from '../connection';
+import { Tools } from '../../Tools';
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 import { ModuleExport, ProgramExportImportInfo } from '../../types';
 
 describe('Content Tests', {concurrent: true}, () => {
@@ -215,7 +215,7 @@ describe('Content Tests', {concurrent: true}, () => {
     const content = connection.getContent();
 
     const tmpFile = await util.promisify(tmp.file)();
-    const memberContent = await content?.downloadMemberContent(undefined, 'QSYSINC', 'H', 'MATH', tmpFile);
+    const memberContent = await content?.downloadMemberContent('QSYSINC', 'H', 'MATH', tmpFile);
 
     expect(memberContent).toBeTruthy();
   });
@@ -666,7 +666,7 @@ describe('Content Tests', {concurrent: true}, () => {
           `select 1 from sysibm.sysdummy1`
         );
         let exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
-        
+
         expect(exports.length).toBe(1);
         expect(exports.at(0)?.symbolName).toBe(id);
       } finally {
@@ -699,10 +699,10 @@ describe('Content Tests', {concurrent: true}, () => {
           `@CRTSRVPGM SRVPGM(${tempLib}/${id}) MODULE(${tempLib}/${id}) EXPORT(*ALL)`,
           `select 1 from sysibm.sysdummy1`
         );
-    
+
         const info: ProgramExportImportInfo[] = (await content.getProgramExportImportInfo(tempLib, id, '*SRVPGM'))
           .filter(info => info.symbolUsage === '*PROCEXP');
-    
+
         expect(info.length).toBe(1);
         expect(info.at(0)?.symbolName).toBe(id);
       } finally {

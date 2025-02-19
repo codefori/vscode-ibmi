@@ -2,8 +2,8 @@ import Crypto from "crypto";
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
 
-import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
+import { instance } from "../../instantiate";
 import { SourceDateMode } from "../../typings";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
@@ -90,10 +90,6 @@ export class SourceDateHandler {
         this.baseSource.clear();
         this.recordLengths.clear();
         this.updateContext();
-      }
-
-      if (vscode.window.visibleTextEditors.some(e => e.document.uri.scheme === 'member')) {
-        vscode.window.showWarningMessage("Source date support has changed; reopen opened editor(s) for the change to take effect.");
       }
     }
   }
