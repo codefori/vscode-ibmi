@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.14.10-dev.0",
+	"version": "2.14.11-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -238,7 +238,7 @@
 								"default": "diff",
 								"enum": [
 									"diff",
-									"edit"									
+									"edit"
 								],
 								"description": "Determine which method should be used to track changes to source dates for source member."
 							},
