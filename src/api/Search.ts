@@ -8,6 +8,7 @@ export namespace Search {
   export async function searchMembers(connection: IBMi, library: string, sourceFile: string, searchTerm: string, members: string|IBMiMember[], readOnly?: boolean,): Promise<SearchResults> {
     const config = connection.getConfig();
     const content = connection.getContent();
+    const infoComponent = connection.getComponent<GetMemberInfo>(GetMemberInfo.ID);
 
     if (connection && config && content) {
       let detailedMembers: IBMiMember[]|undefined;
@@ -58,26 +59,24 @@ export namespace Search {
             const [lib, spf] = dir.split(`/`);
             return detailedMembers!.some(member => member.name === name && member.library === lib && member.file === spf);
           });
-
-        } else {
-          // Else, we need to fetch the member info for each hit so we can display the correct extension
-          const infoComponent = connection?.getComponent<GetMemberInfo>(GetMemberInfo.ID);
-          const memberInfos: IBMiMember[] = hits.map(hit => {
-            const { name, dir } = path.parse(hit.path);
-            const [library, file] = dir.split(`/`);
-
-            return {
-              name,
-              library,
-              file,
-              extension: ``
-            };
-          });
-
-          detailedMembers = await infoComponent?.getMultipleMemberInfo(connection, memberInfos);
         }
 
-        // Then fix the extensions in the hit
+        // We need to fetch the member info for each hit so we can display the correct extension and info.
+        const memberInfos: IBMiMember[] = hits.map(hit => {
+          const { name, dir } = path.parse(hit.path);
+          const [library, file] = dir.split(`/`);
+
+          return {
+            name,
+            library,
+            file,
+            extension: ``
+          };
+        });
+
+        detailedMembers = await infoComponent?.getMultipleMemberInfo(connection, memberInfos);
+
+        // Add extension and member info to the hit.
         for (const hit of hits) {
           const { name, dir } = path.parse(hit.path);
           const [lib, spf] = dir.split(`/`);
@@ -86,6 +85,7 @@ export namespace Search {
 
           if (foundMember) {
             hit.path = connection.sysNameInLocal(`${lib}/${spf}/${name}.${foundMember.extension}`);
+            hit.member = foundMember;
           }
         }
 

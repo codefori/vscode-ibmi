@@ -79,7 +79,9 @@ class HitSource extends vscode.TreeItem implements WithPath {
     this.iconPath = vscode.ThemeIcon.File;
     this.path = result.path;
     this._readonly = result.readonly;
-    this.tooltip = result.file ? VscodeTools.ifsFileToToolTip(this.path, result.file) : result.path;
+    this.tooltip = result.file ? VscodeTools.ifsFileToToolTip(this.path, result.file) :
+                   result.member? VscodeTools.memberToToolTip(this.path, result.member) :
+                   result.path;
 
     if (hits) {
       this.description = `${hits} hit${hits === 1 ? `` : `s`}`;
