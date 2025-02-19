@@ -419,7 +419,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
           const editor = window.activeTextEditor;
           if (editor) {
             currentFile = editor.document.uri;
-            commands.executeCommand(`diff`, currentFile, path);
+            commands.executeCommand(`vscode.diff`, currentFile, path);
             quickPick.hide();
           }
         }
