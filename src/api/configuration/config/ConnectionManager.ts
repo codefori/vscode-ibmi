@@ -28,7 +28,6 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     autoConvertIFSccsid: (parameters.autoConvertIFSccsid === true),
     hideCompileErrors: parameters.hideCompileErrors || [],
     enableSourceDates: parameters.enableSourceDates === true,
-    sourceDateMode: parameters.sourceDateMode || "diff",
     sourceDateGutter: parameters.sourceDateGutter === true,
     encodingFor5250: parameters.encodingFor5250 || `default`,
     terminalFor5250: parameters.terminalFor5250 || `default`,

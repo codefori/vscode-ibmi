@@ -1,7 +1,6 @@
 import { FilterType } from "../../Filter";
 import { DeploymentMethod, ConnectionData } from "../../types";
 
-export type SourceDateMode = "edit" | "diff";
 export type DefaultOpenMode = "browse" | "edit";
 export type ReconnectMode = "always" | "never" | "ask";
 
@@ -18,7 +17,6 @@ export interface ConnectionConfig extends ConnectionProfile {
   autoConvertIFSccsid: boolean;
   hideCompileErrors: string[];
   enableSourceDates: boolean;
-  sourceDateMode: SourceDateMode;
   sourceDateGutter: boolean;
   encodingFor5250: string;
   terminalFor5250: string;
