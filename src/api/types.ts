@@ -184,4 +184,11 @@ export type SearchHitLine = {
   content: string
 }
 
+export interface AspInfo {
+  id: number;
+  name: string;
+  type: string;
+  rdbName: string;
+}
+
 export * from "./configuration/config/types";

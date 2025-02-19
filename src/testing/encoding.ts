@@ -1,11 +1,11 @@
 import assert from "assert";
+import path from "path";
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
-import path from "path";
 
 const contents = {
   '37': [`Hello world`],
@@ -29,7 +29,7 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
   const testPgmName = `T${commands.length}${ccsid}`;
   const sourceFileCreated = await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
 
-  await connection.content.uploadMemberContent(undefined, tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
+  await connection.content.uploadMemberContent(tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
 
   const compileCommand = `CRTBNDCL PGM(${tempLib}/${testPgmName}) SRCFILE(${tempLib}/${testPgmSrcFile}) SRCMBR(${testPgmName}) REPLACE(*YES)`;
   const compileResult = await connection.runCommand({ command: compileCommand, noLibList: true });
@@ -150,10 +150,10 @@ export const EncodingSuite: TestSuite = {
         const attributes = await content?.getAttributes({ library: tempLib, name: tempSPF, member: tempMbr }, `CCSID`);
         assert.ok(attributes);
 
-        const uploadResult = await content?.uploadMemberContent(undefined, tempLib, tempSPF, tempMbr, baseContent);
+        const uploadResult = await content?.uploadMemberContent(tempLib, tempSPF, tempMbr, baseContent);
         assert.ok(uploadResult);
 
-        const memberContentA = await content?.downloadMemberContent(undefined, tempLib, tempSPF, tempMbr);
+        const memberContentA = await content?.downloadMemberContent(tempLib, tempSPF, tempMbr);
         assert.strictEqual(memberContentA, baseContent);
 
         const memberUri = getMemberUri({ library: tempLib, file: tempSPF, name: tempMbr, extension: `TXT` });
@@ -224,7 +224,7 @@ export const EncodingSuite: TestSuite = {
         assert.ok(files.length);
         assert.strictEqual(files[0].name, connection.sysNameInAmerican(testMember) + `.MBR`);
 
-        await connection.content.uploadMemberContent(undefined, tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
+        await connection.content.uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
         const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
         assert.strictEqual(compileResult.code, 0);

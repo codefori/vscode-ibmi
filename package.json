@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.14.10-dev.0",
+	"version": "2.14.11-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -209,14 +209,6 @@
 								"default": "QTEMP",
 								"description": "Library used as the current library and &CURLIB variable when running actions."
 							},
-							"sourceASP": {
-								"type": [
-									"string",
-									"null"
-								],
-								"default": null,
-								"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise. You can ignore this column if you have access to `QSYS2.ASP_INFO` as Code for IBM i will fetch ASP information automatically."
-							},
 							"sourceFileCCSID": {
 								"type": "string",
 								"default": "*FILE",
@@ -243,10 +235,10 @@
 							},
 							"sourceDateMode": {
 								"type": "string",
-								"default": "edit",
+								"default": "diff",
 								"enum": [
-									"edit",
-									"diff"
+									"diff",
+									"edit"
 								],
 								"description": "Determine which method should be used to track changes to source dates for source member."
 							},

@@ -1,16 +1,16 @@
 import { existsSync } from "fs";
 import vscode from "vscode";
-import { ComplexTab, CustomUI, Section } from "../CustomUI";
+import { extensionComponentRegistry } from "../../api/components/manager";
+import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
+import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
 import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
 import { isSEPSupported } from "../../debug/server";
-import { extensionComponentRegistry } from "../../api/components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionConfig, ConnectionData, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
-import IBMi from "../../api/IBMi";
-import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
+import { ComplexTab, CustomUI, Section } from "../CustomUI";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
 
@@ -78,23 +78,23 @@ export class SettingsUI {
 
         const sourceTab = new Section();
         sourceTab
-          .addInput(`sourceASP`, `Source ASP`, `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`, { default: config.sourceASP })
+          .addInput(`sourceASP`, `Source ASP`, `Current ASP is based on the user profile job description and cannot be changed here.`, { default: connection?.getCurrentIAspName() || `*SYSBAS`, readonly: true })
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
           .addSelect(`sourceDateMode`, `Source date tracking mode`, [
             {
-              selected: config.sourceDateMode === `edit`,
-              value: `edit`,
-              description: `Edit mode`,
-              text: `Tracks changes in a simple manner. When a line is changed, the date is updated. (Default)`,
-            },
-            {
               selected: config.sourceDateMode === `diff`,
               value: `diff`,
               description: `Diff mode`,
-              text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
+              text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Default)`,
             },
+            {
+              selected: config.sourceDateMode === `edit`,
+              value: `edit`,
+              description: `Edit mode`,
+              text: `Tracks changes in a simple manner. When a line is changed, the date is updated.`,
+            }            
           ], `Determine which method should be used to track changes while editing source members.`)
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
           .addHorizontalRule()
@@ -290,7 +290,7 @@ export class SettingsUI {
                     //In case we need to play with the data
                     switch (key) {
                       case `sourceASP`:
-                        if (data[key].trim() === ``) data[key] = null;
+                        data[key] = null;
                         break;
                       case `hideCompileErrors`:
                         data[key] = String(data[key]).split(`,`)

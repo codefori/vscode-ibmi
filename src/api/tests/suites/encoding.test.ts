@@ -1,9 +1,9 @@
 import path from "path";
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from "../../IBMi";
 import { Tools } from "../../Tools";
 import { IBMiObject } from "../../types";
-import { describe, it, expect, afterAll, beforeAll } from 'vitest';
-import { newConnection, disposeConnection, CONNECTION_TIMEOUT } from "../connection";
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from "../connection";
 
 const contents = {
   '37': [`Hello world`],
@@ -24,7 +24,7 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
   const testPgmName = `T${commands.length}${ccsid}`;
   const sourceFileCreated = await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
 
-  await connection.content.uploadMemberContent(undefined, tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
+  await connection.content.uploadMemberContent(tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
 
   const compileCommand = `CRTBNDCL PGM(${tempLib}/${testPgmName}) SRCFILE(${tempLib}/${testPgmSrcFile}) SRCMBR(${testPgmName}) REPLACE(*YES)`;
   const compileResult = await connection.runCommand({ command: compileCommand, noLibList: true });
@@ -168,10 +168,10 @@ describe('Encoding tests', {concurrent: true} ,() => {
       const attributes = await content?.getAttributes({ library: tempLib, name: tempSPF, member: tempMbr }, `CCSID`);
       expect(attributes).toBeTruthy();
 
-      const uploadResult = await content?.uploadMemberContent(undefined, tempLib, tempSPF, tempMbr, baseContent);
+      const uploadResult = await content?.uploadMemberContent(tempLib, tempSPF, tempMbr, baseContent);
       expect(uploadResult).toBeTruthy();
 
-      const memberContentA = await content?.downloadMemberContent(undefined, tempLib, tempSPF, tempMbr);
+      const memberContentA = await content?.downloadMemberContent(tempLib, tempSPF, tempMbr);
       expect(memberContentA).toBe(baseContent);
     });
   });
@@ -278,7 +278,7 @@ describe('Encoding tests', {concurrent: true} ,() => {
       const addPf = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
       expect(addPf.code).toBe(0);
 
-      await connection.content.uploadMemberContent(undefined, library, sourceFile, member, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
+      await connection.content.uploadMemberContent(library, sourceFile, member, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
 
       const compileResultA = await connection.runCommand({ command: `CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${sourceFile}) SRCMBR(${member})`, env: { '&CURLIB': library } });
       expect(compileResultA.code).toBe(0);
@@ -335,7 +335,7 @@ describe('Encoding tests', {concurrent: true} ,() => {
     expect(files.length).toBeTruthy();
     expect(files[0].name).toBe(connection.sysNameInAmerican(testMember) + `.MBR`);
 
-    await connection.content.uploadMemberContent(undefined, tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
+    await connection.content.uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
     const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
     expect(compileResult.code).toBe(0);
