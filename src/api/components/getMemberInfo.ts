@@ -56,7 +56,11 @@ export class GetMemberInfo implements IBMiComponent {
   async getMemberInfo(connection: IBMi, library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
     const config = connection.config!;
     const tempLib = config.tempLibrary;
-    const statement = `select * from table(${tempLib}.${this.procedureName}('${library}', '${sourceFile}', '${member}'))`;
+    const statement = ``.concat(`select Library, File, Member, Attr, Extension`,
+                                `     , extract(epoch from (CREATED))*1000 as CREATED`,
+                                `     , extract(epoch from (CHANGED))*1000 as CHANGED`,
+                                `     , Description, isSource`,
+                                `  from table(${tempLib}.${this.procedureName}('${library}', '${sourceFile}', '${member}'))`);
 
     let results: Tools.DB2Row[] = [];
     if (config.enableSQL) {
@@ -88,7 +92,11 @@ export class GetMemberInfo implements IBMiComponent {
     const config = connection.config!;
     const tempLib = config.tempLibrary;
     const statement = members
-      .map(member => `select * from table(${tempLib}.${this.procedureName}('${member.library}', '${member.file}', '${member.name}'))`)
+      .map(member => ``.concat(`select Library, File, Member, Attr, Extension`,
+                               `     , extract(epoch from (CREATED))*1000 as CREATED`,
+                               `     , extract(epoch from (CHANGED))*1000 as CHANGED`,
+                               `     , Description, isSource`,
+                               `  from table(${tempLib}.${this.procedureName}('${member.library}', '${member.file}', '${member.name}'))`))
       .join(' union all ');
 
     let results: Tools.DB2Row[] = [];
