@@ -243,10 +243,10 @@
 							},
 							"sourceDateMode": {
 								"type": "string",
-								"default": "edit",
+								"default": "diff",
 								"enum": [
-									"edit",
-									"diff"
+									"diff",
+									"edit"									
 								],
 								"description": "Determine which method should be used to track changes to source dates for source member."
 							},

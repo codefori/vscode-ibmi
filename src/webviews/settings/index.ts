@@ -1,16 +1,16 @@
 import { existsSync } from "fs";
 import vscode from "vscode";
-import { ComplexTab, CustomUI, Section } from "../CustomUI";
+import { extensionComponentRegistry } from "../../api/components/manager";
+import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
+import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
 import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
 import { isSEPSupported } from "../../debug/server";
-import { extensionComponentRegistry } from "../../api/components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionConfig, ConnectionData, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
-import IBMi from "../../api/IBMi";
-import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
+import { ComplexTab, CustomUI, Section } from "../CustomUI";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
 
@@ -84,17 +84,17 @@ export class SettingsUI {
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
           .addSelect(`sourceDateMode`, `Source date tracking mode`, [
             {
-              selected: config.sourceDateMode === `edit`,
-              value: `edit`,
-              description: `Edit mode`,
-              text: `Tracks changes in a simple manner. When a line is changed, the date is updated. (Default)`,
-            },
-            {
               selected: config.sourceDateMode === `diff`,
               value: `diff`,
               description: `Diff mode`,
-              text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
+              text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Default)`,
             },
+            {
+              selected: config.sourceDateMode === `edit`,
+              value: `edit`,
+              description: `Edit mode`,
+              text: `Tracks changes in a simple manner. When a line is changed, the date is updated.`,
+            }            
           ], `Determine which method should be used to track changes while editing source members.`)
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
           .addHorizontalRule()

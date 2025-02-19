@@ -2,9 +2,9 @@ import fs from "fs";
 import tmp from "tmp";
 import util from "util";
 import vscode from "vscode";
+import IBMi from "../../api/IBMi";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
-import IBMi from "../../api/IBMi";
 
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -19,10 +19,7 @@ export class ExtendedIBMiContent {
   /**
    * Download the contents of a source member using SQL.
    * This option also stores the source dates internally.
-   * @param {string|undefined} asp
-   * @param {string} lib 
-   * @param {string} spf 
-   * @param {string} mbr 
+   * @param {vscode.Uri} uri
    */
   async downloadMemberContentWithDates(uri: vscode.Uri) {
     const content = instance.getContent();
@@ -114,7 +111,22 @@ export class ExtendedIBMiContent {
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
 
-      const sourceDates = this.sourceDateHandler.sourceDateMode === `edit` ? this.sourceDateHandler.baseDates.get(alias) || [] : this.sourceDateHandler.calcNewSourceDates(alias, body);
+      let sourceDates;
+      if (this.sourceDateHandler.sourceDateMode === `edit`) {
+        if (!this.sourceDateHandler.baseDates.get(alias)) {
+          await this.downloadMemberContentWithDates(uri);          
+          sourceDates = this.sourceDateHandler.calcNewSourceDates(alias, body);
+        }
+        else{
+          sourceDates = this.sourceDateHandler.baseDates.get(alias) || [];
+        }        
+      }
+      else {
+        if (!this.sourceDateHandler.baseSource.has(alias)) {
+          await this.downloadMemberContentWithDates(uri);
+        }
+        sourceDates = this.sourceDateHandler.calcNewSourceDates(alias, body);
+      }
 
       const client = connection.client!;
 
