@@ -342,9 +342,9 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
                         cwd: remoteCwd,
                         env: variables,
                       }, {
-                      writeEvent: (content) => writeEmitter.fire(content),
-                      commandConfirm
-                    }
+                        writeEvent: (content) => writeEmitter.fire(content),
+                        commandConfirm
+                      }
                     );
 
                     if (commandResult && commandResult.code !== CompileTools.DID_NOT_RUN) {
