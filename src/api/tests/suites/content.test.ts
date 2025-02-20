@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from '../../IBMi';
 import { Tools } from '../../Tools';
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
+import { ModuleExport, ProgramExportImportInfo } from '../../types';
 
 describe('Content Tests', {concurrent: true}, () => {
   let connection: IBMi
@@ -641,5 +642,79 @@ describe('Content Tests', {concurrent: true}, () => {
     } else {
       throw new Error(`Failed to create schema "${longName}"`);
     }
+  });
+
+  it('getModuleExport', async () => {
+    const content = connection.getContent();
+    const config = connection.getConfig();
+    const tempLib = config!.tempLibrary;
+    const id = `${Tools.makeid().toUpperCase()}`;
+    await connection.withTempDirectory(async directory => {
+      const source = `${directory}/vscodetemp-${id}.clle`;
+      console.log(source);
+      try {
+        await content.runStatements(
+          `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+                           LINE => 'PGM', 
+                           OVERWRITE => 'NONE', 
+                           END_OF_LINE => 'CRLF')`,
+          `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+                           LINE => 'ENDPGM', 
+                           OVERWRITE => 'APPEND', 
+                           END_OF_LINE => 'CRLF')`,
+          `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
+          `select 1 from sysibm.sysdummy1`
+        );
+        let exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
+
+        expect(exports.length).toBe(1);
+        expect(exports.at(0)?.symbolName).toBe(id);
+      } finally {
+        await connection!.runCommand({
+          command: `DLTMOD MODULE(${tempLib}/${id})`,
+          environment: 'ile'
+        });
+      }
+    });
+  });
+
+  it('getProgramExportImportInfo', async () => {
+    const content = connection.getContent();
+    const config = connection.getConfig();
+    const tempLib = config!.tempLibrary;
+    const id = `${Tools.makeid().toUpperCase()}`;
+    await connection.withTempDirectory(async directory => {
+      const source = `${directory}/vscodetemp-${id}.clle`;
+      try {
+        await content.runStatements(
+          `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+                           LINE => 'PGM', 
+                           OVERWRITE => 'NONE', 
+                           END_OF_LINE => 'CRLF')`,
+          `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+                           LINE => 'ENDPGM', 
+                           OVERWRITE => 'APPEND', 
+                           END_OF_LINE => 'CRLF')`,
+          `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
+          `@CRTSRVPGM SRVPGM(${tempLib}/${id}) MODULE(${tempLib}/${id}) EXPORT(*ALL)`,
+          `select 1 from sysibm.sysdummy1`
+        );
+
+        const info: ProgramExportImportInfo[] = (await content.getProgramExportImportInfo(tempLib, id, '*SRVPGM'))
+          .filter(info => info.symbolUsage === '*PROCEXP');
+
+        expect(info.length).toBe(1);
+        expect(info.at(0)?.symbolName).toBe(id);
+      } finally {
+        await connection!.runCommand({
+          command: `DLTSRVPGM SRVPGM(${tempLib}/${id})`,
+          environment: 'ile'
+        });
+        await connection!.runCommand({
+          command: `DLTMOD MODULE(${tempLib}/${id})`,
+          environment: 'ile'
+        });
+      }
+    });
   });
 });

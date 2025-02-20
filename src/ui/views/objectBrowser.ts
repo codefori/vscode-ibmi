@@ -9,7 +9,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
+import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ModuleExport, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, ProgramExportImportInfo, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
@@ -539,6 +539,27 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.revealInObjectBrowser`, async (item: BrowserItem, options?: FocusOptions) => {
       objectTreeViewer.reveal(item, options);
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.generateBinderSource`, async (node: ObjectBrowserObjectItem) => {
+      const contentApi = getContent();
+      let exports: ProgramExportImportInfo[] | ModuleExport[] = [];
+      if (node.object.type === '*MODULE') {
+        exports = (await contentApi.getModuleExports(node.object.library, node.object.name))
+          .filter(exp => exp.symbolType === 'PROCEDURE');
+      } else {
+        exports = (await contentApi.getProgramExportImportInfo(node.object.library, node.object.name, node.object.type))
+          .filter(info => info.symbolUsage === '*PROCEXP');
+      }
+      const content = [
+        `/*  Binder source generated from ${node}  */`,
+        ``,
+        `STRPGMEXP PGMLVL(*CURRENT) /* SIGNATURE("") */`,
+        ...exports.map(info => `  EXPORT SYMBOL("${info.symbolName}")`),
+        `ENDPGMEXP`,
+      ].join("\n");
+      const textDoc = await vscode.workspace.openTextDocument({ language: 'bnd', content });
+      await vscode.window.showTextDocument(textDoc);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string) => {
