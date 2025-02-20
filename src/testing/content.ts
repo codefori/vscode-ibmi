@@ -14,7 +14,7 @@ export const ContentSuite: TestSuite = {
         const content = instance.getContent();
 
         const tmpFile = await util.promisify(tmp.file)();
-        const memberContent = await content?.downloadMemberContent(undefined, 'QSYSINC', 'H', 'MATH', tmpFile);
+        const memberContent = await content?.downloadMemberContent('QSYSINC', 'H', 'MATH', tmpFile);
         const tmpFileContent = (await workspace.fs.readFile(Uri.file(tmpFile))).toString();
 
         assert.strictEqual(tmpFileContent, memberContent);

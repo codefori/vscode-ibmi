@@ -10,8 +10,8 @@ import { getEnvConfig } from "../filesystems/local/env";
 import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { Action, IBMiObject } from "../typings";
-import { File, Folder, createFolder } from "./deployTools";
 import { runAction } from "../ui/actions";
+import { File, Folder, createFolder } from "./deployTools";
 
 export const helloWorldProject: Folder = {
   name: `DeleteMe_${Tools.makeid()}`,
@@ -122,7 +122,7 @@ export const ActionSuite: TestSuite = {
         const tempLib = config!.tempLibrary;
 
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(HELLO) SRCTYPE(RPGLE)` });
-        await content!.uploadMemberContent(undefined, tempLib, 'QRPGLESRC', 'HELLO', helloWorldProject.files![0].content.join('\n'));
+        await content!.uploadMemberContent(tempLib, 'QRPGLESRC', 'HELLO', helloWorldProject.files![0].content.join('\n'));
         const action: Action = {
           "name": "Create Bound RPG Program (CRTBNDRPG)",
           "command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)",
@@ -146,7 +146,7 @@ export const ActionSuite: TestSuite = {
         const tempLib = config!.tempLibrary;
 
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(THEBADONE) SRCTYPE(RPGLE)` });
-        await content!.uploadMemberContent(undefined, tempLib, 'QRPGLESRC', 'THEBADONE', helloWorldProject.files![1].content.join('\n'));
+        await content!.uploadMemberContent(tempLib, 'QRPGLESRC', 'THEBADONE', helloWorldProject.files![1].content.join('\n'));
         const action: Action = {
           "name": "Create Bound RPG Program (CRTBNDRPG)",
           "command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)",

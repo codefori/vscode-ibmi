@@ -12,7 +12,6 @@ import { registerConnectionCommands } from './commands/connection';
 import { registerOpenCommands } from './commands/open';
 import { registerPasswordCommands } from './commands/password';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
-import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
 import IBMi from "./api/IBMi";
@@ -96,11 +95,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       isCaseSensitive: false
     })
   );
-
-  // Color provider
-  if (IBMi.connectionManager.get<boolean>(`showSeuColors`)) {
-    SEUColorProvider.intitialize(context);
-  }
 
   // Register git events based on workspace folders
   if (vscode.workspace.workspaceFolders) {
