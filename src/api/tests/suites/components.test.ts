@@ -70,8 +70,8 @@ describe('Component Tests', () => {
     expect(memberInfoC?.library).toBe(tempLib);
     expect(memberInfoC?.file).toBe(tempSPF);
     expect(memberInfoC?.name).toBe(tempMbr);
-    expect(memberInfoC?.created).toBeTypeOf('number');
-    expect(memberInfoC?.changed).toBeTypeOf('number');
+    expect(memberInfoC?.created).toBeTypeOf('object');
+    expect(memberInfoC?.changed).toBeTypeOf('object');
 
     // Cleanup...
     await connection!.runCommand({
