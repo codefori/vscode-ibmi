@@ -59,7 +59,7 @@ export class GetMemberInfo implements IBMiComponent {
     const statement = `select * from table(${tempLib}.${this.procedureName}('${library}', '${sourceFile}', '${member}'))`;
 
     let results: Tools.DB2Row[] = [];
-    if (config.enableSQL) {
+    if (connection.enableSQL) {
       try {
         results = await connection.runSQL(statement);
       } catch (e) { } // Ignore errors, will return undefined.
@@ -92,7 +92,7 @@ export class GetMemberInfo implements IBMiComponent {
       .join(' union all ');
 
     let results: Tools.DB2Row[] = [];
-    if (config.enableSQL) {
+    if (connection.enableSQL) {
       try {
         results = await connection.runSQL(statement);
       } catch (e) { }; // Ignore errors, will return undefined.
