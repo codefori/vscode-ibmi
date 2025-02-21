@@ -341,6 +341,9 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       });
 
       quickPick.onDidAccept(async () => {
+        quickPick.busy = true;
+        quickPick.enabled = false;
+
         let selection = quickPick.selectedItems.length === 1 ? quickPick.selectedItems[0].label : undefined;
         if (selection && selection !== LOADING_LABEL) {
           if (selection === CLEAR_RECENT) {
@@ -408,6 +411,9 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
             }
           }
         }
+
+        quickPick.busy = false;
+        quickPick.enabled = true;
       });
 
       quickPick.onDidTriggerItemButton((event: QuickPickItemButtonEvent<QuickPickItem>) => {
