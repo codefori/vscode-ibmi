@@ -65,7 +65,7 @@ export class ComponentManager {
       if (!installed || !sameVersion || installed.state === `NotChecked`) {
         await newComponent.check();
       } else {
-        newComponent.overrideState(installed.state);
+        await newComponent.overrideState(installed.state);
       }
 
       this.registered.set(component.getIdentification().name, newComponent);
