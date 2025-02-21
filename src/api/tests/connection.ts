@@ -14,10 +14,29 @@ const testConfig = new JsonConfig();
 export const CONNECTION_TIMEOUT = process.env.VITE_CONNECTION_TIMEOUT ? parseInt(process.env.VITE_CONNECTION_TIMEOUT) : 25000;
 
 const ENV_CREDS = {
-  host: process.env.VITE_SERVER || `localhost`,
+  host: process.env.VITE_SERVER,
   user: process.env.VITE_DB_USER,
   password: process.env.VITE_DB_PASS,
   port: parseInt(process.env.VITE_DB_PORT || `22`)
+}
+
+if (ENV_CREDS.host === undefined) {
+  const messages = [
+    ``,
+    `Please set the environment variables:`,
+    `\tVITE_SERVER`,
+    `\tVITE_DB_USER`,
+    `\tVITE_DB_PASS`,
+    `\tVITE_DB_PORT`,
+    ``,
+    `If you're a developer, make a copy of .env.sample,`,
+    `rename it to .env, and set the values.`,
+    ``,
+  ];
+
+  console.log(messages.join(`\n`));
+
+  process.exit(1);
 }
 
 export async function newConnection() {

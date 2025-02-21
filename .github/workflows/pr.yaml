@@ -39,6 +39,7 @@ jobs:
 
       - name: Post comment
         if: steps.fc.outputs.comment-id == '' && always()
+        continue-on-error: true
         uses: actions/github-script@v5
         with:
           script: |
@@ -51,6 +52,7 @@ jobs:
 
       - name: Update comment
         if: steps.fc.outputs.comment-id != '' && always()
+        continue-on-error: true
         uses: peter-evans/create-or-update-comment@v1
         with:
           edit-mode: replace

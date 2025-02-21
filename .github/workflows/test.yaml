@@ -21,7 +21,13 @@ jobs:
         with:
           node-version: 18
       - run: npm ci
-      - run: npm run test
+
+      - name: Type checker
+        run: npm run typings
+
+      # This step won't run when coming from a fork
+      - name: Test suite
+        run: npm run test
         if: contains(env.VITE_SERVER, '.')
         env:
           VITE_SERVER: ${{ secrets.VITE_SERVER }}
