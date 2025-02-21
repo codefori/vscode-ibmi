@@ -1,11 +1,11 @@
+import path from "path";
 import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
-import { DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
 import Instance from "../Instance";
+import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
-import path from "path";
+import { DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
 import { VscodeTools } from "../ui/Tools";
-import IBMi from "../api/IBMi";
 
 const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;
@@ -367,10 +367,14 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
             window.showInformationMessage(`Cleared cached files.`);
           } else {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
-            if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
+            if ([3,4].includes(selectionSplit.length) || selection.startsWith(`/`)) {
 
               // When selection is QSYS path
               if (!selection.startsWith(`/`) && connection) {
+                if(selectionSplit.length === 4){
+                  //Remove the iASP part
+                  selectionSplit.shift();
+                }
                 const library = selectionSplit[0];
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);

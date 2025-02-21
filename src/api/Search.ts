@@ -26,23 +26,12 @@ export namespace Search {
       }
  
       // First, let's fetch the ASP info
-      let asp = ``;
-      if (config.sourceASP) {
-        asp = `/${config.sourceASP}`;
-      } else if (connection.enableSQL) {
-        try {
-          const [row] = await content.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${library}'))`);
-          const iaspNumber = row?.IASP_NUMBER;
-          if (iaspNumber && typeof iaspNumber === 'number' && connection.aspInfo[iaspNumber]) {
-            asp = `/${connection.aspInfo[iaspNumber]}`;
-          }
-        } catch (e) { }
-      }
+      const asp = await connection.lookupLibraryIAsp(library);
 
       // Then search the members
       const result = await connection.sendQsh({
         command: `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`,
-        directory: connection.sysNameInAmerican(`${asp}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
+        directory: connection.sysNameInAmerican(`${asp ? `/${asp}` : ``}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
       });
 
       if (!result.stderr) {
@@ -85,13 +74,13 @@ export namespace Search {
           const foundMember = detailedMembers?.find(member => member.name === name && member.library === lib && member.file === spf);
 
           if (foundMember) {
-            hit.path = connection.sysNameInLocal(`${lib}/${spf}/${name}.${foundMember.extension}`);
+            hit.path = connection.sysNameInLocal(`${asp ? `${asp}/` : ``}${lib}/${spf}/${name}.${foundMember.extension}`);
           }
         }
 
         return {
           term: searchTerm,
-          hits: hits
+          hits
         }
       }
       else {

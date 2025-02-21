@@ -9,7 +9,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
+import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ModuleExport, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, ProgramExportImportInfo, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
@@ -541,6 +541,27 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       objectTreeViewer.reveal(item, options);
     }),
 
+    vscode.commands.registerCommand(`code-for-ibmi.generateBinderSource`, async (node: ObjectBrowserObjectItem) => {
+      const contentApi = getContent();
+      let exports: ProgramExportImportInfo[] | ModuleExport[] = [];
+      if (node.object.type === '*MODULE') {
+        exports = (await contentApi.getModuleExports(node.object.library, node.object.name))
+          .filter(exp => exp.symbolType === 'PROCEDURE');
+      } else {
+        exports = (await contentApi.getProgramExportImportInfo(node.object.library, node.object.name, node.object.type))
+          .filter(info => info.symbolUsage === '*PROCEXP');
+      }
+      const content = [
+        `/*  Binder source generated from ${node}  */`,
+        ``,
+        `STRPGMEXP PGMLVL(*CURRENT) /* SIGNATURE("") */`,
+        ...exports.map(info => `  EXPORT SYMBOL("${info.symbolName}")`),
+        `ENDPGMEXP`,
+      ].join("\n");
+      const textDoc = await vscode.workspace.openTextDocument({ language: 'bnd', content });
+      await vscode.window.showTextDocument(textDoc);
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string) => {
       const connection = getConnection();
       const toPath = (value: string) => connection.upperCaseName(`${node.path}/${value}`);
@@ -801,7 +822,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
 
         try {
-          contentApi.uploadMemberContent(asp, library, file, name, data);
+          contentApi.uploadMemberContent(library, file, name, data);
           vscode.window.showInformationMessage(vscode.l10n.t(`Member was uploaded.`));
         } catch (e: any) {
           vscode.window.showErrorMessage(vscode.l10n.t(`Error uploading content to member! {0}`, e));
@@ -959,11 +980,12 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
       }
 
       if (parameters.path) {
-        const config = getConfig();
+        const connection = getConnection();
 
         const pathParts = parameters.path.split(`/`);
         if (pathParts[1] !== `*ALL`) {
-          const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? vscode.l10n.t(`(in ASP {0})`, config.sourceASP) : ``);
+          const selectedAsp = connection.getCurrentIAspName();
+          const aspText = (selectedAsp ? vscode.l10n.t(`(in ASP {0})`, selectedAsp) : ``);
 
           const list = IBMi.GlobalStorage.getPreviousSearchTerms();
           const listHeader: vscode.QuickPickItem[] = [
@@ -1348,7 +1370,6 @@ function storeMemberList(path: string, list: string[]) {
 }
 
 async function doSearchInSourceFile(searchTerm: string, path: string, filter?: ObjectFilters) {
-  const content = getContent();
   const [library, sourceFile] = path.split(`/`);
   try {
     await vscode.window.withProgress({

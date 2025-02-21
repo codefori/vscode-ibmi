@@ -23,7 +23,6 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     tempLibrary: parameters.tempLibrary || `ILEDITOR`,
     tempDir: parameters.tempDir || `/tmp`,
     currentLibrary: parameters.currentLibrary || ``,
-    sourceASP: parameters.sourceASP || ``,
     sourceFileCCSID: parameters.sourceFileCCSID || `*FILE`,
     autoConvertIFSccsid: (parameters.autoConvertIFSccsid === true),
     hideCompileErrors: parameters.hideCompileErrors || [],
