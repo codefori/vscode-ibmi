@@ -7,7 +7,7 @@ import { IBMiMember } from "../types";
 export class GetMemberInfo implements IBMiComponent {
   static ID = 'GetMemberInfo';
   private readonly procedureName = 'GETMBRINFO';
-  private readonly currentVersion = 1;
+  private readonly currentVersion = 2;
   private installedVersion = 0;
 
   reset() {
@@ -160,11 +160,15 @@ function getSource(library: string, name: string, version: number) {
     `       , rtrim( substr( Buffer, 39, 10 ) )`,
     `       , rtrim( substr( Buffer, 49, 10 ) )`,
     `       , timestamp_format( case substr( Buffer, 59, 1 )`,
-    `                             when '1' then '20' else '19' end concat `,
-    `                           substr( Buffer, 60, 12 ) , 'YYYYMMDDHH24MISS')`,
+    `                             when '1' then '20' concat substr( Buffer, 60, 12 )`,
+    `                             when '0' then '19' concat substr( Buffer, 60, 12 )`,
+    `                             else '19700101000000'`,
+    `                           end, 'YYYYMMDDHH24MISS')`,
     `       , timestamp_format( case substr( Buffer, 72, 1 )`,
-    `                             when '1' then '20' else '19' end concat `,
-    `                           substr( Buffer, 73, 12 ), 'YYYYMMDDHH24MISS')`,
+    `                             when '1' then '20' concat substr( Buffer, 73, 12 )`,
+    `                             when '0' then '19' concat substr( Buffer, 73, 12 )`,
+    `                             else '19700101000000'`,
+    `                           end, 'YYYYMMDDHH24MISS')`,
     `       , rtrim( substr( Buffer, 85, 50 ) )`,
     `       , case substr( Buffer, 135, 1 ) when '1' then 'Y' else 'N' end`,
     `       );`,
