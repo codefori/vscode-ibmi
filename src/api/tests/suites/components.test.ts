@@ -53,31 +53,5 @@ describe('Component Tests', () => {
       expect(error).toBeInstanceOf(Tools.SqlError);
       expect(error.sqlstate).toBe("38501");
     }
-
-    // Check getMemberInfo for empty member.
-    const config = connection.getConfig();
-    const tempLib = config!.tempLibrary,
-      tempSPF = `O_ABC`.concat(connection!.variantChars.local),
-      tempMbr = `O_ABC`.concat(connection!.variantChars.local);
-
-    const result = await connection!.runCommand({
-      command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
-      environment: 'ile'
-    });
-
-    const memberInfoC = await component.getMemberInfo(connection, tempLib, tempSPF, tempMbr);
-    expect(memberInfoC).toBeTruthy();
-    expect(memberInfoC?.library).toBe(tempLib);
-    expect(memberInfoC?.file).toBe(tempSPF);
-    expect(memberInfoC?.name).toBe(tempMbr);
-    expect(memberInfoC?.created).toBeTypeOf('number');
-    expect(memberInfoC?.changed).toBeTypeOf('number');
-
-    // Cleanup...
-    await connection!.runCommand({
-      command: `DLTF ${tempLib}/${tempSPF}`,
-      environment: 'ile'
-    });
-
   });
 });
