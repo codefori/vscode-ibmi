@@ -766,7 +766,12 @@ export default class IBMiContent {
    */
   getMemberInfo(library: string, sourceFile: string, member: string) {
     const component = this.ibmi.getComponent<GetMemberInfo>(GetMemberInfo.ID)!;
-    return component.getMemberInfo(this.ibmi, library, sourceFile, member);
+
+    if (component) {
+      return component.getMemberInfo(this.ibmi, library, sourceFile, member);
+    } else {
+      return Promise.resolve(undefined);
+    }
   }
 
   /**

@@ -53,13 +53,31 @@ export class GetMemberInfo implements IBMiComponent {
     });
   }
 
+  private static parseDateString(tsString: string|undefined): Date | undefined {
+    if (!tsString) {
+      return undefined;
+    }
+    
+    const dateParts = tsString.split('-');
+    const timeParts = dateParts[3].split('.');
+
+    const year = parseInt(dateParts[0], 10);
+    const month = parseInt(dateParts[1], 10) - 1; // Months are zero-based in JavaScript
+    const day = parseInt(dateParts[2], 10);
+    const hours = parseInt(timeParts[0], 10);
+    const minutes = parseInt(timeParts[1], 10);
+    const seconds = parseInt(timeParts[2], 10);
+
+    return new Date(year, month, day, hours, minutes, seconds);
+  }
+
   async getMemberInfo(connection: IBMi, library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
     const config = connection.config!;
     const tempLib = config.tempLibrary;
     const statement = `select * from table(${tempLib}.${this.procedureName}('${library}', '${sourceFile}', '${member}'))`;
 
     let results: Tools.DB2Row[] = [];
-    if (config.enableSQL) {
+    if (connection.enableSQL) {
       try {
         results = await connection.runSQL(statement);
       } catch (e) { } // Ignore errors, will return undefined.
@@ -78,8 +96,8 @@ export class GetMemberInfo implements IBMiComponent {
         name: result.MEMBER,
         extension: result.EXTENSION,
         text: result.DESCRIPTION,
-        created: new Date(result.CREATED ? Number(result.CREATED) : 0),
-        changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
+        created: GetMemberInfo.parseDateString(String(result.CREATED)),
+        changed: GetMemberInfo.parseDateString(String(result.CHANGED))
       } as IBMiMember
     }
   }
@@ -92,7 +110,7 @@ export class GetMemberInfo implements IBMiComponent {
       .join(' union all ');
 
     let results: Tools.DB2Row[] = [];
-    if (config.enableSQL) {
+    if (connection.enableSQL) {
       try {
         results = await connection.runSQL(statement);
       } catch (e) { }; // Ignore errors, will return undefined.
@@ -110,8 +128,8 @@ export class GetMemberInfo implements IBMiComponent {
         name: result.MEMBER,
         extension: result.EXTENSION,
         text: result.DESCRIPTION,
-        created: new Date(result.CREATED ? Number(result.CREATED) : 0),
-        changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
+        created: GetMemberInfo.parseDateString(String(result.CREATED)),
+        changed: GetMemberInfo.parseDateString(String(result.CHANGED))
       } as IBMiMember
     });
   }

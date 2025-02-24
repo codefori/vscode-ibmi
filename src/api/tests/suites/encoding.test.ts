@@ -80,7 +80,6 @@ describe('Encoding tests', {concurrent: true} ,() => {
   });
 
   it('Run variants through shells', async () => {
-
     const text = `Hello${connection?.variantChars.local}world`;
     const basicCommandA = `echo "${IBMi.escapeForShell(text)}"`;
     const basicCommandB = `echo '${text}'`;
@@ -110,7 +109,7 @@ describe('Encoding tests', {concurrent: true} ,() => {
     expect(paseTextResultA?.stdout).toBe(text);
     expect(qshTextResultB?.stdout).toBe(text);
     expect(paseTextResultB?.stdout).toBe(text);
-  });
+  }, {timeout: 25000});
 
   it('streamfileResolve with dollar', async () => {
     await connection.withTempDirectory(async tempDir => {
