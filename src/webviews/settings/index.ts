@@ -82,20 +82,6 @@ export class SettingsUI {
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
-          .addSelect(`sourceDateMode`, `Source date tracking mode`, [
-            {
-              selected: config.sourceDateMode === `diff`,
-              value: `diff`,
-              description: `Diff mode`,
-              text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Default)`,
-            },
-            {
-              selected: config.sourceDateMode === `edit`,
-              value: `edit`,
-              description: `Edit mode`,
-              text: `Tracks changes in a simple manner. When a line is changed, the date is updated.`,
-            }            
-          ], `Determine which method should be used to track changes while editing source members.`)
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
           .addHorizontalRule()
           .addSelect(`defaultDeploymentMethod`, `Default Deployment Method`, [
