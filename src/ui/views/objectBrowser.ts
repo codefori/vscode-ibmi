@@ -893,8 +893,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               }
               else if (!overwriteAll) {
                 const answer = await vscode.window.showWarningMessage(vscode.l10n.t(`{0} already exists.
-Do you want to replace it?`, item.name), { modal: true }, vscode.l10n.t(`{0} already exists.
-Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwriteAllLabel);
+Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwriteLabel, overwriteAllLabel);
                 if (answer) {
                   overwriteAll ||= (answer === overwriteAllLabel);
                   skipAll ||= (answer === skipAllLabel);
@@ -910,22 +909,22 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
           }
         }
 
-        //Download members
+        // Download members
         vscode.window.withProgress({ title: vscode.l10n.t(`Downloading {0} members`, toBeDownloaded.filter(m => m.copy).length), location: vscode.ProgressLocation.Notification }, async (task) => {
           try {
             await connection.withTempDirectory(async directory => {
-              task.report({ message: vscode.l10n.t(`copying to streamfiles`), increment: 33 })
+              task.report({ message: vscode.l10n.t(`copying to streamfiles`), increment: -1 })
               const copyToStreamFiles = toBeDownloaded
                 .filter(item => item.copy)
                 .map(item =>
                   [
-                    `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID});`
+                    `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(${item.member.name}) MBROPT(*ADD) CRTFILE(*YES);`,
+                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", item.member.name, undefined)}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID});`
                   ].join("\n"))
                 .join("\n");
-              await contentApi.runSQL(copyToStreamFiles);
+              await connection.runSQL(copyToStreamFiles);
 
-              task.report({ message: vscode.l10n.t(`getting streamfiles`), increment: 33 })
+              task.report({ message: vscode.l10n.t(`getting streamfiles`), increment: -1 })
               await connection.getContent().downloadDirectory(downloadLocation!, directory);
               vscode.window.showInformationMessage(vscode.l10n.t(`Members download complete.`), vscode.l10n.t(`Open`))
                 .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, toBeDownloaded[0].name.toLocaleLowerCase()) : downloadLocationURI) : undefined);
