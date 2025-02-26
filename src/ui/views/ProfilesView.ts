@@ -112,7 +112,7 @@ export class ProfilesView {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.loadCommandProfile`, async (commandProfile?: CommandProfileItem) => {
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const config = instance.getConfig();
         const storage = instance.getStorage();
         if (commandProfile && connection && config && storage) {
@@ -147,7 +147,7 @@ export class ProfilesView {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.setToDefault`, () => {
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const config = instance.getConfig();
         const storage = instance.getStorage();
 
@@ -198,7 +198,7 @@ export class ProfilesView {
   }
 
   async getChildren(): Promise<vscode.TreeItem[]> {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
 
     if (connection) {
       const config = instance.getConfig();

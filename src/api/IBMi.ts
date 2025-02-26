@@ -20,7 +20,7 @@ import { ConnectionConfig } from './configuration/config/types';
 import { EditorPath } from '../typings';
 
 export interface MemberParts extends IBMiMember {
-  basename: string
+  basename: string,
 }
 
 export type ConnectionMessageType = 'info' | 'warning' | 'error';
@@ -119,6 +119,10 @@ export default class IBMi {
 
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
+
+  public get id() {
+    return this.currentConnectionName;
+  }
 
   public appendOutput: (text: string) => void = (text) => {
     process.stdout.write(text);

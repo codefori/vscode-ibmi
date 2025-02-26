@@ -29,7 +29,7 @@ export function initializeDebugBrowser(context: vscode.ExtensionContext) {
   });
 
   const updateDebugBrowser = async () => {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     if (connection) {
       debugTreeViewer.title = `${title} ${(await getDebugServiceDetails(connection)).version}`
       debugTreeViewer.description = await isDebugEngineRunning() ? vscode.l10n.t(`Online`) : vscode.l10n.t(`Offline`);
@@ -72,7 +72,7 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   private async getRootItems() {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     if (connection) {
       const debugConfig = await new DebugConfiguration(connection).load();
       const keyFileExists = await debugKeyFileExists(connection, debugConfig);
@@ -120,7 +120,7 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   async resolveTreeItem(item: vscode.TreeItem, element: BrowserItem, token: vscode.CancellationToken) {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     if (connection && element.tooltip === undefined && element instanceof DebugJobItem && element.parameters.debugJob) {
       element.tooltip = new vscode.MarkdownString(`${vscode.l10n.t("Listening on port(s)")} ${element.parameters.debugJob.ports.join(", ")}\n\n`);
       const activeJob = await readActiveJob(connection, element.parameters.debugJob);

@@ -56,7 +56,7 @@ export const EncodingSuite: TestSuite = {
   tests: [
     {
       name: `Files and directories with spaces`, test: async () => {
-        const connection = instance.getConnection()!;
+        const connection = instance.getActiveConnection()!;
 
         await connection.withTempDirectory(async tempDir => {
           const dirName = `hello world`;
@@ -94,7 +94,7 @@ export const EncodingSuite: TestSuite = {
     },
     ...SHELL_CHARS.map(char => ({
       name: `Test streamfiles with shell character ${char}`, test: async () => {
-        const connection = instance.getConnection()!;
+        const connection = instance.getActiveConnection()!;
 
         const nameCombos = [`${char}ABC`, `ABC${char}`, `${char}ABC${char}`, `A${char}C`];
 
@@ -123,7 +123,7 @@ export const EncodingSuite: TestSuite = {
       name: `Test members with shell character ${char}`, test: async () => {
         const content = instance.getContent();
         const config = instance.getConfig();
-        const connection = instance.getConnection()!;
+        const connection = instance.getActiveConnection()!;
 
         if (!connection.variantChars.local.includes(char)) {
           // This test will fail if $ is not a variant character, 
@@ -173,7 +173,7 @@ export const EncodingSuite: TestSuite = {
     {
       name: `Variant character in source names and commands`, test: async () => {
         // CHGUSRPRF X CCSID(284) CNTRYID(ES) LANGID(ESP)
-        const connection = instance.getConnection()!;
+        const connection = instance.getActiveConnection()!;
         const config = instance.getConfig()!;
 
         const ccsidData = connection.getCcsids()!;
@@ -248,7 +248,7 @@ export const EncodingSuite: TestSuite = {
 
     ...Object.keys(contents).map(ccsid => ({
       name: `Encoding ${ccsid}`, test: async () => {
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const config = instance.getConfig()!;
 
         const oldLines = contents[ccsid as keyof typeof contents];

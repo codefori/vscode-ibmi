@@ -45,7 +45,7 @@ export async function initialize(context: ExtensionContext) {
 
   const startDebugging = async (type: DebugType, objectType: DebugObjectType, objectLibrary: string, objectName: string, env?: Env) => {
     if (debugExtensionAvailable()) {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
       if (connection && config) {
         if (connection.remoteFeatures[`startDebugService.sh`]) {
@@ -132,7 +132,7 @@ export async function initialize(context: ExtensionContext) {
   }
 
   const getObjectFromUri = (uri: Uri, env?: Env) => {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     const configuration = instance.getConfig();
 
     const qualifiedPath: {
@@ -172,7 +172,7 @@ export async function initialize(context: ExtensionContext) {
   }
 
   const getPassword = async () => {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
 
     let password = await getStoredPassword(context, connection!.currentConnectionName);
 
@@ -209,7 +209,7 @@ export async function initialize(context: ExtensionContext) {
     }),
 
     vscode.debug.onDidTerminateDebugSession(async session => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       if (connection && session.configuration.type === `IBMiDebug`) {
         server.getStuckJobs(connection).then(jobIds => {
           if (jobIds.length > 0) {
@@ -253,7 +253,7 @@ export async function initialize(context: ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.debug.redo.setup`, async () => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       if (connection) {
         const doSetup = await vscode.window.showWarningMessage(`Do you confirm you want to generate or import a new certificate for the Debug Service?`, { modal: true }, 'Generate', 'Import');
         if (doSetup) {
@@ -277,7 +277,7 @@ export async function initialize(context: ExtensionContext) {
     }),
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, (doSetup?: 'Generate' | 'Import') =>
       VscodeTools.withContext("code-for-ibmi:debugWorking", async () => {
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         if (connection) {
           const ptfInstalled = server.debugPTFInstalled();
 
@@ -337,7 +337,7 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, () =>
       vscode.window.withProgress({ title: "Downloading Debug Service Certificate", location: vscode.ProgressLocation.Window }, async () =>
         await VscodeTools.withContext("code-for-ibmi:debugWorking", async () => {
-          const connection = instance.getConnection();
+          const connection = instance.getActiveConnection();
           if (connection) {
             const ptfInstalled = server.debugPTFInstalled();
             if (ptfInstalled) {
@@ -377,7 +377,7 @@ export async function initialize(context: ExtensionContext) {
     `Load debugger status`,
     async () => {
       activateDebugExtension();
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       if (connection && server.debugPTFInstalled()) {
         const content = connection.getContent();
         vscode.commands.executeCommand(`setContext`, ptfContext, true);
@@ -434,7 +434,7 @@ type DebugType = "batch" | "sep";
 type DebugObjectType = "*PGM" | "*SRVPGM";
 
 export async function startDebug(instance: Instance, options: DebugOptions) {
-  const connection = instance.getConnection()!;
+  const connection = instance.getActiveConnection()!;
   const config = connection.getConfig();
   const storage = instance.getStorage();
 

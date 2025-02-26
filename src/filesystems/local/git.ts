@@ -29,7 +29,7 @@ export function setupGitEventHandler(context: ExtensionContext) {
         if (IBMi.connectionManager.get(`createLibraryOnBranchChange`)) {
           if (repo) {
             const head = repo.state.HEAD;
-            const connection = instance.getConnection();
+            const connection = instance.getActiveConnection();
             if (head && head.name) {
               const currentBranch = head.name;
 

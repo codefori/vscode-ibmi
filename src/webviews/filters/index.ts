@@ -5,7 +5,7 @@ import IBMi from "../../api/IBMi";
 import { ObjectFilters } from "../../typings";
 
 export async function editFilter(filter?: ObjectFilters, copy = false) {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   const config = instance.getConfig();
   if (config) {
     const objectFilters = config.objectFilters;

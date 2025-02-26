@@ -14,7 +14,8 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
-    const contentApi = instance.getContent();
+    const connection = instance.getConnectionById(uri.authority);
+    const contentApi = connection?.getContent();
     if (contentApi) {
       const fileContent = await contentApi.downloadStreamfileRaw(uri.path);
       return fileContent;
@@ -35,7 +36,8 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-    const content = instance.getContent();
+    const connection = instance.getConnectionById(uri.authority);
+    const content = connection?.getContent();
     if (content) {
       const path = uri.path;
       if (await content.testStreamFile(path, "e")) {
@@ -66,7 +68,8 @@ export class IFSFS implements vscode.FileSystemProvider {
 
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
     const path = uri.path;
-    const contentApi = instance.getContent();
+    const connection = instance.getConnectionById(uri.authority);
+    const contentApi = connection?.getContent();
     if (contentApi) {
       if (!content.length) { //Coming from "Save as"    
         this.savedAsFiles.add(path);
@@ -92,7 +95,8 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-    const content = instance.getContent();
+    const connection = instance.getConnectionById(uri.authority);
+    const content = connection?.getContent();
     if (content) {
       return (await content.getFileList(uri.path)).map(ifsFile => ([ifsFile.name, ifsFile.type === "directory" ? FileType.Directory : FileType.File]));
     }
@@ -102,10 +106,11 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async createDirectory(uri: vscode.Uri) {
-    const connection = instance.getConnection();
+    const connection = instance.getConnectionById(uri.authority);
+    const content = connection?.getContent();
     if (connection) {
       const path = uri.path;
-      if (await connection.content.testStreamFile(path, "d")) {
+      if (await connection.getContent().testStreamFile(path, "d")) {
         throw FileSystemError.FileExists(uri);
       }
       else {

@@ -75,7 +75,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       if (connection) {
         const config = instance.getConfig();
         if (config) {

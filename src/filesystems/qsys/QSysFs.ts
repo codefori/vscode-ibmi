@@ -15,13 +15,15 @@ export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
 }
 
 export function getUriFromPath(path: string, options?: QsysFsOptions) {
+    let uri: vscode.Uri;
+    let authority = (options && options.connection ? options.connection.id : instance.getActiveConnection().id);
     const query = stringify(options as ParsedUrlQueryInput);
     if (path.startsWith(`/`)) {
         //IFS path
-        return vscode.Uri.parse(path).with({ scheme: `streamfile`, path, query });
+        return vscode.Uri.parse(path).with({ scheme: `streamfile`, path, query, authority });
     } else {
         //QSYS path
-        return vscode.Uri.parse(path).with({ scheme: `member`, path: `/${path}`, query });
+        return vscode.Uri.parse(path).with({ scheme: `member`, path: `/${path}`, query, authority });
     }
 }
 
@@ -76,7 +78,7 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     private updateMemberSupport() {
         this.extendedMemberSupport = false
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         const config = connection?.getConfig();
 
         if (connection && config?.enableSourceDates) {
@@ -99,7 +101,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
 
         let type = vscode.FileType.File;
-        const connection = instance.getConnection();
+        const connection = instance.getConnectionById(uri.authority);
         if (connection) {
             const filePathLength = connection.getIAspDetail(pathParts[0]) ? 4 : 3;
             if(pathParts.length < filePathLength){
@@ -145,9 +147,8 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
-        const contentApi = instance.getContent();
-        const connection = instance.getConnection();
-        if (connection && contentApi) {
+        const connection = instance.getConnectionById(uri.authority)
+        if (connection) {
             let { asp, library, file, name: member } = this.parseMemberPath(connection, uri.path);
             asp = asp || await connection.lookupLibraryIAsp(library);
 
@@ -155,7 +156,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             try {
                 memberContent = this.extendedMemberSupport ?
                     await this.extendedContent.downloadMemberContentWithDates(uri) :
-                    await contentApi.downloadMemberContent(library, file, member);
+                    await connection.getContent().downloadMemberContent(library, file, member);
             }
             catch (error) {
                 if (await this.stat(uri)) { //Check if exists on an iASP and retry if so
@@ -188,9 +189,9 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
         const path = uri.path;
-        const contentApi = instance.getContent();
-        const connection = instance.getConnection();
-        if (connection && contentApi) {
+        const connection = instance.getConnectionById(uri.authority);
+        if (connection) {
+            const contentApi = connection.getContent();
             let { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
             asp = asp || await connection.lookupLibraryIAsp(library);
 
@@ -227,7 +228,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-        const connection = instance.getConnection();
+        const connection = instance.getConnectionById(uri.authority);
         if (connection) {
             const content = connection.getContent();
             const qsysPath = Tools.parseQSysPath(uri.path);
@@ -248,10 +249,10 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async createDirectory(uri: vscode.Uri) {
-        const connection = instance.getConnection();
+        const connection = instance.getConnectionById(uri.authority);
         if (connection) {
             const qsysPath = Tools.parseQSysPath(uri.path);
-            if (qsysPath.library && !await connection.content.checkObject({ library: "QSYS", name: qsysPath.library, type: "*LIB" })) {
+            if (qsysPath.library && !await connection.getContent().checkObject({ library: "QSYS", name: qsysPath.library, type: "*LIB" })) {
                 const createLibrary = await connection.runCommand({
                     command: `CRTLIB LIB(${qsysPath.library})`,
                     noLibList: true

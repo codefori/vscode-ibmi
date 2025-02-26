@@ -12,7 +12,7 @@ export type DebugJob = {
 }
 
 export function debugPTFInstalled() {
-  return instance.getConnection()?.debugPTFInstalled()
+  return instance.getActiveConnection()?.debugPTFInstalled()
 }
 
 export async function isSEPSupported(connection: IBMi) {
@@ -115,7 +115,7 @@ export async function stopService(connection: IBMi) {
 }
 
 export async function getDebugServiceJob() {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   if (connection) {
     const rows = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only) and remote_address = '0.0.0.0'`);
     if (rows && rows.length) {
@@ -128,7 +128,7 @@ export async function getDebugServiceJob() {
 }
 
 export async function getDebugServerJob() {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   if (connection) {
     const [row] = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info where cast(local_port_name as VarChar(14) CCSID 37) = 'is-debug-ile' fetch first row only`);
     if (row) {
@@ -167,7 +167,7 @@ export async function isDebugEngineRunning() {
 }
 
 export async function startServer() {
-  const result = await instance.getConnection()?.runCommand({ command: "STRDBGSVR", noLibList: true });
+  const result = await instance.getActiveConnection()?.runCommand({ command: "STRDBGSVR", noLibList: true });
   if (result) {
     if (result.code) {
       window.showErrorMessage(l10n.t(`Failed to start debug server: {0}`, result.stderr));
@@ -182,7 +182,7 @@ export async function startServer() {
 }
 
 export async function stopServer() {
-  const result = await instance.getConnection()?.runCommand({ command: "ENDDBGSVR", noLibList: true });
+  const result = await instance.getActiveConnection()?.runCommand({ command: "ENDDBGSVR", noLibList: true });
   if (result) {
     if (result.code) {
       window.showErrorMessage(l10n.t(`Failed to stop debug server: {0}`, result.stderr));

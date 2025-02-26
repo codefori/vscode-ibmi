@@ -9,7 +9,7 @@ export function registerConnectionCommands(context: ExtensionContext, instance: 
   return [
     commands.registerCommand(`code-for-ibmi.connectDirect`,
       async (connectionData: ConnectionData, reloadSettings = false, savePassword = false): Promise<boolean> => {
-        const existingConnection = instance.getConnection();
+        const existingConnection = instance.getActiveConnection();
 
         if (existingConnection) {
           return false;
@@ -23,11 +23,33 @@ export function registerConnectionCommands(context: ExtensionContext, instance: 
       }
     ),
     commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?: boolean) => {
-      if (instance.getConnection()) {
+      if (instance.getActiveConnection()) {
         await safeDisconnect();
       } else if (!silent) {
         window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
+
+    commands.registerCommand(`code-for-ibmi.switchActiveConnection`, () => {
+      const availableConnections = instance.getActiveConnections();
+
+      if (availableConnections.length === 0) {
+        window.showErrorMessage(`No connections found.`);
+        return;
+      }
+
+      if (availableConnections.length === 1) {
+        window.showInformationMessage(`Only one connection found. Automatically connecting.`);
+        return;
+      }
+
+      const connectionNames = availableConnections.map(c => c.currentConnectionName);
+
+      window.showQuickPick(connectionNames, {placeHolder: `Select a connection to switch to`}).then(async (selectedConnection) => {
+        if (selectedConnection) {
+          instance.setActiveConnection(selectedConnection);
+        }
+      });
+    })
   ]
 }

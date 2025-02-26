@@ -12,7 +12,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
         const extension = extensions.getExtension(extensionId);
         const isValid = (extension && extension.isActive);
         if (isValid) {
-          const connection = instance.getConnection();
+          const connection = instance.getActiveConnection();
           const storage = instance.getStorage();
           if (connection && storage) {
             const displayName = extension.packageJSON.displayName || extensionId;
@@ -23,7 +23,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
               throw new Error(`Password request denied for extension ${displayName}.`);
             }
 
-            const storedPassword = await getStoredPassword(context, instance.getConnection()!.currentConnectionName);
+            const storedPassword = await getStoredPassword(context, instance.getActiveConnection()!.currentConnectionName);
 
             if (storedPassword) {
               let isAuthed = storage.getExtensionAuthorisation(extension.id) !== undefined;

@@ -10,7 +10,7 @@ import { BrowserItem } from "../ui/types";
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [
     commands.registerCommand(`code-for-ibmi.runAction`, async (target: TreeItem | BrowserItem | Uri, group?: any, action?: Action, method?: DeploymentMethod, workspaceFolder?: WorkspaceFolder) => {
-      const connection = instance.getConnection()!;
+      const connection = instance.getActiveConnection()!;
       const editor = window.activeTextEditor;
       let uri;
       let browserItem;
@@ -93,7 +93,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
 
         let initialPath = ``;
         const editor = window.activeTextEditor;
-        const connection = instance.getConnection();
+        const connection = instance.getActiveConnection();
         
         if (editor && connection) {
           const config = connection.getConfig();

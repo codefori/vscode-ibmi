@@ -1,3 +1,4 @@
+import IBMi from "./IBMi";
 
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
@@ -131,9 +132,10 @@ export interface FileError {
 
 export interface QsysFsOptions {
   readonly?: boolean
+  connection?: IBMi
 }
 
-export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
+export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy" | "switched"
 
 export interface WithPath {
   path: string

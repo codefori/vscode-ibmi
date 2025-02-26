@@ -31,7 +31,7 @@ export function registerActionTools(context: vscode.ExtensionContext) {
 }
 
 export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem, workspaceFolder?: WorkspaceFolder): Promise<boolean> {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
 
   const uriOptions = parseFSOptions(uri);
   if (connection) {

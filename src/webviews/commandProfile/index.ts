@@ -8,7 +8,7 @@ import { CommandProfile } from "../../typings";
 export class CommandProfileUi {
   static async show(currentName?: string) {
     let config = instance.getConfig();
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
 
     let currentSettings: CommandProfile = {
       name: ``,

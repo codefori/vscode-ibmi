@@ -101,7 +101,7 @@ export namespace DeployTools {
           };
 
           if (await deploy(parameters)) {
-            instance.fire(`deploy`);
+            instance.fire({event: `deploy`});
             return {
               remoteDirectory: remotePath,
               workspaceId: folder.index
@@ -320,7 +320,7 @@ export namespace DeployTools {
         existingPaths[chosenWorkspaceFolder.uri.fsPath] = path;
         await storage.setDeployment(existingPaths);
 
-        instance.fire(`deployLocation`);
+        instance.fire({event: `deployLocation`});
 
         if (await vscode.window.showInformationMessage(`Deployment location set to ${path}`, `Deploy now`)) {
           vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, chosenWorkspaceFolder.index);
@@ -330,7 +330,7 @@ export namespace DeployTools {
   }
 
   export function buildPossibleDeploymentDirectory(workspace: vscode.WorkspaceFolder) {
-    const user = instance.getConnection()?.currentUser;
+    const user = instance.getActiveConnection()?.currentUser;
     //User should not be empty but we'll keep tmp as a fallback location
     return user ? path.posix.join('/', 'home', user, 'builds', workspace.name) : path.posix.join('/', 'tmp', 'builds', workspace.name);
   }

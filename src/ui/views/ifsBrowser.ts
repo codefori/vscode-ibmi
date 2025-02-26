@@ -45,7 +45,8 @@ class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   getShortCuts() {
-    return instance.getConfig()?.ifsShortcuts.map(directory => new IFSShortcutItem(directory)) || [];
+    const connection = instance.getActiveConnection();
+    return connection?.getConfig().ifsShortcuts.map(directory => new IFSShortcutItem(connection, directory)) || [];
   }
 
   getParent(item: BrowserItem) {
@@ -133,7 +134,7 @@ class IFSFileItem extends IFSItem {
     this.contextValue = "streamfile";
     this.iconPath = vscode.ThemeIcon.File;
 
-    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
+    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile`, authority: ifsParent.connection.id });
 
     this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
@@ -148,7 +149,7 @@ class IFSFileItem extends IFSItem {
 }
 
 class IFSDirectoryItem extends IFSItem {
-  constructor(file: IFSFile, parent?: IFSDirectoryItem) {
+  constructor(readonly connection: IBMi, file: IFSFile, parent?: IFSDirectoryItem) {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
     const protectedDir = isProtected(this.file.path);
     this.contextValue = `directory${protectedDir ? `_protected` : ``}`;
@@ -156,16 +157,17 @@ class IFSDirectoryItem extends IFSItem {
   }
 
   async getChildren(): Promise<BrowserItem[]> {
-    const content = instance.getContent();
-    if (content) {
+    const connection = instance.getActiveConnection();
+    if (connection) {
+      const content = connection.getContent();
       try {
-        const showHidden = instance.getConfig()?.showHiddenFiles;
+        const showHidden = connection.getConfig().showHiddenFiles;
         const filterIFSFile = (file: IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
         const objects = await content.getFileList(this.path, this.sort, handleFileListErrors);
         const directories = objects.filter(f => filterIFSFile(f, "directory"));
         const streamFiles = objects.filter(f => filterIFSFile(f, "streamfile"));
         await storeIFSList(this.path, streamFiles.map(o => o.name));
-        return [...directories.map(directory => new IFSDirectoryItem(directory, this)),
+        return [...directories.map(directory => new IFSDirectoryItem(this.connection, directory, this)),
         ...streamFiles.map(file => new IFSFileItem(file, this))];
       } catch (e: any) {
         console.log(e);
@@ -178,8 +180,8 @@ class IFSDirectoryItem extends IFSItem {
 }
 
 class IFSShortcutItem extends IFSDirectoryItem {
-  constructor(readonly shortcut: string) {
-    super({ name: shortcut, path: shortcut, type: "directory" })
+  constructor(readonly connection: IBMi, readonly shortcut: string) {
+    super(connection, { name: shortcut, path: shortcut, type: "directory" })
 
     const protectedDir = isProtected(this.file.path);
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
@@ -229,7 +231,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
   }
 
   private async moveOrCopyItems(ifsBrowserItems: IFSItem[], toDirectory: IFSDirectoryItem) {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     ifsBrowserItems = ifsBrowserItems.filter(item => item.path !== toDirectory.path && (item.parent && item.parent instanceof IFSItem && item.parent.path !== toDirectory.path));
     if (connection && ifsBrowserItems.length) {
       const dndBehavior = getDragDropBehavior();
@@ -274,7 +276,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
   }
 
   private async copyMembers(memberUris: vscode.Uri[], toDirectory: IFSDirectoryItem) {
-    const connection = instance.getConnection();
+    const connection = instance.getActiveConnection();
     if (connection && memberUris && memberUris.length) {
       try {
         for (let uri of memberUris) {
@@ -423,7 +425,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToBottom`, (node: IFSShortcutItem) => ifsBrowser.moveShortcut(node, "bottom")),
 
     vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node?: IFSDirectoryItem) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
       if (connection && config) {
         const value = `${node?.path || config.homeDirectory}/`;
@@ -480,7 +482,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node: IFSDirectoryItem, files?: vscode.Uri[]) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
 
       if (config && connection) {
@@ -540,7 +542,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
       if (connection && config) {
         if (items || singleItem) {
@@ -635,7 +637,7 @@ Please type "{0}" to confirm deletion.`, dirName);
           return;
         }
       }
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
       if (config && connection) {
         const homeDirectory = config.homeDirectory;
@@ -685,7 +687,7 @@ Please type "{0}" to confirm deletion.`, dirName);
     }),
     vscode.commands.registerCommand(`code-for-ibmi.copyIFS`, async (node: IFSItem) => {
       const config = instance.getConfig();
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
 
       if (config && connection) {
         const homeDirectory = config.homeDirectory;
@@ -713,7 +715,7 @@ Please type "{0}" to confirm deletion.`, dirName);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node?: IFSItem) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
 
       if (connection?.remoteFeatures.grep && config) {
@@ -773,7 +775,7 @@ Please type "{0}" to confirm deletion.`, dirName);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.ifs.find`, async (node?: IFSItem) => {
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       const config = instance.getConfig();
 
       if (connection?.remoteFeatures.find && config) {
@@ -833,7 +835,7 @@ Please type "{0}" to confirm deletion.`, dirName);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node: IFSItem, nodes?: IFSItem[]) => {
-      const ibmi = instance.getConnection();
+      const ibmi = instance.getActiveConnection();
       if (ibmi) {
         const items = (nodes || [node]).filter(reduceIFSPath);
         const saveIntoDirectory = items.length > 1 || items[0].file.type === "directory";
@@ -945,7 +947,7 @@ async function doSearchInStreamfiles(searchTerm: string, searchPath: string) {
       progress.report({
         message: l10n.t(`"{0}" in {1}.`, searchTerm, searchPath)
       });
-      const results = await Search.searchIFS(instance.getConnection()!, searchPath, searchTerm);
+      const results = await Search.searchIFS(instance.getActiveConnection()!, searchPath, searchTerm);
       if (results?.hits.length) {
         openIFSSearchResults(searchPath, results);
       } else {
@@ -967,7 +969,7 @@ async function doFindStreamfiles(findTerm: string, findPath: string) {
       progress.report({
         message: l10n.t(`Finding filenames with "{0}" in {1}.`, findTerm, findPath)
       });
-      const results = (await Search.findIFS(instance.getConnection()!, findPath, findTerm));
+      const results = (await Search.findIFS(instance.getActiveConnection()!, findPath, findTerm));
       if (results?.hits.length) {
         openIFSSearchResults(findPath, results);
       } else {

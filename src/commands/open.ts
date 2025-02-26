@@ -16,7 +16,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
 
   return [
     commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
-      const connection = instance.getConnection()!;
+      const connection = instance.getActiveConnection()!;
       console.log(path);
       options = options || {};
       options.readonly = options.readonly || connection.getContent().isProtectedPath(path);
@@ -119,7 +119,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       };
 
       const LOADING_LABEL = `Please wait`;
-      const connection = instance.getConnection();
+      const connection = instance.getActiveConnection();
       if (!connection) return;
       
       const storage = instance.getStorage();

@@ -218,7 +218,7 @@ export async function debugKeyFileExists(connection: IBMi, debugConfig: DebugCon
 }
 
 export async function remoteCertificatesExists(debugConfig?: DebugConfiguration) {
-  const connection = instance.getConnection();
+  const connection = instance.getActiveConnection();
   if (connection) {
     const content = connection.getContent();
     debugConfig = debugConfig || await new DebugConfiguration(connection).load();

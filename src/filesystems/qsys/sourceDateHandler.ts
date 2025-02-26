@@ -115,7 +115,7 @@ export class SourceDateHandler {
   private onDidCloseDocument(document: vscode.TextDocument) {
     // Clean up things when a member is closed
     if (this.enabled && document.uri.scheme === `member` && document.isClosed) {
-      const connection = instance.getConnection();
+      const connection = instance.getConnectionById(document.uri.authority);
       if (connection) {
         const alias = getAliasName(document.uri);
         this.baseDates.delete(alias);
@@ -126,18 +126,22 @@ export class SourceDateHandler {
   }
 
   private onDidChangeTextSelection(event: vscode.TextEditorSelectionChangeEvent) {
-    if (this.enabled && this.sourceDateMode === "edit" && instance.getConfig()?.sourceDateGutter) {
+    const connection = instance.getConnectionById(event.textEditor.document.uri.authority);
+    if (connection && this.enabled && this.sourceDateMode === "edit" && connection.getConfig().sourceDateGutter) {
       this._editRefreshGutter(event.textEditor);
     }
   }
 
   private onDidChangeEditor(editor?: vscode.TextEditor) {
     if (this.enabled && editor) {
-      if (this.sourceDateMode === "edit" && instance.getConfig()?.sourceDateGutter) {
-        this._editRefreshGutter(editor);
-      }
-      else if (this.sourceDateMode === "diff") {
-        this._diffRefreshGutter(editor.document);
+      const connection = instance.getConnectionById(editor.document.uri.authority);
+      if (connection) {
+        if (this.sourceDateMode === "edit" && connection.getConfig().sourceDateGutter) {
+          this._editRefreshGutter(editor);
+        }
+        else if (this.sourceDateMode === "diff") {
+          this._diffRefreshGutter(editor.document);
+        }
       }
     }
   }
@@ -160,7 +164,7 @@ export class SourceDateHandler {
   }
 
   private _editOnDidChange(event: vscode.TextDocumentChangeEvent) {
-    const connection = instance.getConnection();
+    const connection = instance.getConnectionById(event.document.uri.authority);
     if (connection) {
       const alias = getAliasName(event.document.uri);
       const sourceDates = this.baseDates.get(alias);
@@ -255,7 +259,7 @@ export class SourceDateHandler {
 
   private _editRefreshGutter(editor: vscode.TextEditor) {
     if (editor.document.uri.scheme === `member`) {
-      const connection = instance.getConnection();
+      const connection = instance.getConnectionById(editor.document.uri.authority);
       if (connection) {
         const alias = getAliasName(editor.document.uri);
         const sourceDates = this.baseDates.get(alias);
@@ -316,7 +320,7 @@ export class SourceDateHandler {
   }
 
   private _diffChangeTimeout(document: vscode.TextDocument) {
-    const connection = instance.getConnection();
+    const connection = instance.getConnectionById(document.uri.authority);
     if (connection) {
       const lengthDiags: vscode.Diagnostic[] = [];
       const alias = getAliasName(document.uri);
@@ -340,8 +344,8 @@ export class SourceDateHandler {
 
   private _diffRefreshGutter(document: vscode.TextDocument) {
     if (document.uri.scheme === `member`) {
-      const connection = instance.getConnection();
-      const config = instance.getConfig();
+      const connection = instance.getConnectionById(document.uri.authority);
+      const config = connection?.getConfig();
 
       if (connection && config && config.sourceDateGutter) {
         const alias = getAliasName(document.uri);
