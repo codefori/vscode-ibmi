@@ -75,11 +75,16 @@ export class SourceDateHandler {
   }
 
   setEnabled(enabled: boolean) {
+    if (enabled) {
+      this.sourceDateSearchBarItem.show();
+    } else {
+      this.sourceDateSearchBarItem.hide();
+    }
+
     if (this.enabled !== enabled) {
       this.enabled = enabled
       if (!this.enabled) {
         clearTimeout(this.timeout);
-        this.sourceDateSearchBarItem.show();
         this.highlightSince = undefined;
         this.highlightBefore = undefined;
         this.lineEditedBefore = undefined;
