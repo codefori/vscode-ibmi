@@ -55,10 +55,6 @@ export class QSysFS implements vscode.FileSystemProvider {
         this.sourceDateHandler = new SourceDateHandler(context);
         this.extendedContent = new ExtendedIBMiContent(this.sourceDateHandler);
 
-        context.subscriptions.push(
-            onCodeForIBMiConfigurationChange(["connectionSettings", "showDateSearchButton"], () => this.updateMemberSupport()),
-        );
-
         instance.subscribe(
             context,
             'connected',
