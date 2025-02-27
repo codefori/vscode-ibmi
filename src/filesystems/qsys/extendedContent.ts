@@ -60,9 +60,7 @@ export class ExtendedIBMiContent {
 
       this.sourceDateHandler.baseDates.set(alias, sourceDates);
 
-      if (this.sourceDateHandler.sourceDateMode === `diff`) {
-        this.sourceDateHandler.baseSource.set(alias, body);
-      }
+      this.sourceDateHandler.baseSource.set(alias, body);
 
       return body;
     }
@@ -112,21 +110,11 @@ export class ExtendedIBMiContent {
       const aliasPath = `${tempLib}.${alias}`;
 
       let sourceDates;
-      if (this.sourceDateHandler.sourceDateMode === `edit`) {
-        if (!this.sourceDateHandler.baseDates.get(alias)) {
-          await this.downloadMemberContentWithDates(uri);          
-          sourceDates = this.sourceDateHandler.calcNewSourceDates(alias, body);
-        }
-        else{
-          sourceDates = this.sourceDateHandler.baseDates.get(alias) || [];
-        }        
+
+      if (!this.sourceDateHandler.baseSource.has(alias)) {
+        await this.downloadMemberContentWithDates(uri);
       }
-      else {
-        if (!this.sourceDateHandler.baseSource.has(alias)) {
-          await this.downloadMemberContentWithDates(uri);
-        }
-        sourceDates = this.sourceDateHandler.calcNewSourceDates(alias, body);
-      }
+      sourceDates = this.sourceDateHandler.calcNewSourceDates(alias, body);
 
       const client = connection.client!;
 
@@ -192,10 +180,8 @@ export class ExtendedIBMiContent {
           throw new Error(`Failed to save member: ` + insertResult.stderr);
         }
 
-        if (this.sourceDateHandler.sourceDateMode === `diff`) {
-          this.sourceDateHandler.baseSource.set(alias, body);
-          this.sourceDateHandler.baseDates.set(alias, sourceDates);
-        }
+        this.sourceDateHandler.baseSource.set(alias, body);
+        this.sourceDateHandler.baseDates.set(alias, sourceDates);
       }
     }
   }
