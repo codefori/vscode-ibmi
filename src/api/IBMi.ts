@@ -107,6 +107,19 @@ export default class IBMi {
   private currentAsp: string|undefined;
   private libraryAsps = new Map<string, number>();
 
+  /**
+   * @deprecated Will be replaced with {@link IBMi.getAllIAsps} in v3.0.0
+   */
+  public get aspInfo(): { [id: number]: string } {
+    const result: { [id: number]: string } = {};
+
+    this.iAspInfo.forEach(asp => {
+      result[asp.id] = asp.name;
+    });
+
+    return result;
+  }
+
   remoteFeatures: { [name: string]: string | undefined };
 
   variantChars: {
