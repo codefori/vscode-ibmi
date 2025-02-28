@@ -4,7 +4,6 @@ import { DiffComputer } from "vscode-diff";
 
 import IBMi from "../../api/IBMi";
 import { instance } from "../../instantiate";
-import { SourceDateMode } from "../../typings";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);
@@ -45,7 +44,6 @@ export class SourceDateHandler {
   readonly baseSource: Map<string, string> = new Map
   readonly recordLengths: Map<string, number> = new Map
 
-  sourceDateMode: SourceDateMode = "diff";
   private enabled: boolean = false;
 
   private timeout?: NodeJS.Timeout;
@@ -68,7 +66,6 @@ export class SourceDateHandler {
     context.subscriptions.push(
       vscode.workspace.onDidChangeTextDocument(event => this.onDidChangeTextDocument(event)),
       vscode.window.onDidChangeActiveTextEditor((editor) => this.onDidChangeEditor(editor)),
-      vscode.window.onDidChangeTextEditorSelection(event => this.onDidChangeTextSelection(event)),
       vscode.workspace.onDidCloseTextDocument(event => this.onDidCloseDocument(event)),
       vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, () => this.toggleSourceDateGutter()),
       vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => this.clearDateSearch()),
@@ -78,38 +75,24 @@ export class SourceDateHandler {
   }
 
   setEnabled(enabled: boolean) {
+    if (enabled) {
+      this.sourceDateSearchBarItem.show();
+    } else {
+      this.sourceDateSearchBarItem.hide();
+    }
+
     if (this.enabled !== enabled) {
       this.enabled = enabled
       if (!this.enabled) {
         clearTimeout(this.timeout);
-        this.sourceDateSearchBarItem.hide();
         this.highlightSince = undefined;
         this.highlightBefore = undefined;
         this.lineEditedBefore = undefined;
         this.baseDates.clear();
         this.baseSource.clear();
         this.recordLengths.clear();
-        this.updateContext();
       }
     }
-  }
-
-  changeSourceDateMode(sourceDateMode: SourceDateMode) {
-    this.sourceDateMode = sourceDateMode;
-
-    const dateSearchButtonEnabled = IBMi.connectionManager.get<boolean>(`showDateSearchButton`);
-
-    if (this.sourceDateMode === "diff" && dateSearchButtonEnabled) {
-      this.sourceDateSearchBarItem.show();
-    }
-    else {
-      this.sourceDateSearchBarItem.hide();
-    }
-    this.updateContext(sourceDateMode);
-  }
-
-  private updateContext(sourceDateMode?: SourceDateMode) {
-    vscode.commands.executeCommand(`setContext`, `code-for-ibmi:sourceDateMode`, sourceDateMode);
   }
 
   private onDidCloseDocument(document: vscode.TextDocument) {
@@ -125,20 +108,9 @@ export class SourceDateHandler {
     }
   }
 
-  private onDidChangeTextSelection(event: vscode.TextEditorSelectionChangeEvent) {
-    if (this.enabled && this.sourceDateMode === "edit" && instance.getConfig()?.sourceDateGutter) {
-      this._editRefreshGutter(event.textEditor);
-    }
-  }
-
   private onDidChangeEditor(editor?: vscode.TextEditor) {
     if (this.enabled && editor) {
-      if (this.sourceDateMode === "edit" && instance.getConfig()?.sourceDateGutter) {
-        this._editRefreshGutter(editor);
-      }
-      else if (this.sourceDateMode === "diff") {
-        this._diffRefreshGutter(editor.document);
-      }
+      this._diffRefreshGutter(editor.document);
     }
   }
 
@@ -147,139 +119,8 @@ export class SourceDateHandler {
       const document = event.document;
       if (document.uri.scheme === `member`) {
         clearTimeout(this.timeout);
-        if (this.sourceDateMode === "edit") {
-          this.timeout = setTimeout(() => this._editChangeTimeout(document), this.timeoutDelay);
-          this._editOnDidChange(event);
-        }
-        else {
-          this.timeout = setTimeout(() => this._diffChangeTimeout(document), this.timeoutDelay);
-          this._diffOnDidChange(event);
-        }
-      }
-    }
-  }
-
-  private _editOnDidChange(event: vscode.TextDocumentChangeEvent) {
-    const connection = instance.getConnection();
-    if (connection) {
-      const alias = getAliasName(event.document.uri);
-      const sourceDates = this.baseDates.get(alias);
-      if (sourceDates) {
-        for (const change of event.contentChanges) {
-
-          const startLineNumber = change.range.start.line;
-          const endLineNumber = change.range.end.line;
-          const line = startLineNumber;
-
-          const currentDate = currentStamp();
-
-          const startNewLine = change.text[0] === `\n`;
-
-          // Is a space
-          if (change.text.trim() === ``) {
-            // Removing a line
-            if (startLineNumber < endLineNumber) {
-              const lineCount = endLineNumber - startLineNumber;
-              sourceDates.splice(line + 1, lineCount);
-              return;
-
-            } else if (
-              startLineNumber !== endLineNumber
-            ) {
-              // Backspace within a line
-              sourceDates.splice(line, 0, currentDate);
-              return;
-            } else if (
-              startLineNumber === endLineNumber
-            ) {
-              //backspace
-              if (startNewLine === false) {
-                sourceDates[line] = currentDate;
-                return;
-              }
-            }
-          } else if (startNewLine === false) {
-            sourceDates[line] = currentDate;
-          }
-
-          // Contains new lines
-          if (change.text.indexOf(`\n`) !== -1) {
-            const len = change.text.split(`\n`).length - 1;
-
-            if (change.text[0] !== `\n`) {
-              sourceDates[line] = currentDate;
-            }
-
-            // Multiple newlines
-            const newSourceDates = Array(len).fill(currentDate);
-            sourceDates.splice(line + 1, 0, ...newSourceDates);
-          }
-        }
-      }
-    }
-  }
-
-  private _editChangeTimeout(document: vscode.TextDocument) {
-    const path = document.uri.path.split(`/`);
-    let lib, file, fullName;
-
-    if (path.length === 4) {
-      lib = path[1];
-      file = path[2];
-      fullName = path[3];
-    } else {
-      lib = path[2];
-      file = path[3];
-      fullName = path[4];
-    }
-
-    fullName = fullName.substring(0, fullName.lastIndexOf(`.`));
-
-    const lengthDiags: vscode.Diagnostic[] = [];
-    const alias = getAliasName(document.uri);
-    const recordLength = this.recordLengths.get(alias);
-    if (recordLength) {
-      for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
-        const lineLength = document.lineAt(lineIndex).text.length;
-        if (lineLength > recordLength) {
-          const badRange = new vscode.Range(lineIndex, recordLength + 1, lineIndex, lineLength);
-          const diagnostic = new vscode.Diagnostic(badRange, `Content past record length of ${recordLength}`, vscode.DiagnosticSeverity.Error);
-
-          lengthDiags.push(diagnostic);
-        }
-      }
-    }
-
-    lengthDiagnostics.set(document.uri, lengthDiags);
-  }
-
-  private _editRefreshGutter(editor: vscode.TextEditor) {
-    if (editor.document.uri.scheme === `member`) {
-      const connection = instance.getConnection();
-      if (connection) {
-        const alias = getAliasName(editor.document.uri);
-        const sourceDates = this.baseDates.get(alias);
-        if (sourceDates) {
-          const annotations: vscode.DecorationOptions[] = [];
-          const currentDate = currentStamp();
-
-          for (let cLine = 0; cLine < sourceDates.length && cLine < editor.document.lineCount; cLine++) {
-            annotations.push({
-              range: new vscode.Range(
-                new vscode.Position(cLine, 0),
-                new vscode.Position(cLine, 0)
-              ),
-              renderOptions: {
-                before: {
-                  contentText: sourceDates[cLine],
-                  color: currentDate === sourceDates[cLine] ? highlightedColor : undefined
-                },
-              },
-            });
-          }
-
-          editor.setDecorations(annotationDecoration, annotations);
-        }
+        this.timeout = setTimeout(() => this._diffChangeTimeout(document), this.timeoutDelay);
+        this._diffOnDidChange(event);
       }
     }
   }
@@ -339,11 +180,11 @@ export class SourceDateHandler {
   }
 
   private _diffRefreshGutter(document: vscode.TextDocument) {
-    if (document.uri.scheme === `member`) {
-      const connection = instance.getConnection();
-      const config = instance.getConfig();
+    const connection = instance.getConnection();
+    if (connection && document.uri.scheme === `member`) {
+      const config = connection.getConfig();
 
-      if (connection && config && config.sourceDateGutter) {
+      if (config && config.sourceDateGutter) {
         const alias = getAliasName(document.uri);
 
         const sourceDates = this.baseDates.get(alias);
@@ -472,30 +313,27 @@ export class SourceDateHandler {
   }
 
   private toggleSourceDateGutter() {
-    if (this.sourceDateMode === "diff") {
-      const config = instance.getConfig();
-      if (config) {
-        const currentValue = config.sourceDateGutter;
-        config.sourceDateGutter = !currentValue;
-
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-          this._diffRefreshGutter(editor.document);
-        }
-      }
-    }
-  }
-
-  private clearDateSearch() {
-    if (this.sourceDateMode === "diff") {
-      this.sourceDateSearchBarItem.text = SD_BASE;
-      this.highlightSince = undefined;
-      this.highlightBefore = undefined;
+    const connection = instance.getConnection();
+    if (connection) {
+      const config = connection.getConfig();
+      const currentValue = config.sourceDateGutter;
+      config.sourceDateGutter = !currentValue;
 
       const editor = vscode.window.activeTextEditor;
       if (editor) {
         this._diffRefreshGutter(editor.document);
       }
+    }
+  }
+
+  private clearDateSearch() {
+    this.sourceDateSearchBarItem.text = SD_BASE;
+    this.highlightSince = undefined;
+    this.highlightBefore = undefined;
+
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      this._diffRefreshGutter(editor.document);
     }
   }
 
@@ -536,8 +374,9 @@ export class SourceDateHandler {
     }
 
     const editor = vscode.window.activeTextEditor;
+    const connection = instance.getConnection();
     if (editor) {
-      instance.getConfig()!.sourceDateGutter = true;
+      connection!.getConfig().sourceDateGutter = true;
       this._diffRefreshGutter(editor.document);
     }
   }

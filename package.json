@@ -233,15 +233,6 @@
 								"default": false,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
-							"sourceDateMode": {
-								"type": "string",
-								"default": "diff",
-								"enum": [
-									"diff",
-									"edit"
-								],
-								"description": "Determine which method should be used to track changes to source dates for source member."
-							},
 							"sourceDateGutter": {
 								"type": "boolean",
 								"default": false,
@@ -489,11 +480,6 @@
 					"type": "boolean",
 					"default": false,
 					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
-				},
-				"code-for-ibmi.showDateSearchButton": {
-					"type": "boolean",
-					"default": true,
-					"description": "If enabled, will show the 'Date search' button in the status bar when source dates with diff mode is enabled."
 				},
 				"code-for-ibmi.terminals.5250.openInEditorArea": {
 					"type": "boolean",
@@ -1068,13 +1054,13 @@
 			},
 			{
 				"command": "code-for-ibmi.toggleSourceDateGutter",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:sourceDateMode === diff",
+				"enablement": "code-for-ibmi:connected",
 				"title": "Toggle Source Date Gutter",
 				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.member.newDateSearch",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:sourceDateMode === diff",
+				"enablement": "code-for-ibmi:connected",
 				"title": "Apply Source Date Filter",
 				"category": "IBM i"
 			},
@@ -2974,7 +2960,7 @@
 		"@types/tar": "^6.1.4",
 		"@types/tmp": "^0.2.3",
 		"@types/vscode": "^1.90.0",
-		"esbuild": "^0.19.2",
+		"esbuild": "^0.25.0",
 		"esbuild-loader": "^3.0.1",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",

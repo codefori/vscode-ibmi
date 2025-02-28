@@ -55,10 +55,6 @@ export class QSysFS implements vscode.FileSystemProvider {
         this.sourceDateHandler = new SourceDateHandler(context);
         this.extendedContent = new ExtendedIBMiContent(this.sourceDateHandler);
 
-        context.subscriptions.push(
-            onCodeForIBMiConfigurationChange(["connectionSettings", "showDateSearchButton"], () => this.updateMemberSupport()),
-        );
-
         instance.subscribe(
             context,
             'connected',
@@ -82,7 +78,6 @@ export class QSysFS implements vscode.FileSystemProvider {
         if (connection && config?.enableSourceDates) {
             if (connection.sqlRunnerAvailable()) {
                 this.extendedMemberSupport = true;
-                this.sourceDateHandler.changeSourceDateMode(config.sourceDateMode);
             } else {
                 vscode.window.showErrorMessage(`Source date support is enabled, but the remote system does not support SQL. Source date support will be disabled.`);
             }
