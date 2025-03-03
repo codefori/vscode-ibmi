@@ -71,6 +71,7 @@ export default class IBMi {
   static readonly CCSID_NOCONVERSION = 65535;
   static readonly CCSID_SYSVAL = -2;
   static readonly bashShellPath = '/QOpenSys/pkgs/bin/bash';
+  static readonly locale = 'LC_ALL=EN_US.UTF-8';
 
   private systemVersion: number = 0;
   private qccsid: number = IBMi.CCSID_NOCONVERSION;
@@ -1074,7 +1075,7 @@ export default class IBMi {
 
     return this.sendCommand({
       ...options,
-      command: qshExecutable
+      command: `${IBMi.locale} ${qshExecutable}`
     });
   }
 
@@ -1335,13 +1336,13 @@ export default class IBMi {
       // CHGJOB not required here. It will use the job CCSID, or the runtime CCSID.
       let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
       let returningAsCsv: WrapResult | undefined;
-      let command = `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
+      let command = `${IBMi.locale} system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
       let useCsv = options.forceSafe;
 
       // Use custom QSH if available
       if (this.canUseCqsh) {
         const customQsh = this.getComponent<CustomQSh>(CustomQSh.ID)!;
-        command = `LC_ALL=EN_US.UTF-8 ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
+        command = `${IBMi.locale} ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
       }
 
       if (this.requiresTranslation) {
