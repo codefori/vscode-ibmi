@@ -1341,7 +1341,7 @@ export default class IBMi {
       // Use custom QSH if available
       if (this.canUseCqsh) {
         const customQsh = this.getComponent<CustomQSh>(CustomQSh.ID)!;
-        command = `${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
+        command = `LC_ALL=EN_US.UTF-8 ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
       }
 
       if (this.requiresTranslation) {
