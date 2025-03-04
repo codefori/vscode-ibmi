@@ -93,6 +93,7 @@ export default class IBMiContent {
    * @deprecated Use {@link IBMiContent.downloadStreamfileRaw()} instead
    */
   async downloadStreamfile(remotePath: string, localPath?: string) {
+    console.warn(`[Code for IBM i] downloadStreamfile is deprecated and will be removed by 4.0.0. Use downloadStreamfileRaw instead.`);
     const raw = await this.downloadStreamfileRaw(remotePath, localPath);
     return raw.toString(`utf8`);
   }
@@ -130,6 +131,7 @@ export default class IBMiContent {
    * @deprecated Use {@link IBMiContent.writeStreamfileRaw()} instead
    */
   async writeStreamfile(originalPath: string, content: string) {
+    console.warn(`[Code for IBM i] writeStreamfile is deprecated and will be removed by 4.0.0. Use writeStreamfileRaw instead.`);
     const buffer = Buffer.from(content, `utf8`);
     return this.writeStreamfileRaw(originalPath, buffer);
   }
@@ -155,6 +157,11 @@ export default class IBMiContent {
   async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
   async downloadMemberContent(aspOrLibrary: string | undefined, libraryOrSourceFile: string, sourceFileOrMember: string, memberOrLocalPath?: string, localPath?: string): Promise<string> {
     const smallSignature = Boolean(aspOrLibrary && libraryOrSourceFile && sourceFileOrMember && ((memberOrLocalPath && !localPath) || !memberOrLocalPath));
+
+    if (!smallSignature) {
+      console.warn(`[Code for IBM i] downloadMemberContent with 5 parameters is deprecated and will be removed by 3.0.0. Use downloadMemberContent with 4 parameters instead (no ASP).`);
+    }
+
     const library = this.ibmi.upperCaseName(smallSignature ? String(aspOrLibrary) : libraryOrSourceFile);
     const sourceFile = this.ibmi.upperCaseName(smallSignature ? libraryOrSourceFile : sourceFileOrMember);
     const member = this.ibmi.upperCaseName(smallSignature ? sourceFileOrMember : String(memberOrLocalPath));
@@ -233,6 +240,11 @@ export default class IBMiContent {
   async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
   async uploadMemberContent(aspOrLibrary: string | undefined, libraryOrFile: string, sourceFileOrMember: string, memberOrContent: string | Uint8Array, content?: string | Uint8Array): Promise<boolean> {
     const fullSignature = Boolean(content);
+
+    if (fullSignature) {
+      console.warn(`[Code for IBM i] uploadMemberContent with 5 parameters is deprecated and will be removed by 3.0.0. Use uploadMemberContent with 4 parameters instead (no ASP).`);
+    }
+
     const library = this.ibmi.upperCaseName(fullSignature ? libraryOrFile : String(aspOrLibrary));
     const sourceFile = this.ibmi.upperCaseName(fullSignature ? sourceFileOrMember : libraryOrFile);
     const member = this.ibmi.upperCaseName(fullSignature ? String(memberOrContent) : sourceFileOrMember);
@@ -302,6 +314,8 @@ export default class IBMiContent {
    * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
    */
   runSQL(statements: string) {
+    console.warn(`[Code for IBM i] runSQL is deprecated and will be removed by 4.0.0. Use IBMi.runSQL instead.`);
+    
     return this.ibmi.runSQL(statements);
   }
 

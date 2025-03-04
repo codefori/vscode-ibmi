@@ -209,6 +209,7 @@ export default class Instance {
    * @deprecated Will be removed in `v3.0.0`; use {@link IBMi.getConfig()} instead
    */
   getConfig() {
+    console.warn("[Code for IBM i] Deprecation warning: you are using Instance::getConfig which is deprecated and will be removed in v3.0.0. Please use IBMi::getConfig instead.");
     return this.connection?.getConfig();
   }
 
@@ -216,6 +217,7 @@ export default class Instance {
    * @deprecated Will be removed in `v3.0.0`; use {@link IBMi.getContent()} instead
    */
   getContent() {
+    console.warn("[Code for IBM i] Deprecation warning: you are using Instance::getContent which is deprecated and will be removed in v3.0.0. Please use IBMi::getContent instead.");
     return this.connection?.getContent();
   }
 
