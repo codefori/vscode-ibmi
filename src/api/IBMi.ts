@@ -112,6 +112,7 @@ export default class IBMi {
    * @deprecated Will be replaced with {@link IBMi.getAllIAsps} in v3.0.0
    */
   public get aspInfo(): { [id: number]: string } {
+    console.warn("[Code for IBM i] Deprecation warning: you are using IBMi::aspInfo which is deprecated and will be removed in v3.0.0. Please use IBMi::getAllIAsps instead.");
     const result: { [id: number]: string } = {};
 
     this.iAspInfo.forEach(asp => {
@@ -1530,6 +1531,7 @@ export default class IBMi {
    * @deprecated Use {@link IBMiContent.uploadFiles} instead.
    */
   uploadFiles(files: { local: EditorPath, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    console.warn(`[Code for IBM i] uploadFiles is deprecated and will be removed by 4.0.0. Use IBMiContent.uploadFiles instead.`);
     return this.content.uploadFiles(files, options);
   }
 
@@ -1537,6 +1539,7 @@ export default class IBMi {
    * @deprecated Use {@link IBMiContent.downloadFiles} instead.
    */
   downloadFile(localFile: EditorPath, remoteFile: string) {
+    console.warn(`[Code for IBM i] downloadFile is deprecated and will be removed by 4.0.0. Use IBMiContent.downloadFile instead.`);
     return this.content.downloadFile(localFile, remoteFile);
   }
 
@@ -1544,6 +1547,7 @@ export default class IBMi {
    * @deprecated Use {@link IBMiContent.uploadDirectory} instead.
    */
   uploadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    console.warn(`[Code for IBM i] uploadDirectory is deprecated and will be removed by 4.0.0. Use IBMiContent.uploadDirectory instead.`);
     return this.content.uploadDirectory(localDirectory, remoteDirectory, options);
   }
 
@@ -1551,6 +1555,7 @@ export default class IBMi {
    * @deprecated Use {@link IBMiContent.downloadDirectory} instead.
    */
   downloadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    console.warn(`[Code for IBM i] downloadDirectory is deprecated and will be removed by 4.0.0. Use IBMiContent.downloadDirectory instead.`);
     return this.content.downloadDirectory(localDirectory, remoteDirectory, options);
   }
 }
