@@ -192,7 +192,7 @@ export default class IBMiContent {
         return await readFileAsync(localPath, `utf8`);
       } else {
         if (!retry) {
-          const messageID = String(copyResult.stdout).substring(0, 7);
+          const messageID = String(copyResult.stderr).substring(0, 7);
           switch (messageID) {
             case "CPDA08A":
               //We need to try again after we delete the temp remote
