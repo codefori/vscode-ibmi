@@ -18,6 +18,7 @@ import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, Remote
 import { EventEmitter } from 'stream';
 import { ConnectionConfig } from './configuration/config/types';
 import { EditorPath } from '../typings';
+import { RequestLogger } from './requestLogger';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -98,6 +99,8 @@ export default class IBMi {
   currentConnectionName: string = ``;
   private tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
+
+  private requestLogger?: RequestLogger;
 
   /**
    * Used to store ASP numbers and their names
@@ -196,7 +199,11 @@ export default class IBMi {
     this.config = newConfig;
   }
 
-  constructor() {
+  constructor(options: {requestLogger?: RequestLogger} = {}) {
+    if (options.requestLogger) {
+      this.requestLogger = options.requestLogger;
+    }
+
     this.remoteFeatures = {
       git: undefined,
       grep: undefined,
@@ -1100,11 +1107,12 @@ export default class IBMi {
     const command = commands.join(` && `);
     const directory = options.directory || this.config?.homeDirectory;
 
-
     this.appendOutput(`${directory}: ${command}\n`);
     if (options && options.stdin) {
       this.appendOutput(`${options.stdin}\n`);
     }
+
+    const requestLog = this.requestLogger?.new(command, directory, options.stdin);
 
     const result = await this.client!.execCommand(command, {
       cwd: directory,
@@ -1115,6 +1123,10 @@ export default class IBMi {
 
     // Some simplification
     if (result.code === null) result.code = 0;
+
+    if (requestLog) {
+      this.requestLogger?.end(requestLog, result.code, result.stdout, result.stderr);
+    }
 
     this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
 
