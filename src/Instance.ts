@@ -8,6 +8,7 @@ import { VsCodeConfig } from "./config/Configuration";
 import { EventEmitter } from "stream";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 import { VscodeTools } from "./ui/Tools";
+import { RequestLogger } from "./api/requestLogger";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -25,6 +26,7 @@ export interface ConnectionOptions {
 
 export default class Instance {
   private connection: IBMi | undefined;
+  private requestLogger = new RequestLogger();
 
   private output = {
     channel: vscode.window.createOutputChannel(`Code for IBM i`),
@@ -45,6 +47,9 @@ export default class Instance {
     IBMi.connectionManager.configMethod = new VsCodeConfig();
 
     this.emitter.event(e => this.processEvent(e));
+
+    // TODO: this should be controlled by configuration
+    this.requestLogger.setLoggingState(true);
   }
 
   focusOutput() {
@@ -55,14 +60,19 @@ export default class Instance {
     return this.output.content;
   }
 
+  getLogger(): RequestLogger {
+    return this.requestLogger;
+  }
+
   private resetOutput() {
+    this.requestLogger.clear();
     this.output.channel.clear();
     this.output.content = ``;
     this.output.writeCount = 0;
   }
 
   connect(options: ConnectionOptions): Promise<ConnectionResult> {
-    const connection = new IBMi();
+    const connection = new IBMi({requestLogger: this.requestLogger});
 
     this.resetOutput();
     connection.appendOutput = (message) => {
