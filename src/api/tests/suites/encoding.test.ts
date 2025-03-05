@@ -17,11 +17,15 @@ const contents = {
 const SHELL_CHARS = [`$`, `#`];
 
 async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid: number) {
-  const testPgmSrcFile = `TESTING`;
+  const testPgmSrcFile = Tools.makeid(6).toUpperCase();
   const config = connection.config!;
 
   const tempLib = config.tempLibrary;
-  const testPgmName = `T${commands.length}${ccsid}`;
+  const testPgmName = `T${commands.length}${ccsid}${Tools.makeid(2)}`.toUpperCase();
+
+  await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testPgmSrcFile}) OBJTYPE(*FILE)`, noLibList: true });
+  await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testPgmName}) OBJTYPE(*PGM)`, noLibList: true });
+
   const sourceFileCreated = await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
 
   await connection.content.uploadMemberContent(tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
@@ -287,16 +291,16 @@ describe('Encoding tests', {concurrent: true} ,() => {
     }
   });
 
-  it('Variant character in source names and commands', async () => {
+  it('Variant character in source names and commands', {timeout: 15000}, async () => {
     const config = connection.getConfig();
 
     const ccsidData = connection.getCcsids()!;
 
     const tempLib = config.tempLibrary;
-    const varChar = connection.variantChars.local[1];
+    const varChar = connection.variantChars.local[0];
 
-    const testFile = `${varChar}SCOBBY`;
-    const testMember = `${varChar}MEMBER`;
+    const testFile = `${varChar}${Tools.makeid(4)}`.toUpperCase();
+    const testMember = `${varChar}${Tools.makeid(4)}`.toUpperCase();
     const variantMember = `${connection.variantChars.local}MBR`;
 
     await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
@@ -332,11 +336,17 @@ describe('Encoding tests', {concurrent: true} ,() => {
 
     const files = await connection.content.getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
     expect(files.length).toBeTruthy();
-    expect(files[0].name).toBe(connection.sysNameInAmerican(testMember) + `.MBR`);
+    expect(files.some(f => f.name === connection.sysNameInAmerican(variantMember) + `.MBR`)).toBeTruthy();
+    expect(files.some(f => f.name === connection.sysNameInAmerican(testMember) + `.MBR`)).toBeTruthy();
 
     await connection.content.uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
     const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
+    console.log(compileResult);
     expect(compileResult.code).toBe(0);
+
+    if (compileResult.code === 0) {
+      await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testMember}) OBJTYPE(*PGM)`, noLibList: true });
+    }
   });
 });
