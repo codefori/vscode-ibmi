@@ -43,7 +43,7 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
   return result;
 }
 
-describe('Encoding tests', {concurrent: true} ,() => {
+describe('Encoding tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
@@ -53,7 +53,7 @@ describe('Encoding tests', {concurrent: true} ,() => {
     disposeConnection(connection);
   });
 
-  it('Prove that input strings are messed up by CCSID', {timeout: 40000}, async () => {
+  it('Prove that input strings are messed up by CCSID', { timeout: 40000 }, async () => {
     let howManyTimesItMessedUpTheResult = 0;
 
     for (const strCcsid in contents) {
@@ -113,7 +113,7 @@ describe('Encoding tests', {concurrent: true} ,() => {
     expect(paseTextResultA?.stdout).toBe(text);
     expect(qshTextResultB?.stdout).toBe(text);
     expect(paseTextResultB?.stdout).toBe(text);
-  }, {timeout: 25000});
+  }, { timeout: 25000 });
 
   it('streamfileResolve with dollar', async () => {
     await connection.withTempDirectory(async tempDir => {
@@ -179,7 +179,7 @@ describe('Encoding tests', {concurrent: true} ,() => {
     });
   });
 
-  it('Listing objects with variants',{timeout: 15000}, async () => {
+  it('Listing objects with variants', { timeout: 15000 }, async () => {
     const content = connection.getContent();
     if (connection && content) {
       const tempLib = connection.config?.tempLibrary!;
@@ -291,62 +291,65 @@ describe('Encoding tests', {concurrent: true} ,() => {
     }
   });
 
-  it('Variant character in source names and commands', {timeout: 15000}, async () => {
+  it('Variant character in source names and commands', { timeout: 45000 }, async () => {
     const config = connection.getConfig();
-
     const ccsidData = connection.getCcsids()!;
-
     const tempLib = config.tempLibrary;
-    const varChar = connection.variantChars.local[0];
 
-    const testFile = `${varChar}${Tools.makeid(4)}`.toUpperCase();
-    const testMember = `${varChar}${Tools.makeid(4)}`.toUpperCase();
-    const variantMember = `${connection.variantChars.local}MBR`;
+    async function testSingleVariant(varChar: string) {
+      const testFile = `${varChar}${Tools.makeid(4)}`.toUpperCase();
+      const testMember = `${varChar}${Tools.makeid(4)}`.toUpperCase();
+      const variantMember = `${connection.variantChars.local}MBR`;
 
-    await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
+      await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
 
-    const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`], ccsidData.userDefaultCCSID);
-    expect(createResult.code).toBe(0);
+      const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`], ccsidData.userDefaultCCSID);
+      expect(createResult.code).toBe(0);
 
-    const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
-    expect(addPf.code).toBe(0);
+      const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
+      expect(addPf.code).toBe(0);
 
-    const attributes = await connection.content.getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
-    expect(attributes).toBeTruthy();
-    expect(attributes![`CCSID`]).toBe(String(ccsidData.userDefaultCCSID));
+      const attributes = await connection.content.getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
+      expect(attributes).toBeTruthy();
+      expect(attributes![`CCSID`]).toBe(String(ccsidData.userDefaultCCSID));
 
-    const addPfB = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
-    expect(addPfB.code).toBe(0);
+      const addPfB = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
+      expect(addPfB.code).toBe(0);
 
-    const attributesB = await connection.content.getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
-    expect(attributesB).toBeTruthy();
-    expect(attributesB![`CCSID`]).toBe(String(ccsidData.userDefaultCCSID));
+      const attributesB = await connection.content.getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
+      expect(attributesB).toBeTruthy();
+      expect(attributesB![`CCSID`]).toBe(String(ccsidData.userDefaultCCSID));
 
-    const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
-    expect(objects.length).toBeTruthy();
-    expect(objects.some(obj => obj.name === testFile)).toBeTruthy();
+      const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
+      expect(objects.length).toBeTruthy();
+      expect(objects.some(obj => obj.name === testFile)).toBeTruthy();
 
-    const members = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile });
-    expect(members.length).toBeTruthy();
-    expect(members.some(m => m.name === testMember)).toBeTruthy();
-    expect(members.some(m => m.file === testFile)).toBeTruthy();
+      const members = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile });
+      expect(members.length).toBeTruthy();
+      expect(members.some(m => m.name === testMember)).toBeTruthy();
+      expect(members.some(m => m.file === testFile)).toBeTruthy();
 
-    const smallFilter = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile, members: `${varChar}*` });
-    expect(smallFilter.length).toBeTruthy();
+      const smallFilter = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile, members: `${varChar}*` });
+      expect(smallFilter.length).toBeTruthy();
 
-    const files = await connection.content.getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
-    expect(files.length).toBeTruthy();
-    expect(files.some(f => f.name === connection.sysNameInAmerican(variantMember) + `.MBR`)).toBeTruthy();
-    expect(files.some(f => f.name === connection.sysNameInAmerican(testMember) + `.MBR`)).toBeTruthy();
+      const files = await connection.content.getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
+      expect(files.length).toBeTruthy();
+      expect(files.some(f => f.name === connection.sysNameInAmerican(variantMember) + `.MBR`)).toBeTruthy();
+      expect(files.some(f => f.name === connection.sysNameInAmerican(testMember) + `.MBR`)).toBeTruthy();
 
-    await connection.content.uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
+      await connection.content.uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
-    const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
-    console.log(compileResult);
-    expect(compileResult.code).toBe(0);
+      const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
+      console.log(compileResult);
+      expect(compileResult.code).toBe(0);
 
-    if (compileResult.code === 0) {
-      await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testMember}) OBJTYPE(*PGM)`, noLibList: true });
+      if (compileResult.code === 0) {
+        await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testMember}) OBJTYPE(*PGM)`, noLibList: true });
+      }
+    }
+
+    for (const varChar of connection.variantChars.local) {
+      await testSingleVariant(varChar);
     }
   });
 });
