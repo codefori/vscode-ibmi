@@ -133,7 +133,7 @@ export namespace CompileTools {
             commandResult = await connection.sendQsh({
               command: [
                 ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
-                ...commands,
+                ...commands.map(command => IBMi.escapeForShell((command)))
               ].join(` && `),
               directory: cwd,
               ...callbacks

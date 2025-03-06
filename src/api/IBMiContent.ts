@@ -167,7 +167,7 @@ export default class IBMiContent {
     const member = this.ibmi.upperCaseName(smallSignature ? sourceFileOrMember : String(memberOrLocalPath));
 
     const asp = await this.ibmi.lookupLibraryIAsp(library);
-    const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+    const path = Tools.qualifyPath(library, sourceFile, member, asp);
     const tempRmt = this.getTempRemote(path);
     let retry = false;
     while (true) {
@@ -186,7 +186,7 @@ export default class IBMiContent {
       }
       else {
         copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          command: `QSYS/CPYTOSTMF FROMMBR('''${path}''') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
           noLibList: true
         });
       }
@@ -255,7 +255,7 @@ export default class IBMiContent {
 
     try {
       await writeFileAsync(tmpobj, content || memberOrContent, `utf8`);
-      const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+      const path = Tools.qualifyPath(library, sourceFile, member, asp);
       const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
 
@@ -275,7 +275,7 @@ export default class IBMiContent {
       }
       else {
         copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('''${path}''') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
           noLibList: true
         });
       }
@@ -880,11 +880,11 @@ export default class IBMiContent {
         const asp = file.asp || this.ibmi.getCurrentIAspName();
         if (asp && asp.length > 0) {
           return [
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true)
+            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp),
+            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined)
           ].join(` `);
         } else {
-          return Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true);
+          return Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined);
         }
       })
       .join(` `)
@@ -1033,24 +1033,18 @@ export default class IBMiContent {
     const assumeMember = typeof localPath === `object`;
     let target: string;
 
+    let result: CommandResult;
+
     if (assumeMember) {
       // If it's an object, we assume it's a member, therefore let's let qsh handle it (better for variants)
       localPath.asp = localPath.asp ? this.ibmi.sysNameInAmerican(localPath.asp) : undefined;
       localPath.library = this.ibmi.sysNameInAmerican(localPath.library);
       localPath.name = this.ibmi.sysNameInAmerican(localPath.name);
       localPath.member = localPath.member ? this.ibmi.sysNameInAmerican(localPath.member) : undefined;
-      target = Tools.qualifyPath(localPath.library, localPath.name, localPath.member || '', localPath.asp || '', true);
-    } else {
-      target = localPath;
-    }
-
-    let result: CommandResult;
-
-    if (assumeMember) {
-      target = IBMi.escapeForShell(target);
+      target = IBMi.escapeForShell(Tools.qualifyPath(localPath.library, localPath.name, localPath.member || '', localPath.asp || ''));
       result = await this.ibmi.sendQsh({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
     } else {
-      target = Tools.escapePath(target, true);
+      target = Tools.escapePath(localPath, true);
       // Take {DOES_THIS_WORK: `YESITDOES`} away, and all of a sudden names with # aren't found.
       result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p "${target}" ${operands.join(" ")}`, env: { DOES_THIS_WORK: `YESITDOES` } });
     }
