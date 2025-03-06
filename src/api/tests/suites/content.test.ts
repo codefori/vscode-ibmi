@@ -268,11 +268,13 @@ describe('Content Tests', {concurrent: true}, () => {
   it('Test validateLibraryList', async () => {
     const content = connection.getContent();
 
-    const badLibs = await content.validateLibraryList(['SCOOBY', 'QSYSINC', 'BEEPBOOP']);
+    const badLibs = await content.validateLibraryList(['SCOOBY', 'QSYSINC', 'BEEPBOOP', '"QUOTES', '"YOYOYO"']);
 
     expect(badLibs?.includes('BEEPBOOP')).toBe(true);
     expect(badLibs?.includes('QSYSINC')).toBe(false);
     expect(badLibs?.includes('SCOOBY')).toBe(true);
+    expect(badLibs?.includes('"QUOTES')).toBe(true);
+    expect(badLibs?.includes('"YOYOYO"')).toBe(false);
   });
 
   it('Test getFileList', async () => {
