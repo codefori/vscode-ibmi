@@ -175,7 +175,7 @@ export default class IBMi {
    * Determine if QSYS paths need to be translated to use system variants
    */
   get qsysPosixPathsRequireTranslation() {
-    if (this.canUseCqsh && this.getCcsid() === this.sshdCcsid) {
+    if (this.canUseCqsh && this.getCcsid() === this.qccsid && this.qccsid !== IBMi.CCSID_NOCONVERSION) {
       return false;
     }
 
