@@ -1057,7 +1057,7 @@ export default class IBMi {
   }
 
   static escapeForShell(command: string) {
-    return command.replace(/\$/g, `\\$`)
+    return command.replace(/\$/g, `\\$`).replace(/"/g, `\\"`);
   }
 
   async sendQsh(options: CommandData) {
@@ -1241,6 +1241,11 @@ export default class IBMi {
    * @returns {string} result
    */
   sysNameInAmerican(string: string) {
+    // Keep local variants for quoted names
+    if (string.startsWith('"')) {
+      return string;
+    }
+
     const fromChars = this.variantChars.local;
     const toChars = this.variantChars.american;
 
@@ -1250,7 +1255,7 @@ export default class IBMi {
       result = result.replace(new RegExp(`[${fromChars[i]}]`, `g`), toChars[i]);
     };
 
-    return result
+    return result;
   }
 
   getLastDownloadLocation() {
@@ -1441,9 +1446,15 @@ export default class IBMi {
       this.variantChars.qsysNameRegex = new RegExp(regexTest);
     }
 
-    if (name.length > 10) return false;
     name = this.upperCaseName(name);
-    return this.variantChars.qsysNameRegex.test(name);
+
+    if (name.startsWith(`"`)) {
+      // TOOD: Could improve this given https://www.ibm.com/docs/en/i/7.1?topic=rules-names-name
+      const qsysQuotedNameRegex = new RegExp(`^".{0,8}"$`);
+      return qsysQuotedNameRegex.test(name);
+    } else {
+      return this.variantChars.qsysNameRegex.test(name);
+    }
   }
 
   getCcsid() {
