@@ -151,30 +151,25 @@ export class QSysFS implements vscode.FileSystemProvider {
                 memberContent = this.extendedMemberSupport ?
                     await this.extendedContent.downloadMemberContentWithDates(uri) :
                     await contentApi.downloadMemberContent(library, file, member);
-            }
-            catch (error) {
-                if (await this.stat(uri)) { //Check if exists on an iASP and retry if so
-                    return this.readFile(uri);
+            } catch (error) {
+                if (!retrying && await this.stat(uri)) { //Check if exists on an iASP and retry if so
+                    return this.readFile(uri, true);
                 }
                 throw error;
             }
             if (memberContent !== undefined) {
                 return new Uint8Array(Buffer.from(memberContent, `utf8`));
-            }
-            else {
+            } else {
                 throw new FileSystemError(`Couldn't read ${uri}; check IBM i connection.`);
             }
-        }
-        else {
+        } else {
             if (retrying) {
                 throw new FileSystemError("Not connected to IBM i");
-            }
-            else {
+            } else {
                 if (await reconnectFS(uri)) {
                     this.updateMemberSupport(); //this needs to be done right after reconnecting, before the member is read (the connect event may be triggered too late at this point)
                     return this.readFile(uri, true);
-                }
-                else {
+                } else {
                     return Buffer.alloc(0);
                 }
             }
