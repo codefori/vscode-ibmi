@@ -1035,11 +1035,11 @@ export default class IBMiContent {
 
     if (assumeMember) {
       // If it's an object, we assume it's a member, therefore let's let qsh handle it (better for variants)
-      localPath.asp = localPath.asp ? this.ibmi.sysNameInAmerican(localPath.asp) : undefined;
-      localPath.library = this.ibmi.sysNameInAmerican(localPath.library);
-      localPath.name = this.ibmi.sysNameInAmerican(localPath.name);
-      localPath.member = localPath.member ? this.ibmi.sysNameInAmerican(localPath.member) : undefined;
       target = Tools.qualifyPath(localPath.library, localPath.name, localPath.member || '', localPath.asp || '', true);
+
+      if (this.ibmi.qsysPosixPathsRequireTranslation) {
+        target = this.ibmi.sysNameInAmerican(target);
+      }
     } else {
       target = localPath;
     }
