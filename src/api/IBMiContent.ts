@@ -871,8 +871,9 @@ export default class IBMiContent {
   }
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
-    const inAmerican = (s: string) => { return this.ibmi.sysNameInAmerican(s) };
-    const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
+    const localVariants = this.ibmi.variantChars;
+    const forSystem = (s: string) => { return this.ibmi.sysNameInAmerican(s, this.ibmi.qsysPosixPathsRequireTranslation) };
+    const fromSystem = (s: string) => { return this.ibmi.qsysPosixPathsRequireTranslation ? this.ibmi.sysNameInLocal(s) : s };
 
     // Escape names for shell
     const pathList = files
@@ -880,11 +881,11 @@ export default class IBMiContent {
         const asp = file.asp || this.ibmi.getCurrentIAspName();
         if (asp && asp.length > 0) {
           return [
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true)
+            Tools.qualifyPath(forSystem(file.library), forSystem(file.name), forSystem(member), asp, false, localVariants),
+            Tools.qualifyPath(fromSystem(file.library), fromSystem(file.name), fromSystem(member), undefined, false, localVariants)
           ].join(` `);
         } else {
-          return Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true);
+          return Tools.qualifyPath(forSystem(file.library), forSystem(file.name), forSystem(member), undefined, false, localVariants);
         }
       })
       .join(` `)
@@ -900,7 +901,7 @@ export default class IBMiContent {
 
       if (firstMost) {
         try {
-          const simplePath = inLocal(Tools.unqualifyPath(firstMost));
+          const simplePath = fromSystem(Tools.unqualifyPath(firstMost));
 
           // This can error if the path format is wrong for some reason.
           // Not that this would ever happen, but better to be safe than sorry
@@ -915,7 +916,10 @@ export default class IBMiContent {
   }
 
   async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
-    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.sysNameInAmerican(lib)}.LIB/${this.ibmi.sysNameInAmerican(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+    const forSystem = (s: string) => { return Tools.escapePath(this.ibmi.sysNameInAmerican(s, this.ibmi.qsysPosixPathsRequireTranslation)) };
+    const fromSystem = (s: string) => { return this.ibmi.qsysPosixPathsRequireTranslation ? this.ibmi.sysNameInLocal(s) : s };
+
+    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${forSystem(lib)}.LIB/${forSystem(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -925,7 +929,7 @@ export default class IBMiContent {
       const firstMost = result.stdout;
 
       if (firstMost) {
-        const lib = this.ibmi.sysNameInLocal(Tools.unqualifyPath(firstMost));
+        const lib = fromSystem(Tools.unqualifyPath(firstMost));
 
         return lib.split('/')[1];
       }
@@ -1035,7 +1039,7 @@ export default class IBMiContent {
 
     if (assumeMember) {
       // If it's an object, we assume it's a member, therefore let's let qsh handle it (better for variants)
-      target = Tools.qualifyPath(localPath.library, localPath.name, localPath.member || '', localPath.asp || '', true, this.ibmi.variantChars.local);
+      target = Tools.qualifyPath(localPath.library, localPath.name, localPath.member || '', localPath.asp || '', true, this.ibmi.variantChars);
 
       if (this.ibmi.qsysPosixPathsRequireTranslation) {
         target = this.ibmi.sysNameInAmerican(target);
@@ -1067,7 +1071,10 @@ export default class IBMiContent {
   }
 
   async countMembers(path: QsysPath) {
-    return this.countFiles(this.ibmi.sysNameInAmerican(Tools.qualifyPath(path.library, path.name, undefined, path.asp)))
+    return this.countFiles(this.ibmi.sysNameInAmerican(
+      Tools.qualifyPath(path.library, path.name, undefined, path.asp, undefined, this.ibmi.variantChars),
+      this.ibmi.qsysPosixPathsRequireTranslation
+    ));
   }
 
   async countFiles(directory: string) {

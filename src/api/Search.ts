@@ -14,7 +14,7 @@ export namespace Search {
       let memberFilter: string|undefined;
 
       if (typeof members === `string`) {
-        memberFilter = connection.sysNameInAmerican(`${members}.MBR`);
+        memberFilter = connection.sysNameInAmerican(`${members}.MBR`, connection.qsysPosixPathsRequireTranslation);
       } else
       if (Array.isArray(members)) {
         if (members.length > connection.maximumArgsLength) {
@@ -31,7 +31,7 @@ export namespace Search {
       // Then search the members
       const result = await connection.sendQsh({
         command: `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`,
-        directory: connection.sysNameInAmerican(`${asp ? `/${asp}` : ``}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
+        directory: connection.sysNameInAmerican(`${asp ? `/${asp}` : ``}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`, connection.qsysPosixPathsRequireTranslation)
       });
 
       if (!result.stderr) {

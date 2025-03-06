@@ -19,6 +19,12 @@ import { EventEmitter } from 'stream';
 import { ConnectionConfig } from './configuration/config/types';
 import { EditorPath } from '../typings';
 
+export interface VariantInfo {
+  american: string,
+  local: string,
+  qsysNameRegex?: RegExp
+};
+
 export interface MemberParts extends IBMiMember {
   basename: string
 }
@@ -124,11 +130,7 @@ export default class IBMi {
 
   remoteFeatures: { [name: string]: string | undefined };
 
-  variantChars: {
-    american: string,
-    local: string,
-    qsysNameRegex?: RegExp
-  };
+  variantChars: VariantInfo;
 
   shell?: string;
 

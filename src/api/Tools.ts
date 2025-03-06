@@ -3,6 +3,7 @@ import os from "os";
 import path from "path";
 import { IBMiMessage, IBMiMessages, QsysPath } from './types';
 import { EditorPath } from "../typings";
+import { VariantInfo } from "./IBMi";
 
 export namespace Tools {
   export class SqlError extends Error {
@@ -176,7 +177,7 @@ export namespace Tools {
    * @param member Optional
    * @param iasp Optional: an iASP name
    */
-  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean, localVariants?: string) {
+  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean, localVariants?: VariantInfo) {
     [library, object] = Tools.sanitizeObjNamesForPase([library, object], localVariants);
     member = member ? Tools.sanitizeObjNamesForPase([member], localVariants)[0] : undefined;
     iasp = iasp ? Tools.sanitizeObjNamesForPase([iasp], localVariants)[0] : undefined;
@@ -236,11 +237,12 @@ export namespace Tools {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  export function sanitizeObjNamesForPase(libraries: string[], localVariants = `"`): string[] {
+  export function sanitizeObjNamesForPase(libraries: string[], localVariants?: VariantInfo): string[] {
+    const checkChar = localVariants ? localVariants.local[0] : `"`;
     return libraries
       .map(library => {
         const first = library[0];
-        return localVariants.includes(first) ? `"${library}"` : library;
+        return first === checkChar ? `"${library}"` : library;
       });
   }
 

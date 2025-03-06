@@ -176,10 +176,13 @@ describe('Encoding tests', { concurrent: true }, () => {
 
       const memberContentA = await content?.downloadMemberContent(tempLib, tempSPF, tempMbr);
       expect(memberContentA).toBe(baseContent);
+
+      const resolved = await content?.memberResolve(tempMbr, [{name: tempSPF, library: `QSYS`}, {name: tempSPF, library: `QSY2`}, {name: tempSPF, library: tempLib}]);
+      expect(resolved).toBeTruthy();
     });
   });
 
-  it('Listing objects with variants', { timeout: 30000 }, async () => {
+  it('Listing objects with variants', { timeout: 40000 }, async () => {
     const content = connection.getContent();
     if (connection && content) {
       const tempLib = connection.config?.tempLibrary!;
@@ -188,7 +191,7 @@ describe('Encoding tests', { concurrent: true }, () => {
       let library = `TESTLIB${connection.variantChars.local}`;
       let skipLibrary = false;
       const sourceFile = `${connection.variantChars.local}TESTFIL`;
-      const dataArea = `TSTDTA${connection.variantChars.local}`;
+      const dataArea = `${connection.variantChars.local}TSTDTA`;
       const members: string[] = [];
 
       for (let i = 0; i < 5; i++) {
@@ -236,7 +239,7 @@ describe('Encoding tests', { concurrent: true }, () => {
       };
 
       const nameFilter = await content.getObjectList({ library, types: ["*ALL"], object: `${connection.variantChars.local[0]}*` });
-      expect(nameFilter.length).toBe(1);
+      expect(nameFilter.length).toBe(2);
       expect(nameFilter.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile)).toBeTruthy();
 
       const objectList = await content.getObjectList({ library, types: ["*ALL"] });
@@ -258,6 +261,9 @@ describe('Encoding tests', { concurrent: true }, () => {
 
       const [expectedSourceFile] = await content.getObjectList({ library, object: sourceFile, types: ["*SRCPF"] });
       checkFile(expectedSourceFile);
+
+      const resolvedObject = await content.objectResolve(dataArea, [`QSYS`, `QSYS2`, library]);
+      expect(resolvedObject).toBeTruthy();
     }
   });
 
