@@ -19,7 +19,9 @@ export async function setup(project: TestProject) {
       "runtimeCcsid": conn.getCcsids().runtimeCcsid,
       "userDefaultCCSID": conn.getCcsids().userDefaultCCSID,
       "sshdCcsid": conn.getCcsids().sshdCcsid,
-      "canUseCqsh": conn.canUseCqsh
+      "canUseCqsh": conn.canUseCqsh,
+      "americanVariants": conn.variantChars.american,
+      "localVariants": conn.variantChars.local,
     });
 
     console.log(``);

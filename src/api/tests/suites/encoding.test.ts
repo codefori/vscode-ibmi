@@ -291,7 +291,7 @@ describe('Encoding tests', { concurrent: true }, () => {
     }
   });
 
-  it('Variant character in source names and commands', { timeout: 45000 }, async () => {
+  it('Variant character in source names and commands', { timeout: 55000 }, async () => {
     const config = connection.getConfig();
     const ccsidData = connection.getCcsids()!;
     const tempLib = config.tempLibrary;
@@ -337,10 +337,15 @@ describe('Encoding tests', { concurrent: true }, () => {
       expect(files.some(f => f.name === connection.sysNameInAmerican(variantMember) + `.MBR`)).toBeTruthy();
       expect(files.some(f => f.name === connection.sysNameInAmerican(testMember) + `.MBR`)).toBeTruthy();
 
-      await connection.content.uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
+      const eol = `\r\n`;
+      const memberContents = [`**free`, `dsply 'Hello world';`, ``, ``, `return;`].join(eol);
+      await connection.getContent().uploadMemberContent(tempLib, testFile, testMember, memberContents);
+
+      const downloadedContent = await connection.getContent().downloadMemberContent(tempLib, testFile, testMember);
+
+      expect(downloadedContent).toBe(memberContents + eol);
 
       const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
-      console.log(compileResult);
       expect(compileResult.code).toBe(0);
 
       if (compileResult.code === 0) {
