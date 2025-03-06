@@ -176,10 +176,10 @@ export namespace Tools {
    * @param member Optional
    * @param iasp Optional: an iASP name
    */
-  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean) {
-    [library, object] = Tools.sanitizeObjNamesForPase([library, object]);
-    member = member ? Tools.sanitizeObjNamesForPase([member])[0] : undefined;
-    iasp = iasp ? Tools.sanitizeObjNamesForPase([iasp])[0] : undefined;
+  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean, localVariants?: string) {
+    [library, object] = Tools.sanitizeObjNamesForPase([library, object], localVariants);
+    member = member ? Tools.sanitizeObjNamesForPase([member], localVariants)[0] : undefined;
+    iasp = iasp ? Tools.sanitizeObjNamesForPase([iasp], localVariants)[0] : undefined;
 
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${library}.LIB`;
     const filePath = object ? `${object}.FILE` : '';
@@ -236,11 +236,11 @@ export namespace Tools {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  export function sanitizeObjNamesForPase(libraries: string[]): string[] {
+  export function sanitizeObjNamesForPase(libraries: string[], localVariants = `"`): string[] {
     return libraries
       .map(library => {
-        // Quote libraries starting with #
-        return library.startsWith(`#`) ? `"${library}"` : library;
+        const first = library[0];
+        return localVariants.includes(first) ? `"${library}"` : library;
       });
   }
 
