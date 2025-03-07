@@ -213,4 +213,5 @@ export namespace VscodeTools {
   export const parseAttrDate = Tools.parseAttrDate;
   export const normalizePath = Tools.normalizePath;
   export const resolvePath = Tools.resolvePath;
+  export const makeid = Tools.makeid;
 }
