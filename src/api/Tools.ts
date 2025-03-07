@@ -177,7 +177,7 @@ export namespace Tools {
    * @param member Optional
    * @param iasp Optional: an iASP name
    */
-  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean, localVariants?: VariantInfo) {
+  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, localVariants?: VariantInfo) {
     [library, object] = Tools.sanitizeObjNamesForPase([library, object], localVariants);
     member = member ? Tools.sanitizeObjNamesForPase([member], localVariants)[0] : undefined;
     iasp = iasp ? Tools.sanitizeObjNamesForPase([iasp], localVariants)[0] : undefined;
@@ -187,7 +187,7 @@ export namespace Tools {
     const memberPath = member ? `/${member}.MBR` : '';
     const fullPath = `${libraryPath}/${filePath}${memberPath}`;
 
-    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${noEscape ? fullPath : Tools.escapePath(fullPath)}`;
+    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${fullPath}`;
     return result;
   }
 
@@ -242,6 +242,7 @@ export namespace Tools {
     return libraries
       .map(library => {
         const first = library[0];
+
         return first === checkChar ? `"${library}"` : library;
       });
   }

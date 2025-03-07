@@ -167,7 +167,7 @@ export default class IBMiContent {
     const member = this.ibmi.upperCaseName(smallSignature ? sourceFileOrMember : String(memberOrLocalPath));
 
     const asp = await this.ibmi.lookupLibraryIAsp(library);
-    const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+    const path = Tools.qualifyPath(library, sourceFile, member, asp);
     const tempRmt = this.getTempRemote(path);
     let retry = false;
     while (true) {
@@ -255,7 +255,7 @@ export default class IBMiContent {
 
     try {
       await writeFileAsync(tmpobj, content || memberOrContent, `utf8`);
-      const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+      const path = Tools.qualifyPath(library, sourceFile, member, asp);
       const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
 
@@ -881,18 +881,21 @@ export default class IBMiContent {
         const asp = file.asp || this.ibmi.getCurrentIAspName();
         if (asp && asp.length > 0) {
           return [
-            Tools.qualifyPath(forSystem(file.library), forSystem(file.name), forSystem(member), asp, false, localVariants),
-            Tools.qualifyPath(fromSystem(file.library), fromSystem(file.name), fromSystem(member), undefined, false, localVariants)
+            Tools.qualifyPath(forSystem(file.library), forSystem(file.name), forSystem(member), asp, localVariants),
+            Tools.qualifyPath(fromSystem(file.library), fromSystem(file.name), fromSystem(member), undefined, localVariants)
           ].join(` `);
         } else {
-          return Tools.qualifyPath(forSystem(file.library), forSystem(file.name), forSystem(member), undefined, false, localVariants);
+          return Tools.qualifyPath(forSystem(file.library), forSystem(file.name), forSystem(member), undefined, localVariants);
         }
       })
+      .map(
+        path => IBMi.escapeForShell(path)
+      )
       .join(` `)
       .toUpperCase();
 
     const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
-    const result = await this.ibmi.sendCommand({
+    const result = await this.ibmi.sendQsh({
       command,
     });
 
@@ -1039,7 +1042,7 @@ export default class IBMiContent {
 
     if (assumeMember) {
       // If it's an object, we assume it's a member, therefore let's let qsh handle it (better for variants)
-      target = Tools.qualifyPath(localPath.library, localPath.name, localPath.member || '', localPath.asp || '', true, this.ibmi.variantChars);
+      target = Tools.qualifyPath(localPath.library, localPath.name, localPath.member || '', localPath.asp || '', this.ibmi.variantChars);
 
       if (this.ibmi.qsysPosixPathsRequireTranslation) {
         target = this.ibmi.sysNameInAmerican(target);
@@ -1079,9 +1082,9 @@ export default class IBMiContent {
 
   async countFiles(directory: string, isQsys?: boolean) {
     if (isQsys) {
-      return Number((await this.ibmi.sendQsh({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
+      return Number((await this.ibmi.sendQsh({ command: `cd "${IBMi.escapeForShell(directory)}" && (ls | wc -l)` })).stdout.trim());
     } else {
-      return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
+      return Number((await this.ibmi.sendCommand({ command: `cd "${IBMi.escapeForShell(directory)}" && (ls | wc -l)` })).stdout.trim());
     }
   }
 
