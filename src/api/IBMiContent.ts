@@ -1072,13 +1072,17 @@ export default class IBMiContent {
 
   async countMembers(path: QsysPath) {
     return this.countFiles(this.ibmi.sysNameInAmerican(
-      Tools.qualifyPath(path.library, path.name, undefined, path.asp, undefined, this.ibmi.variantChars),
+      Tools.qualifyPath(path.library, path.name, undefined, path.asp),
       this.ibmi.qsysPosixPathsRequireTranslation
-    ));
+    ), true);
   }
 
-  async countFiles(directory: string) {
-    return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
+  async countFiles(directory: string, isQsys?: boolean) {
+    if (isQsys) {
+      return Number((await this.ibmi.sendQsh({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
+    } else {
+      return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
+    }
   }
 
 

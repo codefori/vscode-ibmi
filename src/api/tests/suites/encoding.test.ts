@@ -343,6 +343,9 @@ describe('Encoding tests', { concurrent: true }, () => {
       expect(files.some(f => f.name === connection.sysNameInAmerican(variantMember) + `.MBR`)).toBeTruthy();
       expect(files.some(f => f.name === connection.sysNameInAmerican(testMember) + `.MBR`)).toBeTruthy();
 
+      const count = await connection.getContent().countMembers({library: tempLib, name: testFile});
+      expect(count).toBe(2);
+
       const eol = `\r\n`;
       const memberContents = [`**free`, `dsply 'Hello world';`, ``, ``, `return;`].join(eol);
       await connection.getContent().uploadMemberContent(tempLib, testFile, testMember, memberContents);
