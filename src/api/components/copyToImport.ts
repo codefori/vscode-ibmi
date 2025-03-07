@@ -71,7 +71,9 @@ export class CopyToImport implements IBMiComponent {
       RMVBLANK: `*TRAILING`,
       ADDCOLNAM: `*SQL`,
       FLDDLM: `','`,
-      DECPNT: `*PERIOD`
+      DECPNT: `*PERIOD`,
+      STRDLM: `*DBLQUOTE`,
+      STRESCCHR: `*STRDLM`
     }).replaceAll(`'`, `''`) + `')`);
 
     return {
