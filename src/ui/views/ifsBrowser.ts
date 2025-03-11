@@ -895,7 +895,7 @@ Do you want to replace it?`, target))) {
                 .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, path.basename(items[0].path)) : downloadLocationURI) : undefined);
             }
             catch (e: any) {
-              vscode.window.showErrorMessage(l10n.t(`Error downloading file(s): {0}`, e));
+              vscode.window.showErrorMessage(l10n.t(`Error downloading file(s): {0}`, String(e)));
             }
           });
         }
