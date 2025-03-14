@@ -1679,6 +1679,13 @@
 				"category": "IBM i",
 				"icon": "$(plus)",
 				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.logs.show",
+				"title": "Show logs",
+				"category": "IBM i",
+				"icon": "$(output)",
+				"enablement": "code-for-ibmi:connected"
 			}
 		],
 		"keybindings": [

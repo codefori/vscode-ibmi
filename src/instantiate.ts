@@ -15,6 +15,7 @@ import { QSysFS } from "./filesystems/qsys/QSysFs";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
 import IBMi from "./api/IBMi";
+import { registerLoggingCommands } from "./commands/logs";
 
 export let instance: Instance;
 
@@ -81,6 +82,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ...Terminal.registerTerminalCommands(context),
 
     ...registerPasswordCommands(context, instance),
+
+    ...registerLoggingCommands(context, instance),
 
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
   );
