@@ -338,7 +338,7 @@ export default class IBMiContent {
     });
 
     if (copyResult.code === 0) {
-      let result = await this.downloadStreamfile(tempRmt);
+      let result = await this.downloadStreamfileRaw(tempRmt);
 
       if (this.config.autoClearTempData) {
         Promise.allSettled([

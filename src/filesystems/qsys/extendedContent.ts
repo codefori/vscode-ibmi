@@ -31,7 +31,7 @@ export class ExtendedIBMiContent {
       const aliasPath = `${tempLib}.${alias}`;
       const { library, file, name } = connection.parserMemberPath(uri.path);
       try {
-        await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${library}"."${file}"("${name}")`);
+        await connection.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${library}"."${file}"("${name}")`);
       } catch (e) {
         console.log(e);
       }
