@@ -201,7 +201,7 @@ export class ProfilesView {
     const connection = instance.getConnection();
 
     if (connection) {
-      const config = instance.getConfig();
+      const config = connection.getConfig();
       const storage = instance.getStorage();
       if (config && storage) {
         const currentProfile = storage.getLastProfile();

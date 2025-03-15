@@ -118,10 +118,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary: WithLibrary) => {
-        const content = instance.getContent();
-        const config = instance.getConfig();
         const connection = instance.getConnection();
-        if (content && config && connection) {
+        if (connection) {
+          const content = connection.getContent();
+          const config = connection.getConfig();
           const addingLib = connection.upperCaseName(newLibrary.library);
 
           if (addingLib.length > 10) {

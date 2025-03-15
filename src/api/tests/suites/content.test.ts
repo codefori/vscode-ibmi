@@ -573,7 +573,7 @@ describe('Content Tests', {concurrent: true}, () => {
 
   it('should count members', async () => {
     const content = connection.getContent()
-    const tempLib = connection.config?.tempLibrary;
+    const tempLib = connection.getConfig().tempLibrary;
     if (tempLib) {
       const file = Tools.makeid(8);
       const deleteSPF = async () => await connection.runCommand({ command: `DLTF FILE(${tempLib}/${file})`, noLibList: true });

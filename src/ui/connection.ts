@@ -142,9 +142,8 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
         }
         else {
           try {
-            const content = connection.content;
-            if (content) {
-              const bashrcContent = (await content.downloadStreamfile(bashrcFile)).split("\n");
+            const content = connection.getContent();
+              const bashrcContent = (await content.downloadStreamfileRaw(bashrcFile)).toString().split("\n");
               let replaced = false;
               bashrcContent.forEach((line, index) => {
                 if (!replaced) {
