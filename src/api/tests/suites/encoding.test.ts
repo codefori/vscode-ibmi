@@ -18,7 +18,7 @@ const SHELL_CHARS = [`$`, `#`];
 
 async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid: number) {
   const testPgmSrcFile = Tools.makeid(6).toUpperCase();
-  const config = connection.config!;
+  const config = connection.getConfig();
 
   const tempLib = config.tempLibrary;
   const testPgmName = `T${commands.length}${ccsid}${Tools.makeid(2)}`.toUpperCase();
@@ -28,7 +28,7 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
 
   const sourceFileCreated = await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
 
-  await connection.content.uploadMemberContent(tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
+  await connection.getContent().uploadMemberContent(tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
 
   const compileCommand = `CRTBNDCL PGM(${tempLib}/${testPgmName}) SRCFILE(${tempLib}/${testPgmSrcFile}) SRCMBR(${testPgmName}) REPLACE(*YES)`;
   const compileResult = await connection.runCommand({ command: compileCommand, noLibList: true });
@@ -118,9 +118,9 @@ describe('Encoding tests', { concurrent: true }, () => {
   it('streamfileResolve with dollar', async () => {
     await connection.withTempDirectory(async tempDir => {
       const tempFile = path.posix.join(tempDir, `$hello`);
-      await connection.content.createStreamFile(tempFile);
+      await connection.getContent().createStreamFile(tempFile);
 
-      const resolved = await connection.content.streamfileResolve([tempFile], [`/`]);
+      const resolved = await connection.getContent().streamfileResolve([tempFile], [`/`]);
 
       expect(resolved).toBe(tempFile);
     });
@@ -133,12 +133,12 @@ describe('Encoding tests', { concurrent: true }, () => {
       await connection.withTempDirectory(async tempDir => {
         for (const name of nameCombos) {
           const tempFile = path.posix.join(tempDir, `${name}.txt`);
-          await connection.content.createStreamFile(tempFile);
+          await connection.getContent().createStreamFile(tempFile);
 
-          const resolved = await connection.content.streamfileResolve([tempFile], [`/`]);
+          const resolved = await connection.getContent().streamfileResolve([tempFile], [`/`]);
           expect(resolved).toBe(tempFile);
 
-          const attributes = await connection.content.getAttributes(resolved!, `CCSID`);
+          const attributes = await connection.getContent().getAttributes(resolved!, `CCSID`);
           expect(attributes).toBeTruthy();
         }
       });
@@ -182,7 +182,7 @@ describe('Encoding tests', { concurrent: true }, () => {
   it('Listing objects with variants', { timeout: 15000 }, async () => {
     const content = connection.getContent();
     if (connection && content) {
-      const tempLib = connection.config?.tempLibrary!;
+      const tempLib = connection.getConfig().tempLibrary!;
       const ccsid = connection.getCcsid();
 
       let library = `TESTLIB${connection.variantChars.local}`;
@@ -220,7 +220,7 @@ describe('Encoding tests', { concurrent: true }, () => {
         expect(expectedLibrary).toBeTruthy();
         expect(library).toBe(expectedLibrary.name);
 
-        const validated = await connection.content.validateLibraryList([tempLib, library]);
+        const validated = await connection.getContent().validateLibraryList([tempLib, library]);
         expect(validated.length).toBe(0);
 
         const libl = await content.getLibraryList([library]);
@@ -281,7 +281,7 @@ describe('Encoding tests', { concurrent: true }, () => {
       const addPf = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
       expect(addPf.code).toBe(0);
 
-      await connection.content.uploadMemberContent(library, sourceFile, member, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
+      await connection.getContent().uploadMemberContent(library, sourceFile, member, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
 
       const compileResultA = await connection.runCommand({ command: `CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${sourceFile}) SRCMBR(${member})`, env: { '&CURLIB': library } });
       expect(compileResultA.code).toBe(0);
@@ -309,35 +309,35 @@ describe('Encoding tests', { concurrent: true }, () => {
       const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
       expect(addPf.code).toBe(0);
 
-      const attributes = await connection.content.getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
+      const attributes = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
       expect(attributes).toBeTruthy();
       expect(attributes![`CCSID`]).toBe(String(ccsidData.userDefaultCCSID));
 
       const addPfB = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
       expect(addPfB.code).toBe(0);
 
-      const attributesB = await connection.content.getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
+      const attributesB = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
       expect(attributesB).toBeTruthy();
       expect(attributesB![`CCSID`]).toBe(String(ccsidData.userDefaultCCSID));
 
-      const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
+      const objects = await connection.getContent().getObjectList({ library: tempLib, types: [`*SRCPF`] });
       expect(objects.length).toBeTruthy();
       expect(objects.some(obj => obj.name === testFile)).toBeTruthy();
 
-      const members = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile });
+      const members = await connection.getContent().getMemberList({ library: tempLib, sourceFile: testFile });
       expect(members.length).toBeTruthy();
       expect(members.some(m => m.name === testMember)).toBeTruthy();
       expect(members.some(m => m.file === testFile)).toBeTruthy();
 
-      const smallFilter = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile, members: `${varChar}*` });
+      const smallFilter = await connection.getContent().getMemberList({ library: tempLib, sourceFile: testFile, members: `${varChar}*` });
       expect(smallFilter.length).toBeTruthy();
 
-      const files = await connection.content.getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
+      const files = await connection.getContent().getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
       expect(files.length).toBeTruthy();
       expect(files.some(f => f.name === connection.sysNameInAmerican(variantMember) + `.MBR`)).toBeTruthy();
       expect(files.some(f => f.name === connection.sysNameInAmerican(testMember) + `.MBR`)).toBeTruthy();
 
-      await connection.content.uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
+      await connection.getContent().uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
       const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
       console.log(compileResult);

@@ -244,7 +244,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                 },
               ]
 
-              resultSet = await content!.runSQL(`
+              resultSet = await connection.runSQL(`
                 select ifnull( cast( SYSTEM_TABLE_NAME as char( 10 ) for bit data ), '' ) as SYSTEM_TABLE_NAME
                      , ifnull( TABLE_TEXT, '' ) as TABLE_TEXT
                   from QSYS2.SYSTABLES
@@ -286,7 +286,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
 
               filterText = filterText.endsWith(`.`) ? filterText.substring(0, filterText.length - 1) : filterText;
 
-              resultSet = await content!.runSQL(`
+              resultSet = await connection.runSQL(`
                 select cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) as SYSTEM_TABLE_MEMBER
                      , ifnull( PARTITION_TEXT, '' ) as PARTITION_TEXT
                      , ifnull( SOURCE_TYPE, '' ) as SOURCE_TYPE
