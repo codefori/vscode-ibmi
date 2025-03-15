@@ -85,11 +85,11 @@ export default class IBMi {
   /**
    * @deprecated Will become private in v3.0.0 - use {@link IBMi.getConfig} instead.
    */
-  config?: ConnectionConfig;
+  private config?: ConnectionConfig;
   /**
    * @deprecated Will become private in v3.0.0 - use {@link IBMi.getContent} instead.
    */
-  content = new IBMiContent(this);
+  private content = new IBMiContent(this);
 
   client: node_ssh.NodeSSH | undefined;
   currentHost: string = ``;

@@ -9,6 +9,7 @@ import { Tools } from '../../api/Tools';
 import { getLocalActions } from './actions';
 import { DeployTools } from './deployTools';
 import { DeploymentParameters } from '../../typings';
+import IBMiContent from '../../api/IBMiContent';
 
 export namespace Deployment {
   export interface MD5Entry {
@@ -52,10 +53,9 @@ export namespace Deployment {
       () => {
         const workspaces = vscode.workspace.workspaceFolders;
         const connection = instance.getConnection();
-        const config = instance.getConfig();
         const storage = instance.getStorage();
 
-        if (workspaces && connection && storage && config) {
+        if (workspaces && connection && storage) {
           if (workspaces.length > 0) {
             button.show();
           }
@@ -111,12 +111,12 @@ export namespace Deployment {
     return connection;
   }
 
-  export function getContent() {
-    const content = instance.getContent();
-    if (!content) {
+  export function getContent(): IBMiContent {
+    const connection = getConnection();
+    if (!connection) {
       throw new Error("Please connect to an IBM i");
     }
-    return content;
+    return connection.getContent();
   }
 
   export async function createRemoteDirectory(remotePath: string) {

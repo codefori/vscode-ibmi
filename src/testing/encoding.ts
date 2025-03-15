@@ -47,7 +47,7 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
 export const EncodingSuite: TestSuite = {
   name: `Encoding tests`,
   before: async () => {
-    const config = instance.getConfig();
+    const config = instance.getConnection()?.getConfig();
     if (config) {
       assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
     }
@@ -121,9 +121,9 @@ export const EncodingSuite: TestSuite = {
     })),
     ...SHELL_CHARS.map(char => ({
       name: `Test members with shell character ${char}`, test: async () => {
-        const content = instance.getContent();
-        const config = instance.getConfig();
         const connection = instance.getConnection()!;
+        const content = connection.getContent();
+        const config = connection.getConfig();
 
         if (!connection.variantChars.local.includes(char)) {
           // This test will fail if $ is not a variant character, 
@@ -174,7 +174,7 @@ export const EncodingSuite: TestSuite = {
       name: `Variant character in source names and commands`, test: async () => {
         // CHGUSRPRF X CCSID(284) CNTRYID(ES) LANGID(ESP)
         const connection = instance.getConnection()!;
-        const config = instance.getConfig()!;
+        const config = connection.getConfig()!;
 
         const ccsidData = connection.getCcsids()!;
 
@@ -248,8 +248,8 @@ export const EncodingSuite: TestSuite = {
 
     ...Object.keys(contents).map(ccsid => ({
       name: `Encoding ${ccsid}`, test: async () => {
-        const connection = instance.getConnection();
-        const config = instance.getConfig()!;
+        const connection = instance.getConnection()!;
+        const config = connection.getConfig();
 
         const oldLines = contents[ccsid as keyof typeof contents];
         const lines = oldLines.join(`\n`);

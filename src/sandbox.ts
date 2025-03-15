@@ -170,8 +170,9 @@ export async function handleStartup() {
 }
 
 async function initialSetup(username: string) {
-  const config = instance.getConfig();
-  if (config) {
+  const connection = instance.getConnection();
+  if (connection) {
+    const config = connection.getConfig();
     const libraryList = config.libraryList;
     if (!libraryList.includes(username)) {
       config.libraryList = [...config.libraryList, username];
