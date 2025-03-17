@@ -61,6 +61,10 @@ export default class Instance {
     this.output.writeCount = 0;
   }
 
+  logToOutput(message: string|object) {
+    this.output.channel.appendLine(typeof message === `object` ? JSON.stringify(message, null, 2) : message);
+  }
+
   connect(options: ConnectionOptions): Promise<ConnectionResult> {
     const connection = new IBMi();
 

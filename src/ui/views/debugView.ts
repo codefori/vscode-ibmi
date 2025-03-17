@@ -91,28 +91,44 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
         }
       }
 
-      return Promise.all([
-        getDebugServerJob().then(debugJob =>
-          new DebugJobItem("server",
-            vscode.l10n.t(`Debug Server`),
-            {
-              startFunction: startServer,
-              stopFunction: stopServer,
-              debugJob
-            })
-        ),
-        getDebugServiceJob().then(debugJob =>
-          new DebugJobItem("service",
-            vscode.l10n.t(`Debug Service`), {
-            startFunction: () => startService(connection),
-            stopFunction: () => stopService(connection),
-            debugJob,
-            debugConfig,
-            certificates,
-            keyFileExists
-          })
-        )
+      const [serverJob, serviceJob] = await Promise.all([
+        getDebugServerJob(),
+        getDebugServiceJob()
       ]);
+
+      const debugServerNode = new DebugJobItem("server", vscode.l10n.t(`Debug Server`), {
+        startFunction: startServer,
+        stopFunction: stopServer,
+        debugJob: serverJob
+      });
+
+      const debugServiceNode = new DebugJobItem("service", vscode.l10n.t(`Debug Service`), {
+        startFunction: () => startService(connection),
+        stopFunction: () => stopService(connection),
+        debugJob: serviceJob,
+        debugConfig,
+        certificates,
+        keyFileExists
+      });
+
+      instance.logToOutput({
+        name: `debugInformation`,
+        keyFileExists,
+        debugConfig: debugConfig.configLines,
+        jobs: {
+          server: {
+            job: serverJob,
+            problem: debugServerNode.getProblem()
+          },
+          service: {
+            job: serviceJob,
+            problem: debugServiceNode.getProblem()
+          },
+        },
+        certificates,
+      });
+
+      return [debugServerNode, debugServiceNode];
     }
     else {
       return [];
@@ -201,6 +217,10 @@ class DebugJobItem extends DebugItem {
       this.description = vscode.l10n.t(`Offline`);
       this.tooltip = "";
     }
+  }
+
+  getProblem() {
+    return this.problem;
   }
 
   getChildren() {
