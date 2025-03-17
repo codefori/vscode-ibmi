@@ -1330,7 +1330,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
 }
 
 function getConfig() {
-  const config = instance.getConfig();
+  const config = instance.getConnection()?.getConfig();
   if (config) {
     return config;
   }
@@ -1350,7 +1350,7 @@ function getConnection() {
 }
 
 function getContent() {
-  const content = instance.getContent();
+  const content = instance.getConnection()?.getContent();
   if (content) {
     return content;
   }

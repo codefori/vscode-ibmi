@@ -35,12 +35,12 @@ export const ActionSuite: TestSuite = {
   name: `Action tests`,
   notConcurrent: true,
   before: async () => {
-    const config = instance.getConfig();
     const storage = instance.getStorage();
-    const connection = instance.getConnection();
+    const connection = instance.getConnection()!;
+    const config = connection.getConfig();
 
     const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
-    const tempDir = instance.getConfig()?.tempDir;
+    const tempDir = config.tempDir;
     assert.ok(workspaceFolder, "No workspace folder to work with");
     assert.ok(tempDir, "Cannot run deploy tools tests: no remote temp directory defined");
 
@@ -116,9 +116,9 @@ export const ActionSuite: TestSuite = {
     },
     {
       name: `Create Bound RPG Program (from member, custom action)`, test: async () => {
-        const config = instance.getConfig();
-        const content = instance.getContent();
-        const connection = instance.getConnection();
+        const connection = instance.getConnection()!;
+        const config = connection.getConfig();
+        const content = connection.getContent();
         const tempLib = config!.tempLibrary;
 
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(HELLO) SRCTYPE(RPGLE)` });
@@ -140,9 +140,9 @@ export const ActionSuite: TestSuite = {
 
     {
       name: `Create Bound RPG Program failure (from member, custom action)`, test: async () => {
-        const config = instance.getConfig();
-        const content = instance.getContent();
-        const connection = instance.getConnection();
+        const connection = instance.getConnection()!;
+        const config = connection.getConfig();
+        const content = connection.getContent();
         const tempLib = config!.tempLibrary;
 
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(THEBADONE) SRCTYPE(RPGLE)` });
@@ -173,7 +173,7 @@ async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: s
   const toJSON = (obj: Object) => JSON.stringify(obj, (key, value) => {
     if (keysToCompare.includes(key)) { return value }
   });
-  const content = instance.getContent();
+  const content = instance.getConnection()?.getContent();
   const helloWorldProgram = (await content?.getObjectList({ library: library, object: 'HELLO', types: ['*PGM'] }))![0];
   assert.deepStrictEqual(toJSON(helloWorldProgram), toJSON({
     library: library,

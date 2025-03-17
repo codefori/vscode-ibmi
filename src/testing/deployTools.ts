@@ -90,7 +90,7 @@ export const DeployToolsSuite: TestSuite = {
         assert.ok(features?.md5sum, "md5sum is required to run deploy tools test suite");
 
         const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
-        const tempDir = instance.getConfig()?.tempDir;
+        const tempDir = instance.getConnection()?.getConfig().tempDir;
         assert.ok(workspaceFolder, "No workspace folder to work with");
         assert.ok(tempDir, "Cannot run deploy tools tests: no remote temp directory defined");
 
@@ -209,7 +209,7 @@ export const DeployToolsSuite: TestSuite = {
             await vscode.workspace.fs.delete(fakeProject.localPath, { recursive: true, useTrash: false });
         }
 
-        if (fakeProject.remotePath && await instance.getContent()?.isDirectory(fakeProject.remotePath)) {
+        if (fakeProject.remotePath && await instance.getConnection()?.getContent().isDirectory(fakeProject.remotePath)) {
             await instance.getConnection()?.sendCommand({ command: `rm -rf ${fakeProject.remotePath}` })
         }
     },

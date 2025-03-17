@@ -103,7 +103,7 @@ export default class IBMiContent {
    * @param content Raw content
    * @param encoding Optional encoding to write.
    */
-  async writeStreamfileRaw(originalPath: string, content: Uint8Array, encoding?: string) {
+  async writeStreamfileRaw(originalPath: string, content: string|Uint8Array, encoding?: string) {
     const client = this.ibmi.client!;
     const features = this.ibmi.remoteFeatures;
     const tmpobj = await tmpFile();
@@ -338,7 +338,7 @@ export default class IBMiContent {
     });
 
     if (copyResult.code === 0) {
-      let result = await this.downloadStreamfile(tempRmt);
+      let result = await this.downloadStreamfileRaw(tempRmt);
 
       if (this.config.autoClearTempData) {
         Promise.allSettled([

@@ -35,8 +35,8 @@ export function setupGitEventHandler(context: ExtensionContext) {
 
               if (currentBranch && currentBranch !== lastBranch[workspaceUri]) {
                 if (connection) {
-                  const content = instance.getContent()!;
-                  const config = instance.getConfig()!;
+                  const content = connection.getContent();
+                  const config = connection.getConfig();
 
                   if (currentBranch.includes(`/`)) {
                     setupBranchLibrary(currentBranch, content, connection, config);

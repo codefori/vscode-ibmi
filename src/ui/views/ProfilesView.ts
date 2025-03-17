@@ -22,9 +22,10 @@ export class ProfilesView {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.saveConnectionProfile`, async (profileNode?: Profile) => {
-        const config = instance.getConfig();
+        const connection = instance.getConnection();
         const storage = instance.getStorage();
-        if (config && storage) {
+        if (connection && storage) {
+          const config = connection.getConfig();
           const currentProfile = storage.getLastProfile() || '';
           let currentProfiles = config.connectionProfiles;
 
@@ -54,8 +55,9 @@ export class ProfilesView {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.deleteConnectionProfile`, async (profileNode?: Profile) => {
-        const config = instance.getConfig();
-        if (config) {
+        const connection = instance.getConnection();
+        if (connection) {
+          const config = connection.getConfig();
           const currentProfiles = config.connectionProfiles;
           const chosenProfile = await getOrPickAvailableProfile(currentProfiles, profileNode);
           if (chosenProfile) {
@@ -73,9 +75,10 @@ export class ProfilesView {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.loadConnectionProfile`, async (profileNode?: Profile) => {
-        const config = instance.getConfig();
+        const connection = instance.getConnection();
         const storage = instance.getStorage();
-        if (config && storage) {
+        if (connection && storage) {
+          const config = connection.getConfig();
           const chosenProfile = await getOrPickAvailableProfile(config.connectionProfiles, profileNode);
           if (chosenProfile) {
             assignProfile(chosenProfile, config);
@@ -99,8 +102,9 @@ export class ProfilesView {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.deleteCommandProfile`, async (commandProfile?: CommandProfileItem) => {
-        const config = instance.getConfig();
-        if (config && commandProfile) {
+        const connection = instance.getConnection();
+        if (connection && commandProfile) {
+          const config = connection.getConfig();
           const storedProfile = config.commandProfiles.findIndex(profile => profile.name === commandProfile.profile);
           if (storedProfile !== undefined) {
             config.commandProfiles.splice(storedProfile, 1);
@@ -113,9 +117,9 @@ export class ProfilesView {
 
       vscode.commands.registerCommand(`code-for-ibmi.loadCommandProfile`, async (commandProfile?: CommandProfileItem) => {
         const connection = instance.getConnection();
-        const config = instance.getConfig();
         const storage = instance.getStorage();
-        if (commandProfile && connection && config && storage) {
+        if (commandProfile && connection && storage) {
+          const config = connection.getConfig();
           const storedProfile = config.commandProfiles.find(profile => profile.name === commandProfile.profile);
 
           if (storedProfile) {
@@ -148,10 +152,10 @@ export class ProfilesView {
 
       vscode.commands.registerCommand(`code-for-ibmi.setToDefault`, () => {
         const connection = instance.getConnection();
-        const config = instance.getConfig();
         const storage = instance.getStorage();
 
-        if (config && storage) {
+        if (connection && storage) {
+          const config = connection.getConfig();
           window.showInformationMessage(l10n.t(`Reset to default`), {
             detail: l10n.t(`This will reset the User Library List, working directory and Custom Variables back to the defaults.`),
             modal: true
@@ -186,7 +190,7 @@ export class ProfilesView {
   }
 
   refresh() {
-    const config = instance.getConfig();
+    const config = instance.getConnection()?.getConfig();
     if (config) {
       vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0 || config.commandProfiles.length > 0);
       this._onDidChangeTreeData.fire(null);
@@ -201,7 +205,7 @@ export class ProfilesView {
     const connection = instance.getConnection();
 
     if (connection) {
-      const config = instance.getConfig();
+      const config = connection.getConfig();
       const storage = instance.getStorage();
       if (config && storage) {
         const currentProfile = storage.getLastProfile();
