@@ -416,13 +416,11 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 }
 
 class ObjectBrowserMemberItemDragAndDrop implements vscode.TreeDragAndDropController<ObjectBrowserMemberItem> {
-  readonly dragMimeTypes = [OBJECT_BROWSER_MIMETYPE];
+  readonly dragMimeTypes = [];
   readonly dropMimeTypes = [];
 
   handleDrag(source: readonly ObjectBrowserMemberItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
-    dataTransfer.set(OBJECT_BROWSER_MIMETYPE, new vscode.DataTransferItem(source.filter(item => item.resourceUri?.scheme === `member`)
-      .map(item => item.resourceUri)
-      .join(URI_LIST_SEPARATOR)));
+    dataTransfer.set(OBJECT_BROWSER_MIMETYPE, new vscode.DataTransferItem(source.map(item => item.path).join(URI_LIST_SEPARATOR)));
   }
 }
 
