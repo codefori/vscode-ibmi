@@ -3,13 +3,13 @@ import path, { dirname, extname } from "path";
 import vscode, { FileType, l10n, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
+import IBMi from "../../api/IBMi";
 import { SortOptions } from "../../api/IBMiContent";
 import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../../typings";
 import { VscodeTools } from "../Tools";
-import IBMi from "../../api/IBMi";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
 const URI_LIST_MIMETYPE = "text/uri-list";
@@ -210,19 +210,20 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
     if (target) {
       const toDirectory = (target.file.type === "streamfile" ? target.parent : target) as IFSDirectoryItem;
       const ifsBrowserItems = dataTransfer.get(IFS_BROWSER_MIMETYPE);
-      const objectBrowserItems = dataTransfer.get(OBJECT_BROWSER_MIMETYPE);
       if (ifsBrowserItems) {
         this.moveOrCopyItems(ifsBrowserItems.value as IFSItem[], toDirectory)
-      } else if (objectBrowserItems) {
-        const memberUris = (await objectBrowserItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
-        this.copyMembers(memberUris, toDirectory)
       }
       else {
         const explorerItems = dataTransfer.get(URI_LIST_MIMETYPE);
-        if (explorerItems && explorerItems.value) {
+        if (explorerItems?.value) {
           //URI_LIST_MIMETYPE Mime type is a string with `toString()`ed Uris separated by `\r\n`.
           const uris = (await explorerItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
-          vscode.commands.executeCommand(`code-for-ibmi.uploadStreamfile`, toDirectory, uris);
+          if (uris.at(0)?.scheme === "member") {
+            this.copyMembers(uris, toDirectory)
+          }
+          else {
+            vscode.commands.executeCommand(`code-for-ibmi.uploadStreamfile`, toDirectory, uris);
+          }
         }
       }
     }
@@ -273,15 +274,14 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
     }
   }
 
-  private async copyMembers(memberUris: vscode.Uri[], toDirectory: IFSDirectoryItem) {
+  private async copyMembers(uris: vscode.Uri[], toDirectory: IFSDirectoryItem) {
     const connection = instance.getConnection();
-    if (connection && memberUris && memberUris.length) {
+    if (connection && uris?.length) {
       try {
-        for (let uri of memberUris) {
-          let result;
+        for (const uri of uris) {
           const member = connection.parserMemberPath(uri.path);
           const command: string = `CPYTOSTMF FROMMBR('${Tools.qualifyPath(member.library, member.file, member.name, member.asp)}') TOSTMF('${toDirectory.path}/${member.basename.toLocaleLowerCase()}') STMFCCSID(1208) ENDLINFMT(*LF)`;
-          result = await connection.runCommand({
+          const result = await connection.runCommand({
             command: command,
             noLibList: true
           });
@@ -290,7 +290,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
           }
         };
 
-        vscode.window.showInformationMessage(l10n.t(`{0} member(s) copied to streamfile(s) in {1}.`, memberUris.length, toDirectory.path));
+        vscode.window.showInformationMessage(l10n.t(`{0} member(s) copied to streamfile(s) in {1}.`, uris.length, toDirectory.path));
         toDirectory.refresh();
       } catch (e: any) {
         vscode.window.showErrorMessage(e || e.text);

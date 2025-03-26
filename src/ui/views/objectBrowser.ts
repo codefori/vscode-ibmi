@@ -9,7 +9,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ModuleExport, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, ProgramExportImportInfo, WithLibrary } from "../../typings";
+import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ModuleExport, ObjectFilters, ObjectItem, ProgramExportImportInfo, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
@@ -416,13 +416,11 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 }
 
 class ObjectBrowserMemberItemDragAndDrop implements vscode.TreeDragAndDropController<ObjectBrowserMemberItem> {
-  readonly dragMimeTypes = [OBJECT_BROWSER_MIMETYPE];
+  readonly dragMimeTypes = [];
   readonly dropMimeTypes = [];
 
   handleDrag(source: readonly ObjectBrowserMemberItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
-    dataTransfer.set(OBJECT_BROWSER_MIMETYPE, new vscode.DataTransferItem(source.filter(item => item.resourceUri?.scheme === `member`)
-      .map(item => item.resourceUri)
-      .join(URI_LIST_SEPARATOR)));
+    //A URI list is automatically produced
   }
 }
 
