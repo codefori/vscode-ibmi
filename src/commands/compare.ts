@@ -1,5 +1,6 @@
-import { commands, window, Uri, l10n, Disposable } from "vscode";
+import { Disposable, Uri, commands, l10n, window } from "vscode";
 import Instance from "../Instance";
+import { BrowserItem } from "../typings";
 
 let selectedForCompare: Uri;
 
@@ -79,6 +80,13 @@ export function registerCompareCommands(instance: Instance): Disposable[] {
         window.showInformationMessage(l10n.t(`No file is open or selected`));
       }
     }),
+    commands.registerCommand("code-for-ibmi.compareWithEachOther", async (node: BrowserItem, nodes: BrowserItem[]) => {
+      const left = nodes.at(0)?.resourceUri;
+      const right = nodes.at(1)?.resourceUri;
+      if (left) {
+        commands.executeCommand(VSCODE_DIFF_COMMAND, left, right);
+      }
+    })
   ]
 }
 
