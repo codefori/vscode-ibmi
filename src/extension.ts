@@ -32,6 +32,7 @@ import { initializeIFSBrowser } from "./ui/views/ifsBrowser";
 import { initializeObjectBrowser } from "./ui/views/objectBrowser";
 import { initializeSearchView } from "./ui/views/searchView";
 import { registerURIHandler } from "./uri";
+import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
@@ -122,7 +123,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   extensionComponentRegistry.registerComponent(context, new CopyToImport());
 
   registerURIHandler(context,
-    sandboxURIHandler
+    sandboxURIHandler,
+    openURIHandler
   );
 
   return {
