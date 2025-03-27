@@ -1,20 +1,19 @@
 import { Disposable, Uri, commands, l10n, window } from "vscode";
-import Instance from "../Instance";
 import { BrowserItem } from "../typings";
 
-let selectedForCompare: Uri;
+let selectedForCompare: Uri | undefined;
 
 const VSCODE_DIFF_COMMAND = `vscode.diff`;
 
-export function registerCompareCommands(instance: Instance): Disposable[] {
+export function registerCompareCommands(): Disposable[] {
   return [
-    commands.registerCommand(`code-for-ibmi.selectForCompare`, async (node) => {
-      if (node) {
+    commands.registerCommand(`code-for-ibmi.selectForCompare`, async (node: BrowserItem) => {
+      if (node?.resourceUri) {
         selectedForCompare = node.resourceUri;
-        window.showInformationMessage(`Selected ${node.path} for compare.`);
+        window.showInformationMessage(`Selected ${selectedForCompare.path} for compare.`);
       }
     }),
-    commands.registerCommand(`code-for-ibmi.compareWithSelected`, async (node) => {
+    commands.registerCommand(`code-for-ibmi.compareWithSelected`, async (node: BrowserItem) => {
       if (selectedForCompare) {
         let uri;
         if (node) {
@@ -53,10 +52,10 @@ export function registerCompareCommands(instance: Instance): Disposable[] {
     commands.registerCommand(`code-for-ibmi.compareCurrentFileWithLocal`, async (node) => {
       compareCurrentFile(node, `file`);
     }),
-    commands.registerCommand(`code-for-ibmi.compareWithActiveFile`, async (node) => {
+    commands.registerCommand(`code-for-ibmi.compareWithActiveFile`, async (node: BrowserItem | Uri) => {
       let selectedFile;
       if (node) {
-        if (node.scheme === `streamfile` || node.constructor.name === `IFSFileItem` || node.constructor.name === `ObjectBrowserItem`) {
+        if (node instanceof BrowserItem) {
           selectedFile = node.resourceUri;
         } else if (node.scheme === `file`) {
           selectedFile = node
@@ -96,11 +95,11 @@ export function registerCompareCommands(instance: Instance): Disposable[] {
   ]
 }
 
-async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `member`) {
+async function compareCurrentFile(node: BrowserItem | Uri, scheme: `streamfile` | `file` | `member`) {
   let currentFile: Uri | undefined;
   // If we are comparing with an already targeted node
   if (node) {
-    if (node.resourceUri) {
+    if (node instanceof BrowserItem) {
       currentFile = node.resourceUri;
     } else if (node.scheme === `file`) {
       currentFile = node
