@@ -1071,9 +1071,15 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.compareWithSelected",
+				"command": "code-for-ibmi.compareWithSelected.short",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Selected",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareWithSelected",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Compare with selected",
 				"category": "IBM i"
 			},
 			{
@@ -1083,25 +1089,47 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.compareCurrentFileWithMember",
+				"command": "code-for-ibmi.compareCurrentFileWithMember.short",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Member...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+				"command": "code-for-ibmi.compareCurrentFileWithMember",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Compare with member...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareCurrentFileWithStreamFile.short",
 				"enablement": "code-for-ibmi:connected",
 				"title": "IFS file...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.compareCurrentFileWithLocal",
+				"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Compare with IFS file...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareCurrentFileWithLocal.short",
 				"title": "Local file...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.compareWithActiveFile",
+				"command": "code-for-ibmi.compareCurrentFileWithLocal",
+				"title": "Compare with local file...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareWithActiveFile.short",
 				"title": "Active file",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareWithActiveFile",
+				"title": "Compare with active file",
 				"category": "IBM i"
 			},
 			{
@@ -1839,11 +1867,11 @@
 			},
 			{
 				"id": "code-for-ibmi.compareWith",
-				"label": "Compare with..."
+				"label": "Compare with"
 			},
 			{
 				"id": "code-for-ibmi.compareWithLocal",
-				"label": "Compare with..."
+				"label": "Compare with"
 			}
 		],
 		"menus": {
@@ -1892,23 +1920,23 @@
 			],
 			"code-for-ibmi.compareWith": [
 				{
-					"command": "code-for-ibmi.compareWithSelected",
+					"command": "code-for-ibmi.compareWithSelected.short",
 					"when": "!listMultiSelection"
 				},
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithMember",
+					"command": "code-for-ibmi.compareCurrentFileWithMember.short",
 					"when": "!listMultiSelection"		
 				},
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+					"command": "code-for-ibmi.compareCurrentFileWithStreamFile.short",
 					"when": "!listMultiSelection"
 				},
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"command": "code-for-ibmi.compareCurrentFileWithLocal.short",
 					"when": "!listMultiSelection"
 				},
 				{
-					"command": "code-for-ibmi.compareWithActiveFile",
+					"command": "code-for-ibmi.compareWithActiveFile.short",
 					"when": "!listMultiSelection"
 				},
 				{
@@ -1918,19 +1946,19 @@
 			],
 			"code-for-ibmi.compareWithLocal": [
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithMember",
+					"command": "code-for-ibmi.compareCurrentFileWithMember.short",
 					"when": "code-for-ibmi:connected"
 				},
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+					"command": "code-for-ibmi.compareCurrentFileWithStreamFile.short",
 					"when": "code-for-ibmi:connected"
 				},
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"command": "code-for-ibmi.compareCurrentFileWithLocal.short",
 					"when": "!explorerResourceIsFolder"
 				},
 				{
-					"command": "code-for-ibmi.compareWithActiveFile",
+					"command": "code-for-ibmi.compareWithActiveFile.short",
 					"when": "!explorerResourceIsFolder"
 				}
 			],
@@ -1998,6 +2026,30 @@
 				{
 					"command": "code-for-ibmi.compareCurrentFileWithMember",
 					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.compareWithSelected.short",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithMember.short",
+					"when": "never"		
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithStreamFile.short",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithLocal.short",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.compareWithActiveFile.short",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.compareWithEachOther",
+					"when": "never"
 				},
 				{
 					"command": "code-for-ibmi.goToFileReadOnly",
@@ -2289,10 +2341,6 @@
 				},
 				{
 					"command": "code-for-ibmi.compareWithActiveFile",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.compareWithEachOther",
 					"when": "never"
 				},
 				{

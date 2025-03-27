@@ -86,7 +86,13 @@ export function registerCompareCommands(instance: Instance): Disposable[] {
       if (left) {
         commands.executeCommand(VSCODE_DIFF_COMMAND, left, right);
       }
-    })
+    }),
+    //Same commands with shorter titles
+    ...["compareWithSelected",
+      "compareCurrentFileWithMember",
+      "compareCurrentFileWithStreamFile",
+      "compareCurrentFileWithLocal",
+      "compareWithActiveFile"].map(command => commands.registerCommand(`code-for-ibmi.${command}.short`, node => commands.executeCommand(`code-for-ibmi.${command}`, node)))
   ]
 }
 
@@ -108,17 +114,33 @@ async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `me
   }
 
   if (currentFile) {
-    let compareWith = await window.showInputBox({
-      prompt: l10n.t(`Enter the path to compare selected with`),
-      title: l10n.t(`Compare with`),
-      value: currentFile.path
-    });
+    let compareWith;
+    if (scheme === "file") {
+      compareWith = (await window.showOpenDialog({
+        title: l10n.t(`Select the file to compare to`),
+        canSelectMany: false,
+      }))?.at(0);
+    }
+    else {
+      compareWith = await window.showInputBox({
+        prompt: l10n.t(`Enter the path to compare selected with`),
+        title: l10n.t(`Compare with`),
+        value: currentFile.path
+      });
+    }
 
     if (compareWith) {
-      if (scheme == 'member' && !compareWith.startsWith('/')) {
-        compareWith = `/${compareWith}`;
+      let uri;
+      if (compareWith instanceof Uri) {
+        uri = compareWith;
       }
-      let uri = Uri.parse(`${scheme}:${compareWith}`);
+      else {
+        if (scheme == 'member' && !compareWith.startsWith('/')) {
+          compareWith = `/${compareWith}`;
+        }
+        uri = Uri.parse(`${scheme}:${compareWith}`);
+      }
+
       commands.executeCommand(VSCODE_DIFF_COMMAND, currentFile, uri);
     }
   } else {
