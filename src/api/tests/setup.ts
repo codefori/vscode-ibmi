@@ -10,9 +10,22 @@ export async function setup(project: TestProject) {
     console.log(`Testing connection before tests run since configs do not exist.`);
 
     const conn = await newConnection();
-    disposeConnection(conn);
 
     console.log(`Testing connection complete. Configs written.`);
     console.log(``);
+
+    console.table({
+      "QCCSID": conn.getCcsids().qccsid,
+      "runtimeCcsid": conn.getCcsids().runtimeCcsid,
+      "userDefaultCCSID": conn.getCcsids().userDefaultCCSID,
+      "sshdCcsid": conn.getCcsids().sshdCcsid,
+      "canUseCqsh": conn.canUseCqsh,
+      "americanVariants": conn.variantChars.american,
+      "localVariants": conn.variantChars.local,
+    });
+
+    console.log(``);
+
+    disposeConnection(conn);
   }
 }

@@ -19,6 +19,12 @@ import { EventEmitter } from 'stream';
 import { ConnectionConfig } from './configuration/config/types';
 import { EditorPath } from '../typings';
 
+export interface VariantInfo {
+  american: string,
+  local: string,
+  qsysNameRegex?: RegExp
+};
+
 export interface MemberParts extends IBMiMember {
   basename: string
 }
@@ -124,11 +130,7 @@ export default class IBMi {
 
   remoteFeatures: { [name: string]: string | undefined };
 
-  variantChars: {
-    american: string,
-    local: string,
-    qsysNameRegex?: RegExp
-  };
+  variantChars: VariantInfo;
 
   shell?: string;
 
@@ -160,16 +162,37 @@ export default class IBMi {
   }
 
   /**
-   * Determines if the client should do variant translation.
-   * False when cqsh should be used.
-   * True when cqsh is not available and the job CCSID is not the same as the SSHD CCSID.
+   * Determines if the client should do variant translation for SQL statements.
+   * The SQL runner (ZDFMDB2) translation is always based on QCCSID, and never on the user's CCSID.
    */
-  get requiresTranslation() {
+  private get sqlRunnerRequiresTranslation() {
+    if (this.canUseCqsh && this.qccsid === this.sshdCcsid) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Determine if QSYS paths need to be translated to use system variants
+   */
+  get qsysPosixPathsRequireTranslation() {
+    if (this.canUseCqsh && this.getCcsid() === this.qccsid && this.qccsid !== IBMi.CCSID_NOCONVERSION) {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Determine if the system command requires translation
+   */
+  get systemCommandRequiresTranslation() {
     if (this.canUseCqsh) {
       return false;
-    } else {
-      return this.getCcsid() !== this.sshdCcsid;
     }
+    
+    return true;
   }
 
   get dangerousVariants() {
@@ -851,17 +874,18 @@ export default class IBMi {
           }
         }
 
-        else {
-          // If cqsh is not available, then we need to check the SSHD CCSID
-          this.sshdCcsid = await this.content.getSshCcsid();
-          if (this.sshdCcsid === this.getCcsid()) {
-            // If the SSHD CCSID matches the job CCSID (not the user profile!), then we're good.
-            // This means we can use regular qsh without worrying about translation because the SSHD and job CCSID match.
-            userCcsidNeedsFixing = false;
-          } else {
-            // If the SSHD CCSID does not match the job CCSID, then we need to warn the user
-            sshdCcsidMismatch = true;
-          }
+        callbacks.progress({
+          message: `Checking SSHD CCSID.`
+        });
+
+        this.sshdCcsid = await this.content.getSshCcsid();
+        if (this.sshdCcsid === this.getCcsid()) {
+          // If the SSHD CCSID matches the job CCSID (not the user profile!), then we're good.
+          // This means we can use regular qsh without worrying about translation because the SSHD and job CCSID match.
+          userCcsidNeedsFixing = false;
+        } else {
+          // If the SSHD CCSID does not match the job CCSID, then we need to warn the user
+          sshdCcsidMismatch = true;
         }
 
         if (userCcsidNeedsFixing) {
@@ -1069,11 +1093,6 @@ export default class IBMi {
       qshExecutable = this.getComponent<CustomQSh>(CustomQSh.ID)!.installPath;
     }
 
-    if (this.requiresTranslation) {
-      options.stdin = this.sysNameInAmerican(options.stdin);
-      options.directory = options.directory ? this.sysNameInAmerican(options.directory) : undefined;
-    }
-
     return this.sendCommand({
       ...options,
       command: `${IBMi.locale} ${qshExecutable}`
@@ -1240,17 +1259,21 @@ export default class IBMi {
    * @param {string} string
    * @returns {string} result
    */
-  sysNameInAmerican(string: string) {
-    const fromChars = this.variantChars.local;
-    const toChars = this.variantChars.american;
+  sysNameInAmerican(string: string, enabled: boolean = true) {
+    if (enabled) {
+      const fromChars = this.variantChars.local;
+      const toChars = this.variantChars.american;
 
-    let result = string;
+      let result = string;
 
-    for (let i = 0; i < fromChars.length; i++) {
-      result = result.replace(new RegExp(`[${fromChars[i]}]`, `g`), toChars[i]);
-    };
+      for (let i = 0; i < fromChars.length; i++) {
+        result = result.replace(new RegExp(`[${fromChars[i]}]`, `g`), toChars[i]);
+      };
 
-    return result
+      return result;
+    }
+
+    return string;
   }
 
   getLastDownloadLocation() {
@@ -1346,7 +1369,7 @@ export default class IBMi {
         command = `${IBMi.locale} ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
       }
 
-      if (this.requiresTranslation) {
+      if (this.sqlRunnerRequiresTranslation) {
         // If we can't fix the input, then we can attempt to convert ourselves and then use the CSV.
         input = this.sysNameInAmerican(input);
         useCsv = true;

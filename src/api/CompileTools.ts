@@ -147,7 +147,7 @@ export namespace CompileTools {
               command: [
                 ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
-                  `${`system "${IBMi.escapeForShell(command)}"`}`,
+                  `${`system "${IBMi.escapeForShell(connection.sysNameInAmerican(command, connection.systemCommandRequiresTranslation))}"`}`,
                 )
               ].join(` && `),
               directory: cwd,
