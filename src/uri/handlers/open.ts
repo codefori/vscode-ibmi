@@ -63,17 +63,17 @@ function toBoolean(value?: string) {
 async function loadParameters(query: querystring.ParsedUrlQuery, connection?: IBMi): Promise<Parameters> {
   const path = toPath(query.path as string | undefined);
   const readonly: DefaultOpenMode | undefined = toBoolean(query.readonly as string | undefined) ? "browse" : undefined;
-  const host = await resolveHost(query.host as string | undefined);
+  const connectionData = await resolveConnectionData(query.host as string | undefined);
   let connect;
   let cancel;
 
-  if (!connection && !host) {
+  if (!connection && !connectionData) {
     throw l10n.t("Not connected to IBM i: 'host' query parameter is required");
   }
 
-  if (connection && host) {
-    if (host.name !== connection.currentConnectionName) {
-      if (await vscode.window.showWarningMessage(l10n.t("You're currently connected to {0}. Do you want to disconnect and switch to {1}?", connection.currentHost, host.name), { modal: true }, l10n.t("Connect to {0}", host.name))) {
+  if (connection && connectionData) {
+    if (connectionData.name !== connection.currentConnectionName) {
+      if (await vscode.window.showWarningMessage(l10n.t("You're currently connected to {0}. Do you want to disconnect and switch to {1}?", connection.currentHost, connectionData.name), { modal: true }, l10n.t("Connect to {0}", connectionData.name))) {
         connect = true;
       }
       else {
@@ -81,11 +81,11 @@ async function loadParameters(query: querystring.ParsedUrlQuery, connection?: IB
       }
     }
   }
-  else if (host) {
+  else if (connectionData) {
     connect = true;
   }
 
-  return { path, readonly, host, connect, cancel };
+  return { path, readonly, host: connectionData, connect, cancel };
 }
 
 /**
@@ -95,7 +95,7 @@ async function loadParameters(query: querystring.ParsedUrlQuery, connection?: IB
  * @returns the corresponding {@link ConnectionData}
  * @throws an `Error` if DNS lookup fails or if no configuration matches this host
  */
-async function resolveHost(host?: string) {
+async function resolveConnectionData(host?: string) {
   if (host) {
     const connectionByName = IBMi.connectionManager.getByName(host)?.data;
     if (connectionByName) {
