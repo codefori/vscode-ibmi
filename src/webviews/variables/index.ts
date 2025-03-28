@@ -23,7 +23,7 @@ export namespace VariablesUI {
   }
 
   async function openVariablesList() {
-    const config = instance.getConfig();
+    const config = instance.getConnection()?.getConfig();
     if (config) {
       const variables = config.customVariables;
 
@@ -54,7 +54,7 @@ export namespace VariablesUI {
   }
 
   async function editVariable(id?: number) {
-    const config = instance.getConfig();
+    const config = instance.getConnection()?.getConfig();
     if (config) {
       const allVariables = config.customVariables;
       const currentVariable: CustomVariable = id !== undefined ? allVariables[id] : { name: ``, value: `` };
