@@ -619,6 +619,7 @@ export class Field {
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
+              <br />
               <vscode-tree id="${this.id}"></vscode-tree>
           </vscode-form-group>`;
 
