@@ -55,7 +55,7 @@ export namespace Terminal {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
-        const content = instance.getContent();
+        const content = instance.getConnection()?.getContent();
         if (content) {
           const ifsPath = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : path.dirname(ifsNode.path);
           await selectAndOpen(context, { openType: TerminalType.PASE, currentDirectory: ifsPath });
@@ -74,8 +74,8 @@ export namespace Terminal {
 
   async function selectAndOpen(context: vscode.ExtensionContext, options?: { openType?: TerminalType, currentDirectory?: string }) {
     const connection = instance.getConnection();
-    const configuration = instance.getConfig();
-    if (connection && configuration) {
+    if (connection) {
+      const configuration = connection.getConfig();
       const type = options?.openType || (await vscode.window.showQuickPick(typeItems, {
         placeHolder: `Select a terminal type`
       }))?.type;
@@ -137,7 +137,7 @@ export namespace Terminal {
     let emulatorTerminal: vscode.Terminal | undefined;
     await new Promise((resolve) => {
       emulatorTerminal = vscode.window.createTerminal({
-        name: `IBM i ${terminalSettings.type}: ${connection.config?.name}`,
+        name: `IBM i ${terminalSettings.type}: ${connection.getConfig().name}`,
         location: terminalSettings.location,
         pty: {
           onDidWrite: writeEmitter.event,

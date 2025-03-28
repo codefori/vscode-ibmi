@@ -77,7 +77,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
       if (connection) {
-        const config = instance.getConfig();
+        const config = connection.getConfig();
         if (config) {
           Object.assign(config, (await IBMi.connectionManager.load(config.name)));
         }
