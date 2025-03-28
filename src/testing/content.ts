@@ -11,7 +11,7 @@ export const ContentSuite: TestSuite = {
   tests: [
     {
       name: `Test downloadMemberContent`, test: async () => {
-        const content = instance.getContent();
+        const content = instance.getConnection()?.getContent();
 
         const tmpFile = await util.promisify(tmp.file)();
         const memberContent = await content?.downloadMemberContent('QSYSINC', 'H', 'MATH', tmpFile);
@@ -30,8 +30,8 @@ export const ContentSuite: TestSuite = {
           `}`
         ].join(`\n`);
 
-        const connection = instance.getConnection();
-        const config = instance.getConfig()!;
+        const connection = instance.getConnection()!;
+        const config = connection.getConfig();
 
         assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
 

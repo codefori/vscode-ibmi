@@ -1,20 +1,19 @@
 
 import * as vscode from "vscode";
-import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
-import Instance from "./Instance";
-import { Terminal } from './ui/Terminal';
 import { getDebugServiceDetails } from './api/configuration/DebugConfiguration';
-import { debugPTFInstalled, isDebugEngineRunning } from './debug/server';
-import { setupGitEventHandler } from './filesystems/local/git';
 import { registerActionsCommands } from './commands/actions';
 import { registerCompareCommands } from './commands/compare';
 import { registerConnectionCommands } from './commands/connection';
 import { registerOpenCommands } from './commands/open';
 import { registerPasswordCommands } from './commands/password';
+import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
+import { debugPTFInstalled, isDebugEngineRunning } from './debug/server';
+import { setupGitEventHandler } from './filesystems/local/git';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
+import Instance from "./Instance";
+import { Terminal } from './ui/Terminal';
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import IBMi from "./api/IBMi";
 
 export let instance: Instance;
 
@@ -74,7 +73,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     ...registerOpenCommands(instance),
 
-    ...registerCompareCommands(instance),
+    ...registerCompareCommands(),
 
     ...registerActionsCommands(instance),
 

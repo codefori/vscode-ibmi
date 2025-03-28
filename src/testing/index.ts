@@ -125,7 +125,7 @@ async function setupUserFixture(connectionName: string, fixture: ConnectionFixtu
   const user = connection.currentUser;
   fixture.user.USRPRF = user.toUpperCase();
 
-  const changeUserCommand = connection.content.toCl(`CHGUSRPRF`, fixture.user);
+  const changeUserCommand = connection.getContent().toCl(`CHGUSRPRF`, fixture.user);
   const changeResult = await connection.runCommand({ command: changeUserCommand });
 
   if (changeResult.code > 0) {

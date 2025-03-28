@@ -54,7 +54,7 @@ export class GetNewLibl implements IBMiComponent {
   }
 
   async getLibraryListFromCommand(connection: IBMi, ileCommand: string) {
-    const tempLib = connection.config!.tempLibrary;
+    const tempLib = connection.getConfig().tempLibrary;
     const resultSet = await connection.runSQL(`CALL ${tempLib}.${this.procedureName}('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
 
     const result = {

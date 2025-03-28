@@ -14,8 +14,9 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
-    const contentApi = instance.getContent();
-    if (contentApi) {
+    const connection = instance.getConnection();
+    if (connection) {
+      const contentApi = connection.getContent();
       const fileContent = await contentApi.downloadStreamfileRaw(uri.path);
       return fileContent;
     }
@@ -35,8 +36,9 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-    const content = instance.getContent();
-    if (content) {
+    const connnection = instance.getConnection();
+    if (connnection) {
+      const content = connnection.getContent();
       const path = uri.path;
       if (await content.testStreamFile(path, "e")) {
         const attributes = await content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE", "OBJTYPE");
@@ -66,8 +68,9 @@ export class IFSFS implements vscode.FileSystemProvider {
 
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
     const path = uri.path;
-    const contentApi = instance.getContent();
-    if (contentApi) {
+    const connection =  instance.getConnection();
+    if (connection) {
+      const contentApi = connection.getContent();
       if (!content.length) { //Coming from "Save as"    
         this.savedAsFiles.add(path);
         await contentApi.createStreamFile(path);
@@ -92,8 +95,9 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-    const content = instance.getContent();
-    if (content) {
+    const connection = instance.getConnection();
+    if (connection) {
+      const content = connection.getContent();
       return (await content.getFileList(uri.path)).map(ifsFile => ([ifsFile.name, ifsFile.type === "directory" ? FileType.Directory : FileType.File]));
     }
     else {
@@ -105,7 +109,7 @@ export class IFSFS implements vscode.FileSystemProvider {
     const connection = instance.getConnection();
     if (connection) {
       const path = uri.path;
-      if (await connection.content.testStreamFile(path, "d")) {
+      if (await connection.getContent().testStreamFile(path, "d")) {
         throw FileSystemError.FileExists(uri);
       }
       else {

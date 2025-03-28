@@ -1,19 +1,19 @@
-import { commands, window, Uri, l10n, Disposable } from "vscode";
-import Instance from "../Instance";
+import { Disposable, Uri, commands, l10n, window } from "vscode";
+import { BrowserItem } from "../typings";
 
-let selectedForCompare: Uri;
+let selectedForCompare: Uri | undefined;
 
 const VSCODE_DIFF_COMMAND = `vscode.diff`;
 
-export function registerCompareCommands(instance: Instance): Disposable[] {
+export function registerCompareCommands(): Disposable[] {
   return [
-    commands.registerCommand(`code-for-ibmi.selectForCompare`, async (node) => {
-      if (node) {
+    commands.registerCommand(`code-for-ibmi.selectForCompare`, async (node: BrowserItem) => {
+      if (node?.resourceUri) {
         selectedForCompare = node.resourceUri;
-        window.showInformationMessage(`Selected ${node.path} for compare.`);
+        window.showInformationMessage(`Selected ${selectedForCompare.path} for compare.`);
       }
     }),
-    commands.registerCommand(`code-for-ibmi.compareWithSelected`, async (node) => {
+    commands.registerCommand(`code-for-ibmi.compareWithSelected`, async (node: BrowserItem) => {
       if (selectedForCompare) {
         let uri;
         if (node) {
@@ -52,10 +52,10 @@ export function registerCompareCommands(instance: Instance): Disposable[] {
     commands.registerCommand(`code-for-ibmi.compareCurrentFileWithLocal`, async (node) => {
       compareCurrentFile(node, `file`);
     }),
-    commands.registerCommand(`code-for-ibmi.compareWithActiveFile`, async (node) => {
+    commands.registerCommand(`code-for-ibmi.compareWithActiveFile`, async (node: BrowserItem | Uri) => {
       let selectedFile;
       if (node) {
-        if (node.scheme === `streamfile` || node.constructor.name === `IFSFileItem` || node.constructor.name === `ObjectBrowserItem`) {
+        if (node instanceof BrowserItem) {
           selectedFile = node.resourceUri;
         } else if (node.scheme === `file`) {
           selectedFile = node
@@ -79,14 +79,27 @@ export function registerCompareCommands(instance: Instance): Disposable[] {
         window.showInformationMessage(l10n.t(`No file is open or selected`));
       }
     }),
+    commands.registerCommand("code-for-ibmi.compareWithEachOther", async (node: BrowserItem, nodes: BrowserItem[]) => {
+      const left = nodes.at(0)?.resourceUri;
+      const right = nodes.at(1)?.resourceUri;
+      if (left) {
+        commands.executeCommand(VSCODE_DIFF_COMMAND, left, right);
+      }
+    }),
+    //Same commands with shorter titles
+    ...["compareWithSelected",
+      "compareCurrentFileWithMember",
+      "compareCurrentFileWithStreamFile",
+      "compareCurrentFileWithLocal",
+      "compareWithActiveFile"].map(command => commands.registerCommand(`code-for-ibmi.${command}.short`, node => commands.executeCommand(`code-for-ibmi.${command}`, node)))
   ]
 }
 
-async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `member`) {
+async function compareCurrentFile(node: BrowserItem | Uri, scheme: `streamfile` | `file` | `member`) {
   let currentFile: Uri | undefined;
   // If we are comparing with an already targeted node
   if (node) {
-    if (node.resourceUri) {
+    if (node instanceof BrowserItem) {
       currentFile = node.resourceUri;
     } else if (node.scheme === `file`) {
       currentFile = node
@@ -100,17 +113,33 @@ async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `me
   }
 
   if (currentFile) {
-    let compareWith = await window.showInputBox({
-      prompt: l10n.t(`Enter the path to compare selected with`),
-      title: l10n.t(`Compare with`),
-      value: currentFile.path
-    });
+    let compareWith;
+    if (scheme === "file") {
+      compareWith = (await window.showOpenDialog({
+        title: l10n.t(`Select the file to compare to`),
+        canSelectMany: false,
+      }))?.at(0);
+    }
+    else {
+      compareWith = await window.showInputBox({
+        prompt: l10n.t(`Enter the path to compare selected with`),
+        title: l10n.t(`Compare with`),
+        value: currentFile.path
+      });
+    }
 
     if (compareWith) {
-      if (scheme == 'member' && !compareWith.startsWith('/')) {
-        compareWith = `/${compareWith}`;
+      let uri;
+      if (compareWith instanceof Uri) {
+        uri = compareWith;
       }
-      let uri = Uri.parse(`${scheme}:${compareWith}`);
+      else {
+        if (scheme == 'member' && !compareWith.startsWith('/')) {
+          compareWith = `/${compareWith}`;
+        }
+        uri = Uri.parse(`${scheme}:${compareWith}`);
+      }
+
       commands.executeCommand(VSCODE_DIFF_COMMAND, currentFile, uri);
     }
   } else {
