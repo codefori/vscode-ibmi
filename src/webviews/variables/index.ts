@@ -22,7 +22,7 @@ export namespace VariablesUI {
     )
   }
 
-  export async function openVariablesList() {
+  async function openVariablesList() {
     const config = instance.getConfig();
     if (config) {
       const variables = config.customVariables;
