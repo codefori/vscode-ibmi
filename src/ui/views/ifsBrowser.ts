@@ -549,7 +549,6 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
       const connection = instance.getConnection();
       if (connection) {
-        const config = connection.getConfig();
         if (items || singleItem) {
           items = (items || [singleItem]).filter(reduceIFSPath);
         }

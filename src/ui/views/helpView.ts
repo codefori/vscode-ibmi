@@ -247,7 +247,6 @@ async function getRemoteSection() {
   const connection = instance.getConnection();
   if (connection) {
     const config = connection.getConfig();
-    const content = connection.getContent();
     
     return await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
