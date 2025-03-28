@@ -870,6 +870,59 @@ export default class IBMiContent {
     return items;
   }
 
+  /**
+   * Get path info
+   * @param path
+   * @return IFSFile
+   */
+  async getFileInfo(path: string): Promise<IFSFile> {
+    const { 'stat': STAT } = this.ibmi.remoteFeatures;
+
+    let item: IFSFile = { type: 'streamfile', name: '', path: '' };
+    let fileInfoResult: CommandResult;
+
+    if (STAT) {
+      fileInfoResult = (await this.ibmi.sendCommand({
+        command: `${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" ${Tools.escapePath(path)}`
+      }));
+
+      if (fileInfoResult.stdout !== '') {
+        const fileInfo = fileInfoResult.stdout;
+
+        let auth: string, hardLinks: string, owner: string, group: string, size: string, modified: string, name: string;
+        [auth, hardLinks, owner, group, size, modified, name] = fileInfo.split(`\t`);
+
+        if (name !== `..` && name !== `.`) {
+          const type = (auth.startsWith(`d`) ? `directory` : `streamfile`);
+          item = {
+            type: type,
+            name: name,
+            path: path,
+            size: Number(size),
+            modified: new Date(Number(modified) * 1000),
+            owner: owner
+          };
+        };
+      }
+    } else {
+      fileInfoResult = (await this.ibmi.sendCommand({
+        command: `${this.ibmi.remoteFeatures.ls} -a -p -L ${Tools.escapePath(path)}`
+      }));
+
+      if (fileInfoResult.stdout !== '') {
+        const fileInfo = fileInfoResult.stdout;
+        const type = (fileInfo.endsWith(`/`) ? `directory` : `streamfile`);
+        item = {
+          type: type,
+          name: (type === `directory` ? fileInfo.substring(0, fileInfo.length - 1) : fileInfo),
+          path: path
+        };
+      }
+    }
+
+    return item;
+  }
+
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
     const inAmerican = (s: string) => { return this.ibmi.sysNameInAmerican(s) };
     const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
