@@ -1,15 +1,13 @@
-import * as dns from 'dns';
+import * as dns from 'dns/promises';
 import { existsSync, readFileSync } from "fs";
 import * as os from "os";
 import path, { dirname, posix } from "path";
-import { promisify } from 'util';
 import vscode from "vscode";
-import { instance } from '../instantiate';
+import { CLIENT_CERTIFICATE, DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, getJavaHome, LEGACY_CERT_DIRECTORY, SERVICE_CERTIFICATE } from '../api/configuration/DebugConfiguration';
 import IBMi from "../api/IBMi";
 import IBMiContent from '../api/IBMiContent';
 import { Tools } from '../api/Tools';
-import { VscodeTools } from '../ui/Tools';
-import { DebugConfiguration, SERVICE_CERTIFICATE, CLIENT_CERTIFICATE, getDebugServiceDetails, getJavaHome, DEBUG_CONFIG_FILE, LEGACY_CERT_DIRECTORY } from '../api/configuration/DebugConfiguration';
+import { instance } from '../instantiate';
 
 type HostInfo = {
   ip: string
@@ -24,7 +22,6 @@ export type ImportedCertificate = {
 
 const ENCRYPTION_KEY = ".code4i.debug";
 const IP_REGEX = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
-const dnsLookup = promisify(dns.lookup);
 
 async function getHostInfo(connection: IBMi): Promise<HostInfo> {
   const hostNames = [
@@ -40,7 +37,7 @@ async function getHostInfo(connection: IBMi): Promise<HostInfo> {
 
   let ip;
   try {
-    ip = (await dnsLookup(hostNames[0])).address
+    ip = (await dns.lookup(hostNames[0])).address
   }
   catch (error) {
     if (IP_REGEX.test(connection.currentHost)) {

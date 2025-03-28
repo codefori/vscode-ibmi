@@ -1,27 +1,28 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, commands, extensions, languages, window, workspace } from "vscode";
+import { ExtensionContext, commands, languages, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import { CustomUI } from "./webviews/CustomUI";
-import { instance, loadAllofExtension } from './instantiate';
-import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
-import { Tools } from "./api/Tools";
-import * as Debug from './debug';
-import { parseErrors } from "./api/errors/parser";
-import { DeployTools } from "./filesystems/local/deployTools";
-import { Deployment } from "./filesystems/local/deployment";
+import path from "path";
+import IBMi from "./api/IBMi";
 import { CopyToImport } from "./api/components/copyToImport";
 import { CustomQSh } from "./api/components/cqsh";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
+import { parseErrors } from "./api/errors/parser";
+import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
+import * as Debug from './debug';
 import { IFSFS } from "./filesystems/ifsFs";
+import { DeployTools } from "./filesystems/local/deployTools";
+import { Deployment } from "./filesystems/local/deployment";
+import { instance, loadAllofExtension } from './instantiate';
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
-import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
-import { CodeForIBMi, ConnectionData } from "./typings";
+import { CodeForIBMi } from "./typings";
+import { VscodeTools } from "./ui/Tools";
+import { registerActionTools } from "./ui/actions";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
 import { LibraryListProvider } from "./ui/views/LibraryListView";
 import { ProfilesView } from "./ui/views/ProfilesView";
@@ -30,11 +31,11 @@ import { HelpView } from "./ui/views/helpView";
 import { initializeIFSBrowser } from "./ui/views/ifsBrowser";
 import { initializeObjectBrowser } from "./ui/views/objectBrowser";
 import { initializeSearchView } from "./ui/views/searchView";
+import { registerURIHandler } from "./uri";
+import { openURIHandler } from "./uri/handlers/open";
+import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
+import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
-import { registerActionTools } from "./ui/actions";
-import IBMi from "./api/IBMi";
-import path from "path";
-import { VscodeTools } from "./ui/Tools";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -72,7 +73,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       `profilesView`,
       new ProfilesView(context)
     ),
-    
+
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
@@ -94,8 +95,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   Deployment.initialize(context);
   updateLastConnectionAndServerCache();
 
-  Sandbox.handleStartup();
-  Sandbox.registerUriHandler(context);
+  initializeSandbox();
 
   console.log(`Developer environment: ${process.env.DEV}`);
   if (process.env.DEV) {
@@ -121,6 +121,11 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(context, new CopyToImport());
+
+  registerURIHandler(context,
+    sandboxURIHandler,
+    openURIHandler
+  );
 
   return {
     instance, customUI: () => new CustomUI(),
