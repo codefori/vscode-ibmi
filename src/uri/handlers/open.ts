@@ -74,7 +74,7 @@ async function loadParameters(query: querystring.ParsedUrlQuery, connection?: IB
   }
 
   if (connection && connectionData) {
-    if (connectionData.name !== connection.currentConnectionName || (user && connection.currentUser.toLocaleUpperCase() !== user)) {
+    if (await getIP(connectionData.host) !== await getIP(connection.currentHost) || (user && connection.currentUser.toLocaleUpperCase() !== user)) {
       const message = user ? l10n.t("You're currently connected to {0} with user profile {1}. Do you want to disconnect and switch to {2} with user profile {3}?", connection.currentHost, connection.currentUser, connectionData.host, user) :
         l10n.t("You're currently connected to {0}. Do you want to disconnect and switch to {1}?", connection.currentConnectionName, connectionData.name);
       if (await vscode.window.showWarningMessage(message, { modal: true }, l10n.t("Connect to {0}", connectionData.name))) {
@@ -107,9 +107,9 @@ async function resolveConnectionData(host?: string, user?: string) {
       return connectionByName;
     }
 
-    const ip = !/^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$/.test(host) ? (await dns.lookup(host)).address : host;
+    const ip = !/^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$/.test(host) ? await getIP(host) : host;
     for (const connection of IBMi.connectionManager.getAll()) {
-      if ((await dns.lookup(connection.host)).address === ip && userMatches(connection)) {
+      if (await getIP(connection.host) === ip && userMatches(connection)) {
         return connection;
       }
     }
@@ -129,4 +129,8 @@ function toPath(path?: string): WithPath {
   }
 
   return { path };
+}
+
+async function getIP(host: string) {
+  return (await dns.lookup(host)).address;
 }
