@@ -9,6 +9,7 @@ import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
 import { Server } from "../typings";
+import { SearchSuite } from "./search";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -16,7 +17,8 @@ const suites: TestSuite[] = [
   DeployToolsSuite,
   ToolsSuite,
   StorageSuite,
-  EncodingSuite
+  EncodingSuite,
+  SearchSuite
 ]
 
 export type TestSuite = {
