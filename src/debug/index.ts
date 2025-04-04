@@ -310,6 +310,11 @@ export async function initialize(context: ExtensionContext) {
           if (validateIPv4address(connection.currentHost)) {
             vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
           }
+
+          // Download the client certificate if it doesn't exist.
+          certificates.checkClientCertificate(connection).catch(() => {
+            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+          });
         }
       }
     });
