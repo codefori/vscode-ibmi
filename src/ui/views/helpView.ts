@@ -159,6 +159,8 @@ async function downloadLogs() {
         }
       } catch (err) { }
 
+      // TODO: add NAV_LOG from debug host here
+
       try {
         const debugServiceEclipseInstancePath = `${debugConfig.getRemoteServiceWorkDir()}/startDebugService_workspace/.metadata/.log`;
         const debugServiceEclipseInstanceLog = (await content.downloadStreamfileRaw(debugServiceEclipseInstancePath));
