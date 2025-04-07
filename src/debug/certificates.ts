@@ -18,7 +18,7 @@ export async function remoteCertificatesExists(debugConfig?: DebugConfiguration)
   if (connection) {
     const content = connection.getContent();
     debugConfig = debugConfig || await new DebugConfiguration(connection).load();
-    return await content.testStreamFile(debugConfig.getRemoteServiceCertificatePath(), "f") && await content.testStreamFile(debugConfig.getRemoteClientCertificatePath(), "f");
+    return await content.testStreamFile(debugConfig.getRemoteClientCertificatePath(), "f");
   }
   else {
     throw new Error("Not connected to an IBM i");
@@ -27,7 +27,9 @@ export async function remoteCertificatesExists(debugConfig?: DebugConfiguration)
 
 export async function downloadClientCert(connection: IBMi) {
   const content = connection.getContent();
-  await content.downloadStreamfileRaw((await new DebugConfiguration(connection).load()).getRemoteClientCertificatePath(), getLocalCertPath(connection));
+  const debugConfig = await new DebugConfiguration(connection).load();
+
+  await content.downloadStreamfileRaw(debugConfig.getRemoteClientCertificatePath(), getLocalCertPath(connection));
 }
 
 export function getLocalCertPath(connection: IBMi) {
