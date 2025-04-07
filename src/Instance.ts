@@ -8,6 +8,8 @@ import { VsCodeConfig } from "./config/Configuration";
 import { EventEmitter } from "stream";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 import { VscodeTools } from "./ui/Tools";
+import { ILELibrarySettings } from "./api/CompileTools";
+import { getEnvConfig } from "./filesystems/local/env";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -196,6 +198,19 @@ export default class Instance {
 
   getConnection() {
     return this.connection;
+  }
+
+  async getLibraryList(connection: IBMi, workspaceFolder?: vscode.WorkspaceFolder): Promise<ILELibrarySettings> {
+    const config = connection.getConfig();
+
+    const env = workspaceFolder ? (await getEnvConfig(workspaceFolder)) : {};
+
+    const librarySetup: ILELibrarySettings = {
+      currentLibrary: env[`&CURLIB`] || config.currentLibrary,
+      libraryList: env[`&LIBL`]?.split(` `) || config.libraryList,
+    };
+
+    return librarySetup;
   }
 
   async setConfig(newConfig: ConnectionConfig) {
