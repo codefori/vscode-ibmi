@@ -1901,7 +1901,7 @@
 				},
 				{
 					"command": "code-for-ibmi.debug.sep",
-					"when": "code-for-ibmi:debug && editorFocus"
+					"when": "code-for-ibmi:debug && (viewItem =~ /^object.(pgm|srvpgm).*/ || editorFocus)"
 				}
 			],
 			"code-for-ibmi.compareWith": [
