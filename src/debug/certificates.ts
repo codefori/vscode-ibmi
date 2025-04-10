@@ -29,7 +29,7 @@ export async function downloadClientCert(connection: IBMi) {
   const content = connection.getContent();
   const debugConfig = await new DebugConfiguration(connection).load();
 
-  const fileContents = await content.downloadStreamfileRaw(debugConfig.getRemoteClientCertificatePath(), getLocalCertPath(connection));
+  await content.downloadStreamfileRaw(debugConfig.getRemoteClientCertificatePath(), getLocalCertPath(connection));
 }
 
 export function getLocalCertPath(connection: IBMi) {
