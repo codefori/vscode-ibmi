@@ -2,9 +2,9 @@ import { existsSync, readFileSync } from "fs";
 import * as os from "os";
 import path, {  } from "path";
 import vscode from "vscode";
-import { instance } from '../instantiate';
 import IBMi from "../api/IBMi";
 import { DebugConfiguration, CLIENT_CERTIFICATE } from '../api/configuration/DebugConfiguration';
+import { instance } from "../instantiate";
 
 
 export type ImportedCertificate = {
