@@ -31,7 +31,7 @@ export async function startService(connection: IBMi) {
     if (user && !await connection.getContent().checkObject({ library: "QSYS", name: user, type: "*USRPRF" }, ["*USE"])) {
       throw new Error(`You don't have *USE authority on user profile ${user}`);
     }
-    if (!(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
+    if (user !== "QDBGSRV" && !(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ", "*SECADM"], user)).valid) {
       throw new Error(`User ${user || connection.currentUser} doesn't have *ALLOBJ special authority`);
     }
   };
@@ -44,7 +44,7 @@ export async function startService(connection: IBMi) {
     const submitOptions = await window.showInputBox({
       title: l10n.t(`Debug Service submit options`),
       prompt: l10n.t(`Valid parameters for SBMJOB`),
-      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) USER(*CURRENT)`
+      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) USER(QDBGSRV)`
     });
 
     if (submitOptions) {
