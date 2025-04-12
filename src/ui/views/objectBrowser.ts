@@ -512,9 +512,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       objectBrowser.refresh();
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node?: FilteredItem) => {
-      await editFilter(node?.filter);
-      objectBrowser.refresh();
+    vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node?: FilteredItem, nodes?: FilteredItem[]) => {
+      if (node) {
+        (nodes || [node]).map(n => n.filter).forEach(filter => editFilter(filter).then(() => objectBrowser.refresh()));
+      }
+      else{
+        await editFilter();
+        objectBrowser.refresh();
+      }      
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.moveFilterUp`, (node: ObjectBrowserFilterItem) => objectBrowser.moveFilterInList(node, `UP`)),
