@@ -1,7 +1,7 @@
 import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
-import vscode from "vscode";
+import vscode, { l10n } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
@@ -9,7 +9,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ModuleExport, ObjectFilters, ObjectItem, ProgramExportImportInfo, WithLibrary } from "../../typings";
+import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
@@ -539,25 +539,36 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       objectTreeViewer.reveal(item, options);
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.generateBinderSource`, async (node: ObjectBrowserObjectItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.generateBinderSource`, async (node: ObjectBrowserObjectItem, nodes: ObjectBrowserObjectItem[]) => {
+      nodes = (nodes || [node]);
       const contentApi = getContent();
-      let exports: ProgramExportImportInfo[] | ModuleExport[] = [];
-      if (node.object.type === '*MODULE') {
-        exports = (await contentApi.getModuleExports(node.object.library, node.object.name))
-          .filter(exp => exp.symbolType === 'PROCEDURE');
-      } else {
-        exports = (await contentApi.getProgramExportImportInfo(node.object.library, node.object.name, node.object.type))
-          .filter(info => info.symbolUsage === '*PROCEXP');
-      }
-      const content = [
-        `/*  Binder source generated from ${node}  */`,
-        ``,
-        `STRPGMEXP PGMLVL(*CURRENT) /* SIGNATURE("") */`,
-        ...exports.map(info => `  EXPORT SYMBOL("${info.symbolName}")`),
-        `ENDPGMEXP`,
-      ].join("\n");
-      const textDoc = await vscode.workspace.openTextDocument({ language: 'bnd', content });
-      await vscode.window.showTextDocument(textDoc);
+      const increment = 100 / nodes.length;
+      vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Generating binder source") }, async (progress, cancel) => {
+        for (const node of nodes) {
+          if (cancel.isCancellationRequested) {
+            return;
+          }
+          progress.report({ message: node.toString(), increment });
+
+          const exports = [];
+          if (node.object.type === '*MODULE') {
+            exports.push(...(await contentApi.getModuleExports(node.object.library, node.object.name))
+              .filter(exp => exp.symbolType === 'PROCEDURE'));
+          } else {
+            exports.push(...(await contentApi.getProgramExportImportInfo(node.object.library, node.object.name, node.object.type))
+              .filter(info => info.symbolUsage === '*PROCEXP'));
+          }
+          const content = [
+            `/*  Binder source generated from ${node}  */`,
+            ``,
+            `STRPGMEXP PGMLVL(*CURRENT) /* SIGNATURE("") */`,
+            ...exports.map(info => `  EXPORT SYMBOL("${info.symbolName}")`),
+            `ENDPGMEXP`,
+          ].join("\n");
+          const textDoc = await vscode.workspace.openTextDocument({ language: 'bnd', content });
+          await vscode.window.showTextDocument(textDoc);
+        }
+      });
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string) => {
