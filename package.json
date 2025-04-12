@@ -2777,7 +2777,7 @@
 				},
 				{
 					"submenu": "code-for-ibmi.openIFSFile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "0_open@1"
 				},
 				{
