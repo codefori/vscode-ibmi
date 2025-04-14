@@ -234,8 +234,14 @@ export default class IBMi {
    */
   public getComponentManager() {
     return {
-      install: (componentId: string) => this.componentManager.installComponent(componentId),
-      uninstall: (componentId: string) => this.componentManager.uninstallComponent(componentId),
+      install: async (componentId: string) => {
+        const installed = await this.componentManager.installComponent(componentId);
+        await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: installed.component.getIdentification(), state: installed.getState()});
+      },
+      uninstall: async (componentId: string) => {
+        const uninstalled = await this.componentManager.uninstallComponent(componentId);
+        IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: uninstalled.component.getIdentification(), state: uninstalled.getState()});
+      },
       getComponents: () => this.componentManager.getRegisteredComponents(),
     };
   }

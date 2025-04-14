@@ -62,7 +62,7 @@ export class ComponentManager {
     return this.registered;
   }
 
-  public async installComponent(key: string): Promise<ComponentState> {
+  public async installComponent(key: string): Promise<IBMiComponentRuntime> {
     const component = this.getAllAvailableComponents().find(c => c.getIdentification().name === key);
 
     if (!component) {
@@ -83,10 +83,10 @@ export class ComponentManager {
 
     await existingComponent.update(await existingComponent.getInstallDirectory());
 
-    return existingComponent.getState();
+    return existingComponent;
   }
 
-  public async uninstallComponent(key: string): Promise<void> {
+  public async uninstallComponent(key: string): Promise<IBMiComponentRuntime> {
     const installed = this.registered.find(c => c.component.getIdentification().name === key);
 
     if (!installed) {
@@ -103,6 +103,8 @@ export class ComponentManager {
 
     await installed.component.uninstall?.(this.connection);
     await installed.overrideState(`NotInstalled`);
+
+    return installed;
   }
 
   public async startup(lastInstalled: ComponentInstallState[] = []) {

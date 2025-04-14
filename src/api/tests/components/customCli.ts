@@ -10,7 +10,7 @@ export class CustomCLI implements IBMiComponent {
   installPath = "";
 
   getIdentification(): ComponentIdentification {
-    return { name: CustomCLI.ID, version: 1, userManaged: true };
+    return { name: CustomCLI.ID, version: 2, userManaged: true };
   }
 
   getFileName() {
