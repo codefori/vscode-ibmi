@@ -6,7 +6,7 @@ import path, { parse as parsePath } from 'path';
 import { IBMiComponent } from "./components/component";
 import { CopyToImport } from "./components/copyToImport";
 import { CustomQSh } from './components/cqsh';
-import { ComponentManager } from "./components/manager";
+import { ComponentManager, ComponentSearchProps } from "./components/manager";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
@@ -229,6 +229,13 @@ export default class IBMi {
     };
   }
 
+  /**
+   * Either crashes or returns the state. Prepare to handle both.
+   */
+  public getComponentManager() {
+    return this.componentManager;
+  }
+  
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
@@ -1313,8 +1320,8 @@ export default class IBMi {
     }
   }
 
-  getComponent<T extends IBMiComponent>(name: string) {
-    return this.componentManager.get<T>(name);
+  getComponent<T extends IBMiComponent>(name: string, options?: ComponentSearchProps) {
+    return this.componentManager.get<T>(name, options);
   }
 
   getComponentStates() {

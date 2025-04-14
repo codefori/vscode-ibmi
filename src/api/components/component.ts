@@ -64,4 +64,10 @@ export type IBMiComponent = {
    * Called when connecting to clear every persitent information related to the previous connection
    */
   reset?() : void | Promise<void>
+
+  /**
+   * Called when the component should be uninstalled. 
+   * Can only run against user-managed components.
+   */
+  uninstall?(connection: IBMi): Promise<void>;
 }
