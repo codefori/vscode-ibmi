@@ -237,10 +237,12 @@ export default class IBMi {
       install: async (componentId: string) => {
         const installed = await this.componentManager.installComponent(componentId);
         await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: installed.component.getIdentification(), state: installed.getState()});
+        return installed;
       },
       uninstall: async (componentId: string) => {
         const uninstalled = await this.componentManager.uninstallComponent(componentId);
         await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: uninstalled.component.getIdentification(), state: uninstalled.getState()});
+        return uninstalled;
       },
       requireCheck: async (componentId: string) => {
         const chosen = this.componentManager.get(componentId, {ignoreState: true});

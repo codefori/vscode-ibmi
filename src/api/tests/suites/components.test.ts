@@ -101,7 +101,7 @@ describe('Component Tests', () => {
     expect(version1).toBeUndefined();
 
     const resultA = await connection.getComponentManager().install(CustomCLI.ID);
-    expect(resultA).toBe(`Installed`);
+    expect(resultA.getState()).toBe(`Installed`);
 
     try {
       await connection.getComponentManager().install(CustomCLI.ID);
