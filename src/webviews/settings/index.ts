@@ -210,7 +210,7 @@ export class SettingsUI {
             componentsTab.addParagraph(`<p>
               <h3>${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
               <ul>
-              ${components.map(component => `<li><code>${component?.getIdentification().name} (version ${component?.getIdentification().version})</code>: ${states.find(c => c.id.name === component.getIdentification().name)?.state}</li>`).join(``)}
+              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.id.name === component.getIdentification().name)?.state} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
               </ul>
               </p>`);
           })
