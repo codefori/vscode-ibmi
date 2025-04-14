@@ -1313,8 +1313,8 @@ export default class IBMi {
     }
   }
 
-  getComponent<T extends IBMiComponent>(name: string, ignoreState?: boolean) {
-    return this.componentManager.get<T>(name, ignoreState);
+  getComponent<T extends IBMiComponent>(name: string) {
+    return this.componentManager.get<T>(name);
   }
 
   getComponentStates() {

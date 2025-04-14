@@ -35,7 +35,7 @@ export class ComponentRegistry {
 export const extensionComponentRegistry = new ComponentRegistry();
 
 export class ComponentManager {
-  private readonly registered: Map<string, IBMiComponentRuntime> = new Map;
+  private readonly registered: IBMiComponentRuntime[] = [];
 
   constructor(private readonly connection: IBMi) {}
 
@@ -44,8 +44,7 @@ export class ComponentManager {
   }
 
   public getInstallState(): ComponentInstallState[] {
-    return Array.from(this.registered.keys()).map(k => {
-      const comp = this.registered.get(k)!;
+    return this.registered.map(comp => {
       return {
         id: comp.component.getIdentification(),
         state: comp.getState()
@@ -68,14 +67,29 @@ export class ComponentManager {
         await newComponent.overrideState(installed.state);
       }
 
-      this.registered.set(component.getIdentification().name, newComponent);
+      this.registered.push(newComponent);
     }
   }
 
-  get<T extends IBMiComponent>(id: string, ignoreState?: boolean) {
-    const componentEngine = this.registered.get(id);
-    if (componentEngine && (ignoreState || componentEngine.getState() === `Installed`)) {
-      return componentEngine.component as T;
+  /**
+   * Returns the latest version of an installed component, or fetch a specific version
+   */
+  get<T extends IBMiComponent>(id: string, version?: number): T|undefined {
+    const componentEngines = this.registered.filter(c => c.component.getIdentification().name === id);
+
+    let allVersions: number[];
+    if (version) {
+      allVersions = [version];
+    } else {
+      // get all versions, highest to lowest
+      allVersions = componentEngines.map(c => c.component.getIdentification().version).sort((a, b) => b - a);
+    }
+
+    for (const version of allVersions) {
+      const componentEngine = componentEngines.find(c => c.component.getIdentification().version === version);
+      if (componentEngine && componentEngine.getState() === `Installed`) {
+        return componentEngine.component as T;
+      }
     }
   }
 }
@@ -115,7 +129,7 @@ class IBMiComponentRuntime {
     try {
       const installDirectory = await this.getInstallDirectory();
       this.state = await this.component.getRemoteState(this.connection, installDirectory);
-      if (this.state !== `Installed`) {
+      if (this.state !== `Installed` && !this.component.getIdentification().userManaged) {
         this.state = await this.component.update(this.connection, installDirectory);
       }
     }

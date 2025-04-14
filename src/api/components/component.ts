@@ -4,7 +4,8 @@ export type ComponentState = `NotChecked` | `NotInstalled` | `Installed` | `Need
 
 export type ComponentIdentification = {
   name: string
-  version: number
+  version: number,
+  userManaged?: boolean;
 }
 
 export type ComponentInstallState = {
