@@ -8,7 +8,7 @@ interface ExtensionContextI {
   }
 }
 
-export interface ComponentSearchProps {version?: number, ignoreState?: boolean};
+export interface ComponentSearchProps {ignoreState?: boolean};
 
 export class ComponentRegistry {
   private readonly components: Map<string, IBMiComponent[]> = new Map;
@@ -58,24 +58,21 @@ export class ComponentManager {
     return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
   }
 
-  public async installComponent(key: string, version: number): Promise<ComponentState> {
-    const component = this.getAllComponents().find(c => c.getIdentification().name === key && c.getIdentification().version === version);
+  public async installComponent(key: string): Promise<ComponentState> {
+    const component = this.getAllComponents().find(c => c.getIdentification().name === key);
 
     if (!component) {
-      throw new Error(`Component ${key} version ${version} not found.`);
+      throw new Error(`Component ${key} not found.`);
     }
     
-    const existingComponent = this.registered.find(c => {
-      const id = c.component.getIdentification();
-      return id.name === key && id.version === version;
-    });
+    const existingComponent = this.registered.find(c => c.component.getIdentification().name === key);
 
     if (!existingComponent) {
-      throw new Error(`Component ${key} version ${version} not defined.`);
+      throw new Error(`Component ${key} not defined.`);
     }
 
     if (existingComponent.getState() === `Installed`) {
-      throw new Error(`Component ${key} version ${version} already installed.`);
+      throw new Error(`Component ${key} already installed.`);
     }
 
     component.reset?.();
@@ -85,22 +82,19 @@ export class ComponentManager {
     return existingComponent.getState();
   }
 
-  public async uninstallComponent(key: string, version: number): Promise<void> {
-    const installed = this.registered.find(c => {
-      const id = c.component.getIdentification();
-      return id.name === key && id.version === version;
-    });
+  public async uninstallComponent(key: string): Promise<void> {
+    const installed = this.registered.find(c => c.component.getIdentification().name === key);
 
     if (!installed) {
-      throw new Error(`Component ${key} version ${version} not installed.`);
+      throw new Error(`Component ${key} not installed.`);
     }
 
     if (installed.getState() !== `Installed`) {
-      throw new Error(`Component ${key} version ${version} not installed.`);
+      throw new Error(`Component ${key} not installed.`);
     }
 
     if (!installed.component.getIdentification().userManaged) {
-      throw new Error(`Component ${key} version ${version} is not user managed and therefore cannot be uninstalled.`);
+      throw new Error(`Component ${key} is not user managed and therefore cannot be uninstalled.`);
     }
 
     await installed.component.uninstall?.(this.connection);
@@ -129,21 +123,10 @@ export class ComponentManager {
    * Returns the latest version of an installed component, or fetch a specific version
    */
   get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): T|undefined {
-    const componentEngines = this.registered.filter(c => c.component.getIdentification().name === id);
+    const componentEngine = this.registered.find(c => c.component.getIdentification().name === id);
 
-    let allVersions: number[];
-    if (options.version) {
-      allVersions = [options.version];
-    } else {
-      // get all versions, highest to lowest
-      allVersions = componentEngines.map(c => c.component.getIdentification().version).sort((a, b) => b - a);
-    }
-
-    for (const version of allVersions) {
-      const componentEngine = componentEngines.find(c => c.component.getIdentification().version === version);
-      if (componentEngine && (options.ignoreState || componentEngine.getState() === `Installed`)) {
-        return componentEngine.component as T;
-      }
+    if (componentEngine && (options.ignoreState || componentEngine.getState() === `Installed`)) {
+      return componentEngine.component as T;
     }
   }
 }

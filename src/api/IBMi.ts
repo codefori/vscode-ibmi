@@ -234,9 +234,9 @@ export default class IBMi {
    */
   public getComponentManager() {
     return {
-      install: this.componentManager.installComponent,
-      uninstall: this.componentManager.uninstallComponent,
-      getComponents: this.componentManager.getAllComponents,
+      install: (componentId: string) => this.componentManager.installComponent(componentId),
+      uninstall: (componentId: string) => this.componentManager.uninstallComponent(componentId),
+      getComponents: () => this.componentManager.getAllComponents(),
     };
   }
   
