@@ -99,20 +99,20 @@ describe('Component Tests', () => {
 
   it('Can install a component', async () => {
     try {
-      await connection.getComponentManager().uninstallComponent(CustomCLI1.ID, 1);
+      await connection.getComponentManager().uninstall(CustomCLI1.ID, 1);
     } catch (e) {}
     try {
-      await connection.getComponentManager().uninstallComponent(CustomCLI1.ID, 2);
+      await connection.getComponentManager().uninstall(CustomCLI1.ID, 2);
     } catch (e) {}
 
     const version1 = connection.getComponent<CustomCLI1>(CustomCLI1.ID, {version: 1});
     expect(version1).toBeUndefined();
 
-    const resultA = await connection.getComponentManager().installComponent(CustomCLI1.ID, 1);
+    const resultA = await connection.getComponentManager().install(CustomCLI1.ID, 1);
     expect(resultA).toBe(`Installed`);
 
     try {
-      await connection.getComponentManager().installComponent(CustomCLI1.ID, 1);
+      await connection.getComponentManager().install(CustomCLI1.ID, 1);
       expect.fail(`Should not be able to install the same component twice.`);
     } catch (e) {
       expect(e).toBeInstanceOf(Error);
@@ -125,11 +125,11 @@ describe('Component Tests', () => {
     const version2 = connection.getComponent<CustomCLI2>(CustomCLI2.ID, {version: 2});
     expect(version2).toBeUndefined();
 
-    const resultB = await connection.getComponentManager().installComponent(CustomCLI2.ID, 2);
+    const resultB = await connection.getComponentManager().install(CustomCLI2.ID, 2);
     expect(resultB).toBe(`Installed`);
 
     try {
-      await connection.getComponentManager().installComponent(CustomCLI2.ID, 2);
+      await connection.getComponentManager().install(CustomCLI2.ID, 2);
       expect.fail(`Should not be able to install the same component twice.`);
     } catch (e) {
       expect(e).toBeInstanceOf(Error);

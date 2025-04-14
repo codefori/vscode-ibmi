@@ -54,7 +54,7 @@ export class ComponentManager {
     });
   }
 
-  private getAllComponents() {
+  getAllComponents() {
     return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
   }
 

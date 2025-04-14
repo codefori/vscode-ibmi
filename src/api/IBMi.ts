@@ -233,7 +233,11 @@ export default class IBMi {
    * Either crashes or returns the state. Prepare to handle both.
    */
   public getComponentManager() {
-    return this.componentManager;
+    return {
+      install: this.componentManager.installComponent,
+      uninstall: this.componentManager.uninstallComponent,
+      getComponents: this.componentManager.getAllComponents,
+    };
   }
   
   /**
