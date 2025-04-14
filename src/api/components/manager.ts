@@ -45,7 +45,7 @@ export class ComponentManager {
     return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat()).map(c => c.getIdentification());
   }
 
-  public getInstallState(): ComponentInstallState[] {
+  public getComponentStates(): ComponentInstallState[] {
     return this.registered.map(comp => {
       return {
         id: comp.component.getIdentification(),
@@ -58,11 +58,7 @@ export class ComponentManager {
     return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
   }
 
-  getRegisteredComponents() {
-    return this.registered;
-  }
-
-  public async installComponent(key: string): Promise<IBMiComponentRuntime> {
+  public async installComponent(key: string): Promise<ComponentInstallState> {
     const component = this.getAllAvailableComponents().find(c => c.getIdentification().name === key);
 
     if (!component) {
@@ -83,10 +79,13 @@ export class ComponentManager {
 
     await existingComponent.update(await existingComponent.getInstallDirectory());
 
-    return existingComponent;
+    return {
+      id: component.getIdentification(),
+      state: existingComponent.getState()
+    };
   }
 
-  public async uninstallComponent(key: string): Promise<IBMiComponentRuntime> {
+  public async uninstallComponent(key: string): Promise<ComponentInstallState> {
     const installed = this.registered.find(c => c.component.getIdentification().name === key);
 
     if (!installed) {
@@ -104,7 +103,10 @@ export class ComponentManager {
     await installed.component.uninstall?.(this.connection);
     await installed.overrideState(`NotInstalled`);
 
-    return installed;
+    return {
+      id: installed.component.getIdentification(),
+      state: installed.getState()
+    };
   }
 
   public async startup(lastInstalled: ComponentInstallState[] = []) {

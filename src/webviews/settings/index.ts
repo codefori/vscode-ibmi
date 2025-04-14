@@ -203,19 +203,19 @@ export class SettingsUI {
 
         const componentsTab = new Section();
         if (connection) {
-          const states = connection.getComponentManager().getComponents();
+          const states = connection.getComponents();
           componentsTab.addParagraph(`The following extensions contribute these components:`);
           extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
             const extension = vscode.extensions.getExtension(extensionId);
             componentsTab.addParagraph(`<p>
               <h3 style="padding-bottom: 1em;">${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
               <ul>
-              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.component.getIdentification().name === component.getIdentification().name)?.getState()} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
+              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.id.name === component.getIdentification().name)?.state} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
               </ul>
               </p>`);
           });
 
-          const userInstallableComponents = states.filter(c => c.component.getIdentification().userManaged && c.getState() !== `Installed`);
+          const userInstallableComponents = states.filter(c => c.id.userManaged && c.state !== `Installed`);
           if (userInstallableComponents.length) {
             componentsTab.addButtons({ id: `installComponent`, label: `Install component` })
           }
@@ -429,17 +429,17 @@ export class SettingsUI {
 }
 
 function installComponentsQuickPick(connection: IBMi) {
-  const components = connection.getComponentManager().getComponents();
-  const installable = components.filter(c => c.component.getIdentification().userManaged && c.getState() !== `Installed`);
+  const components = connection.getComponents();
+  const installable = components.filter(c => c.id.userManaged && c.state !== `Installed`);
 
   if (installable.length === 0) {
     return;
   }
 
   const quickPick = window.showQuickPick(installable.map(c => ({
-    label: c.component.getIdentification().name,
-    description: c.getState(),
-    id: c.component.getIdentification().name
+    label: c.id.name,
+    description: c.state,
+    id: c.id.name
   })), {
     title: `Install component`,
     canPickMany: true,
@@ -450,7 +450,7 @@ function installComponentsQuickPick(connection: IBMi) {
         for (const item of result) {
           progress.report({message: `Installing ${item.label}...`});
           try {
-            await connection.getComponentManager().install(item.id);
+            await connection.installComponent(item.id);
           } catch (e) {
             // TODO: handle errors!
           }

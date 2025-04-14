@@ -90,21 +90,21 @@ describe('Component Tests', () => {
 
   it('Can install a component', async () => {
     try {
-      await connection.getComponentManager().uninstall(CustomCLI.ID);
+      await connection.uninstallComponent(CustomCLI.ID);
     } catch (e) {}
 
-    const allComponents = connection.getComponentManager().getComponents();
+    const allComponents = connection.getComponents();
     expect(allComponents.length > 1).toBeTruthy();
-    expect(allComponents.some(c => c.component.getIdentification().name === CustomCLI.ID && c.getState() === `NotInstalled`)).toBeTruthy();
+    expect(allComponents.some(c => c.id.name === CustomCLI.ID && c.state === `NotInstalled`)).toBeTruthy();
 
     const version1 = connection.getComponent<CustomCLI>(CustomCLI.ID);
     expect(version1).toBeUndefined();
 
-    const resultA = await connection.getComponentManager().install(CustomCLI.ID);
-    expect(resultA.getState()).toBe(`Installed`);
+    const resultA = await connection.installComponent(CustomCLI.ID);
+    expect(resultA.state).toBe(`Installed`);
 
     try {
-      await connection.getComponentManager().install(CustomCLI.ID);
+      await connection.installComponent(CustomCLI.ID);
       expect.fail(`Should not be able to install the same component twice.`);
     } catch (e) {
       expect(e).toBeInstanceOf(Error);

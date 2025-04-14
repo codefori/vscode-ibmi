@@ -228,31 +228,6 @@ export default class IBMi {
       local: `#@$`
     };
   }
-
-  /**
-   * Either crashes or returns the state. Prepare to handle both.
-   */
-  public getComponentManager() {
-    return {
-      install: async (componentId: string) => {
-        const installed = await this.componentManager.installComponent(componentId);
-        await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: installed.component.getIdentification(), state: installed.getState()});
-        return installed;
-      },
-      uninstall: async (componentId: string) => {
-        const uninstalled = await this.componentManager.uninstallComponent(componentId);
-        await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: uninstalled.component.getIdentification(), state: uninstalled.getState()});
-        return uninstalled;
-      },
-      requireCheck: async (componentId: string) => {
-        const chosen = this.componentManager.get(componentId, {ignoreState: true});
-        if (chosen) {
-          await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: chosen.getIdentification(), state: `NeedsUpdate`});
-        }
-      },
-      getComponents: () => this.componentManager.getRegisteredComponents(),
-    };
-  }
   
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
@@ -506,7 +481,7 @@ export default class IBMi {
 
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
-      const componentStates = await this.componentManager.getInstallState();
+      const componentStates = await this.componentManager.getComponentStates();
       this.appendOutput(`\nCode for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
@@ -1342,8 +1317,27 @@ export default class IBMi {
     return this.componentManager.get<T>(name, options);
   }
 
-  getComponentStates() {
-    return this.componentManager.getInstallState();
+  async installComponent(componentId: string) {
+    const installed = await this.componentManager.installComponent(componentId);
+    await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, installed);
+    return installed;
+  }
+
+  async uninstallComponent(componentId: string) {
+    const uninstalled = await this.componentManager.uninstallComponent(componentId);
+    await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, uninstalled);
+    return uninstalled;
+  }
+
+  async requireCheck(componentId: string) {
+    const chosen = this.componentManager.get(componentId, {ignoreState: true});
+    if (chosen) {
+      await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: chosen.getIdentification(), state: `NeedsUpdate`});
+    }
+  }
+
+  getComponents() {
+    return this.componentManager.getComponentStates();
   }
 
   /**
