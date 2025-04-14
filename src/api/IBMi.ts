@@ -240,7 +240,13 @@ export default class IBMi {
       },
       uninstall: async (componentId: string) => {
         const uninstalled = await this.componentManager.uninstallComponent(componentId);
-        IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: uninstalled.component.getIdentification(), state: uninstalled.getState()});
+        await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: uninstalled.component.getIdentification(), state: uninstalled.getState()});
+      },
+      requireCheck: async (componentId: string) => {
+        const chosen = this.componentManager.get(componentId, {ignoreState: true});
+        if (chosen) {
+          await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: chosen.getIdentification(), state: `NeedsUpdate`});
+        }
       },
       getComponents: () => this.componentManager.getRegisteredComponents(),
     };
