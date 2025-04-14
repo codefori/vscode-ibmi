@@ -2,15 +2,15 @@
 import { stat } from "fs/promises";
 import path from "path";
 import IBMi from "../../IBMi";
-import { IBMiComponent, ComponentState } from "../../components/component";
+import { IBMiComponent, ComponentState, ComponentIdentification } from "../../components/component";
 
-export class CustomCLI2 implements IBMiComponent {
+export class CustomCLI implements IBMiComponent {
   static ID = "customCli";
 
   installPath = "";
 
-  getIdentification() {
-    return { name: CustomCLI2.ID, version: 2, userManaged: true };
+  getIdentification(): ComponentIdentification {
+    return { name: CustomCLI.ID, version: 1, userManaged: true };
   }
 
   getFileName() {
@@ -44,7 +44,7 @@ export class CustomCLI2 implements IBMiComponent {
 
     return `Installed`;
   }
-
+  
   async uninstall(connection: IBMi): Promise<void> {
     await connection.sendCommand({command: `rm ${this.installPath}`});
   }

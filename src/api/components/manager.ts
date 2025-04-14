@@ -54,12 +54,16 @@ export class ComponentManager {
     });
   }
 
-  getAllComponents() {
+  getAllAvailableComponents() {
     return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
   }
 
+  getRegisteredComponents() {
+    return this.registered;
+  }
+
   public async installComponent(key: string): Promise<ComponentState> {
-    const component = this.getAllComponents().find(c => c.getIdentification().name === key);
+    const component = this.getAllAvailableComponents().find(c => c.getIdentification().name === key);
 
     if (!component) {
       throw new Error(`Component ${key} not found.`);
@@ -98,10 +102,11 @@ export class ComponentManager {
     }
 
     await installed.component.uninstall?.(this.connection);
+    await installed.overrideState(`NotInstalled`);
   }
 
   public async startup(lastInstalled: ComponentInstallState[] = []) {
-    const components = this.getAllComponents();
+    const components = this.getAllAvailableComponents();
     for (const component of components) {
       await component.reset?.();
       const newComponent = new IBMiComponentRuntime(this.connection, component);

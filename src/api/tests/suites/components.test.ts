@@ -4,8 +4,7 @@ import { GetNewLibl } from '../../components/getNewLibl';
 import { Tools } from '../../Tools';
 import IBMi from '../../IBMi';
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
-import { CustomCLI1 } from '../components/customCli1';
-import { CustomCLI2 } from '../components/customCli2';
+import { CustomCLI } from '../components/customCli';
 
 describe('Component Tests', () => {
   let connection: IBMi
@@ -83,7 +82,7 @@ describe('Component Tests', () => {
   });
 
   it('Has multiple versions not installed(?)', async () => {
-    const componentA = connection.getComponent<CustomCLI1>(CustomCLI1.ID, {ignoreState: true});
+    const componentA = connection.getComponent<CustomCLI>(CustomCLI.ID, {ignoreState: true});
     expect(componentA).toBeDefined();
     expect(componentA?.getIdentification().version).toBe(1);
     expect(componentA?.getIdentification().userManaged).toBe(true);
@@ -91,17 +90,21 @@ describe('Component Tests', () => {
 
   it('Can install a component', async () => {
     try {
-      await connection.getComponentManager().uninstall(CustomCLI1.ID);
+      await connection.getComponentManager().uninstall(CustomCLI.ID);
     } catch (e) {}
 
-    const version1 = connection.getComponent<CustomCLI1>(CustomCLI1.ID);
+    const allComponents = connection.getComponentManager().getComponents();
+    expect(allComponents.length > 1).toBeTruthy();
+    expect(allComponents.some(c => c.component.getIdentification().name === CustomCLI.ID && c.getState() === `NotInstalled`)).toBeTruthy();
+
+    const version1 = connection.getComponent<CustomCLI>(CustomCLI.ID);
     expect(version1).toBeUndefined();
 
-    const resultA = await connection.getComponentManager().install(CustomCLI1.ID);
+    const resultA = await connection.getComponentManager().install(CustomCLI.ID);
     expect(resultA).toBe(`Installed`);
 
     try {
-      await connection.getComponentManager().install(CustomCLI1.ID);
+      await connection.getComponentManager().install(CustomCLI.ID);
       expect.fail(`Should not be able to install the same component twice.`);
     } catch (e) {
       expect(e).toBeInstanceOf(Error);
