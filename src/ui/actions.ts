@@ -1,19 +1,19 @@
 
 import path from 'path';
-import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 import { getLocalActions } from '../filesystems/local/actions';
 import { DeployTools } from '../filesystems/local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from '../filesystems/local/env';
 import { getGitBranch } from '../filesystems/local/git';
-import Instance from '../Instance';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
+import Instance from '../Instance';
 import { Action, DeploymentMethod, Variable } from '../typings';
+import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 
 import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
-import { CustomUI } from '../webviews/CustomUI';
-import { Tools } from '../api/Tools';
 import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
+import { Tools } from '../api/Tools';
+import { CustomUI } from '../webviews/CustomUI';
 import { BrowserItem } from './types';
 
 interface CommandObject {
@@ -30,22 +30,26 @@ export function registerActionTools(context: vscode.ExtensionContext) {
   );
 }
 
-export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem, workspaceFolder?: WorkspaceFolder): Promise<boolean> {
+export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Uri[], customAction?: Action, method?: DeploymentMethod, browserItems?: BrowserItem[], workspaceFolder?: WorkspaceFolder): Promise<boolean> {
+  uris = Array.isArray(uris) ? uris : [uris];
+  //Global scheme: all URIs share the same
+  const scheme = uris[0].scheme;
   const connection = instance.getConnection();
-
-  const uriOptions = parseFSOptions(uri);
   if (connection) {
     const config = connection.getConfig();
     const content = connection.getContent();
 
-    const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
-    const fragment = uri.fragment.toUpperCase();
+    const targets = uris.map(uri => ({
+      uri,
+      extension: uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase(),
+      fragment: uri.fragment.toUpperCase(),
+      protected: parseFSOptions(uri).readonly || config?.readOnlyMode,
+      workspaceFolder: workspaceFolder || vscode.workspace.getWorkspaceFolder(uri),
+      executionOK: false
+    }));
 
-    const isProtected = uriOptions.readonly || config?.readOnlyMode;
+    workspaceFolder = targets[0].workspaceFolder;
 
-    if (!workspaceFolder) {
-      workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-    }
     let remoteCwd = config?.homeDirectory || `.`;
 
     let availableActions: { label: string; action: Action; }[] = [];
@@ -55,8 +59,8 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
 
       // Then, if we're being called from a local file
       // we fetch the Actions defined from the workspace.
-      if (workspaceFolder && uri.scheme === `file`) {
-        const localActions = await getLocalActions(workspaceFolder);
+      if (targets[0].workspaceFolder && scheme === `file`) {
+        const localActions = await getLocalActions(targets[0].workspaceFolder);
         allActions.push(...localActions);
       }
 
@@ -68,7 +72,9 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
       });
 
       // Then we get all the available Actions for the current context
-      availableActions = allActions.filter(action => action.type === uri.scheme && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)) && (!isProtected || action.runOnProtected))
+      availableActions = allActions.filter(action => action.type === scheme)
+        .filter(action => !action.extensions || targets.every(t => action.extensions!.includes(t.extension) || action.extensions!.includes(t.fragment)) || action.extensions.includes(`GLOBAL`))
+        .filter(action => action.runOnProtected || !targets.every(t => !t.protected))
         .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
         .map(action => ({
           label: action.name,
@@ -108,434 +114,428 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
           }
         }
 
-        let fromWorkspace: WorkspaceFolder | undefined;
-
-        if (chosenAction.type === `file` && vscode.workspace.workspaceFolders) {
-          fromWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
-        }
-
-        const variables: Variable = {};
-        const evfeventInfo: EvfEventInfo = {
-          object: '',
-          library: '',
-          extension,
-          workspace: fromWorkspace
-        };
-
-        if (workspaceFolder) {
-          const envFileVars = await getEnvConfig(workspaceFolder);
+        const fromWorkspace = (chosenAction.type === `file` && vscode.workspace.workspaceFolders) ? vscode.workspace.workspaceFolders[workspaceId || 0] : undefined;
+        const envFileVars = workspaceFolder ? await getEnvConfig(workspaceFolder) : {};
+        for (const target of targets) {
+          const variables: Variable = {};
           Object.entries(envFileVars).forEach(([key, value]) => variables[`&${key}`] = value);
-        }
+          const evfeventInfo: EvfEventInfo = {
+            object: '',
+            library: '',
+            extension: target.extension,
+            workspace: fromWorkspace
+          };
 
-        switch (chosenAction.type) {
-          case `member`:
-            const memberDetail = connection.parserMemberPath(uri.path);
-            evfeventInfo.library = memberDetail.library;
-            evfeventInfo.object = memberDetail.name;
-            evfeventInfo.extension = memberDetail.extension;
-            evfeventInfo.asp = memberDetail.asp;
+          switch (chosenAction.type) {
+            case `member`:
+              const memberDetail = connection.parserMemberPath(target.uri.path);
+              evfeventInfo.library = memberDetail.library;
+              evfeventInfo.object = memberDetail.name;
+              evfeventInfo.extension = memberDetail.extension;
+              evfeventInfo.asp = memberDetail.asp;
 
-            variables[`&OPENLIBL`] = memberDetail.library.toLowerCase();
-            variables[`&OPENLIB`] = memberDetail.library;
+              variables[`&OPENLIBL`] = memberDetail.library.toLowerCase();
+              variables[`&OPENLIB`] = memberDetail.library;
 
-            variables[`&OPENSPFL`] = memberDetail.file.toLowerCase();
-            variables[`&OPENSPF`] = memberDetail.file;
+              variables[`&OPENSPFL`] = memberDetail.file.toLowerCase();
+              variables[`&OPENSPF`] = memberDetail.file;
 
-            variables[`&OPENMBRL`] = memberDetail.name.toLowerCase();
-            variables[`&OPENMBR`] = memberDetail.name;
+              variables[`&OPENMBRL`] = memberDetail.name.toLowerCase();
+              variables[`&OPENMBR`] = memberDetail.name;
 
-            variables[`&EXTL`] = memberDetail.extension.toLowerCase();
-            variables[`&EXT`] = memberDetail.extension;
-            break;
+              variables[`&EXTL`] = memberDetail.extension.toLowerCase();
+              variables[`&EXT`] = memberDetail.extension;
+              break;
 
-          case `file`:
-          case `streamfile`:
-            const pathData = path.parse(uri.path);
-            const basename = pathData.base;
-            const ext = pathData.ext ? (pathData.ext.startsWith(`.`) ? pathData.ext.substring(1) : pathData.ext) : ``;
-            const parent = path.parse(pathData.dir).base;
-            let name = pathData.name;
+            case `file`:
+            case `streamfile`:
+              const pathData = path.parse(target.uri.path);
+              const basename = pathData.base;
+              const ext = pathData.ext ? (pathData.ext.startsWith(`.`) ? pathData.ext.substring(1) : pathData.ext) : ``;
+              const parent = path.parse(pathData.dir).base;
+              let name = pathData.name;
 
-            // Logic to handle second extension, caused by bob.
-            const bobTypes = [`.PGM`, `.SRVPGM`];
-            const secondName = path.parse(name);
-            if (secondName.ext && bobTypes.includes(secondName.ext.toUpperCase())) {
-              name = secondName.name;
-            }
+              // Logic to handle second extension, caused by bob.
+              const bobTypes = [`.PGM`, `.SRVPGM`];
+              const secondName = path.parse(name);
+              if (secondName.ext && bobTypes.includes(secondName.ext.toUpperCase())) {
+                name = secondName.name;
+              }
 
-            // Remove bob text convention
-            if (name.includes(`-`)) {
-              name = name.substring(0, name.indexOf(`-`));
-            }
+              // Remove bob text convention
+              if (name.includes(`-`)) {
+                name = name.substring(0, name.indexOf(`-`));
+              }
 
-            if (variables[`&CURLIB`]) {
-              evfeventInfo.library = variables[`&CURLIB`];
+              if (variables[`&CURLIB`]) {
+                evfeventInfo.library = variables[`&CURLIB`];
 
-            } else {
-              evfeventInfo.library = config.currentLibrary;
-            }
+              } else {
+                evfeventInfo.library = config.currentLibrary;
+              }
 
-            evfeventInfo.library = evfeventInfo.library.toUpperCase();
-            evfeventInfo.object = name.toUpperCase();
-            evfeventInfo.extension = ext;
+              evfeventInfo.library = evfeventInfo.library.toUpperCase();
+              evfeventInfo.object = name.toUpperCase();
+              evfeventInfo.extension = ext;
 
-            if (chosenAction.command.includes(`&SRCFILE`)) {
-              variables[`&SRCLIB`] = evfeventInfo.library;
-              variables[`&SRCPF`] = `QTMPSRC`;
-              variables[`&SRCFILE`] = `${evfeventInfo.library}/QTMPSRC`;
-            }
+              if (chosenAction.command.includes(`&SRCFILE`)) {
+                variables[`&SRCLIB`] = evfeventInfo.library;
+                variables[`&SRCPF`] = `QTMPSRC`;
+                variables[`&SRCFILE`] = `${evfeventInfo.library}/QTMPSRC`;
+              }
 
-            switch (chosenAction.type) {
-              case `file`:
-                variables[`&LOCALPATH`] = uri.fsPath;
-                if (fromWorkspace) {
-                  const relativePath = path.relative(fromWorkspace.uri.path, uri.path).split(path.sep).join(path.posix.sep);
+              switch (chosenAction.type) {
+                case `file`:
+                  variables[`&LOCALPATH`] = target.uri.fsPath;
+                  if (fromWorkspace) {
+                    const relativePath = path.relative(fromWorkspace.uri.path, target.uri.path).split(path.sep).join(path.posix.sep);
+                    variables[`&RELATIVEPATH`] = relativePath;
+
+                    // We need to make sure the remote path is posix
+                    const fullPath = path.posix.join(remoteCwd, relativePath);
+                    variables[`&FULLPATH`] = fullPath;
+                    variables[`{path}`] = fullPath;
+                    variables[`&WORKDIR`] = remoteCwd;
+                    variables[`&FILEDIR`] = path.posix.parse(fullPath).dir;
+
+                    const branch = getGitBranch(fromWorkspace);
+                    if (branch) {
+                      variables[`&BRANCHLIB`] = getBranchLibraryName(branch);
+                      variables[`&BRANCH`] = branch;
+                      variables[`{branch}`] = branch;
+                    }
+                  }
+                  break;
+
+                case `streamfile`:
+                  const relativePath = path.posix.relative(remoteCwd, target.uri.path);
                   variables[`&RELATIVEPATH`] = relativePath;
 
-                  // We need to make sure the remote path is posix
-                  const fullPath = path.posix.join(remoteCwd, relativePath);
-                  variables[`&FULLPATH`] = fullPath;
-                  variables[`{path}`] = fullPath;
-                  variables[`&WORKDIR`] = remoteCwd;
-                  variables[`&FILEDIR`] = path.posix.parse(fullPath).dir;
+                  const fullName = target.uri.path;
+                  variables[`&FULLPATH`] = fullName;
+                  variables[`&FILEDIR`] = path.parse(fullName).dir;
+                  break;
+              }
 
-                  const branch = getGitBranch(fromWorkspace);
-                  if (branch) {
-                    variables[`&BRANCHLIB`] = getBranchLibraryName(branch);
-                    variables[`&BRANCH`] = branch;
-                    variables[`{branch}`] = branch;
-                  }
-                }
-                break;
+              variables[`&PARENT`] = parent;
 
-              case `streamfile`:
-                const relativePath = path.posix.relative(remoteCwd, uri.path);
-                variables[`&RELATIVEPATH`] = relativePath;
+              variables[`&BASENAME`] = basename;
+              variables[`{filename}`] = basename;
 
-                const fullName = uri.path;
-                variables[`&FULLPATH`] = fullName;
-                variables[`&FILEDIR`] = path.parse(fullName).dir;
-                break;
-            }
+              variables[`&NAMEL`] = name.toLowerCase();
+              variables[`&NAME`] = name;
 
-            variables[`&PARENT`] = parent;
+              variables[`&EXTL`] = target.extension.toLowerCase();
+              variables[`&EXT`] = target.extension;
+              break;
 
-            variables[`&BASENAME`] = basename;
-            variables[`{filename}`] = basename;
+            case `object`:
+              const [_, library, fullName] = target.uri.path.toUpperCase().split(`/`);
+              const object = fullName.substring(0, fullName.lastIndexOf(`.`));
 
-            variables[`&NAMEL`] = name.toLowerCase();
-            variables[`&NAME`] = name;
+              evfeventInfo.library = library;
+              evfeventInfo.object = object;
 
-            variables[`&EXTL`] = extension.toLowerCase();
-            variables[`&EXT`] = extension;
-            break;
+              variables[`&LIBRARYL`] = library.toLowerCase();
+              variables[`&LIBRARY`] = library;
 
-          case `object`:
-            const [_, library, fullName] = uri.path.toUpperCase().split(`/`);
-            const object = fullName.substring(0, fullName.lastIndexOf(`.`));
+              variables[`&NAMEL`] = object.toLowerCase();
+              variables[`&NAME`] = object;
 
-            evfeventInfo.library = library;
-            evfeventInfo.object = object;
+              variables[`&TYPEL`] = target.extension.toLowerCase();
+              variables[`&TYPE`] = target.extension;
 
-            variables[`&LIBRARYL`] = library.toLowerCase();
-            variables[`&LIBRARY`] = library;
-
-            variables[`&NAMEL`] = object.toLowerCase();
-            variables[`&NAME`] = object;
-
-            variables[`&TYPEL`] = extension.toLowerCase();
-            variables[`&TYPE`] = extension;
-
-            variables[`&EXTL`] = extension.toLowerCase();
-            variables[`&EXT`] = extension;
-            break;
-        }
-
-        const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
-        const outputBuffer: string[] = [];
-        let actionName = chosenAction.name;
-        let hasRun = false;
-
-        const commandConfirm = async (commandString: string): Promise<string> => {
-          const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
-          const promptedCommands = [];
-          for (let command of commands) {
-            if (command.startsWith(`?`)) {
-              command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
-            } else {
-              command = await showCustomInputs(`Run Command`, command, chosenAction.name || `Command`);
-            }
-            promptedCommands.push(command);
-            if (!command) break;
+              variables[`&EXTL`] = target.extension.toLowerCase();
+              variables[`&EXT`] = target.extension;
+              break;
           }
 
-          return !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
-        }
+          const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
+          const outputBuffer: string[] = [];
+          let actionName = chosenAction.name;
+          let hasRun = false;
 
-        const exitCode = await new Promise<number>(resolve =>
-          tasks.executeTask({
-            isBackground: true,
-            name: chosenAction.name,
-            definition: { type: `ibmi` },
-            scope: workspaceFolder,
-            source: 'IBM i',
-            presentationOptions: {
-              showReuseMessage: true,
-              clear: IBMi.connectionManager.get<boolean>(`clearOutputEveryTime`),
-              focus: false,
-              reveal: (viewControl === `task` ? TaskRevealKind.Always : TaskRevealKind.Never),
-            },
-            problemMatchers: [],
-            runOptions: {},
-            group: TaskGroup.Build,
-            execution: new CustomExecution(async (e) => {
-              const writeEmitter = new vscode.EventEmitter<string>();
-              const closeEmitter = new vscode.EventEmitter<number>();
+          const commandConfirm = async (commandString: string): Promise<string> => {
+            const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
+            const promptedCommands = [];
+            for (let command of commands) {
+              if (command.startsWith(`?`)) {
+                command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
+              } else {
+                command = await showCustomInputs(`Run Command`, command, chosenAction.name || `Command`);
+              }
+              promptedCommands.push(command);
+              if (!command) break;
+            }
 
-              writeEmitter.event(s => outputBuffer.push(s));
-              closeEmitter.event(resolve);
+            return !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
+          }
 
-              const term: Pseudoterminal = {
-                onDidWrite: writeEmitter.event,
-                onDidClose: closeEmitter.event,
-                open: async (initialDimensions: vscode.TerminalDimensions | undefined) => {
-                  let successful = false;
-                  let problemsFetched = false;
+          const exitCode = await new Promise<number>(resolve =>
+            tasks.executeTask({
+              isBackground: true,
+              name: chosenAction.name,
+              definition: { type: `ibmi` },
+              scope: workspaceFolder,
+              source: 'IBM i',
+              presentationOptions: {
+                showReuseMessage: true,
+                clear: IBMi.connectionManager.get<boolean>(`clearOutputEveryTime`),
+                focus: false,
+                reveal: (viewControl === `task` ? TaskRevealKind.Always : TaskRevealKind.Never),
+              },
+              problemMatchers: [],
+              runOptions: {},
+              group: TaskGroup.Build,
+              execution: new CustomExecution(async (e) => {
+                const writeEmitter = new vscode.EventEmitter<string>();
+                const closeEmitter = new vscode.EventEmitter<number>();
 
-                  try {
-                    writeEmitter.fire(`Running Action: ${chosenAction.name} (${new Date().toLocaleTimeString()})` + CompileTools.NEWLINE);
+                writeEmitter.event(s => outputBuffer.push(s));
+                closeEmitter.event(resolve);
 
-                    // If &SRCFILE is set, we need to copy the file to a temporary source file from the IFS
-                    if (variables[`&FULLPATH`] && variables[`&SRCFILE`] && evfeventInfo.object) {
-                      const [lib, srcpf] = variables[`&SRCFILE`].split(`/`);
+                const term: Pseudoterminal = {
+                  onDidWrite: writeEmitter.event,
+                  onDidClose: closeEmitter.event,
+                  open: async (initialDimensions: vscode.TerminalDimensions | undefined) => {
+                    let successful = false;
+                    let problemsFetched = false;
 
-                      const createSourceFile = content.toCl(`CRTSRCPF`, {
-                        rcdlen: 112, //NICE: this configurable in a VS Code setting?
-                        file: `${lib}/${srcpf}`,
-                      });
+                    try {
+                      writeEmitter.fire(`Running Action: ${chosenAction.name} (${new Date().toLocaleTimeString()})` + CompileTools.NEWLINE);
 
-                      const copyFromStreamfile = content.toCl(`CPYFRMSTMF`, {
-                        fromstmf: variables[`&FULLPATH`],
-                        tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
-                        mbropt: `*REPLACE`,
-                        dbfccsid: `*FILE`,
-                        stmfccsid: 1208,
-                      });
+                      // If &SRCFILE is set, we need to copy the file to a temporary source file from the IFS
+                      if (variables[`&FULLPATH`] && variables[`&SRCFILE`] && evfeventInfo.object) {
+                        const [lib, srcpf] = variables[`&SRCFILE`].split(`/`);
 
-                      // We don't care if this fails. Usually it's because the source file already exists.
-                      await CompileTools.runCommand(connection, { command: createSourceFile, environment: `ile`, noLibList: true });
+                        const createSourceFile = content.toCl(`CRTSRCPF`, {
+                          rcdlen: 112, //NICE: this configurable in a VS Code setting?
+                          file: `${lib}/${srcpf}`,
+                        });
 
-                      // Attempt to copy to member
-                      const copyResult = await CompileTools.runCommand(connection, { command: copyFromStreamfile, environment: `ile`, noLibList: true });
+                        const copyFromStreamfile = content.toCl(`CPYFRMSTMF`, {
+                          fromstmf: variables[`&FULLPATH`],
+                          tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
+                          mbropt: `*REPLACE`,
+                          dbfccsid: `*FILE`,
+                          stmfccsid: 1208,
+                        });
 
-                      if (copyResult.code !== 0) {
-                        writeEmitter.fire(`Failed to copy file to a temporary member.\n\t${copyResult.stderr}\n\n`);
-                        closeEmitter.fire(copyResult.code || 1);
+                        // We don't care if this fails. Usually it's because the source file already exists.
+                        await CompileTools.runCommand(connection, { command: createSourceFile, environment: `ile`, noLibList: true });
+
+                        // Attempt to copy to member
+                        const copyResult = await CompileTools.runCommand(connection, { command: copyFromStreamfile, environment: `ile`, noLibList: true });
+
+                        if (copyResult.code !== 0) {
+                          writeEmitter.fire(`Failed to copy file to a temporary member.\n\t${copyResult.stderr}\n\n`);
+                          closeEmitter.fire(copyResult.code || 1);
+                        }
                       }
-                    }
 
-                    const commandResult = await CompileTools.runCommand(connection,
-                      {
-                        title: chosenAction.name,
-                        environment,
-                        command: chosenAction.command,
-                        cwd: remoteCwd,
-                        env: variables,
-                      }, {
+                      const commandResult = await CompileTools.runCommand(connection,
+                        {
+                          title: chosenAction.name,
+                          environment,
+                          command: chosenAction.command,
+                          cwd: remoteCwd,
+                          env: variables,
+                        }, {
                         writeEvent: (content) => writeEmitter.fire(content),
                         commandConfirm
                       }
-                    );
+                      );
 
-                    if (commandResult && commandResult.code !== CompileTools.DID_NOT_RUN) {
-                      hasRun = true;
-                      const isIleCommand = environment === `ile`;
+                      if (commandResult && commandResult.code !== CompileTools.DID_NOT_RUN) {
+                        hasRun = true;
+                        const isIleCommand = environment === `ile`;
 
-                      const useLocalEvfevent =
-                        fromWorkspace && chosenAction.postDownload &&
-                        (chosenAction.postDownload.includes(`.evfevent`) || chosenAction.postDownload.includes(`.evfevent/`));
+                        const useLocalEvfevent =
+                          fromWorkspace && chosenAction.postDownload &&
+                          (chosenAction.postDownload.includes(`.evfevent`) || chosenAction.postDownload.includes(`.evfevent/`));
 
-                      const possibleObject = getObjectFromCommand(commandResult.command);
-                      if (isIleCommand && possibleObject) {
-                        Object.assign(evfeventInfo, possibleObject);
-                      }
-
-                      actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
-                      successful = (commandResult.code === 0 || commandResult.code === null);
-
-                      writeEmitter.fire(CompileTools.NEWLINE);
-
-                      if (useLocalEvfevent) {
-                        writeEmitter.fire(`Fetching errors from .evfevent.${CompileTools.NEWLINE}`);
-
-                      }
-                      else if (evfeventInfo.object && evfeventInfo.library) {
-                        if (chosenAction.command.includes(`*EVENTF`)) {
-                          writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
-                          refreshDiagnosticsFromServer(instance, evfeventInfo);
-                          problemsFetched = true;
-                        } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
-                          writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
+                        const possibleObject = getObjectFromCommand(commandResult.command);
+                        if (isIleCommand && possibleObject) {
+                          Object.assign(evfeventInfo, possibleObject);
                         }
-                      }
 
-                      if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
-                        if (fromWorkspace) {
-                          const remoteDir = remoteCwd;
-                          const localDir = fromWorkspace.uri;
+                        actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
+                        successful = (commandResult.code === 0 || commandResult.code === null);
 
-                          const postDownloads: { type: vscode.FileType, localPath: string, remotePath: string }[] = [];
-                          const downloadDirectories = new Set<vscode.Uri>();
-                          for (const download of chosenAction.postDownload) {
-                            const remotePath = path.posix.join(remoteDir, download);
-                            const localPath = vscode.Uri.joinPath(localDir, download).path;
+                        writeEmitter.fire(CompileTools.NEWLINE);
 
-                            let type: vscode.FileType;
-                            if (await content.isDirectory(remotePath)) {
-                              downloadDirectories.add(vscode.Uri.joinPath(localDir, download));
-                              type = vscode.FileType.Directory;
-                            }
-                            else {
-                              const directory = path.parse(download).dir;
-                              if (directory) {
-                                downloadDirectories.add(vscode.Uri.joinPath(localDir, directory));
-                              }
-                              type = vscode.FileType.File;
-                            }
+                        if (useLocalEvfevent) {
+                          writeEmitter.fire(`Fetching errors from .evfevent.${CompileTools.NEWLINE}`);
 
-                            postDownloads.push({ remotePath, localPath, type })
+                        }
+                        else if (evfeventInfo.object && evfeventInfo.library) {
+                          if (chosenAction.command.includes(`*EVENTF`)) {
+                            writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
+                            refreshDiagnosticsFromServer(instance, evfeventInfo);
+                            problemsFetched = true;
+                          } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
+                            writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
                           }
+                        }
 
-                          //Clear and create every local download directories
-                          for (const downloadPath of downloadDirectories) {
-                            try {
-                              const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
-                              if (stat.type !== vscode.FileType.Directory) {
-                                if (await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")) {
-                                  await vscode.workspace.fs.delete(downloadPath);
+                        if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
+                          if (fromWorkspace) {
+                            const remoteDir = remoteCwd;
+                            const localDir = fromWorkspace.uri;
+
+                            const postDownloads: { type: vscode.FileType, localPath: string, remotePath: string }[] = [];
+                            const downloadDirectories = new Set<vscode.Uri>();
+                            for (const download of chosenAction.postDownload) {
+                              const remotePath = path.posix.join(remoteDir, download);
+                              const localPath = vscode.Uri.joinPath(localDir, download).path;
+
+                              let type: vscode.FileType;
+                              if (await content.isDirectory(remotePath)) {
+                                downloadDirectories.add(vscode.Uri.joinPath(localDir, download));
+                                type = vscode.FileType.Directory;
+                              }
+                              else {
+                                const directory = path.parse(download).dir;
+                                if (directory) {
+                                  downloadDirectories.add(vscode.Uri.joinPath(localDir, directory));
+                                }
+                                type = vscode.FileType.File;
+                              }
+
+                              postDownloads.push({ remotePath, localPath, type })
+                            }
+
+                            //Clear and create every local download directories
+                            for (const downloadPath of downloadDirectories) {
+                              try {
+                                const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
+                                if (stat.type !== vscode.FileType.Directory) {
+                                  if (await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")) {
+                                    await vscode.workspace.fs.delete(downloadPath);
+                                    throw new Error("Create directory");
+                                  }
+                                }
+                                else if (stat.type === vscode.FileType.Directory) {
+                                  await vscode.workspace.fs.delete(downloadPath, { recursive: true });
                                   throw new Error("Create directory");
                                 }
                               }
-                              else if (stat.type === vscode.FileType.Directory) {
-                                await vscode.workspace.fs.delete(downloadPath, { recursive: true });
-                                throw new Error("Create directory");
+                              catch (e) {
+                                //Either fs.stat did not find the folder or it wasn't a folder and it's been deleted above
+                                try {
+                                  await vscode.workspace.fs.createDirectory(downloadPath)
+                                }
+                                catch (error) {
+                                  vscode.window.showWarningMessage(`Failed to create download path ${downloadPath}: ${error}`);
+                                  console.log(error);
+                                  closeEmitter.fire(1);
+                                }
                               }
                             }
-                            catch (e) {
-                              //Either fs.stat did not find the folder or it wasn't a folder and it's been deleted above
-                              try {
-                                await vscode.workspace.fs.createDirectory(downloadPath)
+
+                            // Then we download the files that is specified.
+                            const downloads = postDownloads.map(
+                              async (postDownload) => {
+                                const content = connection.getContent();
+                                if (postDownload.type === vscode.FileType.Directory) {
+                                  return content.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
+                                } else {
+                                  return content.downloadFile(postDownload.localPath, postDownload.remotePath);
+                                }
                               }
-                              catch (error) {
-                                vscode.window.showWarningMessage(`Failed to create download path ${downloadPath}: ${error}`);
-                                console.log(error);
+                            );
+
+                            await Promise.all(downloads)
+                              .then(async result => {
+                                // Done!
+                                writeEmitter.fire(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}\n`);
+
+                                // Process locally downloaded evfevent files:
+                                if (useLocalEvfevent) {
+                                  refreshDiagnosticsFromLocal(instance, evfeventInfo);
+                                  problemsFetched = true;
+                                }
+                              })
+                              .catch(error => {
+                                vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
+                                writeEmitter.fire(`Failed to download a file after Action: ${error.message}\n`);
                                 closeEmitter.fire(1);
-                              }
-                            }
+                              });
                           }
-
-                          // Then we download the files that is specified.
-                          const downloads = postDownloads.map(
-                            async (postDownload) => {
-                              const content = connection.getContent();
-                              if (postDownload.type === vscode.FileType.Directory) {
-                                return content.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
-                              } else {
-                                return content.downloadFile(postDownload.localPath, postDownload.remotePath);
-                              }
-                            }
-                          );
-
-                          await Promise.all(downloads)
-                            .then(async result => {
-                              // Done!
-                              writeEmitter.fire(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}\n`);
-
-                              // Process locally downloaded evfevent files:
-                              if (useLocalEvfevent) {
-                                refreshDiagnosticsFromLocal(instance, evfeventInfo);
-                                problemsFetched = true;
-                              }
-                            })
-                            .catch(error => {
-                              vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
-                              writeEmitter.fire(`Failed to download a file after Action: ${error.message}\n`);
-                              closeEmitter.fire(1);
-                            });
                         }
+
+                        if (problemsFetched && viewControl === `problems`) {
+                          commands.executeCommand(`workbench.action.problems.focus`);
+                        }
+                      } else {
+                        writeEmitter.fire(`Command did not run.` + CompileTools.NEWLINE);
                       }
 
-                      if (problemsFetched && viewControl === `problems`) {
-                        commands.executeCommand(`workbench.action.problems.focus`);
-                      }
-                    } else {
-                      writeEmitter.fire(`Command did not run.` + CompileTools.NEWLINE);
+                    } catch (e) {
+                      writeEmitter.fire(`${e}\n`);
+                      vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
+                      successful = false;
                     }
 
-                  } catch (e) {
-                    writeEmitter.fire(`${e}\n`);
-                    vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
-                    successful = false;
-                  }
+                    closeEmitter.fire(successful ? 0 : 1);
+                  },
+                  close: function (): void { }
+                };
 
-                  closeEmitter.fire(successful ? 0 : 1);
-                },
-                close: function (): void { }
-              };
-
-              return term;
+                return term;
+              })
             })
-          })
-        );
+          );
 
-        const executionOK = (exitCode === 0);
-        if (hasRun) {
-          if (executionOK && browserItem) {
-            switch (chosenAction.refresh) {
-              case 'browser':
-                if (chosenAction.type === 'streamfile') {
-                  vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
-                }
-                else if (chosenAction.type !== 'file') {
-                  vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
-                }
-                break;
+          target.executionOK = (exitCode === 0);
+          if (hasRun) {
+            if (target.executionOK && browserItem) {
+              switch (chosenAction.refresh) {
+                case 'browser':
+                  if (chosenAction.type === 'streamfile') {
+                    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                  }
+                  else if (chosenAction.type !== 'file') {
+                    vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                  }
+                  break;
 
-              case 'filter':
-                //Filter is a top level item so it has no parent (like Batman)
-                let filter: BrowserItem = browserItem;
-                while (filter.parent) {
-                  filter = filter.parent;
-                }
-                filter.refresh?.();
-                break;
+                case 'filter':
+                  //Filter is a top level item so it has no parent (like Batman)
+                  let filter: BrowserItem = browserItem;
+                  while (filter.parent) {
+                    filter = filter.parent;
+                  }
+                  filter.refresh?.();
+                  break;
 
-              case 'parent':
-                browserItem.parent?.refresh?.();
-                break;
+                case 'parent':
+                  browserItem.parent?.refresh?.();
+                  break;
 
-              default:
-              //No refresh
+                default:
+                //No refresh
+              }
             }
+
+            const openOutputAction = "Open output"; //TODO: will be translated in the future
+            const uiPromise = target.executionOK ?
+              vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
+              vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction);
+
+            uiPromise.then(openOutput => {
+              if (openOutput) {
+                const now = new Date();
+                new CustomUI()
+                  .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
+                  .setOptions({ fullWidth: true })
+                  .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+              }
+            })
           }
 
-          const openOutputAction = "Open output"; //TODO: will be translated in the future
-          const uiPromise = executionOK ?
-            vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
-            vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction);
-
-          uiPromise.then(openOutput => {
-            if (openOutput) {
-              const now = new Date();
-              new CustomUI()
-                .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
-                .setOptions({ fullWidth: true })
-                .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
-            }
-          })
+          return executionOK;
         }
-
-        return executionOK;
       }
       else {
         return false;
