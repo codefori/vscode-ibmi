@@ -446,7 +446,7 @@ function installComponentsQuickPick(connection: IBMi) {
     placeHolder: `Select component(s) to install`
   }).then(async result => {
     if (result) {
-      window.withProgress({title: `Installing components...`, location: vscode.ProgressLocation.Notification}, async (progress) => {
+      window.withProgress({title: `Components`, location: vscode.ProgressLocation.Notification}, async (progress) => {
         for (const item of result) {
           progress.report({message: `Installing ${item.label}...`});
           try {
