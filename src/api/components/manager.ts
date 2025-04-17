@@ -59,7 +59,7 @@ export class ComponentManager {
   }
 
   public async installComponent(key: string): Promise<ComponentInstallState> {
-    const component = this.getAllAvailableComponents().find(c => c.getIdentification().name === key);
+    const component = this.getAllAvailableComponents().find(c => c.getIdentification().name === key && c.getIdentification().userManaged);
 
     if (!component) {
       throw new Error(`Component ${key} not found.`);
@@ -86,7 +86,7 @@ export class ComponentManager {
   }
 
   public async uninstallComponent(key: string): Promise<ComponentInstallState> {
-    const installed = this.registered.find(c => c.component.getIdentification().name === key);
+    const installed = this.registered.find(c => c.component.getIdentification().name === key && c.component.getIdentification().userManaged);
 
     if (!installed) {
       throw new Error(`Component ${key} not installed.`);
@@ -109,13 +109,13 @@ export class ComponentManager {
     };
   }
 
-  async reset(key: string): Promise<ComponentState|undefined> {
-    const component = this.registered.find(c => c.component.getIdentification().name === key);
+  async getRemoteState(key: string): Promise<ComponentState|undefined> {
+    const component = this.registered.find(c => c.component.getIdentification().name === key && c.component.getIdentification().userManaged);
     if (component) {
-      const newState: ComponentState = `NotChecked`;
       component.component.reset?.();
-      await component.overrideState(newState);
-      return newState;
+      const state = await component.component.getRemoteState(this.connection, await component.getInstallDirectory());
+      await component.overrideState(state);
+      return state;
     }
   }
 
@@ -128,9 +128,9 @@ export class ComponentManager {
       const installed = lastInstalled.find(i => i.id.name === component.getIdentification().name);
       const sameVersion = installed && (installed.id.version === component.getIdentification().version);
 
-      if (!installed || !sameVersion || installed.state === `NotChecked`) {
+      if ((!installed || !sameVersion || installed.state === `NotChecked`) && !component.getIdentification().userManaged) {
         await newComponent.check();
-      } else {
+      } else if (installed) {
         await newComponent.overrideState(installed.state);
       }
 
@@ -189,7 +189,7 @@ class IBMiComponentRuntime {
     try {
       const installDirectory = await this.getInstallDirectory();
       this.state = await this.component.getRemoteState(this.connection, installDirectory);
-      if (this.state !== `Installed` && !this.component.getIdentification().userManaged) {
+      if (this.state !== `Installed`) {
         this.update(installDirectory);
       }
     }

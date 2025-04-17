@@ -81,7 +81,7 @@ describe('Component Tests', () => {
     });
   });
 
-  it('Has multiple versions not installed(?)', async () => {
+  it('Can get component no matter the state', async () => {
     const componentA = connection.getComponent<CustomCLI>(CustomCLI.ID, {ignoreState: true});
     expect(componentA).toBeDefined();
     expect(componentA?.getIdentification().version).toBe(1);
@@ -91,17 +91,28 @@ describe('Component Tests', () => {
   it('Can install a component', async () => {
     try {
       await connection.uninstallComponent(CustomCLI.ID);
-    } catch (e) {}
+    } catch (e) {
+      console.log(`Component not installed, skipping uninstall.`);
+    }
+
+    const requiredCheckA = await connection.requireCheck(CustomCLI.ID);
+    expect(requiredCheckA).toBeDefined();
+    expect(requiredCheckA).toBe(`NotInstalled`);
 
     const allComponents = connection.getComponents();
     expect(allComponents.length > 1).toBeTruthy();
-    expect(allComponents.some(c => c.id.name === CustomCLI.ID && c.state === `NotInstalled`)).toBeTruthy();
+    const state = allComponents.some(c => c.id.name === CustomCLI.ID && c.state === `NotInstalled`);
+    expect(state).toBeTruthy();
 
     const version1 = connection.getComponent<CustomCLI>(CustomCLI.ID);
     expect(version1).toBeUndefined();
 
     const resultA = await connection.installComponent(CustomCLI.ID);
     expect(resultA.state).toBe(`Installed`);
+
+    const requiredCheckB = await connection.requireCheck(CustomCLI.ID);
+    expect(requiredCheckB).toBeTruthy();
+    expect(requiredCheckB).toBe(`Installed`);
 
     try {
       await connection.installComponent(CustomCLI.ID);
