@@ -89,15 +89,11 @@ export class ComponentManager {
     const installed = this.registered.find(c => c.component.getIdentification().name === key && c.component.getIdentification().userManaged);
 
     if (!installed) {
-      throw new Error(`Component ${key} not installed.`);
+      throw new Error(`Component ${key} not registered.`);
     }
 
     if (installed.getState() !== `Installed`) {
       throw new Error(`Component ${key} not installed.`);
-    }
-
-    if (!installed.component.getIdentification().userManaged) {
-      throw new Error(`Component ${key} is not user managed and therefore cannot be uninstalled.`);
     }
 
     await installed.component.uninstall?.(this.connection);
@@ -155,9 +151,7 @@ class IBMiComponentRuntime {
   private state: ComponentState = `NotChecked`;
   private cachedInstallDirectory: string | undefined;
 
-  constructor(protected readonly connection: IBMi, readonly component: IBMiComponent) {
-
-  }
+  constructor(protected readonly connection: IBMi, readonly component: IBMiComponent) {}
 
   async getInstallDirectory() {
     if (!this.cachedInstallDirectory) {
@@ -175,28 +169,37 @@ class IBMiComponentRuntime {
     return this.state;
   }
 
+  setState(newState: ComponentState) {
+    this.state = newState;
+    return IBMi.GlobalStorage.storeComponentState(this.connection.currentConnectionName, {id: this.component.getIdentification(), state: newState});
+  }
+
   async overrideState(newState: ComponentState) {
     const installDir = await this.getInstallDirectory();
     await this.component.setInstallDirectory?.(installDir);
-    this.state = newState;
+    await this.setState(newState);
   }
   
   async update(installDirectory: string) {
-    this.state = await this.component.update(this.connection, installDirectory);
+    const newState = await this.component.update(this.connection, installDirectory);
+    await this.setState(newState);
   }
 
   async check() {
     try {
       const installDirectory = await this.getInstallDirectory();
-      this.state = await this.component.getRemoteState(this.connection, installDirectory);
-      if (this.state !== `Installed`) {
+      const newState = await this.component.getRemoteState(this.connection, installDirectory);
+      await this.setState(newState);
+      if (newState !== `Installed`) {
         this.update(installDirectory);
       }
     }
     catch (error) {
       console.log(`Error occurred while checking component ${this.toString()}`);
       console.log(error);
+
       this.state = `Error`;
+      this.setState(this.state);
     }
 
     return this;

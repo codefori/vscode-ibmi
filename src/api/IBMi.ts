@@ -1313,39 +1313,12 @@ export default class IBMi {
     }
   }
 
+  getComponentManager() {
+    return this.componentManager;
+  }
+
   getComponent<T extends IBMiComponent>(name: string, options?: ComponentSearchProps) {
     return this.componentManager.get<T>(name, options);
-  }
-
-  /**
-   * Install a registered user-managed component.
-   * Will crash with a good message.
-   */
-  async installComponent(componentId: string) {
-    const installed = await this.componentManager.installComponent(componentId);
-    await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, installed);
-    return installed;
-  }
-
-  async uninstallComponent(componentId: string) {
-    const uninstalled = await this.componentManager.uninstallComponent(componentId);
-    await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, uninstalled);
-    return uninstalled;
-  }
-
-  async requireCheck(componentId: string) {
-    const chosen = this.componentManager.get(componentId, {ignoreState: true});
-    if (chosen) {
-      const newState = await this.componentManager.getRemoteState(componentId);
-      if (newState) {
-        await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: chosen.getIdentification(), state: newState});
-        return newState;
-      }
-    }
-  }
-
-  getComponents() {
-    return this.componentManager.getComponentStates();
   }
 
   /**

@@ -203,7 +203,7 @@ export class SettingsUI {
 
         const componentsTab = new Section();
         if (connection) {
-          const states = connection.getComponents();
+          const states = connection.getComponentManager().getComponentStates();
           componentsTab.addParagraph(`The following extensions contribute these components:`);
           extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
             const extension = vscode.extensions.getExtension(extensionId);
@@ -429,7 +429,7 @@ export class SettingsUI {
 }
 
 function installComponentsQuickPick(connection: IBMi) {
-  const components = connection.getComponents();
+  const components = connection.getComponentManager().getComponentStates();
   const installable = components.filter(c => c.id.userManaged && c.state !== `Installed`);
 
   if (installable.length === 0) {
@@ -450,7 +450,7 @@ function installComponentsQuickPick(connection: IBMi) {
         for (const item of result) {
           progress.report({message: `Installing ${item.label}...`});
           try {
-            await connection.installComponent(item.id);
+            await connection.getComponentManager().installComponent(item.id);
           } catch (e) {
             // TODO: handle errors!
           }
