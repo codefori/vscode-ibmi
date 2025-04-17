@@ -36,6 +36,7 @@ import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
+import { CustomCLI } from "./api/tests/components/customCli";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -101,6 +102,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   if (process.env.DEV) {
     // Run tests if not in production build
     initialise(context);
+
+    // Test user-component
+    extensionComponentRegistry.registerComponent(context, new CustomCLI());
   }
 
   instance.subscribe(

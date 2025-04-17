@@ -6,7 +6,7 @@ import path, { parse as parsePath } from 'path';
 import { IBMiComponent } from "./components/component";
 import { CopyToImport } from "./components/copyToImport";
 import { CustomQSh } from './components/cqsh';
-import { ComponentManager } from "./components/manager";
+import { ComponentManager, ComponentSearchProps } from "./components/manager";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
@@ -228,7 +228,7 @@ export default class IBMi {
       local: `#@$`
     };
   }
-
+  
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
@@ -481,7 +481,7 @@ export default class IBMi {
 
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
-      const componentStates = await this.componentManager.getInstallState();
+      const componentStates = await this.componentManager.getComponentStates();
       this.appendOutput(`\nCode for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
@@ -1313,12 +1313,12 @@ export default class IBMi {
     }
   }
 
-  getComponent<T extends IBMiComponent>(name: string, ignoreState?: boolean) {
-    return this.componentManager.get<T>(name, ignoreState);
+  getComponentManager() {
+    return this.componentManager;
   }
 
-  getComponentStates() {
-    return this.componentManager.getInstallState();
+  getComponent<T extends IBMiComponent>(name: string, options?: ComponentSearchProps) {
+    return this.componentManager.get<T>(name, options);
   }
 
   /**

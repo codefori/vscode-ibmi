@@ -7,6 +7,7 @@ import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { extensionComponentRegistry } from "../components/manager";
 import { JsonConfig, JsonStorage } from "./testConfigSetup";
+import { CustomCLI } from "./components/customCli";
 
 export const testStorage = new JsonStorage();
 const testConfig = new JsonConfig();
@@ -59,6 +60,8 @@ export async function newConnection() {
   extensionComponentRegistry.registerComponent(testingId, new GetNewLibl());
   extensionComponentRegistry.registerComponent(testingId, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(testingId, new CopyToImport());
+
+  extensionComponentRegistry.registerComponent(testingId, new CustomCLI());
 
   const creds = {
     host: ENV_CREDS.host!,
