@@ -1332,7 +1332,10 @@ export default class IBMi {
   async requireCheck(componentId: string) {
     const chosen = this.componentManager.get(componentId, {ignoreState: true});
     if (chosen) {
-      await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: chosen.getIdentification(), state: `NeedsUpdate`});
+      const newState = await this.componentManager.reset(componentId);
+      if (newState) {
+        await IBMi.GlobalStorage.storeComponentState(this.currentConnectionName, {id: chosen.getIdentification(), state: newState});
+      }
     }
   }
 

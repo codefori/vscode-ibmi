@@ -109,6 +109,16 @@ export class ComponentManager {
     };
   }
 
+  async reset(key: string): Promise<ComponentState|undefined> {
+    const component = this.registered.find(c => c.component.getIdentification().name === key);
+    if (component) {
+      const newState: ComponentState = `NotChecked`;
+      component.component.reset?.();
+      await component.overrideState(newState);
+      return newState;
+    }
+  }
+
   public async startup(lastInstalled: ComponentInstallState[] = []) {
     const components = this.getAllAvailableComponents();
     for (const component of components) {
