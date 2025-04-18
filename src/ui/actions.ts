@@ -181,8 +181,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                   evfeventInfo.library = config.currentLibrary;
                 }
 
-                evfeventInfo.library = evfeventInfo.library.toUpperCase();
-                evfeventInfo.object = name.toUpperCase();
+                evfeventInfo.library = connection.upperCaseName(evfeventInfo.library);
+                evfeventInfo.object = connection.upperCaseName(name);
                 evfeventInfo.extension = ext;
 
                 if (chosenAction.command.includes(`&SRCFILE`)) {
@@ -237,7 +237,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 break;
 
               case `object`:
-                const [_, library, fullName] = target.uri.path.toUpperCase().split(`/`);
+                const [_, library, fullName] = connection.upperCaseName(target.uri.path).split(`/`);
                 const object = fullName.substring(0, fullName.lastIndexOf(`.`));
 
                 evfeventInfo.library = library;
