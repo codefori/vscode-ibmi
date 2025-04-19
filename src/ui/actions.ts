@@ -133,6 +133,27 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         const envFileVars = workspaceFolder ? await getEnvConfig(workspaceFolder) : {};
 
         let cancelled = false;
+
+        const commandConfirm = async (commandString: string): Promise<string> => {
+          const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
+          const promptedCommands = [];
+          for (let command of commands) {
+            if (command.startsWith(`?`)) {
+              command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
+            } else {
+              command = await showCustomInputs(`Run Command`, command, chosenAction.name || `Command`);
+            }
+            promptedCommands.push(command);
+            if (!command) break;
+          }
+
+          return !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
+        }
+
+        //Prompt once now in case of multiple targets
+        const promptOnce = targets.length > 1;
+        const command = promptOnce ? chosenAction.command : await commandConfirm(chosenAction.command);
+
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Running action {0} on {1} item(s)", chosenAction.name, targets.length) }, async (task, canceled) => {
           const increment = 100 / targets.length;
           let done = 1;
@@ -277,23 +298,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             }
 
             const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
-            let actionName = chosenAction.name;
-
-            const commandConfirm = async (commandString: string): Promise<string> => {
-              const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
-              const promptedCommands = [];
-              for (let command of commands) {
-                if (command.startsWith(`?`)) {
-                  command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
-                } else {
-                  command = await showCustomInputs(`Run Command`, command, chosenAction.name || `Command`);
-                }
-                promptedCommands.push(command);
-                if (!command) break;
-              }
-
-              return !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
-            }
+            let actionName = chosenAction.name;            
 
             const exitCode = await new Promise<number>(resolve =>
               tasks.executeTask({
@@ -361,12 +366,12 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           {
                             title: chosenAction.name,
                             environment,
-                            command: chosenAction.command,
+                            command,
                             cwd: remoteCwd,
                             env: variables,
                           }, {
                           writeEvent: (content) => writeEmitter.fire(content),
-                          commandConfirm
+                          commandConfirm: promptOnce ? commandConfirm : undefined
                         }
                         );
 
