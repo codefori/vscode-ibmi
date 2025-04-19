@@ -13,12 +13,24 @@ import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, Wor
 import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
-import { CustomUI, Tab } from '../webviews/CustomUI';
+import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { BrowserItem } from './types';
 
-interface CommandObject {
+type CommandObject = {
   object: string
   library?: string
+}
+
+type ActionTarget = {
+  uri: vscode.Uri
+  extension: string
+  fragment: string
+  protected: boolean
+  workspaceFolder: vscode.WorkspaceFolder
+  executionOK: boolean,
+  hasRun: boolean,
+  processed: boolean,
+  output: string[]
 }
 
 const actionUsed: Map<string, number> = new Map;
@@ -47,8 +59,9 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
       workspaceFolder: workspaceFolder || vscode.workspace.getWorkspaceFolder(uri),
       executionOK: false,
       hasRun: false,
-      output: [] as string[]
-    }));
+      processed: false,
+      output: []
+    }) as ActionTarget);
 
     workspaceFolder = targets[0].workspaceFolder;
 
@@ -119,11 +132,17 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         const fromWorkspace = (chosenAction.type === `file` && vscode.workspace.workspaceFolders) ? vscode.workspace.workspaceFolders[workspaceId || 0] : undefined;
         const envFileVars = workspaceFolder ? await getEnvConfig(workspaceFolder) : {};
 
+        let cancelled = false;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Running action {0} on {1} item(s)", chosenAction.name, targets.length) }, async (task, canceled) => {
           const increment = 100 / targets.length;
           let done = 1;
           for (const target of targets) {
+            if (canceled.isCancellationRequested) {
+              cancelled = true;
+              return;
+            }
             task.report({ message: `${done++}/${targets.length}`, increment })
+            target.processed = true;
             const variables: Variable = {};
             Object.entries(envFileVars).forEach(([key, value]) => variables[`&${key}`] = value);
             const evfeventInfo: EvfEventInfo = {
@@ -501,17 +520,43 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         });
 
         const openOutputAction = l10n.t("Open output(s)");
-        const uiPromise = targets.every(target => target.executionOK) ?
-          vscode.window.showInformationMessage(l10n.t(`Action {0} was successful.`, chosenAction.name), openOutputAction) :
-          vscode.window.showErrorMessage(l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length), openOutputAction);
+        let uiPromise;
+        if (cancelled) {
+          uiPromise = vscode.window.showWarningMessage(l10n.t(`Action {0} was cancelled; ({1} processed).`, chosenAction.name, targets.filter(target => target.processed).length), openOutputAction);
+        }
+        else if (targets.every(target => target.executionOK)) {
+          uiPromise = vscode.window.showInformationMessage(l10n.t(`Action {0} was successful.`, chosenAction.name), openOutputAction);
+        }
+        else {
+          uiPromise = vscode.window.showErrorMessage(l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length), openOutputAction);
+        }
 
         uiPromise.then(openOutput => {
           if (openOutput) {
             const now = new Date();
-            new CustomUI()
-              .addTabs([...targets.map(target => ({ label: basename(target.uri.path), value: `<pre><code>${target.output.join("")}</code></pre>` }) as Tab)])
-              .setOptions({ fullWidth: true })
-              .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+            const resultsPanel = new CustomUI();
+            if (targets.length === 1) {
+              resultsPanel.addParagraph(`<pre><code>${targets[0].output.join("")}</code></pre>`)
+                .setOptions({ fullPage: true });
+            }
+            else {
+              resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${basename(target.uri.path)}`, value: `<pre><code>${target.output.join("")}</code></pre>` } as TreeListItem)))
+                .setOptions({
+                  fullPage: true,
+                  css: /* css */ `
+                  body{
+                    margin: 0;
+                    padding: 0;
+                    overflow: hidden;
+                  }
+
+                  pre {
+                    margin: 1em;
+                  }                  
+                `
+                });
+            }
+            resultsPanel.loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
           }
         })
       }
@@ -660,3 +705,12 @@ function doRefresh(chosenAction: Action, browserItem?: BrowserItem) {
     }
   }
 }
+function getTargetResultIcon(target: ActionTarget) {
+  if (target.hasRun) {
+    return target.executionOK ? '✔️' : '❌';
+  }
+  else {
+    return '❔';
+  }
+}
+
