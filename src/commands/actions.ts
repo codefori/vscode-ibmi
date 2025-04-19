@@ -37,7 +37,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const scheme = uris[0]?.scheme;
         if (scheme) {
           if (!uris.every(uri => uri.scheme === scheme)) {
-            window.showWarningMessage(l10n.t("Actions can't be run on multiple items of different types."))
+            window.showWarningMessage(l10n.t("Actions can't be run on multiple items of different natures."))
             return false;
           }
 
