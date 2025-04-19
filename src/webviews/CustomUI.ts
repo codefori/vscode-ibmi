@@ -6,7 +6,11 @@ const vscodeweb = require(`@vscode-elements/elements/dist/bundled`);
 
 type PanelOptions = {
   fullWidth?: boolean
+  fullPage?: boolean
+  css?: string
 };
+
+type TreeLeafAction = "submit" | "browse";
 
 export interface Page<T> {
   panel: vscode.WebviewPanel
@@ -37,7 +41,7 @@ export interface ComplexTab {
 }
 
 interface WebviewMessageRequest {
-  type: "submit"|"file";
+  type: "submit" | "file";
   data?: any;
 }
 
@@ -63,7 +67,7 @@ export class Section {
     return this;
   }
 
-  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, minlength?: number, maxlength?: number, regexTest?: string, inputType?: InputType, min?:number, max?:number }) {
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, minlength?: number, maxlength?: number, regexTest?: string, inputType?: InputType, min?: number, max?: number }) {
     const input = Object.assign(new Field('input', id, label, description), options);
     this.addField(input);
     return this;
@@ -113,8 +117,9 @@ export class Section {
     return this;
   }
 
-  addTree(id: string, label: string, treeItems: TreeListItem[], description?: string) {
+  addTree(id: string, label: string, treeItems: TreeListItem[], description?: string, onClick: TreeLeafAction = "submit") {
     const tree = new Field('tree', id, label, description);
+    tree.treeLeafAction = onClick;
     tree.treeList = treeItems;
     this.addField(tree);
     return this;
@@ -130,6 +135,17 @@ export class Section {
 
   addField(field: Field) {
     this.fields.push(field);
+    return this;
+  }
+
+  addBrowser(id: string, items: TreeListItem[]) {
+    const browser = new Field('browser', id, '');
+    browser.treeList = items;
+    if (browser.treeList[0]) {
+      browser.treeList[0].selected = true;
+    }
+    browser.treeLeafAction = 'browse';
+    this.addField(browser);
     return this;
   }
 }
@@ -220,8 +236,8 @@ export class CustomUI extends Section {
   }
 
   private getHTML(panel: vscode.WebviewPanel, title: string) {
-    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`];
-    const trees = this.fields.filter(field => field.type == `tree`);
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`, 'browser'] as FieldType[];
+    const trees = this.fields.filter(field => [`tree`, 'browser'].includes(field.type));
 
     const complexTabFields = this.fields.filter(field => field.type === `complexTabs`).map(tabs => tabs.complexTabItems?.map(tab => tab.fields));
     const allFields = [...this.fields, ...complexTabFields.flat(2)].filter(cField => cField) as Field[];
@@ -239,13 +255,13 @@ export class CustomUI extends Section {
         <style>
             @media only screen and (min-width: 750px) {
               #laforma {
-                padding-left: ${this.options?.fullWidth ? '0' : '15'}%;
-                padding-right: ${this.options?.fullWidth ? '0' : '15'}%;
+                padding-left: ${this.options?.fullWidth || this.options?.fullPage ? '0' : '15'}%;
+                padding-right: ${this.options?.fullWidth || this.options?.fullPage ? '0' : '15'}%;
               }
             }
 
             #laforma {
-                margin: 2em 2em 2em 2em;
+              margin: ${this.options?.fullPage ? /*css*/ "0" : "2em 2em 2em 2em"};
             }
 
             vscode-tree {
@@ -259,13 +275,33 @@ export class CustomUI extends Section {
             :root{
               --dropdown-z-index: 666;
             }
+
+            vscode-split-layout {
+              width: 100vw;
+              height: 100vh;
+            }
+
+            [slot="start"],
+            [slot="end"]{
+              overflow: auto;
+            }
+
+            pre{              
+              background-color: var(--vscode-textPreformat-background);
+            }
+            ${this.options?.css || ""}
         </style>
     </head>
     
     <body>
-        <vscode-form-container id="laforma">
-            ${this.fields.map(field => field.getHTML()).join(``)}
-        </vscode-form-container>
+    ${this.options?.fullPage ?
+        this.fields.map(field => field.getHTML()).join(``) :
+      /* html */ `
+      <vscode-form-container id="laforma">
+        ${this.fields.map(field => field.getHTML()).join(``)}
+      </vscode-form-container>
+        `
+      }        
     </body>
     
     <script>
@@ -384,8 +420,14 @@ export class CustomUI extends Section {
                 vscode.postMessage({ type: 'submit', data });
             };
 
-            const treeItemSubmit = (treeId, value) => {
-              vscode.postMessage({ type: 'submit', data: {treeId, value} });
+            const treeItemClick = (treeId, type, value) => {
+              if(type === "browse"){
+                const browseTarget = document.getElementById("browse_" + treeId);
+                browseTarget.innerHTML = value;
+              }
+              else{
+                vscode.postMessage({ type, data: {treeId, value} });
+              }              
             }
 
             const doFileRequest = (event, fieldId) => {
@@ -454,18 +496,16 @@ export class CustomUI extends Section {
             document.addEventListener('DOMContentLoaded', () => {
               validateInputs(); 
               var currentTree;
-              ${trees.map(tree => {
-      return /*js*/`
-                  currentTree = document.getElementById('${tree.id}');
-                  currentTree.data = ${JSON.stringify(tree.treeList)};
-                  currentTree.addEventListener('vsc-tree-select', (event) => {
-                    console.log(JSON.stringify(event.detail));
-                    if (event.detail.itemType === 'leaf') {
-                      treeItemSubmit('${tree.id}', event.detail.value);
-                    }
-                  });
-                  `
-    })}
+              ${trees.map(tree => /*js*/`
+                currentTree = document.getElementById('${tree.id}');
+                currentTree.data = ${JSON.stringify(tree.treeList)};
+                currentTree.addEventListener('vsc-tree-select', (event) => {
+                  console.log(JSON.stringify(event.detail));
+                  if (event.detail.itemType === 'leaf') {
+                    treeItemClick('${tree.id}', '${tree.treeLeafAction}', event.detail.value);                      
+                  }
+                });`
+      )}
             });
 
         }())
@@ -475,7 +515,7 @@ export class CustomUI extends Section {
   }
 }
 
-export type FieldType = "input" | "password" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading";
+export type FieldType = "input" | "password" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading" | "browser";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -517,6 +557,7 @@ export class Field {
   public inputType?: InputType;
   public min?: number;
   public max?: number;
+  public treeLeafAction?: TreeLeafAction
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
 
@@ -632,6 +673,13 @@ export class Field {
                   ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
               </vscode-single-select>
           </vscode-form-group>`;
+
+      case `browser`:
+        return /* html */`
+        <vscode-split-layout initial-handle-position="20%">
+          <div slot="start"><vscode-tree id="${this.id}"></vscode-tree></div>
+          <div slot="end"><div id="browse_${this.id}">${this.treeList?.at(0)?.value}</div></div>
+      </vscode-split-layout>`;
     }
   }
 

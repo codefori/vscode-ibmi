@@ -47,10 +47,10 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       }
 
       try {
-        if(options.position){
+        if (options.position) {
           await commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as TextDocumentShowOptions);
         }
-        else{
+        else {
           await commands.executeCommand(`vscode.open`, uri);
         }
 
@@ -71,17 +71,17 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       }
     }),
 
-    commands.registerCommand("code-for-ibmi.browse", (item: WithPath | MemberItem) => {
-      return commands.executeCommand("code-for-ibmi.openWithDefaultMode", item, "browse" as DefaultOpenMode);
+    commands.registerCommand("code-for-ibmi.browse", (item: WithPath | MemberItem, items?: WithPath | MemberItem) => {
+      return commands.executeCommand("code-for-ibmi.openWithDefaultMode", items || item, "browse" as DefaultOpenMode);
     }),
 
-    commands.registerCommand("code-for-ibmi.edit", (item: WithPath | MemberItem) => {
-      return commands.executeCommand("code-for-ibmi.openWithDefaultMode", item, "edit" as DefaultOpenMode);
+    commands.registerCommand("code-for-ibmi.edit", (item: WithPath | MemberItem, items?: WithPath | MemberItem) => {
+      return commands.executeCommand("code-for-ibmi.openWithDefaultMode", items || item, "edit" as DefaultOpenMode);
     }),
 
-    commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode, position?: Range) => {
+    commands.registerCommand("code-for-ibmi.openWithDefaultMode", (items: WithPath | WithPath[], overrideMode?: DefaultOpenMode, position?: Range) => {
       const readonly = (overrideMode || IBMi.connectionManager.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
-      commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly, position } as OpenEditableOptions);
+      (Array.isArray(items) ? items : [items]).forEach(item => commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly, position } as OpenEditableOptions));
     }),
 
 
@@ -121,7 +121,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       const LOADING_LABEL = `Please wait`;
       const connection = instance.getConnection();
       if (!connection) return;
-      
+
       const storage = instance.getStorage();
       const content = connection?.getContent();
       let starRemoved: boolean = false;
@@ -367,11 +367,11 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
             window.showInformationMessage(`Cleared cached files.`);
           } else {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
-            if ([3,4].includes(selectionSplit.length) || selection.startsWith(`/`)) {
+            if ([3, 4].includes(selectionSplit.length) || selection.startsWith(`/`)) {
 
               // When selection is QSYS path
               if (!selection.startsWith(`/`) && connection) {
-                if(selectionSplit.length === 4){
+                if (selectionSplit.length === 4) {
                   //Remove the iASP part
                   selectionSplit.shift();
                 }
