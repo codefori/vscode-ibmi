@@ -1396,7 +1396,7 @@ async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
       let appendResults = false;
       for (const parameter of parameters) {
         if (cancel.isCancellationRequested) {
-          return;
+          return total;
         }
 
         const path = parameter.path;
