@@ -14,8 +14,6 @@ import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
-const URI_LIST_SEPARATOR = "\r\n";
-
 const objectNamesLower = () => IBMi.connectionManager.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
 const objectSortOrder = () => IBMi.connectionManager.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
 
@@ -45,6 +43,11 @@ const objectIcons = {
   'SRVPGM': `file-submodule`,
   'USRSPC': `chrome-maximize`,
   '': `circle-large-outline`
+}
+
+type SearchParameters = {
+  path: string
+  fillter?: ObjectFilters
 }
 
 abstract class ObjectBrowserItem extends BrowserItem {
@@ -516,10 +519,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       if (node) {
         (nodes || [node]).map(n => n.filter).forEach(filter => editFilter(filter).then(() => objectBrowser.refresh()));
       }
-      else{
+      else {
         await editFilter();
         objectBrowser.refresh();
-      }      
+      }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.moveFilterUp`, (node: ObjectBrowserFilterItem) => objectBrowser.moveFilterInList(node, `UP`)),
@@ -950,13 +953,13 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node?: ObjectItem) => {
-      const parameters = {
-        path: node?.path || ``,
-        filter: node?.filter
-      }
+    vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node?: ObjectItem, nodes?: ObjectItem[]) => {
+      const parameters: SearchParameters[] = [];
 
-      if (!parameters.path) {
+      if (node) {
+        (nodes || [node]).forEach(n => parameters.push({ path: n.path, fillter: n.filter }));
+      }
+      else {
         const connection = getConnection();
         const input = await vscode.window.showInputBox({
           prompt: vscode.l10n.t(`Enter LIB/SPF/member.ext to search (member.ext is optional and can contain wildcards)`),
@@ -988,15 +991,14 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
 
         if (input) {
           const path = connection.upperCaseName(input.trim()).split(`/`);
-          parameters.path = [path[0], path[1]].join('/');
+          parameters.push({ path: [path[0], path[1]].join('/') });
         }
       }
 
-      if (parameters.path) {
+      if (parameters.length) {
         const connection = getConnection();
 
-        const pathParts = parameters.path.split(`/`);
-        if (pathParts[1] !== `*ALL`) {
+        if (!parameters.some(p => p.path.split('/')[1] === '*ALL')) {
           const selectedAsp = connection.getCurrentIAspName();
           const aspText = (selectedAsp ? vscode.l10n.t(`(in ASP {0})`, selectedAsp) : ``);
 
@@ -1010,7 +1012,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = list.length > 0 ? listHeader.concat(list.map(term => ({ label: term }))).concat(clearListArray) : [];
           quickPick.placeholder = list.length > 0 ? vscode.l10n.t(`Enter search term or select one of the previous search terms.`) : vscode.l10n.t(`Enter search term.`);
-          quickPick.title = vscode.l10n.t(`Search {0} {1}`, parameters.path, aspText);
+          quickPick.title = vscode.l10n.t(`Search {0} {1}`, parameters.map(p => p.path).join(", "), aspText);
 
           quickPick.onDidChangeValue(() => {
             if (quickPick.value === ``) {
@@ -1033,7 +1035,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
               } else {
                 quickPick.hide();
                 IBMi.GlobalStorage.addPreviousSearchTerm(searchTerm);
-                await doSearchInSourceFile(searchTerm, parameters.path, parameters.filter);
+                await doSearch(searchTerm, parameters);
               }
             }
           });
@@ -1382,71 +1384,87 @@ function storeMemberList(path: string, list: string[]) {
   }
 }
 
-async function doSearchInSourceFile(searchTerm: string, path: string, filter?: ObjectFilters) {
-  const [library, sourceFile] = path.split(`/`);
+async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
   try {
-    await vscode.window.withProgress({
+    const total = await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: vscode.l10n.t(`Searching`),
-    }, async progress => {
-      progress.report({
-        message: vscode.l10n.t(`Fetching member list for {0}.`, path)
-      });
-
-      progress.report({ message: vscode.l10n.t(`"{0}" in {1}.`, searchTerm, path) });
-
-      // NOTE: if more messages are added, lower the timeout interval
-      const timeoutInternal = 9000;
-      const searchMessages = [
-        // vscode.l10n.t(`This is taking a while because there are {0} members. Searching "{1}" in {2} still.`, members.length,  searchTerm,  path),
-        vscode.l10n.t(`What's so special about "{0}" anyway?`, searchTerm),
-        vscode.l10n.t(`Still searching "{0}" in {1}...`, searchTerm, path),
-        vscode.l10n.t(`While you wait, why not make some tea?`),
-        vscode.l10n.t(`Wow. This really is taking a while. Let's hope you get the result you want.`),
-        vscode.l10n.t(`Why was six afraid of seven?`),
-        // vscode.l10n.t(`How does one end up with {0} members?`, members.length),
-        vscode.l10n.t(`"{0}" in {1}.`, searchTerm, path),
-      ];
-
-      let currentMessage = 0;
-      const messageTimeout = setInterval(() => {
-        if (currentMessage < searchMessages.length) {
-          progress.report({
-            message: searchMessages[currentMessage]
-          });
-          currentMessage++;
-        } else {
-          clearInterval(messageTimeout);
+      cancellable: true
+    }, async (progress, cancel) => {
+      let total = 0;
+      const increment = 100 / parameters.length;
+      let appendResults = false;
+      for (const parameter of parameters) {
+        if (cancel.isCancellationRequested) {
+          return;
         }
-      }, timeoutInternal);
 
-      let memberFilter: string = '*';
-      if (filter?.member && filter?.filterType !== "regex" && singleGenericName(filter.member)) {
-        memberFilter = filter?.member;
-      }
+        const path = parameter.path;
+        const filter = parameter.fillter;
+        progress.report({ message: vscode.l10n.t(`"{0}" in {1}.`, searchTerm, path), increment });
 
-      const results = await Search.searchMembers(instance.getConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
-      clearInterval(messageTimeout)
-      if (results.hits.length) {
-        const objectNamesLower = IBMi.connectionManager.get(`ObjectBrowser.showNamesInLowercase`);
+        // NOTE: if more messages are added, lower the timeout interval
+        const timeoutInternal = 9000;
+        const searchMessages = [
+          // vscode.l10n.t(`This is taking a while because there are {0} members. Searching "{1}" in {2} still.`, members.length,  searchTerm,  path),
+          vscode.l10n.t(`What's so special about "{0}" anyway?`, searchTerm),
+          vscode.l10n.t(`Still searching "{0}" in {1}...`, searchTerm, path),
+          vscode.l10n.t(`While you wait, why not make some tea?`),
+          vscode.l10n.t(`Wow. This really is taking a while. Let's hope you get the result you want.`),
+          vscode.l10n.t(`Why was six afraid of seven?`),
+          // vscode.l10n.t(`How does one end up with {0} members?`, members.length),
+          vscode.l10n.t(`"{0}" in {1}.`, searchTerm, path),
+        ];
 
-        // Format result to be lowercase if the setting is enabled
-        results.hits.forEach(result => {
-          if (objectNamesLower === true) {
-            result.path = result.path.toLowerCase();
+        let currentMessage = 0;
+        const messageTimeout = setInterval(() => {
+          if (currentMessage < searchMessages.length) {
+            progress.report({
+              message: searchMessages[currentMessage]
+            });
+            currentMessage++;
+          } else {
+            clearInterval(messageTimeout);
           }
-        });
+        }, timeoutInternal);
 
-        results.hits = results.hits.sort((a, b) => {
-          return a.path.localeCompare(b.path);
-        });
+        let memberFilter: string = '*';
+        if (filter?.member && filter?.filterType !== "regex" && singleGenericName(filter.member)) {
+          memberFilter = filter?.member;
+        }
 
-        vscode.commands.executeCommand(`code-for-ibmi.setSearchResults`, results);
-      } else {
-        vscode.window.showInformationMessage(vscode.l10n.t(`No results found searching for "{0}" in {1}.`, searchTerm, path));
+        const [library, sourceFile] = path.split(`/`);
+        const results = await Search.searchMembers(instance.getConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
+        clearInterval(messageTimeout);
+        if (cancel.isCancellationRequested) {
+          return;
+        }
+        if (results.hits.length) {
+          const objectNamesLower = IBMi.connectionManager.get(`ObjectBrowser.showNamesInLowercase`);
+
+          // Format result to be lowercase if the setting is enabled
+          results.hits.forEach(result => {
+            if (objectNamesLower === true) {
+              result.path = result.path.toLowerCase();
+            }
+          });
+
+          results.hits = results.hits.sort((a, b) => {
+            return a.path.localeCompare(b.path);
+          });
+
+          vscode.commands.executeCommand(`code-for-ibmi.setSearchResults`, results, appendResults);
+          appendResults = true;
+        }
+        total += results.hits.length;
       }
 
+      return total;
     });
+
+    if (!total) {
+      vscode.window.showInformationMessage(vscode.l10n.t(`No results found searching for "{0}".`, searchTerm));
+    }
 
   } catch (e: any) {
     vscode.window.showErrorMessage(vscode.l10n.t(`Error searching source members: {0}`, e));

@@ -1,8 +1,8 @@
 import * as path from 'path';
 import { GetMemberInfo } from './components/getMemberInfo';
-import { IBMiMember, SearchHit, SearchResults } from './types';
-import { Tools } from './Tools';
 import IBMi from './IBMi';
+import { Tools } from './Tools';
+import { IBMiMember, SearchHit, SearchResults } from './types';
 
 export namespace Search {
   export async function searchMembers(connection: IBMi, library: string, sourceFile: string, searchTerm: string, members: string|IBMiMember[], readOnly?: boolean,): Promise<SearchResults> {
