@@ -6,7 +6,8 @@ import { DebugConfiguration, getDebugServiceDetails, getJavaHome, ORIGINAL_DEBUG
 import { instance } from "../instantiate";
 import { CustomUI } from "../webviews/CustomUI";
 
-const NAV_LOG_FILE = `/QIBM/UserData/IBMiDebugService/startDebugService_workspace/startDebugServiceNavigator.log`;
+const NAV_LOG_DIR = `/QIBM/UserData/IBMiDebugService/startDebugService_workspace`;
+const NAV_LOG_FILE = path.posix.join(NAV_LOG_DIR, `startDebugServiceNavigator.log`);
 const START_SERVICE_FILE = `/QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh`;
 
 /*
@@ -44,7 +45,7 @@ export async function startService(connection: IBMi) {
     const submitOptions = await window.showInputBox({
       title: l10n.t(`Debug Service submit options`),
       prompt: l10n.t(`Valid parameters for SBMJOB`),
-      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) USER(QDBGSRV)`
+      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) OUTQ(QUSRSYS/QDBGSRV) USER(QDBGSRV)`
     });
 
     if (submitOptions) {
@@ -55,6 +56,9 @@ export async function startService(connection: IBMi) {
       else {
         await checkAuthority();
       }
+
+      // Attempt to make log directory
+      await connection.sendCommand({command: `mkdir -p ${NAV_LOG_DIR}`});
 
       const command = `QSYS/SBMJOB JOB(QDBGSRV) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${START_SERVICE_FILE} > ${NAV_LOG_FILE} 2>&1'))`
       const submitResult = await connection.runCommand({ command, noLibList: true });
