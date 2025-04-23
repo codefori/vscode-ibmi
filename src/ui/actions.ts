@@ -314,7 +314,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
                         file: `${lib}/${srcpf}`,
                       });
 
-                      const copyFromStreamfile = content.toCl(`CPYFRMSTMF`, {
+                      const copyFromStreamfile = content.toCl(`QSYS/CPYFRMSTMF`, {
                         fromstmf: variables[`&FULLPATH`],
                         tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
                         mbropt: `*REPLACE`,
