@@ -1,5 +1,5 @@
 import { existsSync } from "fs";
-import vscode from "vscode";
+import vscode, { window } from "vscode";
 import { extensionComponentRegistry } from "../../api/components/manager";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
@@ -203,17 +203,22 @@ export class SettingsUI {
 
         const componentsTab = new Section();
         if (connection) {
-          const states = connection.getComponentStates();
+          const states = connection.getComponentManager().getComponentStates();
           componentsTab.addParagraph(`The following extensions contribute these components:`);
           extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
             const extension = vscode.extensions.getExtension(extensionId);
             componentsTab.addParagraph(`<p>
-              <h3>${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
+              <h3 style="padding-bottom: 1em;">${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
               <ul>
-              ${components.map(component => `<li><code>${component?.getIdentification().name} (version ${component?.getIdentification().version})</code>: ${states.find(c => c.id.name === component.getIdentification().name)?.state}</li>`).join(``)}
+              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.id.name === component.getIdentification().name)?.state} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
               </ul>
               </p>`);
-          })
+          });
+
+          const userInstallableComponents = states.filter(c => c.id.userManaged && c.state !== `Installed`);
+          if (userInstallableComponents.length) {
+            componentsTab.addButtons({ id: `installComponent`, label: `Install component` })
+          }
         } else {
           componentsTab.addParagraph('Connect to the server to see these settings.');
         }
@@ -267,6 +272,12 @@ export class SettingsUI {
 
                 case `clearAllowedExts`:
                   instance.getStorage()?.revokeAllExtensionAuthorisations();
+                  break;
+
+                case `installComponent`:
+                  if (connection) {
+                    installComponentsQuickPick(connection);
+                  }
                   break;
 
                 default:
@@ -415,4 +426,38 @@ export class SettingsUI {
       })
     )
   }
+}
+
+function installComponentsQuickPick(connection: IBMi) {
+  const components = connection.getComponentManager().getComponentStates();
+  const installable = components.filter(c => c.id.userManaged && c.state !== `Installed`);
+
+  if (installable.length === 0) {
+    return;
+  }
+
+  const withS = installable.length > 1 ? `s` : ``;
+  const quickPick = window.showQuickPick(installable.map(c => ({
+    label: c.id.name,
+    description: c.state,
+    id: c.id.name
+  })), {
+    title: `Install component${withS}`,
+    canPickMany: true,
+    placeHolder: `Select component${withS} to install`
+  }).then(async result => {
+    if (result) {
+      window.withProgress({title: `Component${withS}`, location: vscode.ProgressLocation.Notification}, async (progress) => {
+        for (const item of result) {
+          progress.report({message: `Installing ${item.label}...`});
+          try {
+            await connection.getComponentManager().installComponent(item.id);
+          } catch (e) {
+            // TODO: handle errors!
+          }
+        }
+      });
+    }
+  })
+
 }

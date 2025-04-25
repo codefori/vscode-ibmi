@@ -1,12 +1,15 @@
 
 import IBMi from "../IBMi";
 import { ComponentIdentification, ComponentInstallState, ComponentState, IBMiComponent } from "./component";
+import { IBMiComponentRuntime } from "./runtime";
 
 interface ExtensionContextI {
   extension: {
     id: string
   }
 }
+
+export interface ComponentSearchProps {ignoreState?: boolean};
 
 export class ComponentRegistry {
   private readonly components: Map<string, IBMiComponent[]> = new Map;
@@ -35,7 +38,7 @@ export class ComponentRegistry {
 export const extensionComponentRegistry = new ComponentRegistry();
 
 export class ComponentManager {
-  private readonly registered: Map<string, IBMiComponentRuntime> = new Map;
+  private readonly registered: IBMiComponentRuntime[] = [];
 
   constructor(private readonly connection: IBMi) {}
 
@@ -43,9 +46,8 @@ export class ComponentManager {
     return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat()).map(c => c.getIdentification());
   }
 
-  public getInstallState(): ComponentInstallState[] {
-    return Array.from(this.registered.keys()).map(k => {
-      const comp = this.registered.get(k)!;
+  public getComponentStates(): ComponentInstallState[] {
+    return this.registered.map(comp => {
       return {
         id: comp.component.getIdentification(),
         state: comp.getState()
@@ -53,83 +55,99 @@ export class ComponentManager {
     });
   }
 
+  /**
+   * Returns all components, user managed or not
+   */
+  getAllAvailableComponents() {
+    return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
+  }
+
+  public async installComponent(key: string): Promise<ComponentInstallState> {
+    const component = this.getAllAvailableComponents().find(c => c.getIdentification().name === key && c.getIdentification().userManaged);
+
+    if (!component) {
+      throw new Error(`Component ${key} not found.`);
+    }
+    
+    const existingComponent = this.registered.find(c => c.component.getIdentification().name === key);
+
+    if (!existingComponent) {
+      throw new Error(`Component ${key} not defined.`);
+    }
+
+    if (existingComponent.getState() === `Installed`) {
+      throw new Error(`Component ${key} already installed.`);
+    }
+
+    component.reset?.();
+
+    await existingComponent.update(await existingComponent.getInstallDirectory());
+
+    return {
+      id: component.getIdentification(),
+      state: existingComponent.getState()
+    };
+  }
+
+  public async uninstallComponent(key: string): Promise<ComponentInstallState> {
+    const installed = this.registered.find(c => c.component.getIdentification().name === key && c.component.getIdentification().userManaged);
+
+    if (!installed) {
+      throw new Error(`Component ${key} not registered.`);
+    }
+
+    if (installed.getState() !== `Installed`) {
+      throw new Error(`Component ${key} not installed.`);
+    }
+
+    await installed.component.uninstall?.(this.connection);
+    await installed.overrideState(`NotInstalled`);
+
+    return {
+      id: installed.component.getIdentification(),
+      state: installed.getState()
+    };
+  }
+
+  async getRemoteState(key: string): Promise<ComponentState|undefined> {
+    const component = this.registered.find(c => c.component.getIdentification().name === key && c.component.getIdentification().userManaged);
+    if (component) {
+      component.component.reset?.();
+      const state = await component.component.getRemoteState(this.connection, await component.getInstallDirectory());
+      await component.overrideState(state);
+      return state;
+    }
+  }
+
   public async startup(lastInstalled: ComponentInstallState[] = []) {
-    const components = Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
+    const components = this.getAllAvailableComponents();
     for (const component of components) {
       await component.reset?.();
       const newComponent = new IBMiComponentRuntime(this.connection, component);
 
-      const installed = lastInstalled.find(i => i.id.name === component.getIdentification().name);
-      const sameVersion = installed && (installed.id.version === component.getIdentification().version);
+      const installedBefore = lastInstalled.find(i => i.id.name === component.getIdentification().name);
+      const sameVersion = installedBefore && (installedBefore.id.version === component.getIdentification().version);
 
-      if (!installed || !sameVersion || installed.state === `NotChecked`) {
-        await newComponent.check();
-      } else {
-        await newComponent.overrideState(installed.state);
+      if ((!installedBefore || !sameVersion || installedBefore.state === `NotChecked`)) {
+        await newComponent.startupCheck();
+      } else if (installedBefore) {
+        await newComponent.overrideState(installedBefore.state);
       }
 
-      this.registered.set(component.getIdentification().name, newComponent);
+      this.registered.push(newComponent);
     }
   }
 
-  get<T extends IBMiComponent>(id: string, ignoreState?: boolean) {
-    const componentEngine = this.registered.get(id);
-    if (componentEngine && (ignoreState || componentEngine.getState() === `Installed`)) {
+  /**
+   * Returns the latest version of an installed component, or fetch a specific version
+   */
+  get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): T|undefined {
+    const componentEngine = this.registered.find(c => c.component.getIdentification().name === id);
+
+    if (componentEngine && (options.ignoreState || componentEngine.getState() === `Installed`)) {
       return componentEngine.component as T;
     }
   }
 }
 
-class IBMiComponentRuntime {
-  public static readonly InstallDirectory = `$HOME/.vscode/`;
-  private state: ComponentState = `NotChecked`;
-  private cachedInstallDirectory: string | undefined;
-
-  constructor(protected readonly connection: IBMi, readonly component: IBMiComponent) {
-
-  }
-
-  async getInstallDirectory() {
-    if (!this.cachedInstallDirectory) {
-      const result = await this.connection.sendCommand({
-        command: `echo "${IBMiComponentRuntime.InstallDirectory}"`,
-      });
-
-      this.cachedInstallDirectory = result.stdout.trim() || `/home/${this.connection.currentUser.toLowerCase()}/.vscode/`;
-    }
-
-    return this.cachedInstallDirectory;
-  }
-
-  getState() {
-    return this.state;
-  }
-
-  async overrideState(newState: ComponentState) {
-    const installDir = await this.getInstallDirectory();
-    await this.component.setInstallDirectory?.(installDir);
-    this.state = newState;
-  }
-
-  async check() {
-    try {
-      const installDirectory = await this.getInstallDirectory();
-      this.state = await this.component.getRemoteState(this.connection, installDirectory);
-      if (this.state !== `Installed`) {
-        this.state = await this.component.update(this.connection, installDirectory);
-      }
-    }
-    catch (error) {
-      console.log(`Error occurred while checking component ${this.toString()}`);
-      console.log(error);
-      this.state = `Error`;
-    }
-
-    return this;
-  }
-
-  toString() {
-    const identification = this.component.getIdentification();
-    return `${identification.name} (version ${identification.version})`
-  }
-}
+export { IBMiComponentRuntime };

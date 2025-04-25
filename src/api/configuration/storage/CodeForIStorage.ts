@@ -1,5 +1,5 @@
 import { AspInfo, ConnectionData } from "../../types";
-import { ComponentInstallState } from "../../components/component";
+import { ComponentIdentification, ComponentInstallState, IBMiComponent } from "../../components/component";
 import { BaseStorage } from "./BaseStorage";
 const SERVER_SETTINGS_CACHE_PREFIX = `serverSettingsCache_`;
 const SERVER_SETTINGS_CACHE_KEY = (name: string) => SERVER_SETTINGS_CACHE_PREFIX + name;
@@ -73,6 +73,34 @@ export class CodeForIStorage {
     });
   }
 
+  async storeComponentState(connectionName: string, component: ComponentInstallState) {
+    const existingSettings = this.getServerSettingsCache(connectionName);
+
+    if (!existingSettings) {
+      return;
+    }
+
+    const componentCache = existingSettings.installedComponents;
+    const stateId = componentCache.findIndex(c => c.id.name === component.id.name);
+    
+    if (stateId >= 0) {
+      if (component.state === `Installed`) {
+        componentCache[stateId] = component;
+      } else {
+        componentCache.splice(stateId, 1);
+      }
+    } else {
+      if (component.state === `Installed`) {
+        componentCache.push(component);
+      }
+    }
+
+    await this.setServerSettingsCache(connectionName, {
+      ...existingSettings,
+      installedComponents: componentCache
+    });
+  }
+ 
   async deleteServerSettingsCache(name: string) {
     await this.internalStorage.set(SERVER_SETTINGS_CACHE_KEY(name), undefined);
   }
