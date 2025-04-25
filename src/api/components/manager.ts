@@ -55,6 +55,9 @@ export class ComponentManager {
     });
   }
 
+  /**
+   * Returns all components, user managed or not
+   */
   getAllAvailableComponents() {
     return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
   }
@@ -122,13 +125,13 @@ export class ComponentManager {
       await component.reset?.();
       const newComponent = new IBMiComponentRuntime(this.connection, component);
 
-      const installed = lastInstalled.find(i => i.id.name === component.getIdentification().name);
-      const sameVersion = installed && (installed.id.version === component.getIdentification().version);
+      const installedBefore = lastInstalled.find(i => i.id.name === component.getIdentification().name);
+      const sameVersion = installedBefore && (installedBefore.id.version === component.getIdentification().version);
 
-      if ((!installed || !sameVersion || installed.state === `NotChecked`)) {
+      if ((!installedBefore || !sameVersion || installedBefore.state === `NotChecked`)) {
         await newComponent.startupCheck();
-      } else if (installed) {
-        await newComponent.overrideState(installed.state);
+      } else if (installedBefore) {
+        await newComponent.overrideState(installedBefore.state);
       }
 
       this.registered.push(newComponent);
