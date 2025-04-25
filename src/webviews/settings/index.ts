@@ -436,17 +436,18 @@ function installComponentsQuickPick(connection: IBMi) {
     return;
   }
 
+  const withS = installable.length > 1 ? `s` : ``;
   const quickPick = window.showQuickPick(installable.map(c => ({
     label: c.id.name,
     description: c.state,
     id: c.id.name
   })), {
-    title: `Install component`,
+    title: `Install component${withS}`,
     canPickMany: true,
-    placeHolder: `Select component(s) to install`
+    placeHolder: `Select component${withS} to install`
   }).then(async result => {
     if (result) {
-      window.withProgress({title: `Components`, location: vscode.ProgressLocation.Notification}, async (progress) => {
+      window.withProgress({title: `Component${withS}`, location: vscode.ProgressLocation.Notification}, async (progress) => {
         for (const item of result) {
           progress.report({message: `Installing ${item.label}...`});
           try {
