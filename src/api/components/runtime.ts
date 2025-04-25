@@ -40,12 +40,12 @@ export class IBMiComponentRuntime {
     await this.setState(newState);
   }
 
-  async check() {
+  async startupCheck() {
     try {
       const installDirectory = await this.getInstallDirectory();
       const newState = await this.component.getRemoteState(this.connection, installDirectory);
       await this.setState(newState);
-      if (newState !== `Installed`) {
+      if (newState !== `Installed` && !this.component.getIdentification().userManaged) {
         this.update(installDirectory);
       }
     }

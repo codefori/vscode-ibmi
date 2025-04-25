@@ -125,8 +125,8 @@ export class ComponentManager {
       const installed = lastInstalled.find(i => i.id.name === component.getIdentification().name);
       const sameVersion = installed && (installed.id.version === component.getIdentification().version);
 
-      if ((!installed || !sameVersion || installed.state === `NotChecked`) && !component.getIdentification().userManaged) {
-        await newComponent.check();
+      if ((!installed || !sameVersion || installed.state === `NotChecked`)) {
+        await newComponent.startupCheck();
       } else if (installed) {
         await newComponent.overrideState(installed.state);
       }
