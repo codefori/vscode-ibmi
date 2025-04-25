@@ -59,6 +59,14 @@ export async function startService(connection: IBMi) {
 
       // Attempt to make log directory
       await connection.sendCommand({command: `mkdir -p ${NAV_LOG_DIR}`});
+      
+      // Change owner to QDBGSRV
+      if (submitUser && submitUser !== "QDBGSRV") {
+        await connection.sendCommand({ command: `chown ${submitUser} ${NAV_LOG_DIR}` });
+      }
+
+      // Change the permissions to 777
+      await connection.sendCommand({ command: `chmod 777 ${NAV_LOG_DIR}` });
 
       const command = `QSYS/SBMJOB JOB(QDBGSRV) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${START_SERVICE_FILE} > ${NAV_LOG_FILE} 2>&1'))`
       const submitResult = await connection.runCommand({ command, noLibList: true });
