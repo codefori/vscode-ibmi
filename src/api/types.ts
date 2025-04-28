@@ -43,15 +43,16 @@ export interface CommandResult {
 }
 
 export interface Action {
-  name: string;
-  command: string;
-  type?: ActionType;
-  environment: ActionEnvironment;
-  extensions?: string[];
-  deployFirst?: boolean;
-  postDownload?: string[];
-  refresh?: ActionRefresh;
-  runOnProtected?: boolean;
+  name: string
+  command: string
+  type?: ActionType
+  environment: ActionEnvironment
+  extensions?: string[]
+  deployFirst?: boolean
+  postDownload?: string[]
+  refresh?: ActionRefresh
+  runOnProtected?: boolean
+  outputToFile?: string
 }
 
 export interface ConnectionData {
@@ -190,22 +191,23 @@ export interface AspInfo {
 }
 
 export interface ProgramExportImportInfo {
-    programLibrary: string,
-    programName: string,
-    objectType: string,
-    symbolName: string,
-    symbolUsage: string,
-    argumentOptimization: string,
-    dataItemSize: number
+  programLibrary: string,
+  programName: string,
+  objectType: string,
+  symbolName: string,
+  symbolUsage: string,
+  argumentOptimization: string,
+  dataItemSize: number
 }
 
 export interface ModuleExport {
-    moduleLibrary: string,
-    moduleName: string,
-    moduleAttr: string,
-    symbolName: string,
-    symbolType: string,
-    argumentOptimization: string,
+  moduleLibrary: string,
+  moduleName: string,
+  moduleAttr: string,
+  symbolName: string,
+  symbolType: string,
+  argumentOptimization: string,
 }
 
 export * from "./configuration/config/types";
+
