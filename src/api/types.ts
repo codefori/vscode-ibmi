@@ -1,3 +1,4 @@
+import { Variables } from "./variables";
 
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
@@ -13,7 +14,6 @@ export interface StandardIO {
 export type ActionType = "member" | "streamfile" | "object" | "file";
 export type ActionRefresh = "no" | "parent" | "filter" | "browser";
 export type ActionEnvironment = "ile" | "qsh" | "pase";
-export type Variable = Record<string, string>;
 
 export enum CcsidOrigin {
   User = "user",
@@ -25,7 +25,7 @@ export interface RemoteCommand {
   command: string;
   environment?: ActionEnvironment;
   cwd?: string;
-  env?: Record<string, string>;
+  env?: Record<string, string> | Variables;
   noLibList?: boolean
 }
 
