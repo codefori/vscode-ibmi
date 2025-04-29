@@ -64,6 +64,10 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
     }) as ActionTarget);
 
     workspaceFolder = targets[0].workspaceFolder;
+    if (!targets.every(target => target.workspaceFolder === workspaceFolder)) {
+      vscode.window.showErrorMessage(l10n.t("Actions can only be run on files from the same workspace"));
+      return false;
+    }
 
     let remoteCwd = config?.homeDirectory || `.`;
 
@@ -298,7 +302,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             }
 
             const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
-            let actionName = chosenAction.name;            
+            let actionName = chosenAction.name;
 
             const exitCode = await new Promise<number>(resolve =>
               tasks.executeTask({
