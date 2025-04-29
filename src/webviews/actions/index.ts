@@ -240,7 +240,7 @@ export namespace ActionsUI {
           }], vscode.l10n.t(`The browser level to refresh after the action is done`)
         )
         .addCheckbox("runOnProtected", vscode.l10n.t(`Run on protected/read only`), vscode.l10n.t(`Allows the execution of this Action on protected or read-only targets`), currentAction.runOnProtected)
-        .addInput(`outputToFile`, vscode.l10n.t(`Copy output to file`), vscode.l10n.t(`Copy the action output to a file. Variables can be used to define the file's path; use <code>&i</code> to compute file index.<br/>Example: <code>~/outputs/&CURLIB_&OPENMBR_&i.txt</code>.`), { default: currentAction.outputToFile })
+        .addInput(`outputToFile`, vscode.l10n.t(`Copy output to file`), vscode.l10n.t(`Copy the action output to a file. Variables can be used to define the file's path; use <code>&i</code> to compute file index.<br/>Example: <code>~/outputs/&CURLIB_&OPENMBR&i.txt</code>.`), { default: currentAction.outputToFile })
         .addHorizontalRule()
         .addButtons(
           { id: `saveAction`, label: vscode.l10n.t(`Save`) },
