@@ -6,8 +6,8 @@ import { CustomUI } from "../CustomUI";
 
 export async function editFilter(filter?: ObjectFilters, copy = false) {
   const connection = instance.getConnection();
-  const config = connection?.getConfig();
-  if (config) {
+  if (connection) {
+    const config = connection.getConfig();
     let objectFilters = config.objectFilters;
     const filterIndex = filter ? objectFilters.findIndex(f => f.name === filter!.name) : -1;
     let newFilter = false;
