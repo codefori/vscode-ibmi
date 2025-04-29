@@ -2782,7 +2782,7 @@
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "1_workspace@1"
 				},
 				{
