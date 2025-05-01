@@ -67,7 +67,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
       return false;
     }),
 
-    commands.registerCommand(`code-for-ibmi.openErrors`, async (options: { qualifiedObject?: string, workspace?: WorkspaceFolder }) => {
+    commands.registerCommand(`code-for-ibmi.openErrors`, async (options: { qualifiedObject?: string, workspace?: WorkspaceFolder, keepDiagnostics?: boolean }) => {
       interface ObjectDetail {
         asp?: string;
         lib: string;
@@ -135,7 +135,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const [library, object] = inputPath.split(`/`);
         if (library && object) {
           const nameDetail = path.parse(object);
-          refreshDiagnosticsFromServer(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace });
+          refreshDiagnosticsFromServer(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }, options.keepDiagnostics);
         }
       }
     }),
