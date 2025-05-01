@@ -783,6 +783,12 @@ export default class IBMi {
 
         this.currentAsp = await this.getUserProfileAsp();
 
+        // Set the default ASP to the current ASP if it is not set.
+        const chosenAspIsConfigured = this.getConfiguredIAsp();
+        if (!chosenAspIsConfigured) {
+          this.config.chosenAsp = this.currentAsp || `*SYSBAS`;
+        }
+
         // Fetch conversion values?
         if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
           this.qccsid = cachedServerSettings.qccsid;

@@ -79,21 +79,25 @@ export class SettingsUI {
         const sourceTab = new Section();
 
         if (connection) {
-          const asps = connection.getAllIAsps().map(asp => ({
-            selected: asp.name === config.sourceASP,
-            value: asp.name,
-            description: `iASP ${asp.name}`,
-            text: asp.name
-          }));
+          if (connection.usingBash()) {
+            const asps = connection.getAllIAsps().map(asp => ({
+              selected: asp.name === config.chosenAsp,
+              value: asp.name,
+              description: asp.name,
+              text: `${asp.name} (independent ASP ${asp.id})`
+            }));
 
-          asps.push({
-            selected: config.sourceASP === `*SYSBAS` || !asps.some(asp => asp.value === config.sourceASP),
-            value: `*SYSBAS`,
-            description: `System ASP`,
-            text: `*SYSBAS`
-          });
+            asps.push({
+              selected: config.chosenAsp === `*SYSBAS` || !asps.some(asp => asp.value === config.chosenAsp),
+              value: `*SYSBAS`,
+              description: `*SYSBAS`,
+              text: `*SYSBAS`
+            });
 
-          sourceTab.addSelect(`chosenAsp`, `Chosen ASP`, asps, `iASP that should be used when navigating file systems and executing commands. iASP configured on your user profile is ${connection.getCurrentUserIAspName() || `*SYSBAS`}.`);
+            sourceTab.addSelect(`chosenAsp`, `ASP / Database`, asps, `iASP that should be used when navigating file systems and executing commands. The iASP configured on your user profile is <code>${connection.getCurrentUserIAspName() || `*SYSBAS`}</code> and changing this setting will override that while using Code for IBM i.`);
+          } else {
+            sourceTab.addInput(`chosenAsp`, `ASP / Database`, `iASP that will be used when navigating file systems and executing commands. This cannot be overridden because bash is not your default shell.`, { default: connection.getCurrentUserIAspName() || `*SYSBAS`, readonly: true });
+          }
         }
 
         sourceTab
@@ -304,9 +308,6 @@ export class SettingsUI {
 
                     //In case we need to play with the data
                     switch (key) {
-                      case `sourceASP`:
-                        data[key] = null;
-                        break;
                       case `hideCompileErrors`:
                         data[key] = String(data[key]).split(`,`)
                           .map(item => item.toUpperCase().trim())

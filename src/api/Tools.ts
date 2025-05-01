@@ -33,6 +33,7 @@ export namespace Tools {
     const data = output.split(`\n`).filter(line => {
       const trimmed = line.trim();
       return trimmed !== `DB2>` &&
+        !trimmed.startsWith('WARNING') && // TODO: Ignore warnings (TODO: specifically for multi-threaded, be careful because of locale changes)
         !trimmed.startsWith(`DB20`) && // Notice messages
         !/COMMAND .+ COMPLETED WITH EXIT STATUS \d+/.test(trimmed) && // @CL command execution output
         trimmed !== `?>`;
