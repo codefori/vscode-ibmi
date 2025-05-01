@@ -8,22 +8,29 @@ const LIBNAME = `VSCODELIBT`;
 const SPFNAME = `VSCODESPFT`;
 const MBRNAME = `VSCODEMBRT`;
 
+/**
+ * Check the system has at least one iASP available,
+ * and the user profile is set to use *SYSBAS
+ */
 function checkAsps(connection: IBMi) {
   const asps = connection.getAllIAsps();
   if (asps.length === 0) return false;
 
   const currentAsp = connection.getCurrentUserIAspName();
-  if (!currentAsp) return false;
+  if (currentAsp !== undefined) return false;
 
   return true;
 }
 
-async function ensureLibExists(connection: IBMi) {
-  const detail = connection.getIAspDetail(connection.getCurrentUserIAspName()!)!;
-  const res = await connection.runCommand({ command: `CRTLIB LIB(${LIBNAME}) ASPDEV(${detail.name})` });
+async function ensureLibExists(connection: IBMi, aspName: string) {
+  const res = await connection.runCommand({ command: `CRTLIB LIB(${LIBNAME}) ASPDEV(${aspName})` });
   if (res.code) {
     assert.strictEqual(res.code, 0, res.stderr || res.stdout);
   }
+}
+
+async function setToAsp(connection: IBMi, name?: string) {
+  connection.getConfig().chosenAsp = name || `*SYSBAS`;
 }
 
 async function createTempRpgle(connection: IBMi) {
@@ -35,7 +42,7 @@ async function createTempRpgle(connection: IBMi) {
   });
 
   await connection.runCommand({
-    command: `ADDPFM FILE(${LIBNAME}/${SPFNAME}) MBR(${MBRNAME}) `,
+    command: `ADDPFM FILE(${LIBNAME}/${SPFNAME}) MBR(${MBRNAME})`,
     environment: `ile`
   });
 
@@ -49,8 +56,14 @@ describe(`iASP tests`, { concurrent: true }, () => {
   let skipAsp = false;
   beforeAll(async () => {
     connection = await newConnection();
+    setToAsp(connection);
+
     if (checkAsps(connection)) {
-      await ensureLibExists(connection);
+      const useiAsp = connection.getAllIAsps()[0].name;
+
+      await ensureLibExists(connection, useiAsp);
+
+      setToAsp(connection, useiAsp);
       await createTempRpgle(connection);
     } else {
       console.log(`Skipping iASP tests, no ASPs found.`);
@@ -59,6 +72,8 @@ describe(`iASP tests`, { concurrent: true }, () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
+    setToAsp(connection, connection.getAllIAsps()[0].name);
+
     await connection.runCommand({ command: `DLTLIB LIB(${LIBNAME})` });
     disposeConnection(connection);
   });
@@ -67,21 +82,40 @@ describe(`iASP tests`, { concurrent: true }, () => {
     if (skipAsp) {
       t.skip();
     }
+
+    setToAsp(connection, connection.getAllIAsps()[0].name);
+  });
+
+  it('CHKOBJ works with ASP set and unset', async () => {
+    expect(connection.getConfiguredIAsp()).toBeDefined();
+
+    const aspObjectExists = await connection.getContent()?.checkObject({library: LIBNAME, name: SPFNAME, type: `*FILE`});
+    expect(aspObjectExists).toBeTruthy()
+
+    setToAsp(connection); // Reset to *SYSBAS
+    const aspObjectNotFound = await connection.getContent()?.checkObject({library: LIBNAME, name: SPFNAME, type: `*FILE`});
+    expect(aspObjectNotFound).toBeFalsy()
   });
 
   it('Read members in ASP and base', async () => {
+    expect(connection.getConfiguredIAsp()).toBeDefined();
+
     const aspMbrContents = await connection.getContent()?.downloadMemberContent(LIBNAME, SPFNAME, MBRNAME);
 
     assert.ok(aspMbrContents);
   });
 
   it('can find ASP members via search', async () => {
+    expect(connection.getConfiguredIAsp()).toBeDefined();
+
     const searchResults = await Search.searchMembers(connection, LIBNAME, SPFNAME, `hello world`, `*`);
     expect(searchResults.hits.length).toBeGreaterThan(0);
     // TODO: additional expects
   });
 
   it('can resolve member info from ASP', async () => {
+    expect(connection.getConfiguredIAsp()).toBeDefined();
+
     const resolved = await connection.getContent().memberResolve(MBRNAME, [
       { library: `QSYS`, name: `QSYSINC` },
       { library: LIBNAME, name: SPFNAME }
@@ -89,5 +123,11 @@ describe(`iASP tests`, { concurrent: true }, () => {
 
     expect(resolved).toBeDefined();
     //TODO: additional expects
+  });
+
+  it('can change ASP', async () => {
+    setToAsp(connection); // Reset to *SYSBAS
+
+    expect(connection.getConfiguredIAsp()).toBeUndefined();
   });
 });
