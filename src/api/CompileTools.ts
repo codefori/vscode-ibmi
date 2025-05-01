@@ -142,17 +142,41 @@ export namespace CompileTools {
 
           case `ile`:
           default:
-            // escape $ and # in commands
-            commandResult = await connection.sendQsh({
-              command: [
-                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
-                ...commands.map(command =>
-                  `${`system "${IBMi.escapeForShell(command)}"`}`,
-                )
-              ].join(` && `),
-              directory: cwd,
-              ...callbacks
-            });
+
+            if (connection.usingBash()) {
+              const chosenAsp = connection.getConfiguredIAsp();
+              const aspName = chosenAsp ? chosenAsp.name : `*NONE`;
+
+              const setAspGrp = connection.getContent().toCl(`SETASPGRP`, {
+                ASPGRP: aspName,
+                CURLIB: ileSetup.currentLibrary,
+                USRLIBL: buildLibraryList(ileSetup).join(` `),
+              });
+
+              commandResult = await connection.sendCommand({
+                command: [
+                  `getjobid`,
+                  `cl "${setAspGrp}"`,
+                  ...commands.map(command =>
+                    `${`cl "${IBMi.escapeForShell(command)}"`}`,
+                  )
+                ].join(` && `),
+                directory: cwd,
+                ...callbacks
+              });
+            } else {
+              commandResult = await connection.sendQsh({
+                command: [
+                  ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
+                  ...commands.map(command =>
+                    `${`system "${IBMi.escapeForShell(command)}"`}`,
+                  )
+                ].join(` && `),
+                directory: cwd,
+                ...callbacks
+              });
+            }
+
             break;
         }
 

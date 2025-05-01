@@ -1337,13 +1337,17 @@ export default class IBMi {
       // CHGJOB not required here. It will use the job CCSID, or the runtime CCSID.
       let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
       let returningAsCsv: WrapResult | undefined;
-      let command = `${IBMi.locale} system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
+
+      const chosenAsp = this.getConfiguredIAsp();
+      const rdbParameter = chosenAsp ? `'-r' '${chosenAsp.rdbName}'` : ``;
+
+      let command = `${IBMi.locale} system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t' ${rdbParameter})"`
       let useCsv = options.forceSafe;
 
       // Use custom QSH if available
       if (this.canUseCqsh) {
         const customQsh = this.getComponent<CustomQSh>(CustomQSh.ID)!;
-        command = `${IBMi.locale} ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
+        command = `${IBMi.locale} ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t' ${rdbParameter})\\""`;
       }
 
       if (this.requiresTranslation) {
@@ -1502,9 +1506,10 @@ export default class IBMi {
     return this.currentAsp;
   }
 
-  getConfiguredIAsp() {
+  getConfiguredIAsp(): AspInfo|undefined {
     const selected = this.config?.chosenAsp;
-    return selected ? this.getIAspDetail(selected) : this.getIAspDetail(0);
+
+    return selected ? this.getIAspDetail(selected) : undefined;
   }
 
   async lookupLibraryIAsp(library: string): Promise<string|undefined> {

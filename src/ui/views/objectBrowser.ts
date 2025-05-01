@@ -981,7 +981,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
 
         const pathParts = parameters.path.split(`/`);
         if (pathParts[1] !== `*ALL`) {
-          const selectedAsp = connection.getCurrentUserIAspName();
+          const selectedAsp = connection.getConfiguredIAsp()?.name;
           const aspText = (selectedAsp ? vscode.l10n.t(`(in ASP {0})`, selectedAsp) : ``);
 
           const list = IBMi.GlobalStorage.getPreviousSearchTerms();

@@ -77,8 +77,26 @@ export class SettingsUI {
           .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData);
 
         const sourceTab = new Section();
+
+        if (connection) {
+          const asps = connection.getAllIAsps().map(asp => ({
+            selected: asp.name === config.sourceASP,
+            value: asp.name,
+            description: `iASP ${asp.name}`,
+            text: asp.name
+          }));
+
+          asps.push({
+            selected: config.sourceASP === `*SYSBAS` || !asps.some(asp => asp.value === config.sourceASP),
+            value: `*SYSBAS`,
+            description: `System ASP`,
+            text: `*SYSBAS`
+          });
+
+          sourceTab.addSelect(`chosenAsp`, `Chosen ASP`, asps, `iASP that should be used when navigating file systems and executing commands. iASP configured on your user profile is ${connection.getCurrentUserIAspName() || `*SYSBAS`}.`);
+        }
+
         sourceTab
-          .addInput(`sourceASP`, `Source ASP`, `Current ASP is based on the user profile job description and cannot be changed here.`, { default: connection?.getCurrentUserIAspName() || `*SYSBAS`, readonly: true })
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
