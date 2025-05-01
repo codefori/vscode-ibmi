@@ -12,14 +12,14 @@ function checkAsps(connection: IBMi) {
   const asps = connection.getAllIAsps();
   if (asps.length === 0) return false;
 
-  const currentAsp = connection.getCurrentIAspName();
+  const currentAsp = connection.getCurrentUserIAspName();
   if (!currentAsp) return false;
 
   return true;
 }
 
 async function ensureLibExists(connection: IBMi) {
-  const detail = connection.getIAspDetail(connection.getCurrentIAspName()!)!;
+  const detail = connection.getIAspDetail(connection.getCurrentUserIAspName()!)!;
   const res = await connection.runCommand({ command: `CRTLIB LIB(${LIBNAME}) ASPDEV(${detail.name})` });
   if (res.code) {
     assert.strictEqual(res.code, 0, res.stderr || res.stdout);

@@ -1491,18 +1491,22 @@ export default class IBMi {
       asp = this.iAspInfo.find(asp => asp.id === by);
     }
 
-    if (asp) {
-      return asp;
-    }
+    return asp;
   }
 
   getIAspName(by: string|number): string|undefined {
     return this.getIAspDetail(by)?.name;
   }
 
-  getCurrentIAspName() {
+  getCurrentUserIAspName() {
     return this.currentAsp;
   }
+
+  getConfiguredIAsp() {
+    const selected = this.config?.chosenAsp;
+    return selected ? this.getIAspDetail(selected) : this.getIAspDetail(0);
+  }
+
   async lookupLibraryIAsp(library: string): Promise<string|undefined> {
     let foundNumber = this.libraryAsps.get(library);
 

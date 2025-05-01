@@ -877,7 +877,7 @@ export default class IBMiContent {
     // Escape names for shell
     const pathList = files
       .map(file => {
-        const asp = file.asp || this.ibmi.getCurrentIAspName();
+        const asp = file.asp || this.ibmi.getCurrentUserIAspName();
         if (asp && asp.length > 0) {
           return [
             Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
