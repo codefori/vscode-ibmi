@@ -72,10 +72,12 @@ describe(`iASP tests`, { concurrent: true }, () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    setToAsp(connection, connection.getAllIAsps()[0].name);
+    if (checkAsps(connection)) {
+      setToAsp(connection, connection.getAllIAsps()[0].name);
 
-    await connection.runCommand({ command: `DLTLIB LIB(${LIBNAME})` });
-    disposeConnection(connection);
+      await connection.runCommand({ command: `DLTLIB LIB(${LIBNAME})` });
+      disposeConnection(connection);
+    }
   });
 
   beforeEach((t) => {
