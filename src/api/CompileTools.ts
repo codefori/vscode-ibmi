@@ -150,7 +150,7 @@ export namespace CompileTools {
               const setAspGrp = connection.getContent().toCl(`SETASPGRP`, {
                 ASPGRP: aspName,
                 CURLIB: ileSetup.currentLibrary,
-                USRLIBL: buildLibraryList(ileSetup).join(` `),
+                USRLIBL: ileSetup.libraryList.join(` `),
               });
 
               commandResult = await connection.sendCommand({
