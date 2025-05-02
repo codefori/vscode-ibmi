@@ -105,7 +105,7 @@ export default class IBMi {
    * the root of the IFS, thus why we store it.
    */
   private iAspInfo: AspInfo[] = [];
-  private currentAsp: string|undefined;
+  private userProfileIAsp: string|undefined;
   private libraryAsps = new Map<string, number>();
 
   /**
@@ -620,7 +620,7 @@ export default class IBMi {
           //check users default shell
 
           if (!commandShellResult.stderr) {
-            let usesBash = this.shell === IBMi.bashShellPath;
+            const usesBash = this.usingBash();
             if (!usesBash) {
               // make sure chsh is installed
               if (this.remoteFeatures[`chsh`]) {
@@ -781,12 +781,18 @@ export default class IBMi {
           message: `Fetching current iASP information.`
         });
 
-        this.currentAsp = await this.getUserProfileAsp();
+        this.userProfileIAsp = await this.getUserProfileAsp();
 
-        // Set the default ASP to the current ASP if it is not set.
-        const chosenAspIsConfigured = this.getConfiguredIAsp();
-        if (!chosenAspIsConfigured) {
-          this.config.chosenAsp = this.currentAsp || `*SYSBAS`;
+        if (this.usingBash()) {
+          // Set the default ASP to the current ASP if it is not set.
+          const chosenAspIsConfigured = this.getConfiguredIAsp();
+          if (!chosenAspIsConfigured) {
+            this.config.chosenAsp = this.userProfileIAsp || `*SYSBAS`;
+          }
+        } else {
+          // If the user is not using bash, then we set the chosen ASP to the user profile iASP.
+          // since we can't change the ASP without using bash (since we use 'cl')
+          this.config.chosenAsp = this.userProfileIAsp || `*SYSBAS`;
         }
 
         // Fetch conversion values?
@@ -1509,7 +1515,7 @@ export default class IBMi {
   }
 
   getCurrentUserIAspName() {
-    return this.currentAsp;
+    return this.userProfileIAsp;
   }
 
   getConfiguredIAsp(): AspInfo|undefined {
