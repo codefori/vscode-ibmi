@@ -606,6 +606,10 @@
 							"runOnProtected": {
 								"type": "boolean",
 								"description": "If enabled, this Action will be allowed to run on protected/read only targets."
+							},
+							"outputToFile": {
+								"type": "string",
+								"description": "If defined, a copy of the output will be put in the defined location; supports variable replacement."
 							}
 						}
 					},

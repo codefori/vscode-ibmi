@@ -1,3 +1,4 @@
+import { Variables } from "./variables";
 
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
@@ -13,7 +14,6 @@ export interface StandardIO {
 export type ActionType = "member" | "streamfile" | "object" | "file";
 export type ActionRefresh = "no" | "parent" | "filter" | "browser";
 export type ActionEnvironment = "ile" | "qsh" | "pase";
-export type Variable = Record<string, string>;
 
 export enum CcsidOrigin {
   User = "user",
@@ -25,7 +25,7 @@ export interface RemoteCommand {
   command: string;
   environment?: ActionEnvironment;
   cwd?: string;
-  env?: Record<string, string>;
+  env?: Record<string, string> | Variables;
   noLibList?: boolean
 }
 
@@ -43,15 +43,16 @@ export interface CommandResult {
 }
 
 export interface Action {
-  name: string;
-  command: string;
-  type?: ActionType;
-  environment: ActionEnvironment;
-  extensions?: string[];
-  deployFirst?: boolean;
-  postDownload?: string[];
-  refresh?: ActionRefresh;
-  runOnProtected?: boolean;
+  name: string
+  command: string
+  type?: ActionType
+  environment: ActionEnvironment
+  extensions?: string[]
+  deployFirst?: boolean
+  postDownload?: string[]
+  refresh?: ActionRefresh
+  runOnProtected?: boolean
+  outputToFile?: string
 }
 
 export interface ConnectionData {
@@ -190,22 +191,23 @@ export interface AspInfo {
 }
 
 export interface ProgramExportImportInfo {
-    programLibrary: string,
-    programName: string,
-    objectType: string,
-    symbolName: string,
-    symbolUsage: string,
-    argumentOptimization: string,
-    dataItemSize: number
+  programLibrary: string,
+  programName: string,
+  objectType: string,
+  symbolName: string,
+  symbolUsage: string,
+  argumentOptimization: string,
+  dataItemSize: number
 }
 
 export interface ModuleExport {
-    moduleLibrary: string,
-    moduleName: string,
-    moduleAttr: string,
-    symbolName: string,
-    symbolType: string,
-    argumentOptimization: string,
+  moduleLibrary: string,
+  moduleName: string,
+  moduleAttr: string,
+  symbolName: string,
+  symbolType: string,
+  argumentOptimization: string,
 }
 
 export * from "./configuration/config/types";
+

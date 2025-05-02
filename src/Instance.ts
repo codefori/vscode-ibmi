@@ -1,13 +1,16 @@
 import { EventEmitter } from "stream";
 import * as vscode from "vscode";
+import { ILELibrarySettings } from "./api/CompileTools";
 import IBMi, { ConnectionResult } from "./api/IBMi";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 import { VsCodeConfig } from "./config/Configuration";
 import { VsStorage } from "./config/Storage";
+import { getEnvConfig } from "./filesystems/local/env";
 import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
 import { VscodeTools } from "./ui/Tools";
 import { handleConnectionResults, messageCallback } from "./ui/connection";
+
 
 type IBMiEventSubscription = {
   func: Function,
@@ -196,6 +199,19 @@ export default class Instance {
 
   getConnection() {
     return this.connection;
+  }
+
+  async getLibraryList(connection: IBMi, workspaceFolder?: vscode.WorkspaceFolder): Promise<ILELibrarySettings> {
+    const config = connection.getConfig();
+
+    const env = workspaceFolder ? (await getEnvConfig(workspaceFolder)) : {};
+
+    const librarySetup: ILELibrarySettings = {
+      currentLibrary: env[`&CURLIB`] || config.currentLibrary,
+      libraryList: env[`&LIBL`]?.split(` `) || config.libraryList,
+    };
+
+    return librarySetup;
   }
 
   async setConfig(newConfig: ConnectionConfig) {
