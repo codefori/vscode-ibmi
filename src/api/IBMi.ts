@@ -757,7 +757,7 @@ export default class IBMi {
           //This is mostly a nice to have. We grab the ASP info so user's do
           //not have to provide the ASP in the settings.
           try {
-            const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+            const resultSet = await this.runSQL(`select * from qsys2.asp_info where asp_state in ('ACTIVE', 'AVAILABLE', 'VARIED ON')`);
             resultSet.forEach(row => {
               // Does not ever include SYSBAS/SYSTEM, only iASPs
               if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
@@ -786,7 +786,15 @@ export default class IBMi {
         if (this.usingBash()) {
           // Set the default ASP to the current ASP if it is not set.
           const chosenAspIsConfigured = this.getConfiguredIAsp();
-          if (!chosenAspIsConfigured) {
+          if (chosenAspIsConfigured) {
+            // Double check that the configured ASP is usable.
+            const configuredIsUsable = await this.canUseConfiguredAsp();
+
+            if (!configuredIsUsable) {
+              this.config.chosenAsp = `*SYSBAS`;
+            }
+            
+          } else {
             this.config.chosenAsp = this.userProfileIAsp || `*SYSBAS`;
           }
         } else {
@@ -1341,7 +1349,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, options: { fakeBindings?: (string | number)[], forceSafe?: boolean, ignoreDatabase?: boolean } = {}): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
     const possibleChangeCommand = (this.userCcsidInvalid ? `@CHGJOB CCSID(${this.getCcsid()});\n` : '');
 
@@ -1351,7 +1359,7 @@ export default class IBMi {
       let returningAsCsv: WrapResult | undefined;
 
       const chosenAsp = this.getConfiguredIAsp();
-      const rdbParameter = chosenAsp ? `'-r' '${chosenAsp.rdbName}'` : ``;
+      const rdbParameter = chosenAsp && options.ignoreDatabase !== true ? `'-r' '${chosenAsp.rdbName}'` : ``;
 
       let command = `${IBMi.locale} system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t' ${rdbParameter})"`
       let useCsv = options.forceSafe;
@@ -1482,7 +1490,7 @@ export default class IBMi {
   }
 
   private async getUserProfileAsp(): Promise<string|undefined> {
-    const [currentRdb] = await this.runSQL(`values current_server`);
+    const [currentRdb] = await this.runSQL(`values current_server`, {ignoreDatabase: true});
 
     if (currentRdb) {
       const key = Object.keys(currentRdb)[0];
@@ -1492,6 +1500,17 @@ export default class IBMi {
       if (currentAsp) {
         return currentAsp.name;
       }
+    }
+  }
+
+  private async canUseConfiguredAsp(): Promise<boolean> {
+    try {
+      const [row] = await this.runSQL(`values current_server`);
+      return true;
+    } catch (e) {
+      // If we can't run the SQL, then we can't use the configured ASP.
+      console.log(e);
+      return false;
     }
   }
 
