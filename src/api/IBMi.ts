@@ -106,7 +106,7 @@ export default class IBMi {
    */
   private iAspInfo: AspInfo[] = [];
   private userProfileIAsp: string|undefined;
-  private libraryAsps = new Map<string, number>();
+  private libraryAsps = new Map<string, number[]>();
 
   /**
    * @deprecated Will be replaced with {@link IBMi.getAllIAsps} in v3.0.0
@@ -1524,28 +1524,61 @@ export default class IBMi {
     return selected ? this.getIAspDetail(selected) : undefined;
   }
 
+  /**
+   * Will return the name of the iASP in which the given library resides.
+   * If the library is not in an iASP, it will return undefined.
+   * If multiple iASPS contain a library with this name, then either:
+   *    - If the user has configured an iASP for this library, it will return that iASP name.
+   *   - If the user has not configured an iASP for this library, it will return undefined.
+   */
   async lookupLibraryIAsp(library: string): Promise<string|undefined> {
-    let foundNumber = this.libraryAsps.get(library);
+    let foundAsps = this.libraryAsps.get(library) || [];
 
-    if (!foundNumber) {
-      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}'))`);
-      const iaspNumber = Number(row?.IASP_NUMBER);
-      if (iaspNumber >= 0) {
-        this.libraryAsps.set(library, iaspNumber);
-        foundNumber = iaspNumber;
+    if (foundAsps.length === 0) {
+      const rows = await this.runSQL(`SELECT IASP_NUMBER from table(qsys2.object_statistics('*ALLAVL', '*LIB')) x where x.objname = '${this.sysNameInAmerican(library)}'`);
+
+      for (const row of rows) {
+        if (row?.IASP_NUMBER !== undefined && row?.IASP_NUMBER !== null) {
+          const aspNumber = Number(row.IASP_NUMBER);
+
+          if (aspNumber > 0) {
+            foundAsps.push(aspNumber);
+          }
+          break;
+        }
+      }
+
+      if (foundAsps.length > 0) {
+        // Cache the found ASPs for this library
+        this.libraryAsps.set(library, foundAsps);
       }
     }
 
-    if (foundNumber) {
-      return this.getIAspName(foundNumber);
+    return this.getLibraryIAsp(library);
+  }
+
+  getLibraryIAsp(library: string): string|undefined {
+    const foundAsps = this.libraryAsps.get(library) || [];
+
+    if (foundAsps.length === 1) {
+      // If there is only one ASP, return it
+      return this.getIAspName(foundAsps[0]);
+    }
+    else if (foundAsps.length > 1) {
+      const userConfigured = this.getConfiguredIAsp();
+      if (userConfigured && foundAsps.includes(userConfigured.id)) {
+        // If the user has configured an iASP for this library, return it
+        return userConfigured.name;
+      } else {
+        return undefined; // Multiple ASPs found, but no user configured iASP
+      }
     }
   }
 
-  getLibraryIAsp(library: string) {
-    const found = this.libraryAsps.get(library);
-    if (found && found >= 0) {
-      return this.getIAspName(found);
-    }
+  getLibraryIAsps(library: string): string[] {
+    const foundAsps = this.libraryAsps.get(library) || [];
+
+    return foundAsps.map(asp => this.getIAspName(asp)).filter(name => name !== undefined);
   }
 
   /**

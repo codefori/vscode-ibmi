@@ -514,7 +514,19 @@ export default class IBMiContent {
 
     if (localLibrary !== `QSYS`) {
       if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
-        throw new Error(`Library ${localLibrary} does not exist.`);
+        const configuredAsp = this.ibmi.getConfig().chosenAsp;
+        const existsInLibrary = await this.ibmi.lookupLibraryIAsp(localLibrary);
+        const existsInMultiple = this.ibmi.getLibraryIAsps(localLibrary);
+
+        if (existsInMultiple.length >= 2) {
+          throw new Error(`Library ${localLibrary} exists in multiple IASPs: ${existsInMultiple.join(', ')}. Please specify the IASP in the connection settings.`);
+        }
+        else if (existsInLibrary && existsInLibrary !== configuredAsp) {
+          throw new Error(`Library ${localLibrary} is in IASP ${existsInLibrary}, but the current connection is not configured to use that IASP.`);
+
+        } else {
+          throw new Error(`Library ${localLibrary} does not exist.`);
+        }
       }
     }
 
