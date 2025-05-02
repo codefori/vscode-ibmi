@@ -1,8 +1,8 @@
 import { RelativePattern, window, workspace, WorkspaceFolder } from "vscode";
 import { Action } from "../../api/types";
 
-export async function getLocalActionsFiles(currentWorkspace: WorkspaceFolder) {
-  return workspace.findFiles(new RelativePattern(currentWorkspace, `**/.vscode/actions.json`));
+export async function getLocalActionsFiles(currentWorkspace?: WorkspaceFolder) {
+  return currentWorkspace ? await workspace.findFiles(new RelativePattern(currentWorkspace, `**/.vscode/actions.json`)) : [];
 }
 
 export async function getLocalActions(currentWorkspace: WorkspaceFolder) {

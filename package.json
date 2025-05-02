@@ -2984,12 +2984,17 @@
 					"command": "code-for-ibmi.generateBinderSource",
 					"when": "view == objectBrowser && viewItem =~ /^object.(module|srvpgm).*/",
 					"group": "1_objActions@6"
-				}
+				}				
 			],
 			"explorer/context": [
 				{
 					"submenu": "code-for-ibmi.compareWithLocal",
 					"group": "3_compare@40"
+				},
+				{
+					"command": "code-for-ibmi.runAction",
+					"when": "code-for-ibmi:connected && !explorerResourceIsFolder && code-for-ibmi:hasLocalActions",
+					"group": "1_localactions@01"
 				}
 			]
 		},
