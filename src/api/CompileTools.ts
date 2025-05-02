@@ -155,7 +155,6 @@ export namespace CompileTools {
 
               commandResult = await connection.sendCommand({
                 command: [
-                  `getjobid`,
                   `cl "${setAspGrp}"`,
                   ...commands.map(command =>
                     `${`cl "${IBMi.escapeForShell(command)}"`}`,
