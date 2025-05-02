@@ -7,7 +7,7 @@ import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../.
 import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
 import { isSEPSupported } from "../../debug/server";
-import { instance } from "../../instantiate";
+import { instance, updateConnectedBar } from "../../instantiate";
 import { ConnectionConfig, ConnectionData, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
 import { ComplexTab, CustomUI, Section } from "../CustomUI";
@@ -39,6 +39,8 @@ export class SettingsUI {
         const connectionSettings = await IBMi.connectionManager.getAll();
         const connection = instance.getConnection();
         const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
+
+        updateConnectedBar({loading: true});
 
         let config: ConnectionConfig;
 
@@ -273,6 +275,9 @@ export class SettingsUI {
         ui.addComplexTabs(tabs, (defaultTab >= 0 ? defaultTab : undefined))
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings`, requiresValidation: true });
+
+
+        updateConnectedBar();
 
         await VscodeTools.withContext(EDITING_CONTEXT, async () => {
           const page = await ui.loadPage<any>(`Settings: ${config.name}`);
