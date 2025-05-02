@@ -2,11 +2,11 @@ import vscode from "vscode";
 
 import { CustomUI, Tab } from "../CustomUI";
 
+import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../../typings";
 import { getVariablesInfo } from "./varinfo";
-import IBMi from "../../api/IBMi";
 
 type MainMenuPage = {
   buttons?: 'newAction' | 'duplicateAction'
@@ -21,6 +21,7 @@ type ActionPage = {
   environment: ActionEnvironment
   refresh: ActionRefresh
   runOnProtected: boolean
+  outputToFile: string
   buttons: "saveAction" | "deleteAction" | "cancelAction"
 }
 
@@ -237,8 +238,9 @@ export namespace ActionsUI {
             description: vscode.l10n.t(`Browser`),
             text: vscode.l10n.t(`The entire browser is refreshed`)
           }], vscode.l10n.t(`The browser level to refresh after the action is done`)
-        )        
+        )
         .addCheckbox("runOnProtected", vscode.l10n.t(`Run on protected/read only`), vscode.l10n.t(`Allows the execution of this Action on protected or read-only targets`), currentAction.runOnProtected)
+        .addInput(`outputToFile`, vscode.l10n.t(`Copy output to file`), vscode.l10n.t(`Copy the action output to a file. Variables can be used to define the file's path; use <code>&i</code> to compute file index.<br/>Example: <code>~/outputs/&CURLIB_&OPENMBR&i.txt</code>.`), { default: currentAction.outputToFile })
         .addHorizontalRule()
         .addButtons(
           { id: `saveAction`, label: vscode.l10n.t(`Save`) },
@@ -269,14 +271,15 @@ export namespace ActionsUI {
               // We don't want \r (Windows line endings)
               data.command = data.command.replace(new RegExp(`\\\r`, `g`), ``);
 
-              const newAction : Action = {
+              const newAction: Action = {
                 type: data.type,
                 extensions: data.extensions.split(`,`).map(item => item.trim().toUpperCase()),
                 environment: data.environment,
                 name: data.name,
                 command: data.command,
                 refresh: data.refresh,
-                runOnProtected: data.runOnProtected
+                runOnProtected: data.runOnProtected,
+                outputToFile: data.outputToFile
               };
 
               if (id >= 0) {
