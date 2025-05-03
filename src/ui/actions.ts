@@ -46,6 +46,11 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
   uris = Array.isArray(uris) ? uris : [uris];
   //Global scheme: all URIs share the same
   const scheme = uris[0].scheme;
+  if (!uris.every(uri => uri.scheme === scheme)) {
+    vscode.window.showWarningMessage(l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", ")));
+    return false;
+  }
+
   const connection = instance.getConnection();
   if (connection) {
     const config = connection.getConfig();

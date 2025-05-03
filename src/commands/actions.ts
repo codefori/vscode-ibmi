@@ -1,6 +1,7 @@
 import path from "path";
 import { commands, Disposable, l10n, TreeItem, Uri, window, WorkspaceFolder } from "vscode";
 import IBMi from "../api/IBMi";
+import { Tools } from "../api/Tools";
 import Instance from "../Instance";
 import { Action, DeploymentMethod } from "../typings";
 import { runAction } from "../ui/actions";
@@ -37,7 +38,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const scheme = uris[0]?.scheme;
         if (scheme) {
           if (!uris.every(uri => uri.scheme === scheme)) {
-            window.showWarningMessage(l10n.t("Actions can't be run on multiple items of different natures."))
+            window.showWarningMessage(l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", ")));
             return false;
           }
 
