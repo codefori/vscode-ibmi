@@ -93,7 +93,7 @@ export interface IBMiObject extends QsysPath {
   owner?: string
 }
 
-export interface IBMiMember {
+export type IBMiMember = {
   library: string
   file: string
   name: string
@@ -106,7 +106,7 @@ export interface IBMiMember {
   changed?: Date
 }
 
-export interface IFSFile {
+export type IFSFile = {
   type: "directory" | "streamfile"
   name: string
   path: string
@@ -176,6 +176,8 @@ export type SearchHit = {
   lines: SearchHitLine[]
   readonly?: boolean
   label?: string
+  file?: IFSFile
+  member?: IBMiMember
 }
 
 export type SearchHitLine = {
