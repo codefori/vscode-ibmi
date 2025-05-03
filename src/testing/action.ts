@@ -161,6 +161,120 @@ export const ActionSuite: TestSuite = {
         const success = await runAction(instance, uri, action, `all`);
         assert.strictEqual(success, false);
       }
+    },
+    {
+      name: "Fail to run action on uri with different schemes", test: async () => {
+        const uris = [
+          vscode.Uri.parse("streamfile:///home/someone/meh.txt"),
+          vscode.Uri.parse("member:///QTEMP/SOMETHING.RPGLE"),
+          vscode.Uri.parse("file://loca/youwish.txt")
+        ];
+        assert.strictEqual(await runAction(instance, uris, {
+          name: "It won't run",
+          command: "wont run",
+          environment: "ile",
+        }), false);
+      }
+    },
+    {
+      name: "Run multiple objects action", test: async () => {
+        const dtaaras = [1, 2, 3, 4, 5].map(num => vscode.Uri.parse(`object:/QTEMP/DATAAREA${num}.DTAARA`));
+        const result = await runAction(instance, dtaaras, {
+          name: "Create Data Area",
+          command: "CRTDTAARA DTAARA(&LIBRARY/&NAME) TYPE(*CHAR) LEN(10) VALUE('&NAME')",
+          type: "object",
+          environment: "ile"
+        });
+
+        assert.ok(result);
+      }
+    },
+    {
+      name: "Run multiple members action", test: async () => {
+        const connection = instance.getConnection()!;
+        const config = connection.getConfig();
+        const content = connection.getContent();
+        const testlib = config.tempLibrary;
+        const file = "XX" + Tools.makeid(6);
+        try {
+          await connection.runCommand({ command: `CRTSRCPF FILE(${testlib}/${file}) RCDLEN(112)`, noLibList: true });
+
+          const members = [];
+          for (let i = 1; i < 6; i++) {
+            const member = `MEMBER${i}`;
+            const addpfm = await connection.runCommand({ command: `ADDPFM FILE(${testlib}/${file}) MBR(${member}) SRCTYPE(CLLE)` });
+            if (addpfm.code !== 0) {
+              throw new Error(`Failed to add member: ${addpfm.stderr}`)
+            }
+
+            await content.uploadMemberContent(testlib, file, member, ['PGM', `   DLYJOB ${i}`, `ENDPGM`].join('\n'));
+            members.push(vscode.Uri.parse(`member:/${config.tempLibrary}/${file}/MEMBER${i}.CLLE`));
+          }
+
+          const result = await runAction(instance, members, {
+            name: "Create Bound CL Program",
+            command: "CRTBNDCL PGM(QTEMP/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF)",
+            type: "member",
+            environment: "ile"
+          });
+
+          assert.ok(result);
+        }
+        finally {
+          await connection.runCommand({ command: `DLTF FILE(${testlib}/${file})`, noLibList: true });
+        }
+      }
+    },
+    {
+      name: "Run multiple streamfiles action", test: async () => {
+        const connection = instance.getConnection()!;
+        const config = connection.getConfig();
+        const content = connection.getContent();
+        const testLib = config.tempLibrary;
+        const table = "YY" + Tools.makeid(6);
+
+        try {
+          await connection.runSQL(`Create or replace table ${testLib}.${table} (key varchar(10), value varchar(100));`);
+
+          await connection.withTempDirectory(async directory => {
+            const files = [];
+            for (let i = 1; i < 6; i++) {
+              const file = `statement_${i}.sql`;
+              await content.writeStreamfileRaw(`${directory}/${file}`, `insert into ${testLib}.${table} values ('hello_${i}', 'world_${i}');`);
+              files.push(vscode.Uri.parse(`streamfile:${directory}/${file}`));
+            }
+
+            const result = await runAction(instance, files, {
+              name: "Run SQL statement",
+              command: "RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)",
+              type: "streamfile",
+              environment: "ile"
+            });
+
+            assert.ok(result);
+
+            const rows = await connection.runSQL(`Select key, value from ${testLib}.${table}`);
+            assert.strictEqual(rows.length, 5);
+          })
+        }
+        finally {
+          await connection.runCommand({ command: `DLTF FILE(${testLib}/${table})`, noLibList: true });
+        }
+      }
+    },
+    {
+      name: "Run multiple local files action", test: async () => {
+        const uris = helloWorldProject.files!.map(file => file.localPath!);
+        const action: Action = {
+          command: `[ -e "&FULLPATH" ] && attr "&FULLPATH" CCSID`,
+          environment: `pase`,
+          type: `file`,
+          name: `Check file CCSID`,
+        };
+
+        const success = await runAction(instance, uris, action, `compare`);
+        assert.ok(success);
+      }
     }
   ]
 };
