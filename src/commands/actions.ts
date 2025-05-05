@@ -22,7 +22,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
           }
         }
         else {
-          for (const target of (items || [item])) {
+          for (const target of (Array.isArray(items) ? items : [item])) {
             if (target instanceof Uri) {
               uris.push(target);
             }
