@@ -57,7 +57,7 @@ export function clearDiagnostic(uri: vscode.Uri, changeRange: vscode.Range) {
   }
 }
 
-export async function refreshDiagnosticsFromServer(instance: Instance, evfeventInfo: EvfEventInfo) {
+export async function refreshDiagnosticsFromServer(instance: Instance, evfeventInfo: EvfEventInfo, keepDiagnostics?: boolean) {
   const connection = instance.getConnection();
 
   if (connection) {
@@ -65,7 +65,7 @@ export async function refreshDiagnosticsFromServer(instance: Instance, evfeventI
     const tableData = await content.getTable(evfeventInfo.library, `EVFEVENT`, evfeventInfo.object);
     const lines = tableData.map(row => String(row.EVFEVENT));
 
-    if (IBMi.connectionManager.get(`clearErrorsBeforeBuild`)) {
+    if (IBMi.connectionManager.get(`clearErrorsBeforeBuild`) && !keepDiagnostics) {
       // Clear all errors if the user has this setting enabled
       clearDiagnostics();
     }

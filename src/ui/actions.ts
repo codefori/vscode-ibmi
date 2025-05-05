@@ -1,19 +1,20 @@
 
 import path from 'path';
-import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 import { getLocalActions } from '../filesystems/local/actions';
 import { DeployTools } from '../filesystems/local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from '../filesystems/local/env';
 import { getGitBranch } from '../filesystems/local/git';
-import Instance from '../Instance';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
-import { Action, DeploymentMethod, Variable } from '../typings';
+import Instance from '../Instance';
+import { Action, DeploymentMethod } from '../typings';
+import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 
 import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
-import { CustomUI } from '../webviews/CustomUI';
-import { Tools } from '../api/Tools';
 import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
+import { Tools } from '../api/Tools';
+import { Variables } from '../api/variables';
+import { CustomUI } from '../webviews/CustomUI';
 import { BrowserItem } from './types';
 
 interface CommandObject {
@@ -114,7 +115,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
           fromWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
         }
 
-        const variables: Variable = {};
+        const variables = new Variables(connection);
         const evfeventInfo: EvfEventInfo = {
           object: '',
           library: '',
@@ -123,8 +124,9 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
         };
 
         if (workspaceFolder) {
-          const envFileVars = await getEnvConfig(workspaceFolder);
-          Object.entries(envFileVars).forEach(([key, value]) => variables[`&${key}`] = value);
+          for (const [key, value] of Object.entries(await getEnvConfig(workspaceFolder))) {
+            variables.set(`&${key}`, value)
+          }
         }
 
         switch (chosenAction.type) {
@@ -135,17 +137,17 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
             evfeventInfo.extension = memberDetail.extension;
             evfeventInfo.asp = memberDetail.asp;
 
-            variables[`&OPENLIBL`] = memberDetail.library.toLowerCase();
-            variables[`&OPENLIB`] = memberDetail.library;
+            variables.set(`&OPENLIBL`, memberDetail.library.toLowerCase())
+              .set(`&OPENLIB`, memberDetail.library)
 
-            variables[`&OPENSPFL`] = memberDetail.file.toLowerCase();
-            variables[`&OPENSPF`] = memberDetail.file;
+              .set(`&OPENSPFL`, memberDetail.file.toLowerCase())
+              .set(`&OPENSPF`, memberDetail.file)
 
-            variables[`&OPENMBRL`] = memberDetail.name.toLowerCase();
-            variables[`&OPENMBR`] = memberDetail.name;
+              .set(`&OPENMBRL`, memberDetail.name.toLowerCase())
+              .set(`&OPENMBR`, memberDetail.name)
 
-            variables[`&EXTL`] = memberDetail.extension.toLowerCase();
-            variables[`&EXT`] = memberDetail.extension;
+              .set(`&EXTL`, memberDetail.extension.toLowerCase())
+              .set(`&EXT`, memberDetail.extension);
             break;
 
           case `file`:
@@ -168,66 +170,56 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
               name = name.substring(0, name.indexOf(`-`));
             }
 
-            if (variables[`&CURLIB`]) {
-              evfeventInfo.library = variables[`&CURLIB`];
-
-            } else {
-              evfeventInfo.library = config.currentLibrary;
-            }
-
-            evfeventInfo.library = evfeventInfo.library.toUpperCase();
-            evfeventInfo.object = name.toUpperCase();
+            evfeventInfo.library = connection.upperCaseName(variables.get(`&CURLIB`) || config.currentLibrary);
+            evfeventInfo.object = connection.upperCaseName(name);
             evfeventInfo.extension = ext;
 
             if (chosenAction.command.includes(`&SRCFILE`)) {
-              variables[`&SRCLIB`] = evfeventInfo.library;
-              variables[`&SRCPF`] = `QTMPSRC`;
-              variables[`&SRCFILE`] = `${evfeventInfo.library}/QTMPSRC`;
+              variables.set(`&SRCLIB`, evfeventInfo.library)
+                .set(`&SRCPF`, `QTMPSRC`)
+                .set(`&SRCFILE`, `${evfeventInfo.library}/QTMPSRC`);
             }
 
             switch (chosenAction.type) {
               case `file`:
-                variables[`&LOCALPATH`] = uri.fsPath;
+                variables.set(`&LOCALPATH`, uri.fsPath);
                 if (fromWorkspace) {
                   const relativePath = path.relative(fromWorkspace.uri.path, uri.path).split(path.sep).join(path.posix.sep);
-                  variables[`&RELATIVEPATH`] = relativePath;
-
                   // We need to make sure the remote path is posix
                   const fullPath = path.posix.join(remoteCwd, relativePath);
-                  variables[`&FULLPATH`] = fullPath;
-                  variables[`{path}`] = fullPath;
-                  variables[`&WORKDIR`] = remoteCwd;
-                  variables[`&FILEDIR`] = path.posix.parse(fullPath).dir;
+                  variables.set(`&RELATIVEPATH`, relativePath)
+                    .set(`&FULLPATH`, fullPath)
+                    .set(`{path}`, fullPath)
+                    .set(`&WORKDIR`, remoteCwd)
+                    .set(`&FILEDIR`, path.posix.parse(fullPath).dir);
 
                   const branch = getGitBranch(fromWorkspace);
                   if (branch) {
-                    variables[`&BRANCHLIB`] = getBranchLibraryName(branch);
-                    variables[`&BRANCH`] = branch;
-                    variables[`{branch}`] = branch;
+                    variables.set(`&BRANCHLIB`, getBranchLibraryName(branch))
+                      .set(`&BRANCH`, branch)
+                      .set(`{branch}`, branch);
                   }
                 }
                 break;
 
               case `streamfile`:
                 const relativePath = path.posix.relative(remoteCwd, uri.path);
-                variables[`&RELATIVEPATH`] = relativePath;
-
                 const fullName = uri.path;
-                variables[`&FULLPATH`] = fullName;
-                variables[`&FILEDIR`] = path.parse(fullName).dir;
+                variables.set(`&RELATIVEPATH`, relativePath)
+                  .set(`&FULLPATH`, fullName)
+                  .set(`&FILEDIR`, path.parse(fullName).dir);
                 break;
             }
 
-            variables[`&PARENT`] = parent;
+            variables.set(`&PARENT`, parent)
+              .set(`&BASENAME`, basename)
+              .set(`{filename}`, basename)
 
-            variables[`&BASENAME`] = basename;
-            variables[`{filename}`] = basename;
+              .set(`&NAMEL`, name.toLowerCase())
+              .set(`&NAME`, name)
 
-            variables[`&NAMEL`] = name.toLowerCase();
-            variables[`&NAME`] = name;
-
-            variables[`&EXTL`] = extension.toLowerCase();
-            variables[`&EXT`] = extension;
+              .set(`&EXTL`, extension.toLowerCase())
+              .set(`&EXT`, extension);
             break;
 
           case `object`:
@@ -237,17 +229,17 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
             evfeventInfo.library = library;
             evfeventInfo.object = object;
 
-            variables[`&LIBRARYL`] = library.toLowerCase();
-            variables[`&LIBRARY`] = library;
+            variables.set(`&LIBRARYL`, library.toLowerCase())
+              .set(`&LIBRARY`, library)
 
-            variables[`&NAMEL`] = object.toLowerCase();
-            variables[`&NAME`] = object;
+              .set(`&NAMEL`, object.toLowerCase())
+              .set(`&NAME`, object)
 
-            variables[`&TYPEL`] = extension.toLowerCase();
-            variables[`&TYPE`] = extension;
+              .set(`&TYPEL`, extension.toLowerCase())
+              .set(`&TYPE`, extension)
 
-            variables[`&EXTL`] = extension.toLowerCase();
-            variables[`&EXT`] = extension;
+              .set(`&EXTL`, extension.toLowerCase())
+              .set(`&EXT`, extension);
             break;
         }
 
@@ -306,8 +298,8 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
                     writeEmitter.fire(`Running Action: ${chosenAction.name} (${new Date().toLocaleTimeString()})` + CompileTools.NEWLINE);
 
                     // If &SRCFILE is set, we need to copy the file to a temporary source file from the IFS
-                    if (variables[`&FULLPATH`] && variables[`&SRCFILE`] && evfeventInfo.object) {
-                      const [lib, srcpf] = variables[`&SRCFILE`].split(`/`);
+                    if (variables.has(`&FULLPATH`) && variables.has(`&SRCFILE`) && evfeventInfo.object) {
+                      const [lib, srcpf] = variables.get(`&SRCFILE`)!.split(`/`);
 
                       const createSourceFile = content.toCl(`CRTSRCPF`, {
                         rcdlen: 112, //NICE: this configurable in a VS Code setting?
@@ -315,7 +307,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
                       });
 
                       const copyFromStreamfile = content.toCl(`CPYFRMSTMF`, {
-                        fromstmf: variables[`&FULLPATH`],
+                        fromstmf: variables.get(`&FULLPATH`),
                         tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
                         mbropt: `*REPLACE`,
                         dbfccsid: `*FILE`,
@@ -342,9 +334,9 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
                         cwd: remoteCwd,
                         env: variables,
                       }, {
-                        writeEvent: (content) => writeEmitter.fire(content),
-                        commandConfirm
-                      }
+                      writeEvent: (content) => writeEmitter.fire(content),
+                      commandConfirm
+                    }
                     );
 
                     if (commandResult && commandResult.code !== CompileTools.DID_NOT_RUN) {
@@ -533,6 +525,27 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
                 .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
             }
           })
+        }
+
+        if (chosenAction.outputToFile) {
+          const outputPath = variables.expand(chosenAction.outputToFile);
+          let actualPath;
+          if (outputPath.includes('&i')) {
+            //Rolling output
+            let count = 0;
+            const generatePath = () => outputPath.replace("&i", `_${String(count++).padStart(3, "0")}`);
+            while (await connection.getContent().testStreamFile((actualPath = generatePath()), "e"));
+
+          }
+          else {
+            //Overwrite if output exists
+            actualPath = outputPath;
+          }
+          //Replace ~ if needed
+          if (actualPath.includes('~')) {
+            actualPath = (await connection.sendCommand({ command: `echo ${actualPath}` })).stdout;
+          }
+          await connection.getContent().writeStreamfileRaw(actualPath, outputBuffer.join(""));
         }
 
         return executionOK;

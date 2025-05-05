@@ -206,8 +206,8 @@ export default class Instance {
     const env = workspaceFolder ? (await getEnvConfig(workspaceFolder)) : {};
 
     const librarySetup: ILELibrarySettings = {
-      currentLibrary: env[`&CURLIB`] || config.currentLibrary,
-      libraryList: env[`&LIBL`]?.split(` `) || config.libraryList,
+      currentLibrary: env[`CURLIB`] || config.currentLibrary,
+      libraryList: env[`LIBL`]?.split(` `) || config.libraryList,
     };
 
     return librarySetup;
