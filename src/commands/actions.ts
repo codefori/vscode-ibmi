@@ -67,7 +67,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
       return false;
     }),
 
-    commands.registerCommand(`code-for-ibmi.openErrors`, async (qualifiedObject?: string) => {
+    commands.registerCommand(`code-for-ibmi.openErrors`, async (options: { qualifiedObject?: string, workspace?: WorkspaceFolder, keepDiagnostics?: boolean }) => {
       interface ObjectDetail {
         asp?: string;
         lib: string;
@@ -84,9 +84,9 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
 
       let inputPath: string | undefined
 
-      if (qualifiedObject) {
+      if (options.qualifiedObject) {
         // Value passed in via parameter
-        inputPath = qualifiedObject;
+        inputPath = options.qualifiedObject;
 
       } else {
         // Value collected from user input
@@ -94,7 +94,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         let initialPath = ``;
         const editor = window.activeTextEditor;
         const connection = instance.getConnection();
-        
+
         if (editor && connection) {
           const config = connection.getConfig();
           const uri = editor.document.uri;
@@ -135,7 +135,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const [library, object] = inputPath.split(`/`);
         if (library && object) {
           const nameDetail = path.parse(object);
-          refreshDiagnosticsFromServer(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined) });
+          refreshDiagnosticsFromServer(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }, options.keepDiagnostics);
         }
       }
     }),
