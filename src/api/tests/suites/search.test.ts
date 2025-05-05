@@ -1,10 +1,12 @@
-import { describe, it, expect, afterAll, beforeAll } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseFilter } from '../../Filter';
-import { Search } from '../../Search';
 import IBMi from '../../IBMi';
-import { newConnection, disposeConnection, CONNECTION_TIMEOUT } from '../connection';
+import { Search } from '../../Search';
+import { Tools } from '../../Tools';
+import { SearchResults } from '../../types';
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 
-describe('Search Tests', {concurrent: true}, () => {
+describe('Search Tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
@@ -53,5 +55,46 @@ describe('Search Tests', {concurrent: true}, () => {
     expect(result.hits.length).toBe(6);
     expect(checkNames(result.hits.map(hit => hit.path.split("/").at(-1)!))).toBe(true);
     expect(result.hits.every(hit => !hit.path.endsWith(`MBR`))).toBe(true);
-  });
+  }),
+
+    it('Member with `.` in name search', async () => {
+      const library = connection.getConfig().tempLibrary;
+      const file = `ZZ${Tools.makeid(6)}`;
+      const crtsrcpf = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${file}) RCDLEN(112)`, noLibList: true });
+      if (crtsrcpf.code !== 0) {
+        throw new Error(`Failed to create test source file: ${crtsrcpf.stderr}`);
+      }
+      try {
+        const members = [
+          { name: "AN.RPGLE", type: "RPGLE", content: ["Some random text", "nobody will read", "but that's for testing"] },
+          { name: "A.CLLE", type: "CLLE", content: ["More random text", "testing is fun", "or so they say"] },
+          { name: "A.CMD", type: "CMD", content: ["This is not valid for a command", "this is for a test", "so I guess it's fine"] }
+        ];
+
+        for (const member of members) {
+          const addpfm = await connection.runCommand({ command: `ADDPFM FILE(${library}/${file}) MBR(${member.name}) SRCTYPE(${member.type})`, noLibList: true });
+          if (addpfm.code !== 0) {
+            throw new Error(`Failed to add test member: ${addpfm.stderr}`);
+          }
+          await connection.getContent().uploadMemberContent(library, file, member.name, member.content.join("\n"));
+        }
+
+        const hasMember = (results: SearchResults, member: string) => results.hits.map(hit => hit.path.split('/').pop()).includes(member);
+
+        const searchTest = await Search.searchMembers(connection, library, file, "test", '*');
+        expect(searchTest.hits.length).toBe(3);
+        expect(hasMember(searchTest, "AN.RPGLE")).toBe(true);
+        expect(hasMember(searchTest, "A.CLLE")).toBe(true);
+        expect(hasMember(searchTest, "A.CMD")).toBe(true);
+
+        const searchTesting = await Search.searchMembers(connection, library, file, "testing", '*');
+        expect(searchTesting.hits.length).toBe(2);
+        expect(hasMember(searchTesting, "AN.RPGLE")).toBe(true);
+        expect(hasMember(searchTesting, "A.CLLE")).toBe(true);
+        expect(hasMember(searchTesting, "A.CMD")).toBe(false);
+      }
+      finally {
+        await connection.runCommand({ command: `DLTF FILE(${library} / ${file})`, noLibList: true });
+      }
+    });
 });
