@@ -2,21 +2,29 @@ import path from "path";
 import { commands, l10n, window } from "vscode";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
-import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE } from "../api/configuration/DebugConfiguration";
+import { DebugConfiguration, getDebugServiceDetails, getJavaHome, ORIGINAL_DEBUG_CONFIG_FILE } from "../api/configuration/DebugConfiguration";
 import { instance } from "../instantiate";
 import { CustomUI } from "../webviews/CustomUI";
+
+const NAV_LOG_DIR = `/QIBM/UserData/IBMiDebugService/startDebugService_workspace`;
+const NAV_LOG_FILE = path.posix.join(NAV_LOG_DIR, `startDebugServiceNavigator.log`);
+const START_SERVICE_FILE = `/QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh`;
+
+/*
+QSYS/SBMJOB USER(QDBGSRV) JOB(QDBGSRV) JOBQ(QSYS/QUSRNOMAX) JOBD(*USRPRF) CMD(QSH CMD('export JAVA_HOME=/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit;${a} > ${b} 2>&1'))
+*/
 
 export type DebugJob = {
   name: string
   ports: number[]
 }
 
-export function debugPTFInstalled() {
-  return instance.getConnection()?.debugPTFInstalled()
+export function debugPTFInstalled(connection: IBMi) {
+  return connection.debugPTFInstalled()
 }
 
-export async function isSEPSupported(connection: IBMi) {
-  return (await getDebugServiceDetails(connection)).semanticVersion().major > 1;
+export async function isDebugSupported(connection: IBMi) {
+  return debugPTFInstalled(connection) && (await getDebugServiceDetails(connection)).semanticVersion().major >= 3;
 }
 
 export async function startService(connection: IBMi) {
@@ -24,22 +32,20 @@ export async function startService(connection: IBMi) {
     if (user && !await connection.getContent().checkObject({ library: "QSYS", name: user, type: "*USRPRF" }, ["*USE"])) {
       throw new Error(`You don't have *USE authority on user profile ${user}`);
     }
-    if (!(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
+    if (user !== "QDBGSRV" && !(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ", "*SECADM"], user)).valid) {
       throw new Error(`User ${user || connection.currentUser} doesn't have *ALLOBJ special authority`);
     }
   };
 
   try {
-    const debugServiceVersion = (await getDebugServiceDetails(connection)).semanticVersion();
-    const prestartCommand = (debugServiceVersion.major >= 2 && debugServiceVersion.patch >= 1) ?
-      `export DEBUG_SERVICE_EXTERNAL_CONFIG_FILE=${DEBUG_CONFIG_FILE}` :
-      `cp ${DEBUG_CONFIG_FILE} ${ORIGINAL_DEBUG_CONFIG_FILE}`
-    const debugConfig = await new DebugConfiguration(connection).load();
+    const debugServiceJavaVersion = (await getDebugServiceDetails(connection)).java;
+    // const debugConfig = await new DebugConfiguration(connection).load();
+    const javaHome = getJavaHome(connection, debugServiceJavaVersion)
 
     const submitOptions = await window.showInputBox({
       title: l10n.t(`Debug Service submit options`),
       prompt: l10n.t(`Valid parameters for SBMJOB`),
-      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) USER(*CURRENT)`
+      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) OUTQ(QUSRSYS/QDBGSRV) USER(QDBGSRV)`
     });
 
     if (submitOptions) {
@@ -50,8 +56,20 @@ export async function startService(connection: IBMi) {
       else {
         await checkAuthority();
       }
-      const command = `SBMJOB CMD(STRQSH CMD('${connection.remoteFeatures[`bash`]} -c ''${prestartCommand}; /QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh''')) JOB(DBGSVCE) ${submitOptions}`
-      const submitResult = await connection.runCommand({ command, cwd: debugConfig.getRemoteServiceWorkDir(), noLibList: true });
+
+      // Attempt to make log directory
+      await connection.sendCommand({command: `mkdir -p ${NAV_LOG_DIR}`});
+      
+      // Change owner to QDBGSRV
+      if (submitUser && submitUser !== "QDBGSRV") {
+        await connection.sendCommand({ command: `chown ${submitUser} ${NAV_LOG_DIR}` });
+      }
+
+      // Change the permissions to 777
+      await connection.sendCommand({ command: `chmod 777 ${NAV_LOG_DIR}` });
+
+      const command = `QSYS/SBMJOB JOB(QDBGSRV) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${START_SERVICE_FILE} > ${NAV_LOG_FILE} 2>&1'))`
+      const submitResult = await connection.runCommand({ command, noLibList: true });
       if (submitResult.code === 0) {
         const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
         if (submitMessage) {
