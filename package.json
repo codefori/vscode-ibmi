@@ -2651,7 +2651,7 @@
 				},
 				{
 					"command": "code-for-ibmi.copyFilter",
-					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
 					"group": "4_filters@2"
 				},
 				{
@@ -2661,27 +2661,27 @@
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",
-					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterDown",
-					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterToTop",
-					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
 					"group": "5_filters@1"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterToBottom",
-					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
 					"group": "5_filters@2"
 				},
 				{
 					"command": "code-for-ibmi.createMember",
-					"when": "view == objectBrowser && viewItem == SPF",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
 				},
 				{
@@ -2721,7 +2721,7 @@
 				},
 				{
 					"submenu": "code-for-ibmi.debug.group",
-					"when": "view == objectBrowser && viewItem =~ /^object.(pgm|srvpgm).*/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object.(pgm|srvpgm).*/",
 					"group": "2_debug@1"
 				},
 				{
@@ -2731,17 +2731,17 @@
 				},
 				{
 					"command": "code-for-ibmi.setCurrentLibrary",
-					"when": "!code-for-ibmi:libraryListDisabled && view == objectBrowser && viewItem =~ /library/",
+					"when": "!code-for-ibmi:libraryListDisabled && !listMultiSelection && view == objectBrowser && viewItem =~ /library/",
 					"group": "2_library@2"
 				},
 				{
 					"command": "code-for-ibmi.updateMemberText",
-					"when": "view == objectBrowser && viewItem == member",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem == member",
 					"group": "2_memberStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.copyMember",
-					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^member.*$/",
 					"group": "2_memberStuff@2"
 				},
 				{
@@ -2751,7 +2751,7 @@
 				},
 				{
 					"command": "code-for-ibmi.renameMember",
-					"when": "view == objectBrowser && viewItem == member",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem == member",
 					"group": "2_memberStuff@3"
 				},
 				{
@@ -2761,7 +2761,7 @@
 				},
 				{
 					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
-					"when": "view == objectBrowser && viewItem == member",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem == member",
 					"group": "3_memberTransfer@2"
 				},
 				{
@@ -2781,12 +2781,12 @@
 				},
 				{
 					"submenu": "code-for-ibmi.openIFSFile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "0_open@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "1_workspace@1"
 				},
 				{
@@ -2821,12 +2821,12 @@
 				},
 				{
 					"command": "code-for-ibmi.searchIFS",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && viewItem =~ /^directory.*$/",
 					"group": "3_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.ifs.find",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^(directory|shortcut).*$/",
+					"when": "view == ifsBrowser && viewItem =~ /^(directory|shortcut).*$/",
 					"group": "3_ifsStuff@2"
 				},
 				{
@@ -2916,12 +2916,12 @@
 				},
 				{
 					"command": "code-for-ibmi.changeObjectDesc",
-					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
+					"when": "view == objectBrowser && !listMultiSelection && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_objActions@1"
 				},
 				{
 					"command": "code-for-ibmi.copyObject",
-					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
+					"when": "view == objectBrowser && !listMultiSelection && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_objActions@2"
 				},
 				{
@@ -2931,17 +2931,17 @@
 				},
 				{
 					"command": "code-for-ibmi.renameObject",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object/",
 					"group": "1_objActions@3"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && viewItem =~ /^object(?!.lib)/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object(?!.lib)/",
 					"group": "1_objActions@4"
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
-					"when": "view == objectBrowser && viewItem =~ /library/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /library/",
 					"group": "1_LibActions@1"
 				},
 				{
@@ -2988,12 +2988,17 @@
 					"command": "code-for-ibmi.generateBinderSource",
 					"when": "view == objectBrowser && viewItem =~ /^object.(module|srvpgm).*/",
 					"group": "1_objActions@6"
-				}
+				}				
 			],
 			"explorer/context": [
 				{
 					"submenu": "code-for-ibmi.compareWithLocal",
 					"group": "3_compare@40"
+				},
+				{
+					"command": "code-for-ibmi.runAction",
+					"when": "code-for-ibmi:connected && !explorerResourceIsFolder && code-for-ibmi:hasLocalActions",
+					"group": "1_localactions@01"
 				}
 			]
 		},
@@ -3041,7 +3046,7 @@
 	},
 	"dependencies": {
 		"@ibm/ibmi-eventf-parser": "^1.0.2",
-		"@vscode-elements/elements": "^1.9.1",
+		"@vscode-elements/elements": "^1.9.1",		
 		"adm-zip": "^0.5.14",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
 		"csv": "^6.2.1",
