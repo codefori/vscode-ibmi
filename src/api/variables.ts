@@ -51,7 +51,10 @@ export class Variables extends Map<string, string> {
   toPaseVariables(): Record<string, string> {
     const variables: Record<string, string> = {};
     for (const [key, value] of this.entries()) {
-      variables[key.startsWith('&') ? key.substring(1) : key] = value;
+      //Env variables can't contain * or {}; keeping only &xxx variables
+      if(key.startsWith('&')){
+        variables[key.substring(1)] = value;
+      }
     }
     return variables;
   }

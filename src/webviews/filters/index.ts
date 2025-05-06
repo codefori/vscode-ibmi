@@ -1,14 +1,14 @@
-import { CustomUI } from "../CustomUI";
+import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
-import IBMi from "../../api/IBMi";
 import { ObjectFilters } from "../../typings";
+import { CustomUI } from "../CustomUI";
 
 export async function editFilter(filter?: ObjectFilters, copy = false) {
   const connection = instance.getConnection();
-  const config = instance.getConfig();
-  if (config) {
-    const objectFilters = config.objectFilters;
+  if (connection) {
+    const config = connection.getConfig();
+    let objectFilters = config.objectFilters;
     const filterIndex = filter ? objectFilters.findIndex(f => f.name === filter!.name) : -1;
     let newFilter = false;
 
@@ -17,7 +17,7 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
         filter = {
           name: `${filter.name} - copy`,
           filterType: 'simple',
-          library: filter.library,          
+          library: filter.library,
           object: filter.object,
           types: [...filter.types],
           member: filter.member,
@@ -64,11 +64,11 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
 
       for (const key in data) {
         const useRegexFilters = data.filterType === "regex";
-        
+
         //In case we need to play with the data
         switch (key) {
           case `name`:
-          case `filterType`:          
+          case `filterType`:
             data[key] = String(data[key]).trim();
             break;
           case `types`:
@@ -82,7 +82,7 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
               .filter(Tools.distinct)
               .join(",");
             break;
-          case `member`:          
+          case `member`:
           case `memberType`:
             data[key] = String(data[key].trim()) || `*`;
             break;
@@ -95,6 +95,8 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
         }
       }
 
+      //Re-read filters in case another filter was changed before this one
+      objectFilters = config.objectFilters
       if (newFilter) {
         if (objectFilters.some(f => f.name === data.name)) {
           data.name = `${data.name.trim()} (2)`;
