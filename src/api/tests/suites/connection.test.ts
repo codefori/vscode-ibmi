@@ -6,7 +6,7 @@ import IBMi from '../../IBMi';
 import { getJavaHome } from '../../configuration/DebugConfiguration';
 import { CompileTools } from '../../CompileTools';
 
-describe(`connection tests`, {concurrent: true}, () => {
+describe(`connection tests`, {concurrent: true, timeout: 100000}, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
