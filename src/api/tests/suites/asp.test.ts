@@ -142,6 +142,18 @@ describe(`iASP tests`, { concurrent: true }, () => {
     expect(notFound!.text).toBe(`*** NOT FOUND ***`);
   });
 
+  it('can validate libraries in ASP', async () => {
+    expect(connection.getConfiguredIAsp()).toBeDefined();
+
+    const badLibsA = await connection.getContent().validateLibraryList([`QSYS2`, LIBNAME]);
+    expect(badLibsA.length).toBe(0);
+
+    setToAsp(connection); // Reset to *SYSBAS
+    const badLibsB = await connection.getContent().validateLibraryList([`QSYS2`, LIBNAME]);
+    expect(badLibsB.length).toBe(1);
+    expect(badLibsB[0]).toBe(LIBNAME);
+  })
+
   it('can change ASP', async () => {
     setToAsp(connection); // Reset to *SYSBAS
 

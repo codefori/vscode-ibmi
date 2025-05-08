@@ -449,6 +449,9 @@ export default class IBMiContent {
    * @returns Bad libraries
    */
   async validateLibraryList(newLibl: string[]): Promise<string[]> {
+    // TODO: consider replacing this with getLibraryList
+    // since it does the same thing (validates a list of libraries)
+    
     let badLibs: string[] = [];
 
     newLibl = newLibl
@@ -468,14 +471,39 @@ export default class IBMiContent {
 
     const sanitized = Tools.sanitizeObjNamesForPase(newLibl);
 
-    const result = await this.ibmi.sendQsh({
-      command: [
-        `liblist -d ` + Tools.sanitizeObjNamesForPase(this.ibmi.defaultUserLibraries).join(` `),
-        ...sanitized.map(lib => `liblist -a ` + lib)
-      ].join(`; `)
-    });
+    let commands: string[] = [];
+    
+    if (this.ibmi.usingBash()) {
+      // If we are using bash, we can set the ASP group with the cl builtin.
+      const configuredAsp = this.ibmi.getConfiguredIAsp();
+      if (configuredAsp) {
+        const setAspGrp = this.ibmi.getContent().toCl(`SETASPGRP`, {
+          ASPGRP: configuredAsp.name,
+        });
+        commands.push(`cl "${setAspGrp}"`);
+      }
+    }
 
-    if (result.stderr) {
+    commands.push(...[
+      `liblist -d ` + Tools.sanitizeObjNamesForPase(this.ibmi.defaultUserLibraries).join(` `),
+      ...sanitized.map(lib => `liblist -a ` + lib)
+    ]);
+
+    let result: CommandResult;
+
+    if (this.ibmi.usingBash()) {
+      result = await this.ibmi.sendCommand({
+        command: commands.join(`; `),
+        directory: `.`
+      });
+    } else {
+      result = await this.ibmi.sendQsh({
+        command: commands.join(`; `),
+        directory: `.`
+      });
+    }
+
+    if (result && result.stderr) {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
