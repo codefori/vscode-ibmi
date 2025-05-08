@@ -396,7 +396,7 @@ export default class IBMiContent {
           os.OBJOWNER AS OWNER,
           os.OBJDEFINER AS CREATED_BY
         from table( SYSTOOLS.SPLIT( INPUT_LIST => '${libraries.toString()}', DELIMITER => ',' ) ) libs,
-        table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
+        table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => '*ALLUSR', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
       `;
       const results = await this.ibmi.runSQL(statement);
 

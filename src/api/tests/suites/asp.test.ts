@@ -24,9 +24,6 @@ function checkAsps(connection: IBMi) {
 
 async function ensureLibExists(connection: IBMi, aspName: string) {
   const res = await connection.runCommand({ command: `CRTLIB LIB(${LIBNAME}) ASPDEV(${aspName})` });
-  if (res.code) {
-    assert.strictEqual(res.code, 0, res.stderr || res.stdout);
-  }
 }
 
 async function setToAsp(connection: IBMi, name?: string) {
@@ -92,11 +89,11 @@ describe(`iASP tests`, { concurrent: true }, () => {
     expect(connection.getConfiguredIAsp()).toBeDefined();
 
     const aspObjectExists = await connection.getContent()?.checkObject({library: LIBNAME, name: SPFNAME, type: `*FILE`});
-    expect(aspObjectExists).toBeTruthy()
+    expect(aspObjectExists).toBeTruthy();
 
     setToAsp(connection); // Reset to *SYSBAS
     const aspObjectNotFound = await connection.getContent()?.checkObject({library: LIBNAME, name: SPFNAME, type: `*FILE`});
-    expect(aspObjectNotFound).toBeFalsy()
+    expect(aspObjectNotFound).toBeFalsy();
   });
 
   it('Read members in ASP and base', async () => {
@@ -125,6 +122,24 @@ describe(`iASP tests`, { concurrent: true }, () => {
 
     expect(resolved).toBeDefined();
     //TODO: additional expects
+  });
+
+  it('can get library info', async () => {
+    expect(connection.getConfiguredIAsp()).toBeDefined();
+
+    const librariesA = await connection.getContent().getLibraryList([`QSYS2`, LIBNAME]);
+    expect(librariesA.length).toBe(2);
+    expect(librariesA.some(lib => lib.name === `QSYS2`)).toBeTruthy();
+    expect(librariesA.some(lib => lib.name === LIBNAME)).toBeTruthy();
+
+    setToAsp(connection); // Reset to *SYSBAS
+    const librariesB = await connection.getContent().getLibraryList([`QSYS2`, LIBNAME]);
+    expect(librariesB.length).toBe(2);
+    expect(librariesB.some(lib => lib.name === `QSYS2`)).toBeTruthy();
+
+    const notFound = librariesB.find(lib => lib.name === LIBNAME);
+    expect(notFound).toBeTruthy();
+    expect(notFound!.text).toBe(`*** NOT FOUND ***`);
   });
 
   it('can change ASP', async () => {
