@@ -1,15 +1,16 @@
+import { EventEmitter } from "stream";
 import * as vscode from "vscode";
-import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
+import { ILELibrarySettings } from "./api/CompileTools";
 import IBMi, { ConnectionResult } from "./api/IBMi";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
-import { handleConnectionResults, messageCallback } from "./ui/connection";
-import { VsStorage } from "./config/Storage";
-import { VsCodeConfig } from "./config/Configuration";
-import { EventEmitter } from "stream";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
-import { VscodeTools } from "./ui/Tools";
-import { ILELibrarySettings } from "./api/CompileTools";
+import { VsCodeConfig } from "./config/Configuration";
+import { VsStorage } from "./config/Storage";
 import { getEnvConfig } from "./filesystems/local/env";
+import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
+import { VscodeTools } from "./ui/Tools";
+import { handleConnectionResults, messageCallback } from "./ui/connection";
+
 
 type IBMiEventSubscription = {
   func: Function,
@@ -19,9 +20,9 @@ type IBMiEventSubscription = {
 type SubscriptionMap = Map<string, IBMiEventSubscription>
 
 export interface ConnectionOptions {
-  data: ConnectionData, 
-  reconnecting?: boolean, 
-  reloadServerSettings?: boolean, 
+  data: ConnectionData,
+  reconnecting?: boolean,
+  reloadServerSettings?: boolean,
   onConnectedOperations?: Function[]
 }
 
@@ -99,15 +100,15 @@ export default class Instance {
         this.disconnect();
 
         if (reconnect) {
-          await this.connect({...options, reconnecting: true});
+          await this.connect({ ...options, reconnecting: true });
         }
       }
     };
 
     return VscodeTools.withContext("code-for-ibmi:connecting", async () => {
       while (true) {
-        let customError: string|undefined;
-        await vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: options.data.name, cancellable: true}, async (p, cancelToken) => {
+        let customError: string | undefined;
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: options.data.name, cancellable: true }, async (p, cancelToken) => {
           try {
             const cancelEmitter = new EventEmitter();
 
@@ -116,16 +117,16 @@ export default class Instance {
             });
 
             result = await connection.connect(
-              options.data, 
+              options.data,
               {
                 timeoutCallback: timeoutHandler,
                 onConnectedOperations: options.onConnectedOperations || [],
                 uiErrorHandler: handleConnectionResults,
-                progress: (message) => {p.report(message)},
+                progress: (message) => { p.report(message) },
                 message: messageCallback,
                 cancelEmitter
-              }, 
-              options.reconnecting, 
+              },
+              options.reconnecting,
               options.reloadServerSettings,
             );
           } catch (e: any) {
@@ -144,7 +145,7 @@ export default class Instance {
             modal: true,
             detail: `Reconnection has failed. Would you like to try again?\n\n${customError || `No error provided.`}`
           }, `Yes`)) {
-            
+
             options.reconnecting = true;
             continue;
 
@@ -164,7 +165,7 @@ export default class Instance {
 
   async disconnect() {
     await this.setConnection();
-      
+
     await Promise.all([
       vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
       vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),

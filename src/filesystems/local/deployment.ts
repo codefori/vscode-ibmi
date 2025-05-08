@@ -3,13 +3,13 @@ import path from 'path';
 import tar from 'tar';
 import tmp from 'tmp';
 import vscode from 'vscode';
-import { instance } from '../../instantiate';
 import IBMi from '../../api/IBMi';
-import { Tools } from '../../api/Tools';
-import { getLocalActions } from './actions';
-import { DeployTools } from './deployTools';
-import { DeploymentParameters } from '../../typings';
 import IBMiContent from '../../api/IBMiContent';
+import { Tools } from '../../api/Tools';
+import { instance } from '../../instantiate';
+import { DeploymentParameters } from '../../typings';
+import { getLocalActions, getLocalActionsFiles } from './actions';
+import { DeployTools } from './deployTools';
 
 export namespace Deployment {
   export interface MD5Entry {
@@ -43,7 +43,7 @@ export namespace Deployment {
 
     const workspaces = vscode.workspace.workspaceFolders;
     if (workspaces && workspaces.length > 0) {
-      buildWatcher().then(context.subscriptions.push);
+      workspaceWatcher().then(context.subscriptions.push);
     }
 
     instance.subscribe(
@@ -125,7 +125,7 @@ export namespace Deployment {
     });
   }
 
-  async function buildWatcher() {
+  async function workspaceWatcher() {
     const invalidFs = [`member`, `streamfile`];
     const watcher = vscode.workspace.createFileSystemWatcher(`**`);
 
@@ -143,18 +143,39 @@ export namespace Deployment {
       }
     }
 
+    const checkLocalActionsFiles = async (uri: vscode.Uri | vscode.WorkspaceFolder) => {
+      let workspace: vscode.WorkspaceFolder | undefined;
+      if (uri instanceof vscode.Uri) {
+        if (uri.path.endsWith('/.vscode/actions.json')) {
+          workspace = vscode.workspace.getWorkspaceFolder(uri);
+        }
+        else {
+          return;
+        }
+      }
+      else {
+        workspace = uri;
+      }
+
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasLocalActions`, (await getLocalActionsFiles(workspace)).length > 0);
+    };
+
     watcher.onDidChange(uri => {
       getChangesMap(uri)?.set(uri.fsPath, uri);
     });
     watcher.onDidCreate(async uri => {
+      checkLocalActionsFiles(uri);
       const fileStat = await vscode.workspace.fs.stat(uri);
       if (fileStat.type === vscode.FileType.File) {
         getChangesMap(uri)?.set(uri.fsPath, uri);
       }
     });
     watcher.onDidDelete(uri => {
+      checkLocalActionsFiles(uri);
       getChangesMap(uri)?.delete(uri.fsPath);
     });
+
+    vscode.workspace.workspaceFolders?.forEach(checkLocalActionsFiles);
 
     return watcher;
   }
