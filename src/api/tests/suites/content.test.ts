@@ -8,7 +8,7 @@ import { Tools } from '../../Tools';
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 import { ModuleExport, ProgramExportImportInfo } from '../../types';
 
-describe('Content Tests', {concurrent: true}, () => {
+describe('Content Tests', {concurrent: true, timeout: 100000}, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
