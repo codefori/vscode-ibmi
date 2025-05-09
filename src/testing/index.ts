@@ -77,7 +77,11 @@ export function initialise(context: vscode.ExtensionContext) {
             const testCase = suite.tests.find(testCase => testCase.name === testName);
 
             if (testCase) {
-              runTest(testCase);
+              if(suite.before) {
+                suite.before().then(() => runTest(testCase));
+              } else {
+                runTest(testCase);
+              }
             }
           }
         }

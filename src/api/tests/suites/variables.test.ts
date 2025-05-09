@@ -9,23 +9,26 @@ describe(`variables tests`, { concurrent: true }, () => {
     expect(variables.size).toBe(0);
     variables.set("&FOO", "bar")
       .set("&FOOTWO", "bartwo")
-      .set("&FOOTHREE", "barthree");
-  }, CONNECTION_TIMEOUT),
+      .set("&FOOTHREE", "barthree")
+      .set("{FOOFOUR}", "barfour");
+  }),
 
     it('Variables get', () => {
-      expect(variables.size).toBe(3);
+      expect(variables.size).toBe(4);
       expect(variables.get("&FOO")).toBe("bar");
       expect(variables.get("&FOOTWO")).toBe("bartwo");
       expect(variables.get("&FOOTHREE")).toBe("barthree");
+      expect(variables.get("{FOOFOUR}")).toBe("barfour");
       expect(variables.get("&FOOFIGHTERS")).toBeUndefined();
     }),
 
     it('Variables copy', () => {
       const variablesCopy = new Variables(undefined, variables);
-      expect(variablesCopy.size).toBe(3);
+      expect(variablesCopy.size).toBe(4);
       expect(variablesCopy.get("&FOO")).toBe("bar");
       expect(variablesCopy.get("&FOOTWO")).toBe("bartwo");
       expect(variablesCopy.get("&FOOTHREE")).toBe("barthree");
+      expect(variablesCopy.get("{FOOFOUR}")).toBe("barfour");
       expect(variablesCopy.get("&FOOFIGHTERS")).toBeUndefined();
     }),
 
@@ -41,10 +44,12 @@ describe(`variables tests`, { concurrent: true }, () => {
 
     it('To Pase variables', () => {
       const paseVariables = variables.toPaseVariables();
-      expect(paseVariables["FOO"]).toBe("bar");
-      expect(paseVariables["FOOTWO"]).toBe("bartwo");
-      expect(paseVariables["FOOTHREE"]).toBe("barthree");
-      expect(paseVariables["FOOFIGHTERS"]).toBeUndefined();
+      expect(paseVariables).toEqual({
+        "FOO": "bar",
+        "FOOTWO": "bartwo",
+        "FOOTHREE": "barthree",
+        "{FOOFOUR}": undefined
+      });
     })
 
   it('Connection variables', async () => {
@@ -73,5 +78,5 @@ describe(`variables tests`, { concurrent: true }, () => {
       customVariables.splice(0, customVariables.length);
       disposeConnection(connection);
     }
-  })
+  }, { timeout: CONNECTION_TIMEOUT });
 });
