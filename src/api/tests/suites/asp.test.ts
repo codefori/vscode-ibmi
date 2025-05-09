@@ -121,10 +121,19 @@ describe(`iASP tests`, { concurrent: true }, () => {
     ]);
 
     expect(resolved).toBeDefined();
+
+    const attrA = await connection.getContent().getAttributes({library: LIBNAME, name: SPFNAME, member: MBRNAME, asp: connection.getConfiguredIAsp()?.name});
+    console.log(attrA);
+    expect(attrA).toBeDefined();
     //TODO: additional expects
+
+    setToAsp(connection); // Reset to *SYSBAS
+    const attrB = await connection.getContent().getAttributes({library: LIBNAME, name: SPFNAME, member: MBRNAME});
+    expect(attrB).toBeUndefined();
   });
 
-  it('can get library info', async () => {
+  it('can get library info', {timeout: 1000000}, async () => {
+    // Long running test on systems with many libraries
     expect(connection.getConfiguredIAsp()).toBeDefined();
 
     const librariesA = await connection.getContent().getLibraryList([`QSYS2`, LIBNAME]);

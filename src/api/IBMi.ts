@@ -1554,7 +1554,7 @@ export default class IBMi {
     let foundAsps = this.libraryAsps.get(library) || [];
 
     if (foundAsps.length === 0) {
-      const rows = await this.runSQL(`SELECT IASP_NUMBER from table(qsys2.object_statistics('*ALLAVL', '*LIB')) x where x.objname = '${this.sysNameInAmerican(library)}'`);
+      const rows = await this.runSQL(`SELECT IASP_NUMBER from table(qsys2.object_statistics('*ALLSIMPLE', '*LIB')) where objname = '${this.sysNameInAmerican(library)}'`);
 
       for (const row of rows) {
         if (row?.IASP_NUMBER !== undefined && row?.IASP_NUMBER !== null) {
