@@ -92,8 +92,8 @@ export class SettingsUI {
             asps.push({
               selected: config.chosenAsp === `*SYSBAS` || !asps.some(asp => asp.value === config.chosenAsp),
               value: `*SYSBAS`,
-              description: `*SYSBAS`,
-              text: `*SYSBAS`
+              text: `Whatever the user profile is set to via the job description.`,
+              description: `User profile iASP (${connection.getCurrentUserIAspName() || `*SYSBAS`})`
             });
 
             sourceTab.addSelect(`chosenAsp`, `ASP / Database`, asps, `iASP that should be used when navigating file systems and executing commands. The iASP configured on your user profile is <code>${connection.getCurrentUserIAspName() || `*SYSBAS`}</code> and changing this setting will override that while using Code for IBM i.`);
