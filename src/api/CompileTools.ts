@@ -90,7 +90,7 @@ export namespace CompileTools {
 
           case `ile`:
           default:
-            if (connection.usingBash()) {
+            if (connection.usingBash() && !options.noLibList) {
               const chosenAsp = connection.getConfiguredIAsp();
               const aspName = chosenAsp ? chosenAsp.name : `*NONE`;
 
