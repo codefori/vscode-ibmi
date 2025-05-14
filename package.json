@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.15.5-dev.0",
+	"version": "2.15.6-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -2988,7 +2988,7 @@
 					"command": "code-for-ibmi.generateBinderSource",
 					"when": "view == objectBrowser && viewItem =~ /^object.(module|srvpgm).*/",
 					"group": "1_objActions@6"
-				}				
+				}
 			],
 			"explorer/context": [
 				{
@@ -3046,7 +3046,7 @@
 	},
 	"dependencies": {
 		"@ibm/ibmi-eventf-parser": "^1.0.2",
-		"@vscode-elements/elements": "^1.9.1",		
+		"@vscode-elements/elements": "^1.9.1",
 		"adm-zip": "^0.5.14",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
 		"csv": "^6.2.1",
