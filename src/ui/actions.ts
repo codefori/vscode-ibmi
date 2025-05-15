@@ -10,7 +10,7 @@ import { getBranchLibraryName, getEnvConfig } from '../filesystems/local/env';
 import { getGitBranch } from '../filesystems/local/git';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import Instance from '../Instance';
-import { Action, DeploymentMethod } from '../typings';
+import { Action, ActionEnvironment, DeploymentMethod } from '../typings';
 import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 
@@ -110,7 +110,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
       const chosenAction = customAction || ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
       if (chosenAction) {
         actionUsed.set(chosenAction.name, Date.now());
-        let environment = chosenAction.environment || `cl`;
+        let environment: ActionEnvironment = chosenAction.environment || `ile`;
 
         let workspaceId: number | undefined = undefined;
 
@@ -383,7 +383,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                         if (commandResult && commandResult.code !== CompileTools.DID_NOT_RUN) {
                           target.hasRun = true;
-                          const isIleCommand = [`ile`, `cl`].includes(environment);
+                          const isIleCommand = [`ile`, `system`].includes(environment);
 
                           const useLocalEvfevent =
                             fromWorkspace && chosenAction.postDownload &&
