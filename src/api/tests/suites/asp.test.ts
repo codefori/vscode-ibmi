@@ -136,14 +136,16 @@ describe(`iASP tests`, { concurrent: true }, () => {
     // Long running test on systems with many libraries
     expect(connection.getConfiguredIAsp()).toBeDefined();
 
-    const librariesA = await connection.getContent().getLibraryList([`QSYS2`, LIBNAME]);
-    expect(librariesA.length).toBe(2);
+    const librariesA = await connection.getContent().getLibraryList([`QTEMP`, `QSYS2`, LIBNAME]);
+    expect(librariesA.length).toBe(3);
+    expect(librariesA.some(lib => lib.name === `QTEMP`)).toBeTruthy();
     expect(librariesA.some(lib => lib.name === `QSYS2`)).toBeTruthy();
     expect(librariesA.some(lib => lib.name === LIBNAME)).toBeTruthy();
 
     setToAsp(connection); // Reset to *SYSBAS
-    const librariesB = await connection.getContent().getLibraryList([`QSYS2`, LIBNAME]);
-    expect(librariesB.length).toBe(2);
+    const librariesB = await connection.getContent().getLibraryList([`QTEMP`, `QSYS2`, LIBNAME]);
+    expect(librariesB.length).toBe(3);
+    expect(librariesB.some(lib => lib.name === `QTEMP`)).toBeTruthy();
     expect(librariesB.some(lib => lib.name === `QSYS2`)).toBeTruthy();
 
     const notFound = librariesB.find(lib => lib.name === LIBNAME);
