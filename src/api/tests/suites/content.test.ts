@@ -651,7 +651,6 @@ describe('Content Tests', {concurrent: true, timeout: 100000}, () => {
     const id = `${Tools.makeid().toUpperCase()}`;
     await connection.withTempDirectory(async directory => {
       const source = `${directory}/vscodetemp-${id}.clle`;
-      console.log(source);
       try {
         await content.runStatements(
           `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 

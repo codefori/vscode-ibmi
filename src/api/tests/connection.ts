@@ -72,7 +72,7 @@ export async function newConnection() {
   };
 
   // Override this so not to spam the console.
-  // conn.appendOutput = (data) => {};
+  conn.appendOutput = (data) => {};
 
   const result = await conn.connect(
     creds,

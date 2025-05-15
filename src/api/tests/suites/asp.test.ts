@@ -123,7 +123,6 @@ describe(`iASP tests`, { concurrent: true }, () => {
     expect(resolved).toBeDefined();
 
     const attrA = await connection.getContent().getAttributes({library: LIBNAME, name: SPFNAME, member: MBRNAME, asp: connection.getConfiguredIAsp()?.name});
-    console.log(attrA);
     expect(attrA).toBeDefined();
     //TODO: additional expects
 
