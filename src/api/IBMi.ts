@@ -1554,6 +1554,9 @@ export default class IBMi {
     let foundAsps = this.libraryAsps.get(library) || [];
 
     if (foundAsps.length === 0) {
+      // We're using *ALLSIMPLE here because it's faster than *ALLAVL.
+      // The downside to this is that we can't tell if the user is request a library
+      // that is in a different ASP. We're trading off a bit of accuracy for speed.
       const rows = await this.runSQL(`SELECT IASP_NUMBER from table(qsys2.object_statistics('*ALLSIMPLE', '*LIB')) where objname = '${this.sysNameInAmerican(library)}'`);
 
       for (const row of rows) {
