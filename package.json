@@ -3017,7 +3017,7 @@
 		"lint": "eslint src/**/*.js --no-error-on-unmatched-pattern",
 		"pretest": "npm run lint",
 		"test": "vitest run",
-		"package": "vsce package",
+		"package": "vsce package --allow-package-all-secrets",
 		"build": "rm -rf dist && tsc",
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",

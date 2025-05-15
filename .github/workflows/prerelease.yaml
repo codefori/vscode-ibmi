@@ -28,7 +28,7 @@ jobs:
         uses: martinbeentjes/npm-get-version-action@v1.3.1
 
       - name: Package
-        run: npx @vscode/vsce package --pre-release
+        run: npx @vscode/vsce package --pre-release --allow-package-all-secrets
           
       - name: Publish on VS Code marketplace
         run: npx @vscode/vsce publish --skip-duplicate --packagePath code-for-ibmi-${{ steps.package-version.outputs.current-version}}.vsix --pat ${{ secrets.PUBLISHER_TOKEN }}
