@@ -161,7 +161,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
         //Prompt once now in case of multiple targets
         const promptOnce = targets.length > 1;
-        const command = promptOnce ? chosenAction.command : await commandConfirm(chosenAction.command);
+        const command = promptOnce ? await commandConfirm(chosenAction.command) : chosenAction.command;
 
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Running action {0} on {1} item(s)", chosenAction.name, targets.length) }, async (task, canceled) => {
           const increment = 100 / targets.length;
@@ -377,7 +377,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             env: variables,
                           }, {
                           writeEvent: (content) => writeEmitter.fire(content),
-                          commandConfirm: promptOnce ? commandConfirm : undefined
+                          commandConfirm: promptOnce ? undefined : commandConfirm
                         }
                         );
 
