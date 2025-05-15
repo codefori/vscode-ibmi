@@ -57,6 +57,17 @@ export namespace CompileTools {
           events.writeEvent(`Commands:\n${commands.map(command => `\t${command}\n`).join(``)}` + NEWLINE);
         }
 
+        if (!options.environment) {
+          // When no environment is specified, we default to CL.
+          options.environment = `ile`;
+        }
+
+        if (options.environment === `ile` && !connection.usingBash()) {
+          // Since bash is not available, we can't use cl, so we have to use system
+          options.environment = `system`;
+          events.writeEvent?.(`Warning: 'cl' built-in is not supported in this shell. Using system instead. This means the ASP is picked up from the user profile JOBD and not the connection configuration.\n`);
+        }
+
         const callbacks: StandardIO = events.writeEvent ? {
           onStdout: (data) => {
             events.writeEvent!(data.toString().replaceAll(`\n`, NEWLINE));
@@ -67,6 +78,7 @@ export namespace CompileTools {
         } : {};
 
         let commandResult;
+
         switch (options.environment) {
           case `pase`:
             commandResult = await connection.sendCommand({
@@ -89,39 +101,39 @@ export namespace CompileTools {
             break;
 
           case `ile`:
+            const chosenAsp = connection.getConfiguredIAsp();
+            const aspName = chosenAsp ? chosenAsp.name : `*NONE`;
+
+            const setAspGrp = connection.getContent().toCl(`SETASPGRP`, {
+              ASPGRP: aspName,
+              CURLIB: ileSetup.currentLibrary,
+              USRLIBL: ileSetup.libraryList.join(` `),
+            });
+
+            commandResult = await connection.sendCommand({
+              command: [
+                `cl "${setAspGrp}"`,
+                ...commands.map(command =>
+                  `${`cl "${IBMi.escapeForShell(command)}"`}`,
+                )
+              ].join(` && `),
+              directory: cwd,
+              ...callbacks
+            });
+            break;
+
+          case `system`:
           default:
-            if (connection.usingBash() && !options.noLibList) {
-              const chosenAsp = connection.getConfiguredIAsp();
-              const aspName = chosenAsp ? chosenAsp.name : `*NONE`;
-
-              const setAspGrp = connection.getContent().toCl(`SETASPGRP`, {
-                ASPGRP: aspName,
-                CURLIB: ileSetup.currentLibrary,
-                USRLIBL: ileSetup.libraryList.join(` `),
-              });
-
-              commandResult = await connection.sendCommand({
-                command: [
-                  `cl "${setAspGrp}"`,
-                  ...commands.map(command =>
-                    `${`cl "${IBMi.escapeForShell(command)}"`}`,
-                  )
-                ].join(` && `),
-                directory: cwd,
-                ...callbacks
-              });
-            } else {
-              commandResult = await connection.sendQsh({
-                command: [
-                  ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
-                  ...commands.map(command =>
-                    `${`system "${IBMi.escapeForShell(command)}"`}`,
-                  )
-                ].join(` && `),
-                directory: cwd,
-                ...callbacks
-              });
-            }
+            commandResult = await connection.sendQsh({
+              command: [
+                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
+                ...commands.map(command =>
+                  `${`system "${IBMi.escapeForShell(command)}"`}`,
+                )
+              ].join(` && `),
+              directory: cwd,
+              ...callbacks
+            });
 
             break;
         }

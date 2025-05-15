@@ -110,7 +110,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
       const chosenAction = customAction || ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
       if (chosenAction) {
         actionUsed.set(chosenAction.name, Date.now());
-        const environment = chosenAction.environment || `ile`;
+        let environment = chosenAction.environment || `cl`;
 
         let workspaceId: number | undefined = undefined;
 
@@ -383,7 +383,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                         if (commandResult && commandResult.code !== CompileTools.DID_NOT_RUN) {
                           target.hasRun = true;
-                          const isIleCommand = environment === `ile`;
+                          const isIleCommand = [`ile`, `cl`].includes(environment);
 
                           const useLocalEvfevent =
                             fromWorkspace && chosenAction.postDownload &&
