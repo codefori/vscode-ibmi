@@ -999,7 +999,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         const connection = getConnection();
 
         if (!parameters.some(p => p.path.split('/')[1] === '*ALL')) {
-          const selectedAsp = connection.getCurrentIAspName();
+          const selectedAsp = connection.getConfiguredIAsp()?.name;
           const aspText = (selectedAsp ? vscode.l10n.t(`(in ASP {0})`, selectedAsp) : ``);
 
           const list = IBMi.GlobalStorage.getPreviousSearchTerms();

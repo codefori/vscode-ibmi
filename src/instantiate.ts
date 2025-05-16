@@ -26,10 +26,6 @@ disconnectBarItem.tooltip = `Disconnect from system.`;
 disconnectBarItem.text = `$(debug-disconnect)`;
 
 const connectedBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
-connectedBarItem.command = {
-  command: `code-for-ibmi.showAdditionalSettings`,
-  title: `Show connection settings`
-};
 
 export async function safeDisconnect(): Promise<boolean> {
   let doDisconnect = true;
@@ -69,7 +65,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     ...registerConnectionCommands(context, instance),
 
-    onCodeForIBMiConfigurationChange("connectionSettings", updateConnectedBar),
+    onCodeForIBMiConfigurationChange("connectionSettings", () => updateConnectedBar()),
 
     ...registerOpenCommands(instance),
 
@@ -101,11 +97,23 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   }
 }
 
-async function updateConnectedBar() {
+export async function updateConnectedBar(options: { loading?: boolean } = {}) {
   const connection = instance.getConnection();
   if (connection) {
     const config = connection.getConfig();
-    connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
+
+    let icon = `$(${config.readOnlyMode ? "lock" : "server"})`;
+
+    if (options.loading) {
+      icon = `$(${config.readOnlyMode ? "loading~spin" : "loading~spin"})`;
+    } else {
+      connectedBarItem.command = {
+        command: `code-for-ibmi.showAdditionalSettings`,
+        title: `Show connection settings`
+      };
+    }
+
+    connectedBarItem.text = `${icon} ${config.name}`;
 
     const debugRunning = await isDebugEngineRunning();
     connectedBarItem.tooltip = new vscode.MarkdownString([

@@ -8,7 +8,7 @@ import { Tools } from '../../Tools';
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 import { ModuleExport, ProgramExportImportInfo } from '../../types';
 
-describe('Content Tests', {concurrent: true}, () => {
+describe('Content Tests', {concurrent: true, timeout: 100000}, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
@@ -651,7 +651,6 @@ describe('Content Tests', {concurrent: true}, () => {
     const id = `${Tools.makeid().toUpperCase()}`;
     await connection.withTempDirectory(async directory => {
       const source = `${directory}/vscodetemp-${id}.clle`;
-      console.log(source);
       try {
         await content.runStatements(
           `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
