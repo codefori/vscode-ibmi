@@ -1,18 +1,16 @@
-
 ### Changes
-
-Description of change here.
+<!-- Describe your change here. -->
 
 ### How to test this PR
-
-Examples:
-
+<!-- 
+Example:
 1. Run the test cases
 2. Expand view A and right click on the node
 3. Run 'Execute Thing' from the command palette
+-->
 
 ### Checklist
-
+<!-- Put an `x` in the relevant boxes -->
 * [ ] have tested my change
 * [ ] have created one or more test cases
 * [ ] updated relevant documentation
