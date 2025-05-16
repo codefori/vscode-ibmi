@@ -163,7 +163,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         const promptOnce = targets.length > 1;
         const command = promptOnce ? await commandConfirm(chosenAction.command) : chosenAction.command;
 
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Running action {0} on {1} item(s)", chosenAction.name, targets.length) }, async (task, canceled) => {
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Running action {0} on", chosenAction.name, targets.length) }, async (task, canceled) => {
           const increment = 100 / targets.length;
           let done = 1;
           for (const target of targets) {
@@ -171,7 +171,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
               cancelled = true;
               return;
             }
-            task.report({ message: `${done++}/${targets.length}`, increment })
+
             target.processed = true;
             const variables = new Variables(connection);
             if (target.workspaceFolder) {
@@ -179,6 +179,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 variables.set(`&${key}`, value)
               }
             }
+
             Object.entries(envFileVars).forEach(([key, value]) => variables.set(`&${key}`, value));
             const evfeventInfo: EvfEventInfo = {
               object: '',
@@ -187,6 +188,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
               workspace: fromWorkspace
             };
 
+            let processedPath = "";
             switch (chosenAction.type) {
               case `member`:
                 const memberDetail = connection.parserMemberPath(target.uri.path);
@@ -194,6 +196,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 evfeventInfo.object = memberDetail.name;
                 evfeventInfo.extension = memberDetail.extension;
                 evfeventInfo.asp = memberDetail.asp;
+
+                processedPath = `${memberDetail.library}/${memberDetail.file}/${memberDetail.basename}`;
 
                 variables.set(`&OPENLIBL`, memberDetail.library.toLowerCase())
                   .set(`&OPENLIB`, memberDetail.library)
@@ -210,6 +214,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
               case `file`:
               case `streamfile`:
+                processedPath = target.uri.path;
+
                 const pathData = path.parse(target.uri.path);
                 const basename = pathData.base;
                 const ext = pathData.ext ? (pathData.ext.startsWith(`.`) ? pathData.ext.substring(1) : pathData.ext) : ``;
@@ -287,6 +293,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 evfeventInfo.library = library;
                 evfeventInfo.object = object;
 
+                processedPath = `${library}/${object}.${target.extension}`;
+
                 variables.set(`&LIBRARYL`, library.toLowerCase())
                   .set(`&LIBRARY`, library)
 
@@ -300,6 +308,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                   .set(`&EXT`, target.extension);
                 break;
             }
+
+            task.report({ message: `${processedPath} (${done++}/${targets.length})`, increment })
 
             const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
             let actionName = chosenAction.name;
