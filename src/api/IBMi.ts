@@ -477,6 +477,14 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
+      const commandShellResult = await this.sendCommand({
+        command: `echo $SHELL`
+      });
+
+      if (commandShellResult.code === 0) {
+        this.shell = commandShellResult.stdout.trim();
+      }
+
       callbacks.progress({ message: `Checking Code for IBM i components.` });
 
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
@@ -576,14 +584,6 @@ export default class IBMi {
             // @ts-ignore We know the config exists.
             callbacks.message(`errror`, `Temporary data not cleared from ${this.config.tempDir}.`);
           });
-      }
-
-      const commandShellResult = await this.sendCommand({
-        command: `echo $SHELL`
-      });
-
-      if (commandShellResult.code === 0) {
-        this.shell = commandShellResult.stdout.trim();
       }
 
       // Check for bad data areas?
@@ -1364,8 +1364,10 @@ export default class IBMi {
       let command = `${IBMi.locale} system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t' ${rdbParameter})"`
       let useCsv = options.forceSafe;
 
-      // Use custom QSH if available
-      if (this.canUseCqsh) {
+      if (this.usingBash()) {
+        command = `${IBMi.locale} cl "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t' ${rdbParameter})"`;
+      } else if (this.canUseCqsh) {
+        // Use custom QSH if available
         const customQsh = this.getComponent<CustomQSh>(CustomQSh.ID)!;
         command = `${IBMi.locale} ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t' ${rdbParameter})\\""`;
       }
