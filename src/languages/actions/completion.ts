@@ -27,7 +27,7 @@ export class LocalActionCompletionItemProvider implements vscode.CompletionItemP
   provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext) {
         const text = document.lineAt(position.line).text?.trim();
     //Only provide items if the cursor is on a "command" or "outputToFile" line
-    if (/^\s*"(command||outputToFile)"\s*:/.test(text)) {
+    if (/^\s*"(command|outputToFile)"\s*:/.test(text)) {
       return Object.entries(ITEMS).map(([variable, label]) => ({
         label: variable,
         detail: label.replaceAll(/<code>|<\/code>|&amp;/g, ""),
