@@ -470,18 +470,17 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         });
 
         if (fullName) {
-          try {
-            vscode.window.showInformationMessage(l10n.t(`Creating streamfile {0}.`, fullName));
-            await content.createStreamFile(fullName);
-            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
-            if (IBMi.connectionManager.get(`autoRefresh`)) {
-              ifsBrowser.refresh(node);
+          if (!await content.testStreamFile(fullName, "e") || await vscode.window.showWarningMessage(l10n.t("Streamfile {0} already exists. Do you want to overwrite it?", fullName), { modal: true }, l10n.t("Overwrite"))) {
+            try {
+              await content.createStreamFile(fullName);
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
+              vscode.window.showInformationMessage(l10n.t(`Created streamfile {0}.`, fullName));
+              if (IBMi.connectionManager.get(`autoRefresh`)) {
+                ifsBrowser.refresh(node);
+              }
+            } catch (e: any) {
+              vscode.window.showErrorMessage(l10n.t(`Error creating new streamfile! {0}`, e));
             }
-            else {
-              throw new Error("")
-            }
-          } catch (e: any) {
-            vscode.window.showErrorMessage(l10n.t(`Error creating new streamfile! {0}`, e));
           }
         }
       }
