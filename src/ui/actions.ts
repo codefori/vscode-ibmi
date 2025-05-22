@@ -423,6 +423,10 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             }
                           }
 
+                          if (chosenAction.outputToFile) {
+                            await outputToFile(connection, chosenAction.outputToFile, variables, target.output);
+                          }
+
                           if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
                             if (fromWorkspace) {
                               const remoteDir = remoteCwd;
@@ -511,10 +515,6 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                           if (problemsFetched && viewControl === `problems`) {
                             commands.executeCommand(`workbench.action.problems.focus`);
-                          }
-
-                          if (chosenAction.outputToFile) {
-                            await outputToFile(connection, chosenAction.outputToFile, variables, target.output);
                           }
                         } else {
                           writeEmitter.fire(`Command did not run.` + CompileTools.NEWLINE);

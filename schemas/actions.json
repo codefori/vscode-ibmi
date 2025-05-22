@@ -1,80 +1,79 @@
 {
-  "$id": "#/actions",
   "type": "array",
   "title": "Actions",
   "description": "List of Actions that apply to this Workspace. Actions may be used to run commands on the remote system.",
-  "default": [],
-  "additionalItems": true,
   "items": {
-    "$id": "#/actions/items",
-    "anyOf": [
-      {
-        "$id": "#/actions/items/anyOf/0",
+    "$ref": "#/$defs/code4iAction"
+  },
+  "$defs": {
+    "code4iAction": {
+      "type": "object",
+      "properties": {
         "type": "object",
         "title": "Action",
         "description": "A single Action.",
-        "default": {},
         "required": [
           "name",
           "command",
           "environment",
           "extensions"
         ],
-        "properties": {
-          "name": {
-            "$id": "#/actions/items/anyOf/0/properties/name",
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "The name of the Action. Used when running the Action."
+        },
+        "command": {
+          "type": "string",
+          "title": "Command",
+          "description": "The command that will be run when executing this Action.",
+          "default": ""
+        },
+        "environment": {
+          "type": "string",
+          "title": "Command Environment",
+          "description": "Which environment the command will run in.",
+          "default": "ile",
+          "enum": [
+            "ile",
+            "qsh",
+            "pase"
+          ]
+        },
+        "extensions": {
+          "type": "array",
+          "title": "Extensions",
+          "description": "Extensions which support this Action.",
+          "default": [
+            "GLOBAL"
+          ],
+          "items": {
             "type": "string",
-            "title": "Name",
-            "description": "The name of the Action. Used when running the Action."
-          },
-          "command": {
-            "$id": "#/actions/items/anyOf/0/properties/command",
-            "type": "string",
-            "title": "Command",
-            "description": "The command that will be run when executing this Action.",
-            "default": ""
-          },
-          "environment": {
-            "$id": "#/actions/items/anyOf/0/properties/commandEnvironment",
-            "type": "string",
-            "title": "Command Environment",
-            "description": "Which environment the command will run in.",
-            "default": "ile",
-            "enum": [
-              "ile",
-              "qsh",
-              "pase"
-            ]
-          },
-          "extensions": {
-            "$id": "#/actions/items/anyOf/0/properties/extensions",
-            "type": "array",
-            "title": "Extensions",
-            "description": "Extensions which support this Action.",
-            "default": ["GLOBAL"],
-            "items": {
-              "type": "string",
-              "title": "Extension."
-            }
-          },
-          "deployFirst": {
-            "type": "boolean",
-            "description": "The deployment process should run before the Action."
-          },
-          "postDownload": {
-            "$id": "#/actions/items/anyOf/0/properties/postDownload",
-            "type": "array",
-            "title": "Post Download",
-            "description": "Remote files/folders to download when the Action is complete. Using `.evfevent` in combination with a build tool will populate the Problems view.",
-            "default": [""],
-            "items": {
-              "type": "string",
-              "title": "Relative path."
-            }
+            "title": "Extension."
           }
         },
-        "additionalProperties": true
-      }
-    ]
+        "deployFirst": {
+          "type": "boolean",
+          "description": "The deployment process should run before the Action."
+        },
+        "postDownload": {
+          "type": "array",
+          "title": "Post Download",
+          "description": "Remote files/folders to download when the Action is complete. Using `.evfevent` in combination with a build tool will populate the Problems view.",
+          "default": [
+            ""
+          ],
+          "items": {
+            "type": "string",
+            "title": "Relative path."
+          }
+        },
+        "outputToFile": {
+          "type": "string",
+          "description": "Copy the action output to a file. Variables can be used to define the file's path; use &i to compute file index.\nExample: ~/outputs/&CURLIB_&OPENMBR&i.txt"
+        }
+      },
+      "additionalProperties": true
+    }
   }
 }
