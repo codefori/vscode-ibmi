@@ -13,6 +13,7 @@ import { DebugConfiguration, getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE,
 import * as server from "./server";
 import { VscodeTools } from "../ui/Tools";
 import { getStoredPassword } from "../config/passwords";
+import IBMi from "../api/IBMi";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -311,6 +312,9 @@ export async function initialize(context: ExtensionContext) {
             vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
           }
 
+          // Set the debug environment variables early to be safe
+          setCertEnv(true, connection);
+
           // Download the client certificate if it doesn't exist.
           certificates.checkClientCertificate(connection).catch(() => {
             vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
@@ -365,12 +369,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
 
   let secure = true;
 
-  if (isManaged()) {
-    // If we're in a managed environment, only set secure if a cert is set
-    secure = process.env[`DEBUG_CA_PATH`] ? true : false;
-  } else {
-    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
-  }
+  secure = setCertEnv(secure, connection);
 
   if (options.sep) {
     if (serviceDetails.version === `1.0.0`) {
@@ -438,4 +437,15 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       }
     }
   }
+}
+
+function setCertEnv(secure: boolean, connection: IBMi) {
+  if (isManaged()) {
+    // If we're in a managed environment, only set secure if a cert is set
+    secure = process.env[`DEBUG_CA_PATH`] ? true : false;
+  } else {
+    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
+  }
+
+  return secure;
 }
