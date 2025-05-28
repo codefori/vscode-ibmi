@@ -1,7 +1,7 @@
 import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
-import vscode, { l10n } from "vscode";
+import vscode, { DataTransferItem, l10n } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
@@ -9,7 +9,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
+import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_DRAG_MIMETYPE, ObjectBrowserDrag, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
@@ -419,11 +419,27 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 }
 
 class ObjectBrowserMemberItemDragAndDrop implements vscode.TreeDragAndDropController<ObjectBrowserMemberItem> {
-  readonly dragMimeTypes = [];
+  readonly dragMimeTypes = [OBJECT_BROWSER_DRAG_MIMETYPE];
   readonly dropMimeTypes = [];
 
-  handleDrag(source: readonly ObjectBrowserMemberItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+  handleDrag(source: readonly ObjectBrowserItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     //A URI list is automatically produced
+    const items = source.map(this.toObjectBrowserDrag).filter(Boolean);
+    if (items.length) {
+      dataTransfer.set(OBJECT_BROWSER_DRAG_MIMETYPE, new DataTransferItem(JSON.stringify(items)));
+    }
+  }
+
+  toObjectBrowserDrag(node: ObjectBrowserItem): ObjectBrowserDrag | undefined {
+    if (node instanceof ObjectBrowserFilterItem && parseFilter(node.filter.library).noFilter) {
+      return { library: "QSYS", object: node.filter.library, type: "*LIB" };
+    }
+    else if (node instanceof ObjectBrowserObjectItem || node instanceof ObjectBrowserSourcePhysicalFileItem) {
+      return { library: node.object.library, object: node.object.name, type: node.object.type };
+    }
+    else if (node instanceof ObjectBrowserMemberItem) {
+      return { library: node.member.library, object: node.member.file, member: node.member.name, type: "*MBR" };
+    }
   }
 }
 

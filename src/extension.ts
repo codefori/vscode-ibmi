@@ -1,5 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, commands, languages, window, workspace } from "vscode";
+import { commands, ExtensionContext, languages, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -12,6 +12,7 @@ import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
 import { parseErrors } from "./api/errors/parser";
+import { CustomCLI } from "./api/tests/components/customCli";
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import * as Debug from './debug';
 import { IFSFS } from "./filesystems/ifsFs";
@@ -24,7 +25,7 @@ import { CodeForIBMi } from "./typings";
 import { VscodeTools } from "./ui/Tools";
 import { registerActionTools } from "./ui/actions";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
-import { LibraryListProvider } from "./ui/views/LibraryListView";
+import { initializeLibraryListView } from "./ui/views/LibraryListView";
 import { ProfilesView } from "./ui/views/ProfilesView";
 import { initializeDebugBrowser } from "./ui/views/debugView";
 import { HelpView } from "./ui/views/helpView";
@@ -36,7 +37,6 @@ import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
-import { CustomCLI } from "./api/tests/components/customCli";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -60,15 +60,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   initializeIFSBrowser(context);
   initializeDebugBrowser(context);
   initializeSearchView(context);
+  initializeLibraryListView(context);
 
   context.subscriptions.push(
     window.registerTreeDataProvider(
       `helpView`,
       new HelpView(context)
-    ),
-    window.registerTreeDataProvider(
-      `libraryListView`,
-      new LibraryListProvider(context)
     ),
     window.registerTreeDataProvider(
       `profilesView`,
