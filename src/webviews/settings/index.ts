@@ -155,7 +155,7 @@ export class SettingsUI {
               }))
             ], `The terminal type for the 5250 emulator.`)
             .addCheckbox(`setDeviceNameFor5250`, `Set Device Name for 5250`, `When enabled, the user will be able to enter a device name before the terminal starts.`, config.setDeviceNameFor5250)
-            .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
+            .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>+uninhibited localhost</code> (<code>+uninhibited</code> lets you get the cursor out of protected areas with any key).<br />A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
         } else if (connection) {
           terminalsTab.addParagraph('Enable 5250 emulation to change these settings');
         } else {

@@ -1,8 +1,8 @@
 
 import os from "os";
-import { Config, VirtualConfig } from "./VirtualConfig";
 import { ConnectionData } from "../../types";
 import { ConnectionConfig } from "./types";
+import { Config, VirtualConfig } from "./VirtualConfig";
 
 function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
   return {
@@ -31,7 +31,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     encodingFor5250: parameters.encodingFor5250 || `default`,
     terminalFor5250: parameters.terminalFor5250 || `default`,
     setDeviceNameFor5250: (parameters.setDeviceNameFor5250 === true),
-    connectringStringFor5250: parameters.connectringStringFor5250 || `localhost`,
+    connectringStringFor5250: parameters.connectringStringFor5250 || `+uninhibited localhost`,
     autoSaveBeforeAction: (parameters.autoSaveBeforeAction === true),
     showDescInLibList: (parameters.showDescInLibList === true),
     debugPort: (parameters.debugPort || "8005"),

@@ -306,7 +306,7 @@
 							},
 							"connectringStringFor5250": {
 								"type": "string",
-								"default": "localhost",
+								"default": "+uninhibited localhost",
 								"description": "The connectring string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
 							},
 							"autoSaveBeforeAction": {

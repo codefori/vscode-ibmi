@@ -1,9 +1,9 @@
 
 import path from 'path';
 import vscode, { commands } from 'vscode';
-import { instance } from '../instantiate';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
+import { instance } from '../instantiate';
 
 const PASE_INIT_FLAG = '#C4IINIT';
 const PASE_INIT_FLAG_REGEX = /#+C+4+I+I+N+I+T+$/
@@ -207,7 +207,7 @@ export namespace Terminal {
           terminalSettings.encoding ? `map=${terminalSettings.encoding}` : ``,
           terminalSettings.terminal ? `env.TERM=${terminalSettings.terminal}` : ``,
           terminalSettings.name ? `env.DEVNAME=${terminalSettings.name}` : ``,
-          terminalSettings.connectionString || `localhost`,
+          terminalSettings.connectionString || `+uninhibited localhost`,
           `\n`
         ].join(` `));
       } else {
