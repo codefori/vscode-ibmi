@@ -255,11 +255,11 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         let result;
         switch (action) {
           case "copy":
-            result = await connection.sendCommand({ command: `cp -r ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
+            result = await connection.runCommand({ command: `cp -r ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}`, environment: "qsh" });
             break;
 
           case "move":
-            result = await connection.sendCommand({ command: `mv ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
+            result = await connection.runCommand({ command: `mv ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}`, environment: "qsh" });
             ifsBrowserItems.map(item => item.parent)
               .filter(Tools.distinct)
               .forEach(folder => folder?.refresh?.());
@@ -654,7 +654,7 @@ Please type "{0}" to confirm deletion.`, dirName);
         if (target) {
           const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
           try {
-            const moveResult = await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
             if (moveResult.code !== 0) {
               throw moveResult.stderr;
             }
@@ -704,7 +704,7 @@ Please type "{0}" to confirm deletion.`, dirName);
         if (target) {
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
           try {
-            await connection.sendCommand({ command: `cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            await connection.runCommand({ command: `cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
             if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
