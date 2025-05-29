@@ -103,7 +103,7 @@ export default class IBMiContent {
    * @param content Raw content
    * @param encoding Optional encoding to write.
    */
-  async writeStreamfileRaw(originalPath: string, content: string|Uint8Array, encoding?: string) {
+  async writeStreamfileRaw(originalPath: string, content: string | Uint8Array, encoding?: string) {
     const client = this.ibmi.client!;
     const features = this.ibmi.remoteFeatures;
     const tmpobj = await tmpFile();
@@ -228,7 +228,7 @@ export default class IBMiContent {
    * @param content 
    */
   async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
-  
+
   /**
    * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.uploadMemberContent()} without the `asp` parameter instead.
    * @param asp 
@@ -315,7 +315,7 @@ export default class IBMiContent {
    */
   runSQL(statements: string) {
     console.warn(`[Code for IBM i] runSQL is deprecated and will be removed by 4.0.0. Use IBMi.runSQL instead.`);
-    
+
     return this.ibmi.runSQL(statements);
   }
 
@@ -1148,5 +1148,27 @@ export default class IBMiContent {
 
   downloadDirectory(localDirectory: EditorPath, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
     return this.ibmi.client!.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+  }
+
+  /**
+   * Copy one or more folders or files into a directory. Uses QSH's `cp` to keep all the attributes of the original file into its copy.
+   * @param paths one or more files/folders to copy
+   * @param toDirectory the directory where the files/folders will be copied into
+   * @returns the {@link CommandResult} of the `cp` command execution
+   */
+  async copy(paths: string | string[], toDirectory: string) {
+    paths = Array.isArray(paths) ? paths : [paths];
+    return this.ibmi.runCommand({ command: `cp -r ${paths.map(path => Tools.escapePath(path)).join(" ")} ${Tools.escapePath(toDirectory)}`, environment: "qsh" });
+  }
+
+  /**
+   * Move one or more folders or files into a directory. Uses QSH's `mv` to ensures attributes are not altered during the opration.
+   * @param paths one or more files/folders to copy
+   * @param toDirectory the directory where the files/folders will be copied into
+   * @returns the {@link CommandResult} of the `mv` command execution
+   */
+  async move(paths: string | string[], toDirectory: string) {
+    paths = Array.isArray(paths) ? paths : [paths];
+    return await this.ibmi.runCommand({ command: `mv ${paths.map(path => Tools.escapePath(path)).join(" ")} ${Tools.escapePath(toDirectory)}`, environment: "qsh" });
   }
 }

@@ -253,13 +253,15 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
 
       if (action) {
         let result;
+        const froms = ifsBrowserItems.map(item => item.path);
+        const to = toDirectory.path;
         switch (action) {
           case "copy":
-            result = await connection.runCommand({ command: `cp -r ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}`, environment: "qsh" });
+            result = await connection.getContent().copy(froms, to);
             break;
 
           case "move":
-            result = await connection.runCommand({ command: `mv ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}`, environment: "qsh" });
+            result = await await connection.getContent().move(froms, to);
             ifsBrowserItems.map(item => item.parent)
               .filter(Tools.distinct)
               .forEach(folder => folder?.refresh?.());
@@ -704,7 +706,10 @@ Please type "{0}" to confirm deletion.`, dirName);
         if (target) {
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
           try {
-            await connection.runCommand({ command: `cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
+            const result = await connection.getContent().copy(node.path, targetPath);
+            if (result.code !== 0) {
+              throw result.stderr;
+            }
             if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
