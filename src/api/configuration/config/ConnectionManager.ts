@@ -18,6 +18,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     ifsShortcuts: parameters.ifsShortcuts || [],
     /** Default auto sorting of shortcuts to off  */
     autoSortIFSShortcuts: parameters.autoSortIFSShortcuts || false,
+    chosenAsp: parameters.chosenAsp || `*SYSBAS`,
     homeDirectory: parameters.homeDirectory || `.`,
     /** Undefined means not created, so default to on */
     tempLibrary: parameters.tempLibrary || `ILEDITOR`,

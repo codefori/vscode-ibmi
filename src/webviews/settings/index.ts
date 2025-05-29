@@ -7,7 +7,7 @@ import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../.
 import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
 import { isSEPSupported } from "../../debug/server";
-import { instance } from "../../instantiate";
+import { instance, updateConnectedBar } from "../../instantiate";
 import { ConnectionConfig, ConnectionData, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
 import { ComplexTab, CustomUI, Section } from "../CustomUI";
@@ -39,6 +39,8 @@ export class SettingsUI {
         const connectionSettings = await IBMi.connectionManager.getAll();
         const connection = instance.getConnection();
         const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
+
+        updateConnectedBar({loading: true});
 
         let config: ConnectionConfig;
 
@@ -77,8 +79,30 @@ export class SettingsUI {
           .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData);
 
         const sourceTab = new Section();
+
+        if (connection) {
+          if (connection.usingBash()) {
+            const asps = connection.getAllIAsps().map(asp => ({
+              selected: asp.name === config.chosenAsp,
+              value: asp.name,
+              description: asp.name,
+              text: `${asp.name} (independent ASP ${asp.id})`
+            }));
+
+            asps.push({
+              selected: config.chosenAsp === `*SYSBAS` || !asps.some(asp => asp.value === config.chosenAsp),
+              value: `*SYSBAS`,
+              text: `Whatever the user profile is set to via the job description.`,
+              description: `User profile iASP (${connection.getCurrentUserIAspName() || `*SYSBAS`})`
+            });
+
+            sourceTab.addSelect(`chosenAsp`, `ASP / Database`, asps, `iASP that should be used when navigating file systems and executing commands. The iASP configured on your user profile is <code>${connection.getCurrentUserIAspName() || `*SYSBAS`}</code> and changing this setting will override that while using Code for IBM i.`);
+          } else {
+            sourceTab.addInput(`chosenAsp`, `ASP / Database`, `iASP that will be used when navigating file systems and executing commands. This cannot be overridden because bash is not your default shell.`, { default: connection.getCurrentUserIAspName() || `*SYSBAS`, readonly: true });
+          }
+        }
+
         sourceTab
-          .addInput(`sourceASP`, `Source ASP`, `Current ASP is based on the user profile job description and cannot be changed here.`, { default: connection?.getCurrentIAspName() || `*SYSBAS`, readonly: true })
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
@@ -252,6 +276,9 @@ export class SettingsUI {
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings`, requiresValidation: true });
 
+
+        updateConnectedBar();
+
         await VscodeTools.withContext(EDITING_CONTEXT, async () => {
           const page = await ui.loadPage<any>(`Settings: ${config.name}`);
           if (page) {
@@ -286,9 +313,6 @@ export class SettingsUI {
 
                     //In case we need to play with the data
                     switch (key) {
-                      case `sourceASP`:
-                        data[key] = null;
-                        break;
                       case `hideCompileErrors`:
                         data[key] = String(data[key]).split(`,`)
                           .map(item => item.toUpperCase().trim())

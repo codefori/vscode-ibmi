@@ -13,7 +13,7 @@ export interface StandardIO {
  */
 export type ActionType = "member" | "streamfile" | "object" | "file";
 export type ActionRefresh = "no" | "parent" | "filter" | "browser";
-export type ActionEnvironment = "ile" | "qsh" | "pase";
+export type ActionEnvironment = "ile" | "system" | "qsh" | "pase";
 
 export enum CcsidOrigin {
   User = "user",
