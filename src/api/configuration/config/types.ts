@@ -10,6 +10,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   connectionProfiles: ConnectionProfile[];
   commandProfiles: CommandProfile[];
   autoSortIFSShortcuts: boolean;
+  chosenAsp: string;
   tempLibrary: string;
   tempDir: string;
   sourceFileCCSID: string;

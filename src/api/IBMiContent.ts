@@ -449,6 +449,9 @@ export default class IBMiContent {
    * @returns Bad libraries
    */
   async validateLibraryList(newLibl: string[]): Promise<string[]> {
+    // TODO: consider replacing this with getLibraryList
+    // since it does the same thing (validates a list of libraries)
+    
     let badLibs: string[] = [];
 
     newLibl = newLibl
@@ -468,14 +471,39 @@ export default class IBMiContent {
 
     const sanitized = Tools.sanitizeObjNamesForPase(newLibl);
 
-    const result = await this.ibmi.sendQsh({
-      command: [
-        `liblist -d ` + Tools.sanitizeObjNamesForPase(this.ibmi.defaultUserLibraries).join(` `),
-        ...sanitized.map(lib => `liblist -a ` + lib)
-      ].join(`; `)
-    });
+    let commands: string[] = [];
+    
+    if (this.ibmi.usingBash()) {
+      // If we are using bash, we can set the ASP group with the cl builtin.
+      const configuredAsp = this.ibmi.getConfiguredIAsp();
+      if (configuredAsp) {
+        const setAspGrp = this.ibmi.getContent().toCl(`SETASPGRP`, {
+          ASPGRP: configuredAsp.name,
+        });
+        commands.push(`cl "${setAspGrp}"`);
+      }
+    }
 
-    if (result.stderr) {
+    commands.push(...[
+      `liblist -d ` + Tools.sanitizeObjNamesForPase(this.ibmi.defaultUserLibraries).join(` `),
+      ...sanitized.map(lib => `liblist -a ` + lib)
+    ]);
+
+    let result: CommandResult;
+
+    if (this.ibmi.usingBash()) {
+      result = await this.ibmi.sendCommand({
+        command: commands.join(`; `),
+        directory: `.`
+      });
+    } else {
+      result = await this.ibmi.sendQsh({
+        command: commands.join(`; `),
+        directory: `.`
+      });
+    }
+
+    if (result && result.stderr) {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
@@ -514,7 +542,19 @@ export default class IBMiContent {
 
     if (localLibrary !== `QSYS`) {
       if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
-        throw new Error(`Library ${localLibrary} does not exist.`);
+        const configuredAsp = this.ibmi.getConfig().chosenAsp;
+        const existsInLibrary = await this.ibmi.lookupLibraryIAsp(localLibrary);
+        const existsInMultiple = this.ibmi.getLibraryIAsps(localLibrary);
+
+        if (existsInMultiple.length >= 2) {
+          throw new Error(`Library ${localLibrary} exists in multiple IASPs: ${existsInMultiple.join(', ')}. Please specify the IASP in the connection settings.`);
+        }
+        else if (existsInLibrary && existsInLibrary !== configuredAsp) {
+          throw new Error(`Library ${localLibrary} is in IASP ${existsInLibrary}, but the current connection is not configured to use that IASP.`);
+
+        } else {
+          throw new Error(`Library ${localLibrary} does not exist.`);
+        }
       }
     }
 
@@ -877,7 +917,7 @@ export default class IBMiContent {
     // Escape names for shell
     const pathList = files
       .map(file => {
-        const asp = file.asp || this.ibmi.getCurrentIAspName();
+        const asp = file.asp || this.ibmi.getConfiguredIAsp()?.name;
         if (asp && asp.length > 0) {
           return [
             Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),

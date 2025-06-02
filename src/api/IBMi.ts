@@ -105,8 +105,8 @@ export default class IBMi {
    * the root of the IFS, thus why we store it.
    */
   private iAspInfo: AspInfo[] = [];
-  private currentAsp: string|undefined;
-  private libraryAsps = new Map<string, number>();
+  private userProfileIAsp: string|undefined;
+  private libraryAsps = new Map<string, number[]>();
 
   /**
    * @deprecated Will be replaced with {@link IBMi.getAllIAsps} in v3.0.0
@@ -477,6 +477,14 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
+      const commandShellResult = await this.sendCommand({
+        command: `echo $SHELL`
+      });
+
+      if (commandShellResult.code === 0) {
+        this.shell = commandShellResult.stdout.trim();
+      }
+
       callbacks.progress({ message: `Checking Code for IBM i components.` });
 
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
@@ -578,14 +586,6 @@ export default class IBMi {
           });
       }
 
-      const commandShellResult = await this.sendCommand({
-        command: `echo $SHELL`
-      });
-
-      if (commandShellResult.code === 0) {
-        this.shell = commandShellResult.stdout.trim();
-      }
-
       // Check for bad data areas?
       if (quickConnect() && cachedServerSettings?.badDataAreasChecked === true) {
         // Do nothing, bad data areas are already checked.
@@ -620,7 +620,7 @@ export default class IBMi {
           //check users default shell
 
           if (!commandShellResult.stderr) {
-            let usesBash = this.shell === IBMi.bashShellPath;
+            const usesBash = this.usingBash();
             if (!usesBash) {
               // make sure chsh is installed
               if (this.remoteFeatures[`chsh`]) {
@@ -757,7 +757,7 @@ export default class IBMi {
           //This is mostly a nice to have. We grab the ASP info so user's do
           //not have to provide the ASP in the settings.
           try {
-            const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+            const resultSet = await this.runSQL(`select * from qsys2.asp_info where asp_state in ('ACTIVE', 'AVAILABLE', 'VARIED ON')`);
             resultSet.forEach(row => {
               // Does not ever include SYSBAS/SYSTEM, only iASPs
               if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
@@ -781,7 +781,27 @@ export default class IBMi {
           message: `Fetching current iASP information.`
         });
 
-        this.currentAsp = await this.getUserProfileAsp();
+        this.userProfileIAsp = await this.getUserProfileAsp();
+
+        if (this.usingBash()) {
+          // Set the default ASP to the current ASP if it is not set.
+          const chosenAspIsConfigured = this.getConfiguredIAsp();
+          if (chosenAspIsConfigured) {
+            // Double check that the configured ASP is usable.
+            const configuredIsUsable = await this.canUseConfiguredAsp();
+
+            if (!configuredIsUsable) {
+              this.config.chosenAsp = `*SYSBAS`;
+            }
+            
+          } else {
+            this.config.chosenAsp = this.userProfileIAsp || `*SYSBAS`;
+          }
+        } else {
+          // If the user is not using bash, then we set the chosen ASP to the user profile iASP.
+          // since we can't change the ASP without using bash (since we use 'cl')
+          this.config.chosenAsp = this.userProfileIAsp || `*SYSBAS`;
+        }
 
         // Fetch conversion values?
         if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
@@ -1329,7 +1349,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, options: { fakeBindings?: (string | number)[], forceSafe?: boolean, ignoreDatabase?: boolean } = {}): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
     const possibleChangeCommand = (this.userCcsidInvalid ? `@CHGJOB CCSID(${this.getCcsid()});\n` : '');
 
@@ -1337,13 +1357,19 @@ export default class IBMi {
       // CHGJOB not required here. It will use the job CCSID, or the runtime CCSID.
       let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
       let returningAsCsv: WrapResult | undefined;
-      let command = `${IBMi.locale} system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
+
+      const chosenAsp = this.getConfiguredIAsp();
+      const rdbParameter = chosenAsp && options.ignoreDatabase !== true ? `'-r' '${chosenAsp.rdbName}'` : ``;
+
+      let command = `${IBMi.locale} system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t' ${rdbParameter})"`
       let useCsv = options.forceSafe;
 
-      // Use custom QSH if available
-      if (this.canUseCqsh) {
+      if (this.usingBash()) {
+        command = `${IBMi.locale} cl "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t' ${rdbParameter})"`;
+      } else if (this.canUseCqsh) {
+        // Use custom QSH if available
         const customQsh = this.getComponent<CustomQSh>(CustomQSh.ID)!;
-        command = `${IBMi.locale} ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
+        command = `${IBMi.locale} ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t' ${rdbParameter})\\""`;
       }
 
       if (this.requiresTranslation) {
@@ -1466,7 +1492,7 @@ export default class IBMi {
   }
 
   private async getUserProfileAsp(): Promise<string|undefined> {
-    const [currentRdb] = await this.runSQL(`values current_server`);
+    const [currentRdb] = await this.runSQL(`values current_server`, {ignoreDatabase: true});
 
     if (currentRdb) {
       const key = Object.keys(currentRdb)[0];
@@ -1476,6 +1502,17 @@ export default class IBMi {
       if (currentAsp) {
         return currentAsp.name;
       }
+    }
+  }
+
+  private async canUseConfiguredAsp(): Promise<boolean> {
+    try {
+      const [row] = await this.runSQL(`values current_server`);
+      return true;
+    } catch (e) {
+      // If we can't run the SQL, then we can't use the configured ASP.
+      console.log(e);
+      return false;
     }
   }
 
@@ -1491,40 +1528,81 @@ export default class IBMi {
       asp = this.iAspInfo.find(asp => asp.id === by);
     }
 
-    if (asp) {
-      return asp;
-    }
+    return asp;
   }
 
   getIAspName(by: string|number): string|undefined {
     return this.getIAspDetail(by)?.name;
   }
 
-  getCurrentIAspName() {
-    return this.currentAsp;
+  getCurrentUserIAspName() {
+    return this.userProfileIAsp;
   }
-  async lookupLibraryIAsp(library: string): Promise<string|undefined> {
-    let foundNumber = this.libraryAsps.get(library);
 
-    if (!foundNumber) {
-      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}'))`);
-      const iaspNumber = Number(row?.IASP_NUMBER);
-      if (iaspNumber >= 0) {
-        this.libraryAsps.set(library, iaspNumber);
-        foundNumber = iaspNumber;
+  getConfiguredIAsp(): AspInfo|undefined {
+    const selected = this.config?.chosenAsp;
+
+    return selected ? this.getIAspDetail(selected) : undefined;
+  }
+
+  /**
+   * Will return the name of the iASP in which the given library resides.
+   * If the library is not in an iASP, it will return undefined.
+   * If multiple iASPS contain a library with this name, then either:
+   *    - If the user has configured an iASP for this library, it will return that iASP name.
+   *   - If the user has not configured an iASP for this library, it will return undefined.
+   */
+  async lookupLibraryIAsp(library: string): Promise<string|undefined> {
+    let foundAsps = this.libraryAsps.get(library) || [];
+
+    if (foundAsps.length === 0) {
+      // We're using *ALLSIMPLE here because it's faster than *ALLAVL.
+      // The downside to this is that we can't tell if the user is request a library
+      // that is in a different ASP. We're trading off a bit of accuracy for speed.
+      const rows = await this.runSQL(`SELECT IASP_NUMBER from table(qsys2.object_statistics('*ALLSIMPLE', '*LIB')) where objname = '${this.sysNameInAmerican(library)}'`);
+
+      for (const row of rows) {
+        if (row?.IASP_NUMBER !== undefined && row?.IASP_NUMBER !== null) {
+          const aspNumber = Number(row.IASP_NUMBER);
+
+          if (aspNumber > 0) {
+            foundAsps.push(aspNumber);
+          }
+          break;
+        }
+      }
+
+      if (foundAsps.length > 0) {
+        // Cache the found ASPs for this library
+        this.libraryAsps.set(library, foundAsps);
       }
     }
 
-    if (foundNumber) {
-      return this.getIAspName(foundNumber);
+    return this.getLibraryIAsp(library);
+  }
+
+  getLibraryIAsp(library: string): string|undefined {
+    const foundAsps = this.libraryAsps.get(library) || [];
+
+    if (foundAsps.length === 1) {
+      // If there is only one ASP, return it
+      return this.getIAspName(foundAsps[0]);
+    }
+    else if (foundAsps.length > 1) {
+      const userConfigured = this.getConfiguredIAsp();
+      if (userConfigured && foundAsps.includes(userConfigured.id)) {
+        // If the user has configured an iASP for this library, return it
+        return userConfigured.name;
+      } else {
+        return undefined; // Multiple ASPs found, but no user configured iASP
+      }
     }
   }
 
-  getLibraryIAsp(library: string) {
-    const found = this.libraryAsps.get(library);
-    if (found && found >= 0) {
-      return this.getIAspName(found);
-    }
+  getLibraryIAsps(library: string): string[] {
+    const foundAsps = this.libraryAsps.get(library) || [];
+
+    return foundAsps.map(asp => this.getIAspName(asp)).filter(name => name !== undefined);
   }
 
   /**

@@ -96,9 +96,6 @@ describe('Encoding tests', { concurrent: true }, () => {
     const qshEscapeResult = await connection?.sendQsh({ command: printEscapeChar });
     const paseEscapeResult = await connection?.sendCommand({ command: printEscapeChar });
 
-    console.log(qshEscapeResult?.stdout);
-    console.log(paseEscapeResult?.stdout);
-
     const qshTextResultA = await connection?.sendQsh({ command: basicCommandA });
     const paseTextResultA = await connection?.sendCommand({ command: basicCommandA });
 
@@ -340,7 +337,6 @@ describe('Encoding tests', { concurrent: true }, () => {
       await connection.getContent().uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
       const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
-      console.log(compileResult);
       expect(compileResult.code).toBe(0);
 
       if (compileResult.code === 0) {

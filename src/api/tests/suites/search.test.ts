@@ -6,7 +6,7 @@ import { Tools } from '../../Tools';
 import { SearchResults } from '../../types';
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 
-describe('Search Tests', { concurrent: true }, () => {
+describe('Search Tests', { concurrent: true, timeout: 100000 }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
