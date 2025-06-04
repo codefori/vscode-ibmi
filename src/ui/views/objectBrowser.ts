@@ -9,7 +9,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_DRAG_MIMETYPE, ObjectBrowserDrag, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
+import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
@@ -178,6 +178,13 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
     this.contextValue = `filter${this.library ? "_library" : ''}${this.isProtected() ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
     this.tooltip = ``;
+
+    if (this.library) {
+      this.resourceUri = vscode.Uri.from({
+        scheme: `object`,
+        path: `/QSYS/${this.library}.LIB`,
+      });
+    }
   }
 
   isProtected(): boolean {
@@ -419,27 +426,12 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 }
 
 class ObjectBrowserMemberItemDragAndDrop implements vscode.TreeDragAndDropController<ObjectBrowserMemberItem> {
-  readonly dragMimeTypes = [OBJECT_BROWSER_DRAG_MIMETYPE];
+  readonly dragMimeTypes = [];
   readonly dropMimeTypes = [];
 
   handleDrag(source: readonly ObjectBrowserItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     //A URI list is automatically produced
-    const items = source.map(this.toObjectBrowserDrag).filter(Boolean);
-    if (items.length) {
-      dataTransfer.set(OBJECT_BROWSER_DRAG_MIMETYPE, new DataTransferItem(JSON.stringify(items)));
-    }
-  }
-
-  toObjectBrowserDrag(node: ObjectBrowserItem): ObjectBrowserDrag | undefined {
-    if (node instanceof ObjectBrowserFilterItem && parseFilter(node.filter.library).noFilter) {
-      return { library: "QSYS", object: node.filter.library, type: "*LIB" };
-    }
-    else if (node instanceof ObjectBrowserObjectItem || node instanceof ObjectBrowserSourcePhysicalFileItem) {
-      return { library: node.object.library, object: node.object.name, type: node.object.type };
-    }
-    else if (node instanceof ObjectBrowserMemberItem) {
-      return { library: node.member.library, object: node.member.file, member: node.member.name, type: "*MBR" };
-    }
+    dataTransfer.set(OBJECT_BROWSER_MIMETYPE, new DataTransferItem(source));
   }
 }
 
