@@ -1,7 +1,8 @@
+import path from "path";
 import vscode, { commands, l10n } from "vscode";
 import IBMi from "../../api/IBMi";
 import { instance } from "../../instantiate";
-import { ConnectionConfig, IBMiObject, LIBRARY_LIST_MIMETYPE, OBJECT_BROWSER_DRAG_MIMETYPE, WithLibrary } from "../../typings";
+import { ConnectionConfig, IBMiObject, LIBRARY_LIST_MIMETYPE, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithLibrary } from "../../typings";
 import { VscodeTools } from "../Tools";
 
 export function initializeLibraryListView(context: vscode.ExtensionContext) {
@@ -86,14 +87,14 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async () => {
+    vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async (libraries?: string[]) => {
       const connection = instance.getConnection();
       if (connection) {
         const content = connection.getContent();
         const config = connection.getConfig();
         const libraryList = config.libraryList;
 
-        const newLibraryListStr = await vscode.window.showInputBox({
+        const newLibraryListStr = libraries?.join(",") || await vscode.window.showInputBox({
           prompt: l10n.t(`Changing library list (can use "*reset")`),
           value: libraryList.map(lib => connection.upperCaseName(lib)).join(`, `)
         });
@@ -270,29 +271,58 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
 
 class LibraryListDragAndDrop implements vscode.TreeDragAndDropController<LibraryListNode> {
   readonly dragMimeTypes = [];
-  readonly dropMimeTypes = [OBJECT_BROWSER_DRAG_MIMETYPE];
+  readonly dropMimeTypes = [URI_LIST_MIMETYPE];
 
-  handleDrag(source: readonly LibraryListNode[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Thenable<void> | void {
+  handleDrag(source: readonly LibraryListNode[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     dataTransfer.set(LIBRARY_LIST_MIMETYPE, new vscode.DataTransferItem(source));
   }
 
-  handleDrop(target: LibraryListNode | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Thenable<void> | void {
-    const libraryItem = dataTransfer.get(LIBRARY_LIST_MIMETYPE)?.value[0] as LibraryListNode;
-    if (libraryItem && libraryItem !== target) {
-      const currentLibrary = libraryItem.contextValue === 'currentLibrary';
-
-      if (target) {
-        if (target?.contextValue === 'currentLibrary') {
-          //Dropped on current library: become current library
-          vscode.commands.executeCommand(`code-for-ibmi.setCurrentLibrary`, libraryItem);
-        }
-        else {
-          //Dropped on a library: push it down and move to its position
-        }
+  handleDrop(target: LibraryListNode | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+    const libraries = this.getLibraries(dataTransfer)?.map(library => library.toUpperCase());
+    const config = instance.getConnection()?.getConfig();
+    if (config && libraries?.length) {
+      if (target?.contextValue === 'currentLibrary') {
+        //Dropped on current library: change current library
+        vscode.commands.executeCommand(`code-for-ibmi.setCurrentLibrary`, { library: libraries[0] } as WithLibrary);
       }
       else {
-        //Dropped at the bottom after the last item: move to the last position
+        const libraryList = config.libraryList;
+
+        libraries.forEach(library => {
+          const index = libraryList.findIndex(lib => lib === library);
+          if (index > -1) {
+            libraryList.splice(index, 1);
+          }
+        });
+
+        if (target) {
+          //Dropped on a library: push it down and move to its position
+          const index = libraryList.findIndex(lib => lib === target.library);
+          const moved = libraryList.splice(index, libraryList.length - index, ...libraries);
+          libraryList.push(...moved);
+        }
+        else {
+          //Dropped at the bottom of the list, after the last item: move to the last position
+          libraryList.push(...libraries);
+        }
+        vscode.commands.executeCommand(`code-for-ibmi.changeUserLibraryList`, libraryList);
       }
+    }
+  }
+
+  getLibraries(dataTransfer: vscode.DataTransfer) {
+    const libraryListData = dataTransfer.get(LIBRARY_LIST_MIMETYPE);
+    const urisData = dataTransfer.get(URI_LIST_MIMETYPE);
+    if (libraryListData) {
+      return (libraryListData.value as LibraryListNode[]).map(node => node.library);
+    }
+    else if (urisData && urisData.value) {
+      return String(urisData.value).split(URI_LIST_SEPARATOR)
+        .map(uri => vscode.Uri.parse(uri))
+        .filter(uri => uri.scheme === "object")
+        .map(uri => path.parse(uri.path))
+        .filter(path => path.ext?.toUpperCase() === ".LIB")
+        .map(path => path.name);
     }
   }
 }

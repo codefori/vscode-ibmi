@@ -8,11 +8,10 @@ import { SortOptions } from "../../api/IBMiContent";
 import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
-import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, URI_LIST_MIMETYPE, WithPath } from "../../typings";
+import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithPath } from "../../typings";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
-const URI_LIST_SEPARATOR = "\r\n";
 const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/QIBM|\/QSR|\/QTCPTMM|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
 const ALWAYS_SHOW_FILES = /^(\.gitignore|\.vscode|\.deployignore)$/i;
 type DragNDropAction = "move" | "copy";
@@ -209,7 +208,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
       .join(URI_LIST_SEPARATOR)));
   }
 
-  async handleDrop(target: IFSItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+  handleDrop(target: IFSItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     if (target) {
       const toDirectory = (target.file.type === "streamfile" ? target.parent : target) as IFSDirectoryItem;
       const ifsBrowserItems = dataTransfer.get(IFS_BROWSER_MIMETYPE);
@@ -220,7 +219,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         const explorerItems = dataTransfer.get(URI_LIST_MIMETYPE);
         if (explorerItems?.value) {
           //URI_LIST_MIMETYPE Mime type is a string with `toString()`ed Uris separated by `\r\n`.
-          const uris = (await explorerItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
+          const uris = String(explorerItems.value).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
           if (uris.at(0)?.scheme === "member") {
             this.copyMembers(uris, toDirectory)
           }
