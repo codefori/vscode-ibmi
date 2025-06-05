@@ -437,6 +437,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     dragAndDropController: new ObjectBrowserMemberItemDragAndDrop()
   });
 
+  const getSelectedItems = <T>(node?: T | T[]) => node ? Array.isArray(node) ? node : [node] : objectTreeViewer.selection as T[];
+
   context.subscriptions.push(
     objectTreeViewer,
 
@@ -735,96 +737,99 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       }
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: ObjectBrowserMemberItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node?: ObjectBrowserMemberItem) => {
       const connection = getConnection();
-      const oldMember = connection.parserMemberPath(node.path);
-      const oldUri = node.resourceUri as vscode.Uri;
-      const library = oldMember.library;
-      const sourceFile = oldMember.file;
-      let newBasename: string | undefined = oldMember.basename;
-      let newMember: MemberParts | undefined;
-      let newMemberPath: string | undefined;
-      let newNameOK;
+      node = getSelectedItems(node).at(0);
+      if (node) {
+        const oldMember = connection.parserMemberPath(node.path);
+        const oldUri = node.resourceUri as vscode.Uri;
+        const library = oldMember.library;
+        const sourceFile = oldMember.file;
+        let newBasename: string | undefined = oldMember.basename;
+        let newMember: MemberParts | undefined;
+        let newMemberPath: string | undefined;
+        let newNameOK;
 
-      // Check if the member is currently open in an editor tab.
-      const oldMemberTabs = VscodeTools.findUriTabs(oldUri);
+        // Check if the member is currently open in an editor tab.
+        const oldMemberTabs = VscodeTools.findUriTabs(oldUri);
 
-      // If the member is currently open in an editor tab, and 
-      // the member has unsaved changes, then prevent the renaming operation.
-      if (oldMemberTabs.find(tab => tab.isDirty)) {
-        vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, vscode.l10n.t("The member has unsaved changes.")));
-        return;
-      }
-
-      do {
-        newBasename = await vscode.window.showInputBox({
-          value: newBasename,
-          prompt: vscode.l10n.t(`Rename {0}`, oldMember.basename),
-          validateInput: value => {
-            if (connection.upperCaseName(value) === oldMember.basename) {
-              return vscode.l10n.t(`New member name must be different from it's current name`)
-            }
-
-            const parsedNewName = path.parse(value);
-            if (!connection.validQsysName(parsedNewName.name)) {
-              return vscode.l10n.t(`Not a valid member name!`);
-            }
-            return undefined;
-          }
-        });
-
-        if (newBasename) {
-          newNameOK = true;
-          newMemberPath = library + `/` + sourceFile + `/` + newBasename;
-          try {
-            newMember = connection.parserMemberPath(newMemberPath);
-          } catch (e: any) {
-            newNameOK = false;
-            vscode.window.showErrorMessage(e);
-          }
-
-          if (newMember) {
-            let commandResult: CommandResult;
-
-            if (oldMember.name !== newMember.name) {
-              commandResult = await connection.runCommand({
-                command: `RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
-                noLibList: true
-              });
-
-              if (commandResult.code !== 0) {
-                newNameOK = false;
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.stderr));
-              }
-            }
-            if (oldMember.extension !== newMember.extension) {
-              commandResult = await connection.runCommand({
-                command: `CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
-                noLibList: true
-              });
-
-              if (commandResult.code !== 0) {
-                newNameOK = false;
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.stderr));
-              }
-            }
-
-            objectBrowser.refresh(node.parent);
-          }
+        // If the member is currently open in an editor tab, and 
+        // the member has unsaved changes, then prevent the renaming operation.
+        if (oldMemberTabs.find(tab => tab.isDirty)) {
+          vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, vscode.l10n.t("The member has unsaved changes.")));
+          return;
         }
-      } while (newBasename && !newNameOK)
 
-      // If the member was open in an editor tab prior to the renaming,
-      // refresh those tabs to reflect the new member path/name.
-      // (Directly modifying the label or uri of an open tab is apparently not
-      // possible with the current VS Code API, so refresh the tab by closing
-      // it and then opening a new one at the new uri.)
-      if (newNameOK && newMemberPath) {
-        oldMemberTabs.forEach((tab) => {
-          vscode.window.tabGroups.close(tab).then(() => {
-            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+        do {
+          newBasename = await vscode.window.showInputBox({
+            value: newBasename,
+            prompt: vscode.l10n.t(`Rename {0}`, oldMember.basename),
+            validateInput: value => {
+              if (connection.upperCaseName(value) === oldMember.basename) {
+                return vscode.l10n.t(`New member name must be different from it's current name`)
+              }
+
+              const parsedNewName = path.parse(value);
+              if (!connection.validQsysName(parsedNewName.name)) {
+                return vscode.l10n.t(`Not a valid member name!`);
+              }
+              return undefined;
+            }
           });
-        })
+
+          if (newBasename) {
+            newNameOK = true;
+            newMemberPath = library + `/` + sourceFile + `/` + newBasename;
+            try {
+              newMember = connection.parserMemberPath(newMemberPath);
+            } catch (e: any) {
+              newNameOK = false;
+              vscode.window.showErrorMessage(e);
+            }
+
+            if (newMember) {
+              let commandResult: CommandResult;
+
+              if (oldMember.name !== newMember.name) {
+                commandResult = await connection.runCommand({
+                  command: `RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
+                  noLibList: true
+                });
+
+                if (commandResult.code !== 0) {
+                  newNameOK = false;
+                  vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.stderr));
+                }
+              }
+              if (oldMember.extension !== newMember.extension) {
+                commandResult = await connection.runCommand({
+                  command: `CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
+                  noLibList: true
+                });
+
+                if (commandResult.code !== 0) {
+                  newNameOK = false;
+                  vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.stderr));
+                }
+              }
+
+              objectBrowser.refresh(node.parent);
+            }
+          }
+        } while (newBasename && !newNameOK)
+
+        // If the member was open in an editor tab prior to the renaming,
+        // refresh those tabs to reflect the new member path/name.
+        // (Directly modifying the label or uri of an open tab is apparently not
+        // possible with the current VS Code API, so refresh the tab by closing
+        // it and then opening a new one at the new uri.)
+        if (newNameOK && newMemberPath) {
+          oldMemberTabs.forEach((tab) => {
+            vscode.window.tabGroups.close(tab).then(() => {
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+            });
+          })
+        }
       }
     }),
 
@@ -1208,40 +1213,43 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       } while (newPath && !newPathOK)
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node: ObjectBrowserObjectItem) => {
-      let [, newObject] = node.path.split(`/`);
-      let newObjectOK;
-      do {
-        newObject = await vscode.window.showInputBox({
-          prompt: vscode.l10n.t(`Rename object`),
-          value: newObject,
-          validateInput: newObject => {
-            return newObject.length <= 10 ? null : vscode.l10n.t(`Object name must be 10 chars or less.`);
-          }
-        }) || "";
-
-        if (newObject) {
-          const escapedObject = newObject.replace(/'/g, `''`).replace(/`/g, `\\\``).split(`/`);
-          const connection = getConnection();
-          newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Renaming object {0} {1} to {2}...`, node.path, node.object.type.toUpperCase(), escapedObject.join('/')) }
-            , async (progress) => {
-              const renameResult = await connection.runCommand({
-                command: `RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`,
-                noLibList: true
-              });
-
-              if (renameResult.code !== 0) {
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming object {0}! {1}`, node.path, renameResult.stderr));
-                return false;
-              }
-
-              vscode.window.showInformationMessage(vscode.l10n.t(`Renamed object {0} {1} to {2}.`, node.path, node.object.type.toUpperCase(), escapedObject.join('/')));
-              objectBrowser.refresh(node.parent);
-              return true;
+    vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node?: ObjectBrowserObjectItem) => {
+      node = getSelectedItems(node).at(0);
+      if (node) {
+        let [, newObject] = node.path.split(`/`);
+        let newObjectOK;
+        do {
+          newObject = await vscode.window.showInputBox({
+            prompt: vscode.l10n.t(`Rename object`),
+            value: newObject,
+            validateInput: newObject => {
+              return newObject.length <= 10 ? null : vscode.l10n.t(`Object name must be 10 chars or less.`);
             }
-          );
-        }
-      } while (newObject && !newObjectOK)
+          }) || "";
+
+          if (newObject) {
+            const escapedObject = newObject.replace(/'/g, `''`).replace(/`/g, `\\\``).split(`/`);
+            const connection = getConnection();
+            newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Renaming object {0} {1} to {2}...`, node.path, node.object.type.toUpperCase(), escapedObject.join('/')) }
+              , async (progress) => {
+                const renameResult = await connection.runCommand({
+                  command: `RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`,
+                  noLibList: true
+                });
+
+                if (renameResult.code !== 0) {
+                  vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming object {0}! {1}`, node.path, renameResult.stderr));
+                  return false;
+                }
+
+                vscode.window.showInformationMessage(vscode.l10n.t(`Renamed object {0} {1} to {2}.`, node.path, node.object.type.toUpperCase(), escapedObject.join('/')));
+                objectBrowser.refresh(node.parent);
+                return true;
+              }
+            );
+          }
+        } while (newObject && !newObjectOK)
+      }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.moveObject`, async (node: ObjectBrowserObjectItem) => {

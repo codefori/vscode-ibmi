@@ -1770,6 +1770,21 @@
 				"command": "code-for-ibmi.objectBrowser.delete",
 				"key": "delete",
 				"when": "focusedView === objectBrowser && listHasSelectionOrFocus"
+			},
+			{
+				"command": "code-for-ibmi.moveIFS",
+				"key": "f2",
+				"when": "focusedView === ifsBrowser && listHasSelectionOrFocus && !listMultiSelection && !(viewItem =~ /^.*_protected$/)"
+			},
+			{
+				"command": "code-for-ibmi.renameMember",
+				"key": "f2",
+				"when": "focusedView === objectBrowser && listHasSelectionOrFocus && !listMultiSelection && !(viewItem =~ /^.*_protected$/)"
+			},
+			{
+				"command": "code-for-ibmi.renameObject",
+				"key": "f2",
+				"when": "focusedView === objectBrowser && listHasSelectionOrFocus && !listMultiSelection && !(viewItem =~ /^.*_protected$/)"
 			}
 		],
 		"viewsContainers": {

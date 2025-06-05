@@ -313,6 +313,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     dragAndDropController: new IFSBrowserDragAndDrop()
   });
 
+  const getSelectedItems = <T>(node?: T | T[]) => node ? Array.isArray(node) ? node : [node] : ifsTreeViewer.selection as T[];
+
   context.subscriptions.push(
     ifsTreeViewer,
     vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, () => ifsBrowser.refresh()),
@@ -553,7 +555,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           items = (items || [singleItem]).filter(reduceIFSPath);
         }
         else {
-          items = (ifsTreeViewer.selection.filter(selected => selected instanceof IFSItem) as IFSItem[]).filter(reduceIFSPath);
+          items = getSelectedItems(singleItem).filter(reduceIFSPath);
         }
 
         if (items && items.length) {
@@ -618,73 +620,76 @@ Please type "{0}" to confirm deletion.`, dirName);
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node: IFSItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node?: IFSItem) => {
       const oldFileTabs: vscode.Tab[] = [];
-      const typeLabel = node.file.type === "streamfile" ? l10n.t("streamfile") : l10n.t("directory");
-      if (node.file.type === "streamfile") {
-        // Ensure that the file has a defined uri
-        if (!node.resourceUri) {
-          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file path could not be parsed.")));
-          return;
+      node = getSelectedItems(node).at(0);
+      if (node) {
+        const typeLabel = node.file.type === "streamfile" ? l10n.t("streamfile") : l10n.t("directory");
+        if (node.file.type === "streamfile") {
+          // Ensure that the file has a defined uri
+          if (!node.resourceUri) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file path could not be parsed.")));
+            return;
+          }
+          // Check if the streamfile is currently open in an editor tab
+          oldFileTabs.push(...VscodeTools.findUriTabs(node.resourceUri));
+          if (oldFileTabs.find(tab => tab.isDirty)) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file has unsaved changes.")));
+            return;
+          }
+        } else {
+          // Check if there are streamfiles in the directory which are currently open in an editor tab
+          oldFileTabs.push(...VscodeTools.findUriTabs(node.file.path));
+          if (oldFileTabs.find(tab => tab.isDirty)) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The directory has file(s) with unsaved changes.")));
+            return;
+          }
         }
-        // Check if the streamfile is currently open in an editor tab
-        oldFileTabs.push(...VscodeTools.findUriTabs(node.resourceUri));
-        if (oldFileTabs.find(tab => tab.isDirty)) {
-          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file has unsaved changes.")));
-          return;
-        }
-      } else {
-        // Check if there are streamfiles in the directory which are currently open in an editor tab
-        oldFileTabs.push(...VscodeTools.findUriTabs(node.file.path));
-        if (oldFileTabs.find(tab => tab.isDirty)) {
-          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The directory has file(s) with unsaved changes.")));
-          return;
-        }
-      }
-      const connection = instance.getConnection();
-      if (connection) {
-        const config = connection.getConfig();
-        const homeDirectory = config.homeDirectory;
-        const target = await vscode.window.showInputBox({
-          prompt: l10n.t(`Name of new path`),
-          value: node.path,
-          valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
-        });
+        const connection = instance.getConnection();
+        if (connection) {
+          const config = connection.getConfig();
+          const homeDirectory = config.homeDirectory;
+          const target = await vscode.window.showInputBox({
+            prompt: l10n.t(`Name of new path`),
+            value: node.path,
+            valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
+          });
 
-        if (target) {
-          const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
-          try {
-            const moveResult = await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
-            if (moveResult.code !== 0) {
-              throw moveResult.stderr;
-            }
+          if (target) {
+            const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
+            try {
+              const moveResult = await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+              if (moveResult.code !== 0) {
+                throw moveResult.stderr;
+              }
 
-            if (IBMi.connectionManager.get(`autoRefresh`)) {
-              ifsBrowser.refresh();
-            }
-            let label;
-            if (path.posix.dirname(node.path) === path.posix.dirname(targetPath)) {
-              label = l10n.t("{0} was renamed to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
-            }
-            else {
-              label = l10n.t("{0} was moved to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
-            }
+              if (IBMi.connectionManager.get(`autoRefresh`)) {
+                ifsBrowser.refresh();
+              }
+              let label;
+              if (path.posix.dirname(node.path) === path.posix.dirname(targetPath)) {
+                label = l10n.t("{0} was renamed to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
+              }
+              else {
+                label = l10n.t("{0} was moved to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
+              }
 
-            vscode.window.showInformationMessage(label);
-            // If the file was open in any editor tabs prior to the renaming/movement,
-            // refresh those tabs to reflect the new file path/name.
-            // (Directly modifying the label or uri of an open tab is apparently not
-            // possible with the current VS Code API, so refresh the tab by closing
-            // it and then opening a new one at the new uri.)
-            oldFileTabs.forEach((tab) => {
-              vscode.window.tabGroups.close(tab).then(() => {
-                const newTargetPath = (tab.input as vscode.TabInputText).uri.path.replace(node.file.path, targetPath);
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newTargetPath);
+              vscode.window.showInformationMessage(label);
+              // If the file was open in any editor tabs prior to the renaming/movement,
+              // refresh those tabs to reflect the new file path/name.
+              // (Directly modifying the label or uri of an open tab is apparently not
+              // possible with the current VS Code API, so refresh the tab by closing
+              // it and then opening a new one at the new uri.)
+              oldFileTabs.forEach((tab) => {
+                vscode.window.tabGroups.close(tab).then(() => {
+                  const newTargetPath = (tab.input as vscode.TabInputText).uri.path.replace(node.file.path, targetPath);
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newTargetPath);
+                })
               })
-            })
 
-          } catch (e: any) {
-            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, e));
+            } catch (e: any) {
+              vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, e));
+            }
           }
         }
       }
