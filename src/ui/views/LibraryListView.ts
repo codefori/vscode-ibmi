@@ -11,7 +11,7 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
     `libraryListView`, {
     treeDataProvider: libraryListView,
     showCollapseAll: false,
-    canSelectMany: false,
+    canSelectMany: true,
     dragAndDropController: new LibraryListDragAndDrop()
   });
 
@@ -170,22 +170,31 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.removeFromLibraryList`, async (node: LibraryListNode) => {
+    vscode.commands.registerCommand(`code-for-ibmi.removeFromLibraryList`, async (node: LibraryListNode, nodes?: LibraryListNode[]) => {
       if (node) {
         //Running from right click
+        nodes = nodes ? nodes : [node];
         const connection = instance.getConnection();
         if (connection) {
           const config = connection.getConfig();
-          let libraryList = config.libraryList;
+          const libraryList = config.libraryList;
 
-          let index = libraryList.findIndex(library => connection.upperCaseName(library) === node.library)
-          if (index >= 0) {
-            const removedLib = libraryList[index];
-            libraryList.splice(index, 1);
+          const removedLibs: string[] = [];
+          nodes.map(n => n.library).forEach(lib => {
+            const index = libraryList.findIndex(library => connection.upperCaseName(library) === lib)
+            if (index >= 0) {
+              removedLibs.push(libraryList[index]);
+              libraryList.splice(index, 1);
+            }
+          });
 
-            config.libraryList = libraryList;
-            await updateConfig(config);
-            vscode.window.showInformationMessage(l10n.t(`Library {0} was removed from the library list.`, removedLib));
+          config.libraryList = libraryList;
+          await updateConfig(config);
+          if (removedLibs.length === 1) {
+            vscode.window.showInformationMessage(l10n.t(`Library {0} was removed from the library list.`, removedLibs.join("")));
+          }
+          else {
+            vscode.window.showInformationMessage(l10n.t(`Libraries {0} were removed from the library list.`, removedLibs.join(", ")));
           }
         }
       }
