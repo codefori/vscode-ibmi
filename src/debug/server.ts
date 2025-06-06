@@ -2,18 +2,9 @@ import path from "path";
 import { commands, l10n, window } from "vscode";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
-import { DebugConfiguration, getDebugServiceDetails, getJavaHome, ORIGINAL_DEBUG_CONFIG_FILE } from "../api/configuration/DebugConfiguration";
+import { DebugConfiguration, getDebugServiceDetails, getJavaHome } from "../api/configuration/DebugConfiguration";
 import { instance } from "../instantiate";
 import { CustomUI } from "../webviews/CustomUI";
-
-const NAV_LOG_DIR = `/QIBM/UserData/IBMiDebugService/startDebugService_workspace`;
-const NAV_LOG_FILE = path.posix.join(NAV_LOG_DIR, `startDebugServiceNavigator.log`);
-const START_SERVICE_FILE = `/QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh`;
-
-/*
-QSYS/SBMJOB USER(QDBGSRV) JOB(QDBGSRV) JOBQ(QSYS/QUSRNOMAX) JOBD(*USRPRF) CMD(QSH CMD('export JAVA_HOME=/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit;${a} > ${b} 2>&1'))
-*/
-
 export type DebugJob = {
   name: string
   ports: number[]
@@ -57,18 +48,20 @@ export async function startService(connection: IBMi) {
         await checkAuthority();
       }
 
+      const debugConfig = await new DebugConfiguration(connection).load();
+
       // Attempt to make log directory
-      await connection.sendCommand({command: `mkdir -p ${NAV_LOG_DIR}`});
-      
+      await connection.sendCommand({ command: `mkdir -p ${debugConfig.getRemoteServiceWorkspace()}` });
+
       // Change owner to QDBGSRV
       if (submitUser && submitUser !== "QDBGSRV") {
-        await connection.sendCommand({ command: `chown ${submitUser} ${NAV_LOG_DIR}` });
+        await connection.sendCommand({ command: `chown ${submitUser} ${debugConfig.getRemoteServiceWorkspace()}` });
       }
 
       // Change the permissions to 777
-      await connection.sendCommand({ command: `chmod 777 ${NAV_LOG_DIR}` });
+      await connection.sendCommand({ command: `chmod 777 ${debugConfig.getRemoteServiceWorkspace()}` });
 
-      const command = `QSYS/SBMJOB JOB(QDBGSRV) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${START_SERVICE_FILE} > ${NAV_LOG_FILE} 2>&1'))`
+      const command = `QSYS/SBMJOB JOB(QDBGSRV) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${debugConfig.getRemoteServiceBin()}/startDebugService.sh > ${debugConfig.getNavigatorLogFile()} 2>&1'))`
       const submitResult = await connection.runCommand({ command, noLibList: true });
       if (submitResult.code === 0) {
         const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
