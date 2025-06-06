@@ -159,7 +159,19 @@ async function downloadLogs() {
         }
       } catch (err) { }
 
-      // TODO: add NAV_LOG from debug host here
+      try {
+        const debugNavigatorLogPath = `${debugConfig.getNavigatorLogFile()}`;
+        const debugNavigatorLog = (await content.downloadStreamfileRaw(debugNavigatorLogPath));
+        if (debugNavigatorLog) {
+          logs.push({
+            label: vscode.l10n.t(`Debug Service Navigator Log`),
+            detail: debugNavigatorLogPath,
+            picked: true,
+            fileName: 'startDebugServiceNavigator.log',
+            fileContent: debugNavigatorLog
+          });
+        }
+      } catch (err) { }
 
       try {
         const debugServiceEclipseInstancePath = `${debugConfig.getRemoteServiceWorkDir()}/startDebugService_workspace/.metadata/.log`;
