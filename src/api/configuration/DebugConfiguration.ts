@@ -3,20 +3,17 @@ import IBMi from "../IBMi";
 
 export const SERVICE_CERTIFICATE = `debug_service.pfx`;
 export const CLIENT_CERTIFICATE = `debug_service.crt`;
-export const LEGACY_CERT_DIRECTORY = `/QIBM/ProdData/IBMiDebugService/bin/certs`;
 
 type ConfigLine = {
   key: string
   value?: string
 }
 
-export const DEBUG_CONFIG_FILE = "/QIBM/UserData/IBMiDebugService/C4iDebugService.env";
 export const ORIGINAL_DEBUG_CONFIG_FILE = "/QIBM/ProdData/IBMiDebugService/bin/DebugService.env";
 
 export class DebugConfiguration {
   constructor(private connection: IBMi) { }
   readonly configLines: ConfigLine[] = [];
-  private readOnly = false;
 
   private getContent() {
     const content = this.connection.getContent();
@@ -35,33 +32,8 @@ export class DebugConfiguration {
     return this.configLines.find(line => line.key === key && line.value !== undefined)?.value;
   }
 
-  delete(key: string) {
-    const index = this.configLines.findIndex(line => line.key === key && line.value !== undefined);
-    if (index > -1) {
-      this.configLines.splice(index, 1);
-    }
-  }
-
-  set(key: string, value?: string) {
-    let config = this.configLines.find(line => line.key === key && line.value !== undefined);
-    if (config) {
-      config.value = value;
-    }
-    else {
-      this.configLines.push({ key, value });
-    }
-  }
-
   async load() {
-    //Since Debug Service 2.0.1: https://github.com/codefori/vscode-ibmi/issues/2416
-    if (!await this.getContent().testStreamFile(DEBUG_CONFIG_FILE, "r")) {
-      const copyResult = await this.connection.sendCommand({ command: `cp ${ORIGINAL_DEBUG_CONFIG_FILE} ${DEBUG_CONFIG_FILE} && chmod 755 ${DEBUG_CONFIG_FILE}` });
-      if (copyResult.code) {
-        this.readOnly = true;
-      }
-    }
-
-    const content = (await this.getContent().downloadStreamfileRaw(this.readOnly ? ORIGINAL_DEBUG_CONFIG_FILE : DEBUG_CONFIG_FILE)).toString("utf-8");
+    const content = (await this.getContent().downloadStreamfileRaw(ORIGINAL_DEBUG_CONFIG_FILE)).toString("utf-8");
     this.configLines.push(...content.split("\n")
       .map(line => line.trim())
       .map(line => {
@@ -78,12 +50,6 @@ export class DebugConfiguration {
       })
     );
     return this;
-  }
-
-  async save() {
-    if (!this.readOnly) {
-      await this.getContent().writeStreamfileRaw(DEBUG_CONFIG_FILE, Buffer.from(this.configLines.map(line => `${line.key}${line.value !== undefined ? `=${line.value}` : ''}`).join("\n"), `utf8`));
-    }
   }
 
   getRemoteServiceCertificatePath() {
@@ -107,12 +73,13 @@ export class DebugConfiguration {
     return this.getOrDefault("DBGSRV_WRK_DIR", "/QIBM/UserData/IBMiDebugService");
   }
 
-  getCode4iDebug() {
-    return this.get("CODE4IDEBUG");
+  getRemoteServiceWorkspace() {
+    return this.getOrDefault("STR_DBGSVR_WRK_ROOT_DIR", "$DBGSRV_WRK_DIR/startDebugService_workspace")
+      .replace("$DBGSRV_WRK_DIR", this.getRemoteServiceWorkDir());
   }
 
-  setCode4iDebug(value: string) {
-    return this.set("CODE4IDEBUG", value);
+  getNavigatorLogFile() {
+    return `${this.getRemoteServiceWorkspace()}/startDebugServiceNavigator.log`;
   }
 }
 
