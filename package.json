@@ -2594,7 +2594,7 @@
 				},
 				{
 					"command": "code-for-ibmi.setCurrentLibrary",
-					"when": "view == libraryListView && viewItem == library",
+					"when": "view == libraryListView && viewItem == library && !listMultiSelection",
 					"group": "01libraryActions@01"
 				},
 				{

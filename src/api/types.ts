@@ -155,8 +155,19 @@ export type IBMiMessages = {
   messages: IBMiMessage[]
   findId(id: string): IBMiMessage | undefined
 }
+
 export const OBJECT_BROWSER_MIMETYPE = "application/vnd.code.tree.objectbrowser";
 export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
+export const LIBRARY_LIST_MIMETYPE = "application/vnd.code.tree.libraryListView";
+export const URI_LIST_MIMETYPE = "text/uri-list";
+export const URI_LIST_SEPARATOR = "\r\n";
+
+export type ObjectBrowserDrag = {
+  library: string
+  object: string
+  type: string
+  member?: string
+}
 
 export interface WrapResult {
   newStatements: string[];

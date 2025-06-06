@@ -1,7 +1,7 @@
 import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
-import vscode, { l10n } from "vscode";
+import vscode, { DataTransferItem, l10n } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
@@ -9,7 +9,7 @@ import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
+import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
@@ -178,6 +178,13 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
     this.contextValue = `filter${this.library ? "_library" : ''}${this.isProtected() ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
     this.tooltip = ``;
+
+    if (this.library) {
+      this.resourceUri = vscode.Uri.from({
+        scheme: `object`,
+        path: `/QSYS/${this.library}.LIB`,
+      });
+    }
   }
 
   isProtected(): boolean {
@@ -422,8 +429,9 @@ class ObjectBrowserMemberItemDragAndDrop implements vscode.TreeDragAndDropContro
   readonly dragMimeTypes = [];
   readonly dropMimeTypes = [];
 
-  handleDrag(source: readonly ObjectBrowserMemberItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+  handleDrag(source: readonly ObjectBrowserItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     //A URI list is automatically produced
+    dataTransfer.set(OBJECT_BROWSER_MIMETYPE, new DataTransferItem(source));
   }
 }
 
