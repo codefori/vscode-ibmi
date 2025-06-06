@@ -38,6 +38,9 @@ for (const file of files) {
     // Overwrites by default
     fs.copyFileSync(src, dest);
   }
+  else{
+    throw `File ${src} not found for copy!`
+  }
 }
 
 console.log(``);
