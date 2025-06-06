@@ -72,6 +72,15 @@ export class DebugConfiguration {
   getRemoteServiceWorkDir() {
     return this.getOrDefault("DBGSRV_WRK_DIR", "/QIBM/UserData/IBMiDebugService");
   }
+
+  getRemoteServiceWorkspace() {
+    return this.getOrDefault("STR_DBGSVR_WRK_ROOT_DIR", "$DBGSRV_WRK_DIR/startDebugService_workspace")
+      .replace("$DBGSRV_WRK_DIR", this.getRemoteServiceWorkDir());
+  }
+
+  getNavigatorLogFile() {
+    return `${this.getRemoteServiceWorkspace()}/startDebugServiceNavigator.log`;
+  }
 }
 
 interface DebugServiceDetails {
