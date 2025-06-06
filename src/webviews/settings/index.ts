@@ -6,7 +6,6 @@ import { Tools } from "../../api/Tools";
 import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
 import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
-import { isSEPSupported } from "../../debug/server";
 import { instance } from "../../instantiate";
 import { ConnectionConfig, ConnectionData, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
@@ -168,9 +167,8 @@ export class SettingsUI {
           const debugServiceConfig: Map<string, string> = new Map()
             .set("Debug port", config.debugPort);
 
-          if (await isSEPSupported(connection)) {
-            debugServiceConfig.set("SEP debug port", config.debugSepPort)
-          }
+          debugServiceConfig.set("SEP debug port", config.debugSepPort)
+          
           debuggerTab.addParagraph(`<ul>${Array.from(debugServiceConfig.entries()).map(([label, value]) => `<li><code>${label}</code>: ${value}</li>`).join("")}</ul>`);
 
           debuggerTab.addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
@@ -189,10 +187,6 @@ export class SettingsUI {
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
                 .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
                 .addButtons({ id: `import`, label: `Download client certificate` });
-            }
-            else {
-              debuggerTab.addParagraph(`The service certificate doesn't exist or is incomplete; it must be generated before the debug service can be started.`)
-                .addButtons({ id: `generate`, label: `Generate service certificate` })
             }
           }
         } else if (connection) {
@@ -264,10 +258,6 @@ export class SettingsUI {
               switch (button) {
                 case `import`:
                   vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
-                  break;
-
-                case `generate`:
-                  vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`);
                   break;
 
                 case `clearAllowedExts`:

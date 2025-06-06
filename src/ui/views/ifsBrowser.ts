@@ -253,13 +253,15 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
 
       if (action) {
         let result;
+        const froms = ifsBrowserItems.map(item => item.path);
+        const to = toDirectory.path;
         switch (action) {
           case "copy":
-            result = await connection.sendCommand({ command: `cp -r ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
+            result = await connection.getContent().copy(froms, to);
             break;
 
           case "move":
-            result = await connection.sendCommand({ command: `mv ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
+            result = await await connection.getContent().move(froms, to);
             ifsBrowserItems.map(item => item.parent)
               .filter(Tools.distinct)
               .forEach(folder => folder?.refresh?.());
@@ -658,7 +660,7 @@ Please type "{0}" to confirm deletion.`, dirName);
           if (target) {
             const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
             try {
-              const moveResult = await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+              const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
               if (moveResult.code !== 0) {
                 throw moveResult.stderr;
               }
@@ -709,7 +711,10 @@ Please type "{0}" to confirm deletion.`, dirName);
         if (target) {
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
           try {
-            await connection.sendCommand({ command: `cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            const result = await connection.getContent().copy(node.path, targetPath);
+            if (result.code !== 0) {
+              throw result.stderr;
+            }
             if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }

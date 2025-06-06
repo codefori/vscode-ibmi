@@ -5,10 +5,10 @@ import util from 'util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from '../../IBMi';
 import { Tools } from '../../Tools';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 import { ModuleExport, ProgramExportImportInfo } from '../../types';
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 
-describe('Content Tests', {concurrent: true}, () => {
+describe('Content Tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
@@ -521,7 +521,7 @@ describe('Content Tests', {concurrent: true}, () => {
       expect(error).toBeInstanceOf(Tools.SqlError);
       expect(error.sqlstate).toBe('38501');
     }
-  }, {timeout: 25000});
+  }, { timeout: 25000 });
 
   it('Test @clCommand + select statement', async () => {
     const content = connection.getContent();
@@ -715,6 +715,42 @@ describe('Content Tests', {concurrent: true}, () => {
           environment: 'ile'
         });
       }
+    });
+  });
+
+  it('Copy and move streamfiles', async () => {
+    const content = connection.getContent();
+    await connection.withTempDirectory(async directory => {
+      const checkFile = async (path: string, ccsid: number) => {
+        expect(await content.testStreamFile(path, "w")).toBe(true);
+        const attributes = await content.getAttributes(path, "CCSID");
+        expect(attributes).toBeDefined();
+        expect(attributes!["CCSID"]).toBe(String(ccsid));
+      }
+
+      const unicodeFile = "unicode";
+      const ccsid37File = "ccsid37";
+
+      await content.createStreamFile(`${directory}/${unicodeFile}`);
+      await checkFile(`${directory}/${unicodeFile}`, 1208);
+      await content.createStreamFile(`${directory}/${ccsid37File}`);
+      await connection.sendCommand({ command: `${connection.remoteFeatures.attr} ${directory}/${ccsid37File} CCSID=37` });
+      await checkFile(`${directory}/${ccsid37File}`, 37);
+      const files = [`${directory}/${unicodeFile}`, `${directory}/${ccsid37File}`];
+      
+      expect((await connection.sendCommand({ command: `mkdir ${directory}/copy` })).code).toBe(0);
+      expect((await content.copy(files, `${directory}/copy`)).code).toBe(0);
+      expect(await content.testStreamFile(`${directory}/${unicodeFile}`, "f")).toBe(true);
+      expect(await content.testStreamFile(`${directory}/${ccsid37File}`, "f")).toBe(true);
+      await checkFile(`${directory}/copy/${unicodeFile}`, 1208);
+      await checkFile(`${directory}/copy/${ccsid37File}`, 37);
+
+      expect((await connection.sendCommand({ command: `mkdir ${directory}/move` })).code).toBe(0);
+      expect((await content.move(files, `${directory}/move`)).code).toBe(0);
+      expect(await content.testStreamFile(`${directory}/${unicodeFile}`, "f")).toBe(false);
+      expect(await content.testStreamFile(`${directory}/${ccsid37File}`, "f")).toBe(false);
+      await checkFile(`${directory}/move/${unicodeFile}`, 1208);
+      await checkFile(`${directory}/move/${ccsid37File}`, 37);
     });
   });
 });
