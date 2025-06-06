@@ -160,7 +160,7 @@ async function downloadLogs() {
       } catch (err) { }
 
       try {
-        const debugNavigatorLogPath = `${debugConfig.getNavigatorLogFile()}`;
+        const debugNavigatorLogPath = debugConfig.getNavigatorLogFile();
         const debugNavigatorLog = (await content.downloadStreamfileRaw(debugNavigatorLogPath));
         if (debugNavigatorLog) {
           logs.push({
