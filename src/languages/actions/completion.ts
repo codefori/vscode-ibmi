@@ -1,4 +1,4 @@
-import vscode from "vscode";
+import vscode, { l10n } from "vscode";
 
 const ITEMS = {
   "BASENAME": vscode.l10n.t("Name of the file, including the extension"),
@@ -25,8 +25,9 @@ const ITEMS = {
 
 export class LocalActionCompletionItemProvider implements vscode.CompletionItemProvider {
   provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext) {
-    //Only provide items if the cursor is on a "command" line
-    if (/^\s*"command"\s*:/.test(document.lineAt(position.line).text)) {
+    const text = document.lineAt(position.line).text?.trim();
+    //Only provide items if the cursor is on a "command" or "outputToFile" line
+    if (/^\s*"(command|outputToFile)"\s*:/.test(text)) {
       return Object.entries(ITEMS).map(([variable, label]) => ({
         label: variable,
         detail: label.replaceAll(/<code>|<\/code>|&amp;/g, ""),
@@ -34,8 +35,12 @@ export class LocalActionCompletionItemProvider implements vscode.CompletionItemP
         kind: vscode.CompletionItemKind.Variable
       } as vscode.CompletionItem));
     }
-    else {
-      return [];
+    else if (!text || text === "},") {
+      const snippet = new vscode.CompletionItem("action");
+      snippet.insertText = new vscode.SnippetString('{\n  "name": "$1",\n  "command": "$2",\n  "environment": "ile",\n  "extensions": [\n      "$3GLOBAL"\n    ]\n}');
+      snippet.documentation = new vscode.MarkdownString(l10n.t("Code for IBM i action"));
+      return [snippet];
     }
+
   }
 }
