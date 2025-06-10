@@ -5,6 +5,7 @@ const SERVER_SETTINGS_CACHE_PREFIX = `serverSettingsCache_`;
 const SERVER_SETTINGS_CACHE_KEY = (name: string) => SERVER_SETTINGS_CACHE_PREFIX + name;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
 const PREVIOUS_FIND_TERMS_KEY = `prevFindTerms`;
+const MESSAGE_SHOWN_KEY = `messageShown`;
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
@@ -136,5 +137,18 @@ export class CodeForIStorage {
 
   async clearPreviousFindTerms(){
     await this.internalStorage.set(PREVIOUS_FIND_TERMS_KEY, undefined);
+  }
+
+  hasMessageBeenShown(messageId: string): boolean {
+    const shownMessages = this.internalStorage.get<string[]>(MESSAGE_SHOWN_KEY) || [];
+    return shownMessages.includes(messageId);
+  }
+
+  async markMessageAsShown(messageId: string): Promise<void> {
+    const shownMessages = this.internalStorage.get<string[]>(MESSAGE_SHOWN_KEY) || [];
+    if (!shownMessages.includes(messageId)) {
+      shownMessages.push(messageId);
+      await this.internalStorage.set(MESSAGE_SHOWN_KEY, shownMessages);
+    }
   }
 }

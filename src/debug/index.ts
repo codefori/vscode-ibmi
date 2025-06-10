@@ -323,12 +323,23 @@ export async function initialize(context: ExtensionContext) {
             
           } else {
             const version = (await getDebugServiceDetails(connection)).semanticVersion();
-            if (version.major < server.MIN_DEBUG_VERSION) {
-              vscode.window.showWarningMessage(`Debug service version ${version} is below the minimum required version ${server.MIN_DEBUG_VERSION}. Please update the debug service PTF.`, `Open docs`).then(selected => {
-                if (selected === `Open docs`) {
-                  env.openExternal(Uri.parse(`https://codefori.github.io/docs/developing/debug/`));
-                }
-              });
+            // if (version.major < server.MIN_DEBUG_VERSION) {
+            if (true) {
+              const debugUpdateMessageId = `debugUpdateRequired-${version.major}`;
+              const showMessage = !IBMi.GlobalStorage.hasMessageBeenShown(debugUpdateMessageId);
+
+              if (showMessage) {
+                vscode.window.showWarningMessage(`Debug service version ${version} is below the minimum required version ${server.MIN_DEBUG_VERSION}. Please update the debug service PTF.`, `Open docs`, `Dismiss`).then(selected => {
+                  switch (selected) {
+                    case `Open docs`:
+                      env.openExternal(Uri.parse(`https://codefori.github.io/docs/developing/debug/`));
+                      break;
+                    case `Dismiss`:
+                      IBMi.GlobalStorage.markMessageAsShown(debugUpdateMessageId);
+                      break;
+                  }
+                });
+              }
             }
           }
         }
