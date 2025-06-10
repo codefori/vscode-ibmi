@@ -325,7 +325,7 @@ export async function initialize(context: ExtensionContext) {
             const version = (await getDebugServiceDetails(connection)).semanticVersion();
             const storage = instance.getStorage();
             if (storage && version.major < server.MIN_DEBUG_VERSION) {
-              const debugUpdateMessageId = `debugUpdateRequired-${version.major}`;
+              const debugUpdateMessageId = `debugUpdateRequired-${server.MIN_DEBUG_VERSION}`;
               const showMessage = !storage.hasMessageBeenShown(debugUpdateMessageId);
 
               if (showMessage) {
