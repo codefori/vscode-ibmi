@@ -1,4 +1,4 @@
-import { ExtensionContext, Uri } from "vscode";
+import { env, ExtensionContext, Uri } from "vscode";
 import Instance from "../Instance";
 
 import path from "path";
@@ -296,29 +296,41 @@ export async function initialize(context: ExtensionContext) {
     async () => {
       activateDebugExtension();
       const connection = instance.getConnection();
-      if (connection && (await server.isDebugSupported(connection))) {
-        vscode.commands.executeCommand(`setContext`, ptfContext, true);
+      if (connection) {
+        if (await server.isDebugSupported(connection)) {
+          vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
-        //Enable debug related commands
-        vscode.commands.executeCommand(`setContext`, debugContext, true);
+          //Enable debug related commands
+          vscode.commands.executeCommand(`setContext`, debugContext, true);
 
-        //Enable service entry points related commands
-        vscode.commands.executeCommand(`setContext`, debugSEPContext, true);
+          //Enable service entry points related commands
+          vscode.commands.executeCommand(`setContext`, debugSEPContext, true);
 
-        const isDebugManaged = isManaged();
-        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
-        if (!isDebugManaged) {
-          if (validateIPv4address(connection.currentHost)) {
-            vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
+          const isDebugManaged = isManaged();
+          vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
+          if (!isDebugManaged) {
+            if (validateIPv4address(connection.currentHost)) {
+              vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
+            }
+
+            // Set the debug environment variables early to be safe
+            setCertEnv(true, connection);
+
+            // Download the client certificate if it doesn't exist.
+            certificates.checkClientCertificate(connection).catch(() => {
+              vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+            });
+            
+          } else {
+            const version = (await getDebugServiceDetails(connection)).semanticVersion();
+            if (version.major < server.MIN_DEBUG_VERSION) {
+              vscode.window.showWarningMessage(`Debug service version ${version} is below the minimum required version ${server.MIN_DEBUG_VERSION}. Please update the debug service PTF.`, `Open docs`).then(selected => {
+                if (selected === `Open docs`) {
+                  env.openExternal(Uri.parse(`https://codefori.github.io/docs/developing/debug/`));
+                }
+              });
+            }
           }
-
-          // Set the debug environment variables early to be safe
-          setCertEnv(true, connection);
-
-          // Download the client certificate if it doesn't exist.
-          certificates.checkClientCertificate(connection).catch(() => {
-            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
-          });
         }
       }
     });
