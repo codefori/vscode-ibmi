@@ -320,26 +320,26 @@ export async function initialize(context: ExtensionContext) {
             certificates.checkClientCertificate(connection).catch(() => {
               vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
             });
-            
-          } else {
-            const version = (await getDebugServiceDetails(connection)).semanticVersion();
-            const storage = instance.getStorage();
-            if (storage && version.major < server.MIN_DEBUG_VERSION) {
-              const debugUpdateMessageId = `debugUpdateRequired-${server.MIN_DEBUG_VERSION}`;
-              const showMessage = !storage.hasMessageBeenShown(debugUpdateMessageId);
 
-              if (showMessage) {
-                vscode.window.showWarningMessage(`Debug service version ${version} is below the minimum required version ${server.MIN_DEBUG_VERSION}. Please update the debug service PTF.`, `Open docs`, `Dismiss`).then(selected => {
-                  switch (selected) {
-                    case `Open docs`:
-                      env.openExternal(Uri.parse(`https://codefori.github.io/docs/developing/debug/`));
-                      break;
-                    case `Dismiss`:
-                      storage.markMessageAsShown(debugUpdateMessageId);
-                      break;
-                  }
-                });
-              }
+          }
+        } else {
+          const version = (await getDebugServiceDetails(connection)).semanticVersion();
+          const storage = instance.getStorage();
+          if (storage && version.major < server.MIN_DEBUG_VERSION) {
+            const debugUpdateMessageId = `debugUpdateRequired-${server.MIN_DEBUG_VERSION}`;
+            const showMessage = !storage.hasMessageBeenShown(debugUpdateMessageId);
+
+            if (showMessage) {
+              vscode.window.showWarningMessage(`Debug service version ${version} is below the minimum required version ${server.MIN_DEBUG_VERSION}. Please update the debug service PTF.`, `Open docs`, `Dismiss`).then(selected => {
+                switch (selected) {
+                  case `Open docs`:
+                    env.openExternal(Uri.parse(`https://codefori.github.io/docs/developing/debug/`));
+                    break;
+                  case `Dismiss`:
+                    storage.markMessageAsShown(debugUpdateMessageId);
+                    break;
+                }
+              });
             }
           }
         }
