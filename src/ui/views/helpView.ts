@@ -28,7 +28,7 @@ export class HelpView implements vscode.TreeDataProvider<vscode.TreeItem> {
 
   public async getChildren(): Promise<HelpItem[]> {
     const children = [
-      new HelpOpenUrlItem(`book`, vscode.l10n.t(`Get started`), `https://codefori.github.io/docs/#/`),
+      new HelpOpenUrlItem(`book`, vscode.l10n.t(`Get Started & Documentation`), `https://codefori.github.io/docs/#/`),
       new HelpOpenUrlItem(`output`, vscode.l10n.t(`Open official Forum`), `https://github.com/codefori/vscode-ibmi/discussions`),
       new HelpOpenUrlItem(`eye`, vscode.l10n.t(`Review Issues`), `https://github.com/codefori/vscode-ibmi/issues/`),
       new HelpIssueItem()
