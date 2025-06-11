@@ -4,16 +4,16 @@ import Instance from "../Instance";
 import path from "path";
 import * as vscode from 'vscode';
 
+import { ILELibrarySettings } from "../api/CompileTools";
+import { getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
+import IBMi from "../api/IBMi";
+import { getStoredPassword } from "../config/passwords";
+import { Env, getEnvConfig } from "../filesystems/local/env";
 import { instance } from "../instantiate";
 import { ObjectItem } from "../typings";
-import { ILELibrarySettings } from "../api/CompileTools";
-import { Env, getEnvConfig } from "../filesystems/local/env";
-import * as certificates from "./certificates";
-import { DebugConfiguration, getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
-import * as server from "./server";
 import { VscodeTools } from "../ui/Tools";
-import { getStoredPassword } from "../config/passwords";
-import IBMi from "../api/IBMi";
+import * as certificates from "./certificates";
+import * as server from "./server";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -297,49 +297,53 @@ export async function initialize(context: ExtensionContext) {
       activateDebugExtension();
       const connection = instance.getConnection();
       if (connection) {
-        if (await server.isDebugSupported(connection)) {
-          vscode.commands.executeCommand(`setContext`, ptfContext, true);
+        const debuggerInstalled = server.debugPTFInstalled(connection);
+        const debugDetails = await getDebugServiceDetails(connection);
+        if (debuggerInstalled) {
+          if (debugDetails.semanticVersion().major >= server.MIN_DEBUG_VERSION) {
+            vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
-          //Enable debug related commands
-          vscode.commands.executeCommand(`setContext`, debugContext, true);
+            //Enable debug related commands
+            vscode.commands.executeCommand(`setContext`, debugContext, true);
 
-          //Enable service entry points related commands
-          vscode.commands.executeCommand(`setContext`, debugSEPContext, true);
+            //Enable service entry points related commands
+            vscode.commands.executeCommand(`setContext`, debugSEPContext, true);
 
-          const isDebugManaged = isManaged();
-          vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
-          if (!isDebugManaged) {
-            if (validateIPv4address(connection.currentHost)) {
-              vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
-            }
+            const isDebugManaged = isManaged();
+            vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
 
-            // Set the debug environment variables early to be safe
-            setCertEnv(true, connection);
+            if (!isDebugManaged) {
+              if (validateIPv4address(connection.currentHost)) {
+                vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
+              }
 
-            // Download the client certificate if it doesn't exist.
-            certificates.checkClientCertificate(connection).catch(() => {
-              vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
-            });
+              // Set the debug environment variables early to be safe
+              setCertEnv(true, connection);
 
-          }
-        } else {
-          const version = (await getDebugServiceDetails(connection)).semanticVersion();
-          const storage = instance.getStorage();
-          if (storage && version.major < server.MIN_DEBUG_VERSION) {
-            const debugUpdateMessageId = `debugUpdateRequired-${server.MIN_DEBUG_VERSION}`;
-            const showMessage = !storage.hasMessageBeenShown(debugUpdateMessageId);
-
-            if (showMessage) {
-              vscode.window.showWarningMessage(`Debug service version ${version} is below the minimum required version ${server.MIN_DEBUG_VERSION}. Please update the debug service PTF.`, `Open docs`, `Dismiss`).then(selected => {
-                switch (selected) {
-                  case `Open docs`:
-                    env.openExternal(Uri.parse(`https://codefori.github.io/docs/developing/debug/`));
-                    break;
-                  case `Dismiss`:
-                    storage.markMessageAsShown(debugUpdateMessageId);
-                    break;
-                }
+              // Download the client certificate if it doesn't exist.
+              certificates.checkClientCertificate(connection).catch(() => {
+                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
               });
+            }
+          }
+          else {
+            const storage = instance.getStorage();
+            if (storage && debugDetails.semanticVersion().major < server.MIN_DEBUG_VERSION) {
+              const debugUpdateMessageId = `debugUpdateRequired-${server.MIN_DEBUG_VERSION}`;
+              const showMessage = !storage.hasMessageBeenShown(debugUpdateMessageId);
+
+              if (showMessage) {
+                vscode.window.showWarningMessage(`Debug service version ${debugDetails.version} is below the minimum required version ${server.MIN_DEBUG_VERSION}.0.0. Please update the debug service PTF.`, `Open docs`, `Dismiss`).then(selected => {
+                  switch (selected) {
+                    case `Open docs`:
+                      env.openExternal(Uri.parse(`https://codefori.github.io/docs/developing/debug/`));
+                      break;
+                    case `Dismiss`:
+                      storage.markMessageAsShown(debugUpdateMessageId);
+                      break;
+                  }
+                });
+              }
             }
           }
         }
@@ -395,7 +399,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   secure = setCertEnv(secure, connection);
 
   if (options.sep) {
-    if (serviceDetails.version === `1.0.0`) {
+    if (serviceDetails.semanticVersion().major < 2) {
       vscode.window.showErrorMessage(`The debug service on this system, version ${serviceDetails.version}, does not support service entry points.`);
       return;
     }
