@@ -102,10 +102,10 @@ export function resetDebugServiceDetails() {
 export async function getDebugServiceDetails(connection: IBMi): Promise<DebugServiceDetails> {
   if (!debugServiceDetails) {
     let details = {
-      version: `1.0.0`,
-      java: `8`,
+      version: `0.0.0`,
+      java: ``,
       semanticVersion: () => ({
-        major: 1,
+        major: 0,
         minor: 0,
         patch: 0
       })
@@ -128,17 +128,6 @@ export async function getDebugServiceDetails(connection: IBMi): Promise<DebugSer
           };
         }
       }
-    }
-    else {
-      details = {
-        version: `1.0.0`,
-        java: `8`,
-        semanticVersion: () => ({
-          major: 1,
-          minor: 0,
-          patch: 0
-        })
-      };
     }
 
     debugServiceDetails = details;

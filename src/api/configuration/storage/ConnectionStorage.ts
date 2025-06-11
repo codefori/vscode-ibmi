@@ -6,6 +6,7 @@ const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
+const MESSAGE_SHOWN_KEY = `messageShown`;
 
 const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
 const AUTHORISED_EXTENSIONS_KEY = `authorisedExtensions`
@@ -127,5 +128,18 @@ export class ConnectionStorage {
   revokeExtensionAuthorisation(...extensions: AuthorisedExtension[]) {
     const newExtensions = this.getAuthorisedExtensions().filter(ext => !extensions.includes(ext));
     return this.internalStorage.set(AUTHORISED_EXTENSIONS_KEY, newExtensions);
+  }
+
+  hasMessageBeenShown(messageId: string): boolean {
+    const shownMessages = this.internalStorage.get<string[]>(MESSAGE_SHOWN_KEY) || [];
+    return shownMessages.includes(messageId);
+  }
+
+  async markMessageAsShown(messageId: string): Promise<void> {
+    const shownMessages = this.internalStorage.get<string[]>(MESSAGE_SHOWN_KEY) || [];
+    if (!shownMessages.includes(messageId)) {
+      shownMessages.push(messageId);
+      await this.internalStorage.set(MESSAGE_SHOWN_KEY, shownMessages);
+    }
   }
 }

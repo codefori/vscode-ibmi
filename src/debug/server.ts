@@ -10,12 +10,14 @@ export type DebugJob = {
   ports: number[]
 }
 
+export const MIN_DEBUG_VERSION = 3;
+
 export function debugPTFInstalled(connection: IBMi) {
   return connection.debugPTFInstalled()
 }
 
 export async function isDebugSupported(connection: IBMi) {
-  return debugPTFInstalled(connection) && (await getDebugServiceDetails(connection)).semanticVersion().major >= 3;
+  return debugPTFInstalled(connection) && (await getDebugServiceDetails(connection)).semanticVersion().major >= MIN_DEBUG_VERSION;
 }
 
 export async function startService(connection: IBMi) {
