@@ -34,10 +34,6 @@ export type CachedServerSettings = {
 export class CodeForIStorage {
   constructor(private internalStorage: BaseStorage) {}
 
-  protected getStorageKey(key: string): string {
-    return key;
-  }
-
   getLastConnections() {
     return this.internalStorage.get<LastConnection[]>("lastConnections");
   }

@@ -20,7 +20,8 @@ type AuthorisedExtension = {
 
 export class ConnectionStorage {
   private connectionName: string = "";
-  constructor(private internalStorage: BaseStorage) {}
+  constructor(private internalStorage: BaseStorage) {
+  }
 
   get ready(): boolean {
     if (this.connectionName) {
@@ -33,10 +34,7 @@ export class ConnectionStorage {
 
   setConnectionName(connectionName: string) {
     this.connectionName = connectionName;
-  }
-
-  protected getStorageKey(key: string): string {
-    return `${this.connectionName}.${key}`;
+    this.internalStorage.setUniqueKeyPrefix(`settings-${connectionName}`);
   }
 
   getSourceList() {

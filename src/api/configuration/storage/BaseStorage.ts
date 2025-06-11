@@ -1,13 +1,18 @@
 export abstract class BaseStorage {
   protected readonly globalState: any;
 
+  private uniqueKeyPrefix: string|undefined;
   constructor(globalState: any) {  
-    this.globalState = globalState;  
+    this.globalState = globalState;
   }  
 
 
   keys(): readonly string[] {
     return Array.from(this.globalState.keys());
+  }
+
+  setUniqueKeyPrefix(prefix: string) {
+    this.uniqueKeyPrefix = prefix;
   }
 
   get<T>(key: string): T | undefined {
@@ -19,7 +24,7 @@ export abstract class BaseStorage {
   }
 
   getStorageKey(key: string): string {
-    return key;
+    return `${this.uniqueKeyPrefix ? this.uniqueKeyPrefix + '.' : ''}${key}`;
   }
 }
 
