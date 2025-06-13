@@ -453,17 +453,12 @@ export default class IBMiContent {
 
     newLibl = newLibl
       .filter(lib => {
-        if (lib.match(/^\d/)) {
-          badLibs.push(lib);
-          return false;
+        const isValid = this.ibmi.validQsysName(lib);        
+        if(!isValid){
+          badLibs.push(lib);          
         }
-
-        if (lib.length > 10) {
-          badLibs.push(lib);
-          return false;
-        }
-
-        return true;
+        
+        return isValid;
       });
 
     const sanitized = Tools.sanitizeObjNamesForPase(newLibl);
