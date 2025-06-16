@@ -42,7 +42,7 @@ export class ExtendedIBMiContent {
       }
 
       let rows = await connection.runSQL(
-        `select srcdat, srcdta from ${aliasPath}`,
+        `select case when locate('40',hex(srcdat)) > 0 then 0 else srcdat end as srcdat, srcdta from ${aliasPath}`,
         {forceSafe: true}
       );
 
