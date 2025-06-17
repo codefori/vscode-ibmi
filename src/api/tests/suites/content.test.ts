@@ -622,23 +622,26 @@ describe('Content Tests', { concurrent: true }, () => {
     const shortName = Tools.makeid(8);
     const createLib = await connection.runCommand({ command: `RUNSQL 'create schema "${longName}" for ${shortName}' commit(*none)`, noLibList: true });
     if (createLib.code === 0) {
-      const result = await connection.runCommand({ command: `CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
+      try {
+        await connection.runCommand({ command: `CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
 
-      const libraries = await content.getLibraries({ library: `${shortName}` });
-      expect(libraries?.length).toBe(1);
+        const libraries = await content.getLibraries({ library: `${shortName}` });
+        expect(libraries?.length).toBe(1);
 
-      const objects = await content.getObjectList({ library: `${shortName}`, types: [`*SRCPF`], object: `SFILE` });
-      expect(objects?.length).toBe(1);
-      expect(objects[0].type).toBe(`*FILE`);
-      expect(objects[0].text).toBe(`Test long library name`);
+        const objects = await content.getObjectList({ library: `${shortName}`, types: [`*SRCPF`], object: `SFILE` });
+        expect(objects?.length).toBe(1);
+        expect(objects[0].type).toBe(`*FILE`);
+        expect(objects[0].text).toBe(`Test long library name`);
 
-      const memberCount = await content.countMembers({ library: `${shortName}`, name: `SFILE` });
-      expect(memberCount).toBe(1);
-      const members = await content.getMemberList({ library: `${shortName}`, sourceFile: `SFILE` });
+        const memberCount = await content.countMembers({ library: `${shortName}`, name: `SFILE` });
+        expect(memberCount).toBe(1);
+        const members = await content.getMemberList({ library: `${shortName}`, sourceFile: `SFILE` });
 
-      expect(members?.length).toBe(1);
-
-      await connection.runCommand({ command: `RUNSQL 'drop schema "${longName}"' commit(*none)`, noLibList: true });
+        expect(members?.length).toBe(1);
+      }
+      finally {
+        await connection.runCommand({ command: `RUNSQL 'drop schema "${longName}"' commit(*none)`, noLibList: true });
+      }
     } else {
       throw new Error(`Failed to create schema "${longName}"`);
     }
@@ -737,7 +740,7 @@ describe('Content Tests', { concurrent: true }, () => {
       await connection.sendCommand({ command: `${connection.remoteFeatures.attr} ${directory}/${ccsid37File} CCSID=37` });
       await checkFile(`${directory}/${ccsid37File}`, 37);
       const files = [`${directory}/${unicodeFile}`, `${directory}/${ccsid37File}`];
-      
+
       expect((await connection.sendCommand({ command: `mkdir ${directory}/copy` })).code).toBe(0);
       expect((await content.copy(files, `${directory}/copy`)).code).toBe(0);
       expect(await content.testStreamFile(`${directory}/${unicodeFile}`, "f")).toBe(true);
