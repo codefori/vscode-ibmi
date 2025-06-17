@@ -623,6 +623,7 @@ describe('Content Tests', { concurrent: true }, () => {
     const createLib = await connection.runCommand({ command: `RUNSQL 'create schema "${longName}" for ${shortName}' commit(*none)`, noLibList: true });
     if (createLib.code === 0) {
       try {
+        const asp = await connection.lookupLibraryIAsp(shortName);
         await connection.runCommand({ command: `CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
 
         const libraries = await content.getLibraries({ library: `${shortName}` });
@@ -633,7 +634,7 @@ describe('Content Tests', { concurrent: true }, () => {
         expect(objects[0].type).toBe(`*FILE`);
         expect(objects[0].text).toBe(`Test long library name`);
 
-        const memberCount = await content.countMembers({ library: `${shortName}`, name: `SFILE` });
+        const memberCount = await content.countMembers({ library: `${shortName}`, name: `SFILE`, asp });
         expect(memberCount).toBe(1);
         const members = await content.getMemberList({ library: `${shortName}`, sourceFile: `SFILE` });
 
