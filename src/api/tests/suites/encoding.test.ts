@@ -59,7 +59,7 @@ describe('Encoding tests', { concurrent: true }, () => {
     disposeConnection(connection);
   });
 
-  it('Prove that input strings are messed up by CCSID', { timeout: 40000 }, async () => {
+  it('Prove that input strings are messed up by CCSID', async () => {
     let howManyTimesItMessedUpTheResult = 0;
 
     for (const strCcsid in contents) {
@@ -119,7 +119,7 @@ describe('Encoding tests', { concurrent: true }, () => {
     expect(paseTextResultA?.stdout).toBe(text);
     expect(qshTextResultB?.stdout).toBe(text);
     expect(paseTextResultB?.stdout).toBe(text);
-  }, { timeout: 25000 });
+  });
 
   it('streamfileResolve with dollar', async () => {
     await connection.withTempDirectory(async tempDir => {
@@ -190,7 +190,7 @@ describe('Encoding tests', { concurrent: true }, () => {
     });
   });
 
-  it('Listing objects with variants', { timeout: 15000 }, async () => {
+  it('Listing objects with variants', async () => {
     const content = connection.getContent();
     if (connection && content) {
       const tempLib = connection.getConfig().tempLibrary!;
@@ -317,7 +317,7 @@ describe('Encoding tests', { concurrent: true }, () => {
     }
   });
 
-  it('Variant character in source names and commands', { timeout: 45000 }, async () => {
+  it('Variant character in source names and commands', async () => {
     const config = connection.getConfig();
     const ccsidData = connection.getCcsids()!;
     const tempLib = config.tempLibrary;

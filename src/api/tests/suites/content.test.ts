@@ -521,7 +521,7 @@ describe('Content Tests', { concurrent: true }, () => {
       expect(error).toBeInstanceOf(Tools.SqlError);
       expect(error.sqlstate).toBe('38501');
     }
-  }, { timeout: 25000 });
+  });
 
   it('Test @clCommand + select statement', async () => {
     const content = connection.getContent();

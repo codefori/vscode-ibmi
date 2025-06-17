@@ -96,5 +96,5 @@ describe('Search Tests', { concurrent: true }, () => {
       finally {
         await connection.runCommand({ command: `DLTF FILE(${library}/${file})`, noLibList: true });
       }
-    }, { timeout: 3000000 });
+    });
 });
