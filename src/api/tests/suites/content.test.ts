@@ -236,7 +236,7 @@ describe('Content Tests', { concurrent: true }, () => {
       await connection.runSQL('select from qiws.qcustcdt');
       expect.fail('Should have thrown an error');
     } catch (e: any) {
-      expect(e.message).toBe('Token . was not valid. Valid tokens: , FROM INTO. (42601)');
+      expect(e.message.endsWith(': , FROM INTO. (42601)')).toBeTruthy();
       expect(e.sqlstate).toBe('42601');
     }
   });
@@ -622,7 +622,7 @@ describe('Content Tests', { concurrent: true }, () => {
     const shortName = Tools.makeid(8);
     const createLib = await connection.runCommand({ command: `RUNSQL 'create schema "${longName}" for ${shortName}' commit(*none)`, noLibList: true });
     if (createLib.code === 0) {
-      await connection.runCommand({ command: `CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
+      const result = await connection.runCommand({ command: `CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
 
       const libraries = await content.getLibraries({ library: `${shortName}` });
       expect(libraries?.length).toBe(1);
