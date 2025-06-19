@@ -9,7 +9,7 @@ export async function setup(project: TestProject) {
     console.log(``);
     console.log(`Testing connection before tests run since configs do not exist.`);
 
-    const conn = await newConnection();
+    const conn = await newConnection(true);
     disposeConnection(conn);
 
     console.log(`Testing connection complete. Configs written.`);

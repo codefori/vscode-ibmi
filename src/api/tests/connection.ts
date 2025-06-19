@@ -1,13 +1,13 @@
-import IBMi from "../IBMi";
-import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
-import { CustomQSh } from "../components/cqsh";
 import path from "path";
+import IBMi from "../IBMi";
 import { CopyToImport } from "../components/copyToImport";
+import { CustomQSh } from "../components/cqsh";
 import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { extensionComponentRegistry } from "../components/manager";
-import { JsonConfig, JsonStorage } from "./testConfigSetup";
+import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
 import { CustomCLI } from "./components/customCli";
+import { JsonConfig, JsonStorage } from "./testConfigSetup";
 
 export const testStorage = new JsonStorage();
 const testConfig = new JsonConfig();
@@ -40,7 +40,7 @@ if (ENV_CREDS.host === undefined) {
   process.exit(1);
 }
 
-export async function newConnection() {
+export async function newConnection(reloadSettings?: boolean) {
   const virtualStorage = testStorage;
 
   IBMi.GlobalStorage = new CodeForIStorage(virtualStorage);
@@ -72,7 +72,7 @@ export async function newConnection() {
   };
 
   // Override this so not to spam the console.
-  conn.appendOutput = (data) => {};
+  conn.appendOutput = (data) => { };
 
   const result = await conn.connect(
     creds,
@@ -80,14 +80,16 @@ export async function newConnection() {
       message: (type: string, message: string) => {
         // console.log(`${type.padEnd(10)} ${message}`);
       },
-      progress: ({message}) => {
+      progress: ({ message }) => {
         // console.log(`PROGRESS: ${message}`);
       },
       uiErrorHandler: async (connection, code, data) => {
         console.log(`Connection warning: ${code}: ${JSON.stringify(data)}`);
         return false;
       },
-    }
+    },
+    false,
+    reloadSettings
   );
 
   if (!result.success) {
