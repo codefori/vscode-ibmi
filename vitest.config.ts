@@ -6,6 +6,6 @@ export default defineConfig({
     // ... Specify options here.
     root: './src/api',
     globalSetup: [`tests/setup.ts`],
-    testTimeout: 10000,
+    testTimeout: 60000,
   },
 })

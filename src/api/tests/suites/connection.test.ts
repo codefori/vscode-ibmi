@@ -1,12 +1,12 @@
 
-import { expect, describe, afterAll, beforeAll, it } from 'vitest'
-import { Tools } from '../../Tools';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
-import IBMi from '../../IBMi';
-import { getJavaHome } from '../../configuration/DebugConfiguration';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CompileTools } from '../../CompileTools';
+import IBMi from '../../IBMi';
+import { Tools } from '../../Tools';
+import { getJavaHome } from '../../configuration/DebugConfiguration';
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 
-describe(`connection tests`, {concurrent: true}, () => {
+describe(`connection tests`, { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
@@ -148,7 +148,8 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(result?.stderr).toBeTruthy();
   });
 
-  it('runCommand (ILE, custom library list)', async () => {    const config = connection.getConfig();
+  it('runCommand (ILE, custom library list)', async () => {
+    const config = connection.getConfig();
 
     const ogLibl = config!.libraryList.slice(0);
 
@@ -197,7 +198,8 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(qtempIndex < qsysincIndex).toBeTruthy();
   });
 
-  it('runCommand (ILE, library order from config)', async () => {    const config = connection.getConfig();
+  it('runCommand (ILE, library order from config)', async () => {
+    const config = connection.getConfig();
 
     const ogLibl = config!.libraryList.slice(0);
 
@@ -219,13 +221,14 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(qtempIndex < qsysincIndex).toBeTruthy();
   });
 
-  it('runCommand (ILE, variable expansion)', async () => {    const config = connection.getConfig();
+  it('runCommand (ILE, variable expansion)', async () => {
+    const config = connection.getConfig();
 
-    const result = await CompileTools.runCommand(connection, 
+    const result = await CompileTools.runCommand(connection,
       {
         command: `CRTDTAARA DTAARA(&SCOOBY/TEST) TYPE(*CHAR) LEN(10)`,
         environment: `ile`,
-        env: {'&SCOOBY': `QTEMP`},
+        env: { '&SCOOBY': `QTEMP` },
       },
       {
         commandConfirm: async (command) => {
@@ -238,7 +241,8 @@ describe(`connection tests`, {concurrent: true}, () => {
     expect(result?.code).toBe(0);
   });
 
-  it('withTempDirectory and countFiles', async () => {    const content = connection.getContent()!;
+  it('withTempDirectory and countFiles', async () => {
+    const content = connection.getContent()!;
     let temp;
 
     await connection.withTempDirectory(async tempDir => {
@@ -268,7 +272,7 @@ describe(`connection tests`, {concurrent: true}, () => {
 
   it('upperCaseName', () => {
     {
-    const variantsBackup = connection.variantChars.local;
+      const variantsBackup = connection.variantChars.local;
 
       try {
         //CCSID 297 variants

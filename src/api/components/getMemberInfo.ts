@@ -7,7 +7,7 @@ import { IBMiMember } from "../types";
 export class GetMemberInfo implements IBMiComponent {
   static ID = 'GetMemberInfo';
   private readonly procedureName = 'GETMBRINFO';
-  private readonly currentVersion = 2;
+  private readonly currentVersion = 3;
   private installedVersion = 0;
 
   reset() {
@@ -74,7 +74,7 @@ export class GetMemberInfo implements IBMiComponent {
   async getMemberInfo(connection: IBMi, library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
     const config = connection.getConfig();
     const tempLib = config.tempLibrary;
-    const statement = `select * from table(${tempLib}.${this.procedureName}('${library}', '${sourceFile}', '${member}'))`;
+    const statement = `select * from table(${tempLib}.${this.procedureName}('${connection.upperCaseName(library)}', '${connection.upperCaseName(sourceFile)}', '${connection.upperCaseName(member)}'))`;
 
     let results: Tools.DB2Row[] = [];
     if (connection.enableSQL) {
@@ -170,7 +170,7 @@ function getSource(library: string, name: string, version: number) {
     `  declare  FORMAT  char(   8 ) constant 'MBRD0100' ;`,
     `  declare  OVR     char(   1 ) constant '0' ;`,
     ``,
-    `  call ${library}.QUSRMBRD( buffer, BUFLEN, FORMAT, upper( inFil ) concat upper( inLib ), upper( inMbr ), OVR );`,
+    `  call ${library}.QUSRMBRD( buffer, BUFLEN, FORMAT, inFil concat inLib, inMbr, OVR );`,
     ``,
     `  pipe ( rtrim( substr( Buffer, 19, 10 ) )`,
     `       , rtrim( substr( Buffer,  9, 10 ) )`,
