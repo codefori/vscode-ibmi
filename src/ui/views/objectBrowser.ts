@@ -943,8 +943,8 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
                 .filter(item => item.copy)
                 .map(item =>
                   [
-                    `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(${item.member.name}) MBROPT(*ADD) CRTFILE(*YES);`,
-                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", item.member.name, undefined)}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID});`
+                    `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(TEMPMBR) MBROPT(*REPLACE) CRTFILE(*YES);`,
+                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMBR")}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID});`
                   ].join("\n"))
                 .join("\n");
               await connection.runSQL(copyToStreamFiles);
