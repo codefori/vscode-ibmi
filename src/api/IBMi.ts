@@ -481,7 +481,7 @@ export default class IBMi {
 
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
-      const componentStates = await this.componentManager.getComponentStates();
+      const componentStates = this.componentManager.getComponentStates();
       this.appendOutput(`\nCode for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
