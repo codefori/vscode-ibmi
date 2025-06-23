@@ -13,7 +13,7 @@ describe('Component Tests', () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    disposeConnection(connection);
+    await disposeConnection(connection);
   });
 
   it('Get new libl', async () => {

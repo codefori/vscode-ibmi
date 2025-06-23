@@ -76,7 +76,7 @@ describe(`variables tests`, { concurrent: true }, () => {
     }
     finally {
       customVariables.splice(0, customVariables.length);
-      disposeConnection(connection);
+      await disposeConnection(connection);
     }
   });
 });

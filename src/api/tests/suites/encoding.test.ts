@@ -56,7 +56,7 @@ describe('Encoding tests', { concurrent: true }, () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    disposeConnection(connection);
+    await disposeConnection(connection);
   });
 
   it('Prove that input strings are messed up by CCSID', async () => {

@@ -13,7 +13,7 @@ describe(`connection tests`, { concurrent: true }, () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    disposeConnection(connection);
+    await disposeConnection(connection);
   });
 
   it('sendCommand', async () => {

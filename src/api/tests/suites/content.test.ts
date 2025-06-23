@@ -15,7 +15,7 @@ describe('Content Tests', { concurrent: true }, () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    disposeConnection(connection);
+    await disposeConnection(connection);
   });
 
   it('memberResolve', async () => {

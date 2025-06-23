@@ -99,12 +99,13 @@ export async function newConnection(reloadSettings?: boolean) {
   return conn;
 }
 
-export function disposeConnection(conn?: IBMi) {
+export async function disposeConnection(conn?: IBMi) {
   if (!conn) {
     return;
   }
 
-  conn.dispose();
-  testStorage.save();
-  testConfig.save();
+  await Promise.all([
+    conn.dispose(),
+    testStorage.save(),
+    testConfig.save()]);
 }

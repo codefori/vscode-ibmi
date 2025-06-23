@@ -60,7 +60,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
 
   afterAll(async () => {
     await connection.runCommand({ command: `DLTLIB LIB(${LIBNAME})` });
-    disposeConnection(connection);
+    await disposeConnection(connection);
   });
 
   beforeEach((t) => {

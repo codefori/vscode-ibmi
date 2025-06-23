@@ -13,7 +13,7 @@ describe('Search Tests', { concurrent: true }, () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    disposeConnection(connection);
+    await disposeConnection(connection);
   });
 
   it('Single member search', async () => {

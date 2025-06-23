@@ -1,18 +1,16 @@
 import type { TestProject } from "vitest/node";
-import { disposeConnection, newConnection, testStorage } from "./connection";
+import { disposeConnection, newConnection } from "./connection";
 
 export async function setup(project: TestProject) {
-  // You might pre-connect to simply create the configuration files.
+  // Pre-connects to create/refresh the configuration files.
   // When the config files exist, it makes future connections just slightly faster.
   // Mostly useful during the CI stage.
-  if (!testStorage.exists()) {
     console.log(``);
-    console.log(`Testing connection before tests run since configs do not exist.`);
+    console.log(`Connecting before tests run to create/refresh settings.`);
 
     const conn = await newConnection(true);
-    disposeConnection(conn);
+    await disposeConnection(conn);
 
-    console.log(`Testing connection complete. Configs written.`);
+    console.log(`Testing connection complete. Settings written/refreshed.`);
     console.log(``);
-  }
 }
