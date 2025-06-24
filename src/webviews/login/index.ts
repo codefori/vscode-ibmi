@@ -34,7 +34,7 @@ export class Login {
       .addParagraph(l10n.t(`Only provide either the password or a private key - not both.`))
       .addPassword(`password`, l10n.t(`Password`))
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
-      .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716, or PPK formats are supported.`))
+      .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716 and PPK formats are supported.`))
       .addHorizontalRule()
       .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" });
 
