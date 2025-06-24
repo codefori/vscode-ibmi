@@ -158,8 +158,8 @@ describe('Encoding tests', { concurrent: true }, () => {
         return;
       }
 
-      const tempLib = config!.tempLibrary;
-      const tempSPF = `TESTINGS`;
+      const tempLib = config.tempLibrary;
+      const tempSPF = Tools.makeid(8);
       const tempMbr = char + Tools.makeid(4);
 
       await connection!.runCommand({
@@ -175,13 +175,13 @@ describe('Encoding tests', { concurrent: true }, () => {
       try {
         const baseContent = `Hello world\r\n`;
 
-        const attributes = await content?.getAttributes({ library: tempLib, name: tempSPF, member: tempMbr }, `CCSID`);
+        const attributes = await content.getAttributes({ library: tempLib, name: tempSPF, member: tempMbr }, `CCSID`);
         expect(attributes).toBeTruthy();
 
-        const uploadResult = await content?.uploadMemberContent(tempLib, tempSPF, tempMbr, baseContent);
+        const uploadResult = await content.uploadMemberContent(tempLib, tempSPF, tempMbr, baseContent);
         expect(uploadResult).toBeTruthy();
 
-        const memberContentA = await content?.downloadMemberContent(tempLib, tempSPF, tempMbr);
+        const memberContentA = await content.downloadMemberContent(tempLib, tempSPF, tempMbr);
         expect(memberContentA).toBe(baseContent);
       }
       finally {
@@ -193,7 +193,7 @@ describe('Encoding tests', { concurrent: true }, () => {
   it('Listing objects with variants', async () => {
     const content = connection.getContent();
     if (connection && content) {
-      const tempLib = connection.getConfig().tempLibrary!;
+      const tempLib = connection.getConfig().tempLibrary;
       const ccsid = connection.getCcsid();
 
       let library = `TESTLIB${connection.variantChars.local}`;
