@@ -1115,6 +1115,7 @@ export default class IBMi {
 
     // Some simplification
     if (result.code === null) result.code = 0;
+    if (result.signal === `SIGABRT`) result.code = 127;
 
     this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
 

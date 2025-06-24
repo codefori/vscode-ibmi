@@ -37,6 +37,7 @@ export interface CommandData extends StandardIO {
 
 export interface CommandResult {
   code: number;
+  signal?: string|null;
   stdout: string;
   stderr: string;
   command?: string;
