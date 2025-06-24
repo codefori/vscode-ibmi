@@ -287,7 +287,7 @@
   "Only provide a password if you want to update an existing one or set a new one.": "Inserire una password se si vuole aggiornare una già esistente o impostarne una nuova",
   "Only provide a private key if you want to update from the existing one or set one.": "Inserire una chiave privata se si vuole aggiornare una già esistente o impostarne una nuova.",
   "Only provide either the password or a private key - not both.": "Passare una password o una chiave privata, non entrambe.",
-  "Open": "Aperto",
+  "Open": "Apri",
   "Open configuration": "Apri al configurazione",
   "Open official Forum": "Apri il forum ufficiale",
   "OpenSSH, RFC4716 and PPK formats are supported.": "I formati OpenSSH, RFC4716 and PPK sono supportati.",
