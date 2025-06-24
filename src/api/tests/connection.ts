@@ -67,7 +67,7 @@ export async function newConnection(reloadSettings?: boolean) {
 
   const creds: ConnectionData = {
     ...ENV_CREDS,
-    name: `${ENV_CREDS.host}_test`
+    name: `${ENV_CREDS.host}_${ENV_CREDS.username}_test`
   };
 
   // Override this so not to spam the console.
