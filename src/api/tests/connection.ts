@@ -6,6 +6,7 @@ import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { extensionComponentRegistry } from "../components/manager";
 import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
+import { ConnectionData } from "../types";
 import { CustomCLI } from "./components/customCli";
 import { JsonConfig, JsonStorage } from "./testConfigSetup";
 
@@ -14,14 +15,7 @@ const testConfig = new JsonConfig();
 
 export const CONNECTION_TIMEOUT = process.env.VITE_CONNECTION_TIMEOUT ? parseInt(process.env.VITE_CONNECTION_TIMEOUT) : 25000;
 
-const ENV_CREDS = {
-  host: process.env.VITE_SERVER,
-  user: process.env.VITE_DB_USER,
-  password: process.env.VITE_DB_PASS,
-  port: parseInt(process.env.VITE_DB_PORT || `22`)
-}
-
-if (ENV_CREDS.host === undefined) {
+if (!process.env.VITE_SERVER || !process.env.VITE_DB_USER || !process.env.VITE_DB_PASS) {
   const messages = [
     ``,
     `Please set the environment variables:`,
@@ -38,6 +32,14 @@ if (ENV_CREDS.host === undefined) {
   console.log(messages.join(`\n`));
 
   process.exit(1);
+}
+
+const ENV_CREDS = {
+  host: process.env.VITE_SERVER,
+  username: process.env.VITE_DB_USER,
+  password: process.env.VITE_DB_PASS,
+  port: parseInt(process.env.VITE_DB_PORT || `22`),
+  tempLibrary: process.env.VITE_TEMP_LIB || 'ILEDITOR'
 }
 
 export async function newConnection(reloadSettings?: boolean) {
@@ -63,12 +65,9 @@ export async function newConnection(reloadSettings?: boolean) {
 
   extensionComponentRegistry.registerComponent(testingId, new CustomCLI());
 
-  const creds = {
-    host: ENV_CREDS.host!,
-    name: `testsystem`,
-    username: ENV_CREDS.user!,
-    password: ENV_CREDS.password!,
-    port: ENV_CREDS.port
+  const creds: ConnectionData = {
+    ...ENV_CREDS,
+    name: `${ENV_CREDS.host}_test`
   };
 
   // Override this so not to spam the console.
@@ -91,6 +90,14 @@ export async function newConnection(reloadSettings?: boolean) {
     false,
     reloadSettings
   );
+
+  if (reloadSettings) {
+    const config = conn.getConfig();
+    if (config.tempLibrary !== ENV_CREDS.tempLibrary) {
+      config.tempLibrary = ENV_CREDS.tempLibrary;
+      await IBMi.connectionManager.update(config);
+    }
+  }
 
   if (!result.success) {
     throw new Error(`Failed to connect to IBMi`);
