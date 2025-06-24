@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Variables } from '../../variables';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
+import { disposeConnection, newConnection } from '../connection';
 
 describe(`variables tests`, { concurrent: true }, () => {
   const variables = new Variables();
@@ -76,7 +76,7 @@ describe(`variables tests`, { concurrent: true }, () => {
     }
     finally {
       customVariables.splice(0, customVariables.length);
-      disposeConnection(connection);
+      await disposeConnection(connection);
     }
-  }, { timeout: CONNECTION_TIMEOUT });
+  });
 });

@@ -1,7 +1,7 @@
+import { existsSync } from "fs";
+import { writeFile } from "fs/promises";
 import path from "path";
 import { Config } from "../configuration/config/VirtualConfig";
-import { writeFile } from "fs/promises";
-import { existsSync } from "fs";
 import { BaseStorage } from "../configuration/storage/BaseStorage";
 
 const configPath = path.join(__dirname, `config.json`);
@@ -21,10 +21,9 @@ export class JsonConfig extends Config {
 
   public save() {
     const data: any = {};
+    Array.from(this.config.entries()).forEach(([key, value]) => data[key] = value);
+    delete data.default;
 
-    Array.from(this.config.keys()).forEach(key => data[key] = this.config.get(key));
-    data.default = undefined;
-    
     return writeFile(configPath, JSON.stringify(data, null, 2));
   }
 
@@ -43,7 +42,7 @@ export class JsonStorage extends BaseStorage {
   constructor() {
     const newState = new Map<string, any>()
     super(newState);
-    
+
     this.globalState = newState;
   }
 
@@ -62,10 +61,9 @@ export class JsonStorage extends BaseStorage {
 
   public save() {
     const data: any = {};
+    Array.from(this.globalState.entries()).forEach(([key, value]) => data[key] = value);
+    delete data.default;
 
-    Array.from(this.globalState.keys()).forEach(key => data[key] = this.globalState.get(key));
-    data.default = undefined;
-    
     return writeFile(storagePath, JSON.stringify(data, null, 2));
   }
 }

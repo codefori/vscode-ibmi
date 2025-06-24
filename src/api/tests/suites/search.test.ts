@@ -13,7 +13,7 @@ describe('Search Tests', { concurrent: true }, () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    disposeConnection(connection);
+    await disposeConnection(connection);
   });
 
   it('Single member search', async () => {
@@ -59,7 +59,7 @@ describe('Search Tests', { concurrent: true }, () => {
 
     it('Member with `.` in name search', async () => {
       const library = connection.getConfig().tempLibrary;
-      const file = `ZZ${Tools.makeid(6)}`;
+      const file = connection.upperCaseName(`ZZ${Tools.makeid(6)}`);
       const crtsrcpf = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${file}) RCDLEN(112)`, noLibList: true });
       if (crtsrcpf.code !== 0) {
         throw new Error(`Failed to create test source file: ${crtsrcpf.stderr}`);
@@ -83,18 +83,18 @@ describe('Search Tests', { concurrent: true }, () => {
 
         const searchTest = await Search.searchMembers(connection, library, file, "test", '*');
         expect(searchTest.hits.length).toBe(3);
-        expect(hasMember(searchTest, "AN.RPGLE")).toBe(true);
-        expect(hasMember(searchTest, "A.CLLE")).toBe(true);
-        expect(hasMember(searchTest, "A.CMD")).toBe(true);
+        expect(hasMember(searchTest, "AN.RPGLE.RPGLE")).toBe(true);
+        expect(hasMember(searchTest, "A.CLLE.CLLE")).toBe(true);
+        expect(hasMember(searchTest, "A.CMD.CMD")).toBe(true);
 
         const searchTesting = await Search.searchMembers(connection, library, file, "testing", '*');
         expect(searchTesting.hits.length).toBe(2);
-        expect(hasMember(searchTesting, "AN.RPGLE")).toBe(true);
-        expect(hasMember(searchTesting, "A.CLLE")).toBe(true);
-        expect(hasMember(searchTesting, "A.CMD")).toBe(false);
+        expect(hasMember(searchTesting, "AN.RPGLE.RPGLE")).toBe(true);
+        expect(hasMember(searchTesting, "A.CLLE.CLLE")).toBe(true);
+        expect(hasMember(searchTesting, "A.CMD.CMD")).toBe(false);
       }
       finally {
-        await connection.runCommand({ command: `DLTF FILE(${library} / ${file})`, noLibList: true });
+        await connection.runCommand({ command: `DLTF FILE(${library}/${file})`, noLibList: true });
       }
     });
 });

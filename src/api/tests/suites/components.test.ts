@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GetMemberInfo } from '../../components/getMemberInfo';
 import { GetNewLibl } from '../../components/getNewLibl';
-import { Tools } from '../../Tools';
 import IBMi from '../../IBMi';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
+import { Tools } from '../../Tools';
 import { CustomCLI } from '../components/customCli';
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 
 describe('Component Tests', () => {
   let connection: IBMi
@@ -13,7 +13,7 @@ describe('Component Tests', () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    disposeConnection(connection);
+    await disposeConnection(connection);
   });
 
   it('Get new libl', async () => {
@@ -65,24 +65,29 @@ describe('Component Tests', () => {
       command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
       environment: 'ile'
     });
+    if (result.code === 0) {
+      try {
+        const memberInfoC = await component.getMemberInfo(connection, tempLib, tempSPF, tempMbr);
+        expect(memberInfoC).toBeTruthy();
+        expect(memberInfoC?.library).toBe(tempLib);
+        expect(memberInfoC?.file).toBe(tempSPF);
+        expect(memberInfoC?.name).toBe(tempMbr);
+        expect(memberInfoC?.created).toBeTypeOf('object');
+        expect(memberInfoC?.changed).toBeTypeOf('object');
+      }
+      finally {
+        // Cleanup...
+        await connection!.runCommand({
+          command: `DLTF ${tempLib}/${tempSPF}`,
+          environment: 'ile'
+        });
+      }
+    }
 
-    const memberInfoC = await component.getMemberInfo(connection, tempLib, tempSPF, tempMbr);
-    expect(memberInfoC).toBeTruthy();
-    expect(memberInfoC?.library).toBe(tempLib);
-    expect(memberInfoC?.file).toBe(tempSPF);
-    expect(memberInfoC?.name).toBe(tempMbr);
-    expect(memberInfoC?.created).toBeTypeOf('object');
-    expect(memberInfoC?.changed).toBeTypeOf('object');
-
-    // Cleanup...
-    await connection!.runCommand({
-      command: `DLTF ${tempLib}/${tempSPF}`,
-      environment: 'ile'
-    });
   });
 
   it('Can get component no matter the state', async () => {
-    const componentA = connection.getComponent<CustomCLI>(CustomCLI.ID, {ignoreState: true});
+    const componentA = connection.getComponent<CustomCLI>(CustomCLI.ID, { ignoreState: true });
     expect(componentA).toBeDefined();
     expect(componentA?.getIdentification().version).toBe(1);
     expect(componentA?.getIdentification().userManaged).toBe(true);

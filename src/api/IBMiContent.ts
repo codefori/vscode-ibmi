@@ -453,11 +453,11 @@ export default class IBMiContent {
 
     newLibl = newLibl
       .filter(lib => {
-        const isValid = this.ibmi.validQsysName(lib);        
-        if(!isValid){
-          badLibs.push(lib);          
+        const isValid = this.ibmi.validQsysName(lib);
+        if (!isValid) {
+          badLibs.push(lib);
         }
-        
+
         return isValid;
       });
 
@@ -1151,9 +1151,16 @@ export default class IBMiContent {
    * @param toDirectory the directory where the files/folders will be copied into
    * @returns the {@link CommandResult} of the `cp` command execution
    */
-  async copy(paths: string | string[], toDirectory: string) {
+  async copy(paths: string | string[], toDirectory: string): Promise<CommandResult> {
     paths = Array.isArray(paths) ? paths : [paths];
-    return this.ibmi.runCommand({ command: `cp -r ${paths.map(path => Tools.escapePath(path)).join(" ")} ${Tools.escapePath(toDirectory)}`, environment: "qsh" });
+    toDirectory = Tools.escapePath(toDirectory);
+    for (const path of paths.map(path => Tools.escapePath(path))) {
+      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') TODIR('${toDirectory}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
+      if (result.code !== 0) {
+        return result;
+      }
+    }
+    return { code: 0, stdout: "", stderr: "" };
   }
 
   /**

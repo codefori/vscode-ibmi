@@ -3,21 +3,21 @@ import { existsSync } from "fs";
 import * as node_ssh from "node-ssh";
 import os from "os";
 import path, { parse as parsePath } from 'path';
+import { EventEmitter } from 'stream';
+import { EditorPath } from '../typings';
+import { CompileTools } from "./CompileTools";
+import IBMiContent from "./IBMiContent";
+import { Tools } from './Tools';
 import { IBMiComponent } from "./components/component";
 import { CopyToImport } from "./components/copyToImport";
 import { CustomQSh } from './components/cqsh';
 import { ComponentManager, ComponentSearchProps } from "./components/manager";
-import { CompileTools } from "./CompileTools";
-import IBMiContent from "./IBMiContent";
-import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
-import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
-import { EventEmitter } from 'stream';
 import { ConnectionConfig } from './configuration/config/types';
-import { EditorPath } from '../typings';
+import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
+import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -481,7 +481,7 @@ export default class IBMi {
 
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
-      const componentStates = await this.componentManager.getComponentStates();
+      const componentStates = this.componentManager.getComponentStates();
       this.appendOutput(`\nCode for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
@@ -1504,6 +1504,7 @@ export default class IBMi {
     return this.currentAsp;
   }
   async lookupLibraryIAsp(library: string): Promise<string|undefined> {
+    library = this.upperCaseName(library);
     let foundNumber = this.libraryAsps.get(library);
 
     if (!foundNumber) {
