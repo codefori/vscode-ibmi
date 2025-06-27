@@ -50,6 +50,12 @@
 					".vscode/actions.json"
 				],
 				"url": "./schemas/actions.json"
+			},
+			{
+				"fileMatch": [
+					"/etc/vscode/codefori.json"
+				],
+				"url": "./schemas/codefori.json"
 			}
 		],
 		"configuration": {
