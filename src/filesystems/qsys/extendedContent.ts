@@ -42,7 +42,7 @@ export class ExtendedIBMiContent {
       }
 
       let rows = await connection.runSQL(
-        `select case when locate('40',hex(srcdat)) > 0 then 0 else srcdat end as srcdat, srcdta from ${aliasPath}`,
+        `select case when locate('40',hex(srcdat)) > 0 then 0 else srcdat end as srcdat, srcseq, srcdta from ${aliasPath}`,
         {forceSafe: true}
       );
 
@@ -50,6 +50,7 @@ export class ExtendedIBMiContent {
         rows.push({
           SRCDAT: 0,
           SRCDTA: ``,
+          SRCSEQ: 0
         });
       }
 
@@ -57,10 +58,11 @@ export class ExtendedIBMiContent {
       const body = rows
         .map(row => row.SRCDTA)
         .join(`\n`);
+      const sequences = rows.map(row => Number(row.SRCSEQ));
 
       this.sourceDateHandler.baseDates.set(alias, sourceDates);
-
       this.sourceDateHandler.baseSource.set(alias, body);
+      this.sourceDateHandler.baseSequences.set(alias, sequences);
 
       return body;
     }
@@ -182,6 +184,7 @@ export class ExtendedIBMiContent {
 
         this.sourceDateHandler.baseSource.set(alias, body);
         this.sourceDateHandler.baseDates.set(alias, sourceDates);
+        this.sourceDateHandler.baseSequences.delete(alias);
       }
     }
   }
