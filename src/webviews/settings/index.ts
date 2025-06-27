@@ -7,7 +7,7 @@ import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../.
 import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
 import { instance } from "../../instantiate";
-import { ConnectionConfig, ConnectionData, Server } from '../../typings';
+import { ConnectionConfig, ConnectionData, RemoteConfigFile, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
 import { ComplexTab, CustomUI, Section } from "../CustomUI";
 
@@ -40,6 +40,7 @@ export class SettingsUI {
         const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
 
         let config: ConnectionConfig;
+        let serverConfig: RemoteConfigFile|undefined;
 
         if (connectionSettings && server) {
           config = await IBMi.connectionManager.load(server.name);
@@ -48,9 +49,27 @@ export class SettingsUI {
           if (connection) {
             // Reload config to initialize any new config parameters.
             config = await IBMi.connectionManager.load(connection.currentConnectionName);
+
+            const serverConfigOk = connection.getConfigFile(`connection`).getState().server === `ok`;
+
+            if (serverConfigOk) {
+              serverConfig = await connection.getConfigFile<RemoteConfigFile>(`connection`).get();
+            }
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
             return;
+          }
+        }
+
+        const setFieldsReadOnly = async (currentSection: Section) => {
+          if (serverConfig && serverConfig.codefori) {
+            for (const field of currentSection.fields) {
+              if (!field.id) continue;
+                
+              if (serverConfig.codefori[field.id] !== undefined) {
+                field.readonly = true;
+              }
+            }
           }
         }
 
@@ -68,20 +87,15 @@ export class SettingsUI {
           .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
           .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) })
 
-        if (connection?.getConfigFile(`connection`).getState().server === `ok`) {
-          if (connection) {
-            featuresTab
-              .addHorizontalRule()
-              .addParagraph(`Some configuration values are loaded initially from the configuration files found on the server. (<code>/etc/vscode/*.json</code>). If you make changes here, they will override the server settings, but if you want to reset to the server settings, you can reload them.`)
-              .addButtons({ id: `reloadConfigs`, label: `Reload config files` })
-          }
-        }
+        setFieldsReadOnly(featuresTab);
 
         const tempDataTab = new Section();
         tempDataTab
           .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary, minlength: 1, maxlength: 10 })
           .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir, minlength: 1 })
           .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData);
+
+        setFieldsReadOnly(tempDataTab);
 
         const sourceTab = new Section();
         sourceTab
@@ -133,6 +147,8 @@ export class SettingsUI {
           .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, source members and IFS files will always be opened in read-only mode.`, config.readOnlyMode)
           .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
 
+        setFieldsReadOnly(sourceTab);
+
         const terminalsTab = new Section();
         if (connection && connection.remoteFeatures.tn5250) {
           terminalsTab
@@ -169,6 +185,8 @@ export class SettingsUI {
           terminalsTab.addParagraph('Connect to the server to see these settings.');
         }
 
+        setFieldsReadOnly(terminalsTab);
+
         const debuggerTab = new Section();
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
           debuggerTab.addParagraph(`The following values have been read from the debug service configuration.`);
@@ -203,6 +221,8 @@ export class SettingsUI {
           debuggerTab.addParagraph('Connect to the server to see these settings.');
         }
 
+        setFieldsReadOnly(debuggerTab);
+
         const componentsTab = new Section();
         if (connection) {
           const states = connection.getComponentManager().getComponentStates();
@@ -224,6 +244,8 @@ export class SettingsUI {
         } else {
           componentsTab.addParagraph('Connect to the server to see these settings.');
         }
+
+        setFieldsReadOnly(componentsTab);
 
         const tabs: ComplexTab[] = [
           { label: `Features`, fields: featuresTab.fields },
@@ -264,10 +286,6 @@ export class SettingsUI {
               const button = data.buttons;
 
               switch (button) {
-                case `reloadConfigs`:
-                  await connection?.loadRemoteConfigs();
-                  break;
-                  
                 case `import`:
                   vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
                   break;

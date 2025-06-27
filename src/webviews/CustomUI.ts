@@ -582,7 +582,7 @@ export class Field {
       case `checkbox`:
         return /* html */`
           <vscode-form-group variant="settings-group">
-            <vscode-checkbox id="${this.id}" name="${this.id}" ${this.default === `checked` ? `checked` : ``} label="${this.label}"></vscode-checkbox>
+            <vscode-checkbox id="${this.id}" name="${this.id}" ${this.default === `checked` ? `checked` : ``} label="${this.label}" ${this.readonly ? `disabled` : ``}></vscode-checkbox>
             ${this.renderDescription()}
           </vscode-form-group>`;
 
@@ -669,7 +669,7 @@ export class Field {
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-single-select id="${this.id}" name="${this.id}">
+              <vscode-single-select id="${this.id}" name="${this.id}" ${this.readonly ? `readonly` : ``}>
                   ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
               </vscode-single-select>
           </vscode-form-group>`;
