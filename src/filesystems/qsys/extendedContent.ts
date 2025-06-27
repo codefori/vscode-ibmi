@@ -58,7 +58,7 @@ export class ExtendedIBMiContent {
       const body = rows
         .map(row => row.SRCDTA)
         .join(`\n`);
-      const sequences = rows.map(row => String(row.SRCSEQ).padStart(6, `0`));
+      const sequences = rows.map(row => Number(row.SRCSEQ));
 
       this.sourceDateHandler.baseDates.set(alias, sourceDates);
       this.sourceDateHandler.baseSource.set(alias, body);

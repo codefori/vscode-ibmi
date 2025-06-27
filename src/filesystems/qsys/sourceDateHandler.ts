@@ -43,7 +43,7 @@ export class SourceDateHandler {
   readonly baseDates: Map<string, string[]> = new Map;
   readonly baseSource: Map<string, string> = new Map;
   readonly recordLengths: Map<string, number> = new Map;
-  readonly baseSequences: Map<string, string[]> = new Map;
+  readonly baseSequences: Map<string, number[]> = new Map;
 
   private enabled: boolean = false;
 
@@ -205,7 +205,7 @@ export class SourceDateHandler {
           hoverMessage.isTrusted = true;
 
           for (let cLine = 0; cLine < sequenceNumbers.length && cLine < document.lineCount; cLine++) {
-            const sequenceNumber = sequenceNumbers[cLine];
+            const sequenceNumber = sequenceNumbers[cLine].toFixed(2).padStart(7, `0`);
             lineGutters.push({
               range: new vscode.Range(
                 new vscode.Position(cLine, 0),
