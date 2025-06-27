@@ -9,14 +9,12 @@ const SERVER_ROOT = path.posix.join(`/`, `etc`, `vscode`);
 type ConfigResult = `not_loaded`|`no_exist`|`failed_to_parse`|`invalid`|`ok`;
 
 interface LoadResult {
-  workspace: ConfigResult;
   server: ConfigResult;
 }
 
 export class ConfigFile<T> {
-  private state: LoadResult = {server: `not_loaded`, workspace: `not_loaded`};
+  private state: LoadResult = {server: `not_loaded`};
   private basename: string;
-  private workspaceFile: string;
   private serverFile: string;
   private serverData: T|undefined;
 
@@ -24,13 +22,11 @@ export class ConfigFile<T> {
 
   constructor(private connection: IBMi, configId: string, readonly fallback: T) {
     this.basename = configId + `.json`;
-    this.workspaceFile = path.join(WORKSPACE_ROOT, this.basename);
     this.serverFile = path.posix.join(SERVER_ROOT, this.basename);
   }
 
   getPaths() {
     return {
-      workspace: this.workspaceFile,
       server: this.serverFile,
     }
   }
@@ -64,25 +60,13 @@ export class ConfigFile<T> {
     }
   }
 
-  async get(): Promise<T> {
-    let resultingConfig = this.serverData;
-
-    if (this.validateData) {
-      // Should throw an error.
-      try {
-        resultingConfig = this.validateData(resultingConfig);
-      } catch (e: any) {
-        resultingConfig = this.fallback;
-        this.state.workspace = `invalid`;
-        console.log(`Error validating config file: ${e.message}`);
-      }
-    }
-
-    return resultingConfig as T;
+  async get() {
+    return this.serverData;
   }
 
   reset() {
     this.serverData = undefined;
+    this.state.server = `not_loaded`;
   }
 
   getState() {
