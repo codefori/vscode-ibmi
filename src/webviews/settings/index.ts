@@ -61,6 +61,8 @@ export class SettingsUI {
           }
         }
 
+        const hasServerProperties = serverConfig && serverConfig.codefori && Object.keys(serverConfig.codefori).length > 0;
+
         const setFieldsReadOnly = async (currentSection: Section) => {
           if (serverConfig && serverConfig.codefori) {
             for (const field of currentSection.fields) {
@@ -77,6 +79,13 @@ export class SettingsUI {
         let restart = false;
 
         const featuresTab = new Section();
+
+        if (hasServerProperties) {
+          featuresTab
+            .addParagraph(`Some of these settings have been set on the server and cannot be changed here.`)
+            .addHorizontalRule();
+        }
+
         featuresTab
           .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect)
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
