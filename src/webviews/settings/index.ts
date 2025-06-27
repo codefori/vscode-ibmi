@@ -45,10 +45,9 @@ export class SettingsUI {
           config = await IBMi.connectionManager.load(server.name);
 
         } else {
-          config = instance.getConfig()!;
-          if (connection && config) {
+          if (connection) {
             // Reload config to initialize any new config parameters.
-            config = await IBMi.connectionManager.load(config.name);
+            config = await IBMi.connectionManager.load(connection.currentConnectionName);
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
             return;
@@ -68,6 +67,15 @@ export class SettingsUI {
           .addHorizontalRule()
           .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
           .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) })
+
+        if (connection?.getConfigFile(`connection`).getState().server === `ok`) {
+          if (connection) {
+            featuresTab
+              .addHorizontalRule()
+              .addParagraph(`Some configuration values are loaded initially from the configuration files found on the server. (<code>/etc/vscode/*.json</code>). If you make changes here, they will override the server settings, but if you want to reset to the server settings, you can reload them.`)
+              .addButtons({ id: `reloadConfigs`, label: `Reload config files` })
+          }
+        }
 
         const tempDataTab = new Section();
         tempDataTab
@@ -256,6 +264,10 @@ export class SettingsUI {
               const button = data.buttons;
 
               switch (button) {
+                case `reloadConfigs`:
+                  await connection?.loadRemoteConfigs();
+                  break;
+                  
                 case `import`:
                   vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
                   break;

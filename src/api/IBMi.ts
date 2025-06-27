@@ -15,9 +15,10 @@ import { ComponentManager, ComponentSearchProps } from "./components/manager";
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
-import { ConnectionConfig } from './configuration/config/types';
+import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
 import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
+import { ConfigFile } from './configuration/serverFile';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -65,6 +66,10 @@ interface ConnectionCallbacks {
   cancelEmitter?: EventEmitter,
 }
 
+interface ConnectionConfigFiles {
+  connection: ConfigFile<RemoteConfigFile>;
+}
+
 export default class IBMi {
   public static GlobalStorage: CodeForIStorage;
   public static connectionManager: ConnectionManager = new ConnectionManager();
@@ -81,6 +86,10 @@ export default class IBMi {
   private sshdCcsid: number | undefined;
 
   private componentManager = new ComponentManager(this);
+
+  private configFiles: ConnectionConfigFiles = {
+    connection: new ConfigFile<RemoteConfigFile>(this, `codefori`, {})
+  };
 
   /**
    * @deprecated Will become private in v3.0.0 - use {@link IBMi.getConfig} instead.
@@ -146,6 +155,10 @@ export default class IBMi {
    */
   setDisconnectedCallback(callback: DisconnectCallback) {
     this.disconnectedCallback = callback;
+  }
+
+  getConfigFile<T>(id: keyof ConnectionConfigFiles) {
+    return this.configFiles[id] as ConfigFile<T>;
   }
 
   get canUseCqsh() {
@@ -487,6 +500,24 @@ export default class IBMi {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
       }
       this.appendOutput(`\n`);
+
+      // Load the remote connection configuration and apply it to the connection
+
+      callbacks.progress({ message: `Loading remote configuration files.` });
+      await this.loadRemoteConfigs();
+
+      const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`connection`);
+      if (remoteConnectionConfig.getState().server === `ok`) {
+        const remoteConfig = await remoteConnectionConfig.get();
+
+        if (remoteConfig.codefori) {
+          for (const [key, value] of Object.entries(remoteConfig.codefori)) {
+            if (this.config[key] !== undefined) {
+              this.config[key] = value;
+            }
+          }
+        }
+      }
 
       callbacks.progress({
         message: `Checking library list configuration.`
@@ -1042,6 +1073,20 @@ export default class IBMi {
 
   usingBash() {
     return this.shell === IBMi.bashShellPath;
+  }
+
+  async loadRemoteConfigs() {
+    for (const configFile in this.configFiles) {
+      const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
+      
+      this.configFiles[configFile as keyof ConnectionConfigFiles].reset();
+
+      try {
+        await this.configFiles[configFile as keyof ConnectionConfigFiles].loadFromServer();
+      } catch (e) { }
+
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+    }
   }
 
   /**
