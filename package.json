@@ -53,9 +53,9 @@
 			},
 			{
 				"fileMatch": [
-					"/etc/vscode/codefori.json"
+					"/etc/vscode/settings.json"
 				],
-				"url": "./schemas/codefori.json"
+				"url": "./schemas/settings.json"
 			}
 		],
 		"configuration": {
