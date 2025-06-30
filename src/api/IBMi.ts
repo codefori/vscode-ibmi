@@ -67,7 +67,7 @@ interface ConnectionCallbacks {
 }
 
 interface ConnectionConfigFiles {
-  connection: ConfigFile<RemoteConfigFile>;
+  settings: ConfigFile<RemoteConfigFile>;
 }
 
 export default class IBMi {
@@ -88,7 +88,7 @@ export default class IBMi {
   private componentManager = new ComponentManager(this);
 
   private configFiles: ConnectionConfigFiles = {
-    connection: new ConfigFile<RemoteConfigFile>(this, `codefori`, {})
+    settings: new ConfigFile<RemoteConfigFile>(this, `settings`, {})
   };
 
   /**
@@ -506,7 +506,7 @@ export default class IBMi {
       callbacks.progress({ message: `Loading remote configuration files.` });
       await this.loadRemoteConfigs();
 
-      const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`connection`);
+      const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
       if (remoteConnectionConfig.getState().server === `ok`) {
         const remoteConfig = await remoteConnectionConfig.get();
 
