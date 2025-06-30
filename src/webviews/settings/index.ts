@@ -50,10 +50,11 @@ export class SettingsUI {
             // Reload config to initialize any new config parameters.
             config = await IBMi.connectionManager.load(connection.currentConnectionName);
 
-            const serverConfigOk = connection.getConfigFile(`connection`).getState().server === `ok`;
+            const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
+            const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
 
             if (serverConfigOk) {
-              serverConfig = await connection.getConfigFile<RemoteConfigFile>(`connection`).get();
+              serverConfig = await remoteConnectionConfig.get();
             }
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
