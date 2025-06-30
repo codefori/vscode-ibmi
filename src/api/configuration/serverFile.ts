@@ -61,7 +61,7 @@ export class ConfigFile<T> {
   }
 
   async get() {
-    return this.serverData;
+    return this.serverData || this.fallback;
   }
 
   reset() {
