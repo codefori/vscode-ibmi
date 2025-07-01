@@ -51,7 +51,7 @@ export class SettingsUI {
             config = await IBMi.connectionManager.load(connection.currentConnectionName);
 
             const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
-            const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
+            const serverConfigOk = remoteConnectionConfig.getState() === `ok`;
 
             if (serverConfigOk) {
               serverConfig = await remoteConnectionConfig.get();
