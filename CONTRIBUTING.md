@@ -64,3 +64,4 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@bspotswood](https://github.com/bspotswood)
 * [@dcmcdoug](https://github.com/dcmcdoug)
 * [@nathaniel-king-navarrete](https://github.com/Nathaniel-King-Navarrete)
+* [@buzzia2001](https://github.com/buzzia2001)
