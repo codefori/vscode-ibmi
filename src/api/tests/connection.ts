@@ -1,27 +1,21 @@
-import IBMi from "../IBMi";
-import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
-import { CustomQSh } from "../components/cqsh";
 import path from "path";
+import IBMi from "../IBMi";
 import { CopyToImport } from "../components/copyToImport";
+import { CustomQSh } from "../components/cqsh";
 import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { extensionComponentRegistry } from "../components/manager";
-import { JsonConfig, JsonStorage } from "./testConfigSetup";
+import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
+import { ConnectionData } from "../types";
 import { CustomCLI } from "./components/customCli";
+import { JsonConfig, JsonStorage } from "./testConfigSetup";
 
 export const testStorage = new JsonStorage();
 const testConfig = new JsonConfig();
 
 export const CONNECTION_TIMEOUT = process.env.VITE_CONNECTION_TIMEOUT ? parseInt(process.env.VITE_CONNECTION_TIMEOUT) : 25000;
 
-const ENV_CREDS = {
-  host: process.env.VITE_SERVER,
-  user: process.env.VITE_DB_USER,
-  password: process.env.VITE_DB_PASS,
-  port: parseInt(process.env.VITE_DB_PORT || `22`)
-}
-
-if (ENV_CREDS.host === undefined) {
+if (!process.env.VITE_SERVER || !process.env.VITE_DB_USER || !process.env.VITE_DB_PASS) {
   const messages = [
     ``,
     `Please set the environment variables:`,
@@ -40,7 +34,15 @@ if (ENV_CREDS.host === undefined) {
   process.exit(1);
 }
 
-export async function newConnection() {
+const ENV_CREDS = {
+  host: process.env.VITE_SERVER,
+  username: process.env.VITE_DB_USER,
+  password: process.env.VITE_DB_PASS,
+  port: parseInt(process.env.VITE_DB_PORT || `22`),
+  tempLibrary: process.env.VITE_TEMP_LIB || 'ILEDITOR'
+}
+
+export async function newConnection(reloadSettings?: boolean) {
   const virtualStorage = testStorage;
 
   IBMi.GlobalStorage = new CodeForIStorage(virtualStorage);
@@ -63,16 +65,13 @@ export async function newConnection() {
 
   extensionComponentRegistry.registerComponent(testingId, new CustomCLI());
 
-  const creds = {
-    host: ENV_CREDS.host!,
-    name: `testsystem`,
-    username: ENV_CREDS.user!,
-    password: ENV_CREDS.password!,
-    port: ENV_CREDS.port
+  const creds: ConnectionData = {
+    ...ENV_CREDS,
+    name: `${ENV_CREDS.host}_${ENV_CREDS.username}_test`
   };
 
   // Override this so not to spam the console.
-  conn.appendOutput = (data) => {};
+  conn.appendOutput = (data) => { };
 
   const result = await conn.connect(
     creds,
@@ -80,15 +79,25 @@ export async function newConnection() {
       message: (type: string, message: string) => {
         // console.log(`${type.padEnd(10)} ${message}`);
       },
-      progress: ({message}) => {
+      progress: ({ message }) => {
         // console.log(`PROGRESS: ${message}`);
       },
       uiErrorHandler: async (connection, code, data) => {
         console.log(`Connection warning: ${code}: ${JSON.stringify(data)}`);
         return false;
       },
-    }
+    },
+    false,
+    reloadSettings
   );
+
+  if (reloadSettings) {
+    const config = conn.getConfig();
+    if (config.tempLibrary !== ENV_CREDS.tempLibrary) {
+      config.tempLibrary = ENV_CREDS.tempLibrary;
+      await IBMi.connectionManager.update(config);
+    }
+  }
 
   if (!result.success) {
     throw new Error(`Failed to connect to IBMi`);
@@ -97,12 +106,13 @@ export async function newConnection() {
   return conn;
 }
 
-export function disposeConnection(conn?: IBMi) {
+export async function disposeConnection(conn?: IBMi) {
   if (!conn) {
     return;
   }
 
-  conn.dispose();
-  testStorage.save();
-  testConfig.save();
+  await Promise.all([
+    conn.dispose(),
+    testStorage.save(),
+    testConfig.save()]);
 }

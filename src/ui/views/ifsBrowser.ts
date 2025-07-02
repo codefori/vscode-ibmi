@@ -1064,5 +1064,5 @@ async function showOpenDialog() {
  * Filters the content of an IFSItem array to keep only items whose parent are not in the array
  */
 function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {
-  return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(folder.file.path));
+  return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(`${folder.file.path}/`));
 }

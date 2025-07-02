@@ -34,3 +34,4 @@ jobs:
           VITE_DB_USER: ${{ secrets.VITE_DB_USER }}
           VITE_DB_PASS: ${{ secrets.VITE_DB_PASS }}
           VITE_DB_PORT: ${{ secrets.VITE_DB_PORT }}
+          VITE_TEMP_LIB: ${{ secrets.VITE_TEMP_LIB }} 

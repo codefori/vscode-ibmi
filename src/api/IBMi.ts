@@ -3,21 +3,22 @@ import { existsSync } from "fs";
 import * as node_ssh from "node-ssh";
 import os from "os";
 import path, { parse as parsePath } from 'path';
+import { EventEmitter } from 'stream';
+import { EditorPath } from '../typings';
+import { CompileTools } from "./CompileTools";
+import IBMiContent from "./IBMiContent";
+import { Tools } from './Tools';
 import { IBMiComponent } from "./components/component";
 import { CopyToImport } from "./components/copyToImport";
 import { CustomQSh } from './components/cqsh';
 import { ComponentManager, ComponentSearchProps } from "./components/manager";
-import { CompileTools } from "./CompileTools";
-import IBMiContent from "./IBMiContent";
-import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
+import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
+import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
 import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
-import { EventEmitter } from 'stream';
-import { ConnectionConfig } from './configuration/config/types';
-import { EditorPath } from '../typings';
+import { ConfigFile } from './configuration/serverFile';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -65,6 +66,10 @@ interface ConnectionCallbacks {
   cancelEmitter?: EventEmitter,
 }
 
+interface ConnectionConfigFiles {
+  settings: ConfigFile<RemoteConfigFile>;
+}
+
 export default class IBMi {
   public static GlobalStorage: CodeForIStorage;
   public static connectionManager: ConnectionManager = new ConnectionManager();
@@ -81,6 +86,10 @@ export default class IBMi {
   private sshdCcsid: number | undefined;
 
   private componentManager = new ComponentManager(this);
+
+  private configFiles: ConnectionConfigFiles = {
+    settings: new ConfigFile<RemoteConfigFile>(this, `settings`, {})
+  };
 
   /**
    * @deprecated Will become private in v3.0.0 - use {@link IBMi.getConfig} instead.
@@ -146,6 +155,10 @@ export default class IBMi {
    */
   setDisconnectedCallback(callback: DisconnectCallback) {
     this.disconnectedCallback = callback;
+  }
+
+  getConfigFile<T>(id: keyof ConnectionConfigFiles) {
+    return this.configFiles[id] as ConfigFile<T>;
   }
 
   get canUseCqsh() {
@@ -481,12 +494,30 @@ export default class IBMi {
 
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
-      const componentStates = await this.componentManager.getComponentStates();
+      const componentStates = this.componentManager.getComponentStates();
       this.appendOutput(`\nCode for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
       }
       this.appendOutput(`\n`);
+
+      // Load the remote connection configuration and apply it to the connection
+
+      callbacks.progress({ message: `Loading remote configuration files.` });
+      await this.loadRemoteConfigs();
+
+      const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
+      if (remoteConnectionConfig.getState().server === `ok`) {
+        const remoteConfig = await remoteConnectionConfig.get();
+
+        if (remoteConfig.codefori) {
+          for (const [key, value] of Object.entries(remoteConfig.codefori)) {
+            if (this.config[key] !== undefined) {
+              this.config[key] = value;
+            }
+          }
+        }
+      }
 
       callbacks.progress({
         message: `Checking library list configuration.`
@@ -1044,6 +1075,20 @@ export default class IBMi {
     return this.shell === IBMi.bashShellPath;
   }
 
+  async loadRemoteConfigs() {
+    for (const configFile in this.configFiles) {
+      const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
+      
+      this.configFiles[configFile as keyof ConnectionConfigFiles].reset();
+
+      try {
+        await this.configFiles[configFile as keyof ConnectionConfigFiles].loadFromServer();
+      } catch (e) { }
+
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+    }
+  }
+
   /**
    * - Send PASE/QSH/ILE commands simply
    * - Commands sent here end in the 'IBM i Output' channel
@@ -1115,6 +1160,7 @@ export default class IBMi {
 
     // Some simplification
     if (result.code === null) result.code = 0;
+    if (result.signal === `SIGABRT`) result.code = 127;
 
     this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
 
@@ -1504,6 +1550,7 @@ export default class IBMi {
     return this.currentAsp;
   }
   async lookupLibraryIAsp(library: string): Promise<string|undefined> {
+    library = this.upperCaseName(library);
     let foundNumber = this.libraryAsps.get(library);
 
     if (!foundNumber) {
