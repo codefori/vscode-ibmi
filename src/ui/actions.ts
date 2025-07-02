@@ -562,7 +562,13 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             const resultsPanel = new CustomUI();
             if (targets.length === 1) {
               resultsPanel.addParagraph(`<pre><code>${targets[0].output.join("")}</code></pre>`)
-                .setOptions({ fullPage: true });
+                .setOptions({ fullPage: true ,
+                  css: /* css */ `
+                  pre{              
+                    background-color: transparent;
+                  }
+                `
+                });
             }
             else {
               resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre><code>${target.output.join("")}</code></pre>` } as TreeListItem)))
@@ -577,6 +583,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                   pre {
                     margin: 1em;
+                    background-color: transparent;
                   }                  
                 `
                 });
