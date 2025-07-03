@@ -94,6 +94,7 @@ export class SourceDateHandler {
         this.baseDates.clear();
         this.baseSource.clear();
         this.recordLengths.clear();
+        this.baseSequences.clear();
       }
     }
   }
