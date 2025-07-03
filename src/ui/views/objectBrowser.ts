@@ -445,6 +445,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     dragAndDropController: new ObjectBrowserMemberItemDragAndDrop()
   });
 
+  const getSelectedItems = <T>(node?: T | T[]) => node ? Array.isArray(node) ? node : [node] : objectTreeViewer.selection as T[];
+
   context.subscriptions.push(
     objectTreeViewer,
 
@@ -743,7 +745,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       }
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: ObjectBrowserMemberItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: (ObjectBrowserMemberItem)) => {
       const connection = getConnection();
       const oldMember = connection.parserMemberPath(node.path);
       const oldUri = node.resourceUri as vscode.Uri;
@@ -1216,7 +1218,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       } while (newPath && !newPathOK)
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node: ObjectBrowserObjectItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
       let [, newObject] = node.path.split(`/`);
       let newObjectOK;
       do {
@@ -1349,6 +1351,15 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async () => {
       vscode.commands.executeCommand('objectBrowser.focus');
       vscode.commands.executeCommand('list.find');
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.renameQSYS`, async (node?: (ObjectBrowserMemberItem | ObjectBrowserObjectItem)) => {
+      node = getSelectedItems(node).at(0);
+      if (node instanceof ObjectBrowserObjectItem || node instanceof ObjectBrowserSourcePhysicalFileItem) {
+        vscode.commands.executeCommand(`code-for-ibmi.renameObject`, node);
+      }
+      else if (node instanceof ObjectBrowserMemberItem) {
+        vscode.commands.executeCommand(`code-for-ibmi.renameMember`, node);
+      }
     })
   );
 }
