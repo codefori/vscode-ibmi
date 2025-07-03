@@ -368,7 +368,12 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Tells the debug service to send more data to the client. Only useful for debugging issues in the service."
-							}
+							},
+              "readOnlyMode": {
+								"type": "boolean",
+								"default": false,
+								"description": "Always open source members and IFS files in read-only mode."
+              }
 						}
 					}
 				},

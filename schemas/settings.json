@@ -4,6 +4,11 @@
     "CodeForI": {
       "type": "object",
       "properties": {
+        "readOnlyMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Always open source members and IFS files in read-only mode."
+        },
         "tempLibrary": {
           "type": "string",
           "default": "ILEDITOR",
