@@ -561,7 +561,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             const now = new Date();
             const resultsPanel = new CustomUI();
             if (targets.length === 1) {
-              resultsPanel.addParagraph(`<pre><code>${targets[0].output.join("")}</code></pre>`)
+              resultsPanel.addParagraph(`<pre>${targets[0].output.join("")}</pre>`)
                 .setOptions({ fullPage: true ,
                   css: /* css */ `
                   pre{              
@@ -571,7 +571,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 });
             }
             else {
-              resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre><code>${target.output.join("")}</code></pre>` } as TreeListItem)))
+              resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre>${target.output.join("")}</pre>` } as TreeListItem)))
                 .setOptions({
                   fullPage: true,
                   css: /* css */ `
