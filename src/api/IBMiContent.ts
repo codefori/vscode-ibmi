@@ -1146,16 +1146,17 @@ export default class IBMiContent {
   }
 
   /**
-   * Copy one or more folders or files into a directory. Uses QSH's `cp` to keep all the attributes of the original file into its copy.
+   * Copy one or more folders or files into a directory or file. Uses ILE `CPY` to keep all the attributes of the original file into its copy.
    * @param paths one or more files/folders to copy
-   * @param toDirectory the directory where the files/folders will be copied into
-   * @returns the {@link CommandResult} of the `cp` command execution
+   * @param toPath the directory or file where the files/folders will be copied into
+   * @returns the {@link CommandResult} of the `CPY` command execution
    */
-  async copy(paths: string | string[], toDirectory: string): Promise<CommandResult> {
+  async copy(paths: string | string[], toPath: string): Promise<CommandResult> {
     paths = Array.isArray(paths) ? paths : [paths];
-    toDirectory = Tools.escapePath(toDirectory);
+    toPath = Tools.escapePath(toPath);
+    const toPathIsDir = await this.isDirectory(toPath);
     for (const path of paths.map(path => Tools.escapePath(path))) {
-      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') TODIR('${toDirectory}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
+      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ(' }'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
       if (result.code !== 0) {
         return result;
       }
