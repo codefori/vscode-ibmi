@@ -94,6 +94,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     })
   );
 
+  const MINIMUM_SCROLLBACK = 10000;
+  if(<number>vscode.workspace.getConfiguration().get('terminal.integrated.scrollback') < MINIMUM_SCROLLBACK){
+    vscode.workspace.getConfiguration().update('terminal.integrated.scrollback', MINIMUM_SCROLLBACK, true);
+  }
+
   // Register git events based on workspace folders
   if (vscode.workspace.workspaceFolders) {
     setupGitEventHandler(context);
