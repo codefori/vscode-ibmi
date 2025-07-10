@@ -154,7 +154,7 @@ export class SettingsUI {
               }))
             ], `The terminal type for the 5250 emulator.`)
             .addCheckbox(`setDeviceNameFor5250`, `Set Device Name for 5250`, `When enabled, the user will be able to enter a device name before the terminal starts.`, config.setDeviceNameFor5250)
-            .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>+uninhibited localhost</code> (<code>+uninhibited</code> lets you get the cursor out of protected areas with any key).<br />A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
+            .addInput(`connectringStringFor5250`, `Connection string for 5250`, `The syntax for tn5250 is <code>[options] HOST[:PORT]</code>, default is <code>+uninhibited localhost</code><br />If your system is configured using telnet SSL, you need to specify <code>ssl</code> prefix before the connection string (examples <code>ssl:localhost</code> or <code>ssl:localhost:992</code>)<br/>You can also choose other opitions like <ul><li><code>+ruler</code>: Draw a ruler pointing to the cursor position</li><li><code>+uninhibited</code>: lets you get the cursor out of protected areas with any key</li></ul>`, { default: config.connectringStringFor5250 });
         } else if (connection) {
           terminalsTab.addParagraph('Enable 5250 emulation to change these settings');
         } else {
