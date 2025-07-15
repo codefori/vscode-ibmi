@@ -241,11 +241,11 @@ export default class IBMi {
       local: `#@$`
     };
   }
-  
+
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData, callbacks: ConnectionCallbacks, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<ConnectionResult> {
+  async connect(connectionObject: ConnectionData, callbacks: ConnectionCallbacks, reconnecting?: boolean, reloadServerSettings: boolean = false, customClient?: node_ssh.NodeSSH): Promise<ConnectionResult> {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
     try {
       connectionObject.keepaliveInterval = 35000;
@@ -258,7 +258,11 @@ export default class IBMi {
 
       const delayedOperations: Function[] = callbacks.onConnectedOperations ? [...callbacks.onConnectedOperations] : [];
 
-      this.client = new node_ssh.NodeSSH;
+      if (customClient) {
+        this.client = customClient;
+      } else {
+        this.client = new node_ssh.NodeSSH;
+      }
       await this.client.connect({
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined
@@ -1078,7 +1082,7 @@ export default class IBMi {
   async loadRemoteConfigs() {
     for (const configFile in this.configFiles) {
       const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
-      
+
       this.configFiles[configFile as keyof ConnectionConfigFiles].reset();
 
       try {
@@ -1453,7 +1457,7 @@ export default class IBMi {
         if (returningAsCsv) {
           // Will throw an error if stdout contains an error
 
-          const csvContent = await this.content.downloadStreamfile(returningAsCsv.outStmf);
+          const csvContent = await this.content.downloadStreamfileRaw(returningAsCsv.outStmf);
           if (csvContent) {
             this.sendCommand({ command: `rm -rf "${returningAsCsv.outStmf}"` });
 
