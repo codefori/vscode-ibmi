@@ -13,7 +13,7 @@ interface LoadResult {
 }
 
 export class ConfigFile<T> {
-  private state: LoadResult = {server: `not_loaded`};
+  private state: ConfigResult = `not_loaded`;
   private basename: string;
   private serverFile: string;
   private serverData: T|undefined;
@@ -34,16 +34,16 @@ export class ConfigFile<T> {
   async loadFromServer() {
     let serverConfig: any|undefined;
 
-    this.state.server = `no_exist`;
+    this.state = `no_exist`;
 
     const isAvailable = await this.connection.getContent().testStreamFile(this.serverFile, `r`);
     if (isAvailable) {
       const content = await this.connection.getContent().downloadStreamfileRaw(this.serverFile);
       try {
         serverConfig = JSON.parse(content.toString());
-        this.state.server = `ok`;
+        this.state = `ok`;
       } catch (e: any) {
-        this.state.server = `failed_to_parse`;
+        this.state = `failed_to_parse`;
       }
 
       if (this.validateData) {
@@ -51,7 +51,7 @@ export class ConfigFile<T> {
         try {
           this.serverData = this.validateData(serverConfig);
         } catch (e) {
-          this.state.server = `invalid`;
+          this.state = `invalid`;
           this.serverData = undefined;
         }
       } else {
@@ -66,7 +66,7 @@ export class ConfigFile<T> {
 
   reset() {
     this.serverData = undefined;
-    this.state.server = `not_loaded`;
+    this.state = `not_loaded`;
   }
 
   getState() {
