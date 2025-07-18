@@ -7,7 +7,7 @@
         "readOnlyMode": {
           "type": "boolean",
           "default": false,
-          "description": "Always open source members and IFS files in read-only mode."
+          "description": "Always open source members and IFS files in read-only mode. Content on the server can not be changed."
         },
         "tempLibrary": {
           "type": "string",
