@@ -88,6 +88,8 @@ export class SettingsUI {
         }
 
         featuresTab
+          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, content on the server can not be changed. Requires restart when changed.`, config.readOnlyMode)
+          .addHorizontalRule()
           .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect)
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
           .addCheckbox(`showHiddenFiles`, `Show hidden files and directories in IFS browser.`, `When disabled, hidden files and directories (i.e. names starting with '.') will not be shown in the IFS browser, except for special config files.`, config.showHiddenFiles)
@@ -154,7 +156,6 @@ export class SettingsUI {
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()
-          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, source members and IFS files will always be opened in read-only mode.`, config.readOnlyMode)
           .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
 
         setFieldsReadOnly(sourceTab);
