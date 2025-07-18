@@ -63,7 +63,7 @@ export async function startService(connection: IBMi) {
       // Change the permissions to 777
       await connection.sendCommand({ command: `chmod 777 ${debugConfig.getRemoteServiceWorkspace()}` });
 
-      const command = `QSYS/SBMJOB JOB(QDBGSRV) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${debugConfig.getRemoteServiceBin()}/startDebugService.sh > ${debugConfig.getNavigatorLogFile()} 2>&1'))`
+      const command = `QSYS/SBMJOB JOB(QDBGSRV) SYSLIBL(*SYSVAL) CURLIB(*USRPRF) INLLIBL(*JOBD) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${debugConfig.getRemoteServiceBin()}/startDebugService.sh > ${debugConfig.getNavigatorLogFile()} 2>&1'))`
       const submitResult = await connection.runCommand({ command, noLibList: true });
       if (submitResult.code === 0) {
         const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
