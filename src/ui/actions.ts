@@ -584,9 +584,17 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
 
   // Then, if we're being called from a local file
   // we fetch the Actions defined from the workspace.
-  if (targets[0].workspaceFolder && scheme === `file`) {
-    const localActions = await getLocalActions(targets[0].workspaceFolder);
-    allActions.push(...localActions);
+  const firstWorkspace = targets[0].workspaceFolder;
+
+  // We need to make sure that all targets are from the same workspace
+  if (firstWorkspace && firstWorkspace.uri.scheme === `file`) {
+    const workspaceId = firstWorkspace.index;
+    const allTargetsInOne = targets.every(t => t.workspaceFolder?.index === workspaceId);
+
+    if (allTargetsInOne) {
+      const localActions = await getLocalActions(firstWorkspace);
+      allActions.push(...localActions);
+    }
   }
 
   // We make sure all extensions are uppercase
