@@ -70,6 +70,10 @@ export class IFSFS implements vscode.FileSystemProvider {
     const path = uri.path;
     const connection =  instance.getConnection();
     if (connection) {
+      const readonly = connection.getConfig().readOnlyMode;
+      if (readonly) {
+        throw new FileSystemError("Connection is in readonly mode");
+      }
       const contentApi = connection.getContent();
       if (!content.length) { //Coming from "Save as"    
         this.savedAsFiles.add(path);
