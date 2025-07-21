@@ -57,6 +57,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 type DisconnectCallback = (conn: IBMi) => Promise<void>;
+
 interface ConnectionCallbacks {
   onConnectedOperations?: Function[],
   timeoutCallback?: (conn: IBMi) => Promise<void>,
@@ -64,6 +65,13 @@ interface ConnectionCallbacks {
   progress: (detail: { message: string }) => void,
   message: (type: ConnectionMessageType, message: string) => void,
   cancelEmitter?: EventEmitter,
+}
+
+interface ConnectionOptions {
+  callbacks: ConnectionCallbacks,
+  reconnecting?: boolean,
+  reloadServerSettings?: boolean,
+  customClient?: node_ssh.NodeSSH
 }
 
 interface ConnectionConfigFiles {
@@ -242,11 +250,10 @@ export default class IBMi {
     };
   }
 
-  /**
-   * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
-   */
-  async connect(connectionObject: ConnectionData, callbacks: ConnectionCallbacks, reconnecting?: boolean, reloadServerSettings: boolean = false, customClient?: node_ssh.NodeSSH): Promise<ConnectionResult> {
+  async connect(connectionObject: ConnectionData, options: ConnectionOptions): Promise<ConnectionResult> {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
+    const callbacks = options.callbacks;
+
     try {
       connectionObject.keepaliveInterval = 35000;
 
@@ -258,8 +265,8 @@ export default class IBMi {
 
       const delayedOperations: Function[] = callbacks.onConnectedOperations ? [...callbacks.onConnectedOperations] : [];
 
-      if (customClient) {
-        this.client = customClient;
+      if (options.customClient) {
+        this.client = options.customClient;
       } else {
         this.client = new node_ssh.NodeSSH;
       }
@@ -296,7 +303,7 @@ export default class IBMi {
 
       // Reload server settings?
       const quickConnect = () => {
-        return (this.config!.quickConnect === true && reloadServerSettings === false);
+        return (this.config!.quickConnect === true && options.reloadServerSettings === false);
       }
 
       // Check shell output for additional user text - this will confuse Code...
@@ -376,7 +383,7 @@ export default class IBMi {
             await callbacks.message(`warning`, `Your home directory (${actualHomeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator.`);
           }
         }
-        else if (reconnecting) {
+        else if (options.reconnecting) {
           callbacks.message(`warning`, `Your home directory (${actualHomeDir}) does not exist. Code for IBM i may not function correctly.`);
         }
         else {
@@ -411,7 +418,7 @@ export default class IBMi {
 
       // If the version has changed (by update for example), then fetch everything again
       if (cachedServerSettings?.lastCheckedOnVersion !== currentExtensionVersion) {
-        reloadServerSettings = true;
+        options.reloadServerSettings = true;
       }
 
       // Check for installed components?
@@ -951,7 +958,7 @@ export default class IBMi {
         callbacks.message(`warning`, `The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
       }
 
-      if (!reconnecting) {
+      if (!options.reconnecting) {
         for (const operation of delayedOperations) {
           await operation();
         }
