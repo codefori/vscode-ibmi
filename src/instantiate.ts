@@ -105,12 +105,12 @@ async function updateConnectedBar() {
   if (connection) {
     const config = connection.getConfig();
     connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
-
+    const terminalMenuItem = config.readOnlyMode ? `` : `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`;
     const debugRunning = await isDebugEngineRunning();
     connectedBarItem.tooltip = new vscode.MarkdownString([
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
-      `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
+      terminalMenuItem,
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
         :
@@ -128,6 +128,8 @@ async function onConnected() {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
+
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isReadonly`, config?.readOnlyMode);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
@@ -154,4 +156,3 @@ async function onDisconnected() {
     connectedBarItem,
   ].forEach(barItem => barItem.hide())
 }
-
