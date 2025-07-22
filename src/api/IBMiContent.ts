@@ -4,7 +4,7 @@ import * as node_ssh from "node-ssh";
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import { EditorPath } from '../typings';
+import { EditorPath } from './types';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';

@@ -4,7 +4,7 @@ import * as node_ssh from "node-ssh";
 import os from "os";
 import path, { parse as parsePath } from 'path';
 import { EventEmitter } from 'stream';
-import { EditorPath } from '../typings';
+import { EditorPath } from './types';
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { Tools } from './Tools';
