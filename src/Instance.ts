@@ -119,15 +119,17 @@ export default class Instance {
             result = await connection.connect(
               options.data,
               {
-                timeoutCallback: timeoutHandler,
-                onConnectedOperations: options.onConnectedOperations || [],
-                uiErrorHandler: handleConnectionResults,
-                progress: (message) => { p.report(message) },
-                message: messageCallback,
-                cancelEmitter
+                callbacks: {
+                  timeoutCallback: timeoutHandler,
+                  onConnectedOperations: options.onConnectedOperations || [],
+                  uiErrorHandler: handleConnectionResults,
+                  progress: (message) => { p.report(message) },
+                  message: messageCallback,
+                  cancelEmitter
+                },
+                reconnecting: options.reconnecting,
+                reloadServerSettings: options.reloadServerSettings,
               },
-              options.reconnecting,
-              options.reloadServerSettings,
             );
           } catch (e: any) {
             customError = e.message;
