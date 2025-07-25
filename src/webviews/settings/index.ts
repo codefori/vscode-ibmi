@@ -114,6 +114,8 @@ export class SettingsUI {
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter. This also enables date search and sequence view.`, config.sourceDateGutter)
+          .addCheckbox(`bidi`,`Enable Bidi support for member editing`, `When enabled, source members encoded in Bidi CCSIDs will be automatically converted and displayed correctly during editing.`, config.bidi)
+          .addInput(`bidiCcsid`, `Bidi-compatible CCSID`, `The CCSID to use when converting bidirectional text members. Only applies when bidi support is enabled.`, { default: config.bidiCcsid || '', minlength: 0, maxlength: 5 })
           .addHorizontalRule()
           .addSelect(`defaultDeploymentMethod`, `Default Deployment Method`, [
             {
