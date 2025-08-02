@@ -221,5 +221,7 @@ export interface ModuleExport {
   argumentOptimization: string,
 }
 
+export type EditorPath = string | { fsPath: string };
+
 export * from "./configuration/config/types";
 
