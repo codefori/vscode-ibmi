@@ -3,17 +3,15 @@ import path, { dirname, extname } from "path";
 import vscode, { FileType, l10n, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
+import IBMi from "../../api/IBMi";
 import { SortOptions } from "../../api/IBMiContent";
 import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
-import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../../typings";
+import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithPath } from "../../typings";
 import { VscodeTools } from "../Tools";
-import IBMi from "../../api/IBMi";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
-const URI_LIST_MIMETYPE = "text/uri-list";
-const URI_LIST_SEPARATOR = "\r\n";
 const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/QIBM|\/QSR|\/QTCPTMM|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
 const ALWAYS_SHOW_FILES = /^(\.gitignore|\.vscode|\.deployignore)$/i;
 type DragNDropAction = "move" | "copy";
@@ -21,7 +19,7 @@ type DragNDropBehavior = DragNDropAction | "ask";
 const getDragDropBehavior = () => IBMi.connectionManager.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
 function isProtected(path: string) {
-  return PROTECTED_DIRS.test(path) || instance.getContent()?.isProtectedPath(path);
+  return PROTECTED_DIRS.test(path) || instance.getConnection()?.getContent().isProtectedPath(path);
 }
 
 function alwaysShow(name: string) {
@@ -45,7 +43,7 @@ class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   getShortCuts() {
-    return instance.getConfig()?.ifsShortcuts.map(directory => new IFSShortcutItem(directory)) || [];
+    return instance.getConnection()?.getConfig().ifsShortcuts.map(directory => new IFSShortcutItem(directory)) || [];
   }
 
   getParent(item: BrowserItem) {
@@ -53,8 +51,9 @@ class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   async moveShortcut(shortcut: IFSShortcutItem, direction: "top" | "up" | "down" | "bottom") {
-    const config = instance.getConfig();
-    if (config) {
+    const connection = instance.getConnection();
+    if (connection) {
+      const config = connection.getConfig();
       const shortcuts = config.ifsShortcuts;
 
       const moveDir = shortcut?.path?.trim();
@@ -156,10 +155,13 @@ class IFSDirectoryItem extends IFSItem {
   }
 
   async getChildren(): Promise<BrowserItem[]> {
-    const content = instance.getContent();
-    if (content) {
+    const connection = instance.getConnection();
+    if (connection) {
+      ;
+      const content = connection.getContent();
+      const config = connection.getConfig();
       try {
-        const showHidden = instance.getConfig()?.showHiddenFiles;
+        const showHidden = config.showHiddenFiles;
         const filterIFSFile = (file: IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
         const objects = await content.getFileList(this.path, this.sort, handleFileListErrors);
         const directories = objects.filter(f => filterIFSFile(f, "directory"));
@@ -206,23 +208,24 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
       .join(URI_LIST_SEPARATOR)));
   }
 
-  async handleDrop(target: IFSItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+  handleDrop(target: IFSItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     if (target) {
       const toDirectory = (target.file.type === "streamfile" ? target.parent : target) as IFSDirectoryItem;
       const ifsBrowserItems = dataTransfer.get(IFS_BROWSER_MIMETYPE);
-      const objectBrowserItems = dataTransfer.get(OBJECT_BROWSER_MIMETYPE);
       if (ifsBrowserItems) {
         this.moveOrCopyItems(ifsBrowserItems.value as IFSItem[], toDirectory)
-      } else if (objectBrowserItems) {
-        const memberUris = (await objectBrowserItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
-        this.copyMembers(memberUris, toDirectory)
       }
       else {
         const explorerItems = dataTransfer.get(URI_LIST_MIMETYPE);
-        if (explorerItems && explorerItems.value) {
+        if (explorerItems?.value) {
           //URI_LIST_MIMETYPE Mime type is a string with `toString()`ed Uris separated by `\r\n`.
-          const uris = (await explorerItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
-          vscode.commands.executeCommand(`code-for-ibmi.uploadStreamfile`, toDirectory, uris);
+          const uris = String(explorerItems.value).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
+          if (uris.at(0)?.scheme === "member") {
+            this.copyMembers(uris, toDirectory)
+          }
+          else {
+            vscode.commands.executeCommand(`code-for-ibmi.uploadStreamfile`, toDirectory, uris);
+          }
         }
       }
     }
@@ -248,13 +251,15 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
 
       if (action) {
         let result;
+        const froms = ifsBrowserItems.map(item => item.path);
+        const to = toDirectory.path;
         switch (action) {
           case "copy":
-            result = await connection.sendCommand({ command: `cp -r ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
+            result = await connection.getContent().copy(froms, to);
             break;
 
           case "move":
-            result = await connection.sendCommand({ command: `mv ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
+            result = await await connection.getContent().move(froms, to);
             ifsBrowserItems.map(item => item.parent)
               .filter(Tools.distinct)
               .forEach(folder => folder?.refresh?.());
@@ -273,15 +278,14 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
     }
   }
 
-  private async copyMembers(memberUris: vscode.Uri[], toDirectory: IFSDirectoryItem) {
+  private async copyMembers(uris: vscode.Uri[], toDirectory: IFSDirectoryItem) {
     const connection = instance.getConnection();
-    if (connection && memberUris && memberUris.length) {
+    if (connection && uris?.length) {
       try {
-        for (let uri of memberUris) {
-          let result;
+        for (const uri of uris) {
           const member = connection.parserMemberPath(uri.path);
           const command: string = `CPYTOSTMF FROMMBR('${Tools.qualifyPath(member.library, member.file, member.name, member.asp)}') TOSTMF('${toDirectory.path}/${member.basename.toLocaleLowerCase()}') STMFCCSID(1208) ENDLINFMT(*LF)`;
-          result = await connection.runCommand({
+          const result = await connection.runCommand({
             command: command,
             noLibList: true
           });
@@ -290,7 +294,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
           }
         };
 
-        vscode.window.showInformationMessage(l10n.t(`{0} member(s) copied to streamfile(s) in {1}.`, memberUris.length, toDirectory.path));
+        vscode.window.showInformationMessage(l10n.t(`{0} member(s) copied to streamfile(s) in {1}.`, uris.length, toDirectory.path));
         toDirectory.refresh();
       } catch (e: any) {
         vscode.window.showErrorMessage(e || e.text);
@@ -309,6 +313,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     dragAndDropController: new IFSBrowserDragAndDrop()
   });
 
+  const getSelectedItems = <T>(node?: T | T[]) => node ? Array.isArray(node) ? node : [node] : ifsTreeViewer.selection as T[];
+
   context.subscriptions.push(
     ifsTreeViewer,
     vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, () => ifsBrowser.refresh()),
@@ -322,8 +328,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByDate`, (item: IFSItem) => item.sortBy({ order: "date" })),
 
     vscode.commands.registerCommand(`code-for-ibmi.changeWorkingDirectory`, async (node?: IFSDirectoryItem) => {
-      const config = instance.getConfig();
-      if (config) {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
         const homeDirectory = config.homeDirectory;
 
         const newDirectory = node?.path || await vscode.window.showInputBox({
@@ -344,9 +351,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.addIFSShortcut`, async (node?: IFSDirectoryItem) => {
-      const config = instance.getConfig();
-      const content = instance.getContent();
-      if (config && content) {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
+        const content = connection.getContent();
         const newDirectory = (await vscode.window.showInputBox({
           prompt: l10n.t(`Path to IFS directory`),
           value: node ? node.path : undefined
@@ -376,8 +384,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node: IFSShortcutItem) => {
-      const config = instance.getConfig();
-      if (config) {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
         const shortcuts = config.ifsShortcuts;
         const removeDir = (node.path || (await vscode.window.showQuickPick(shortcuts, {
           placeHolder: l10n.t(`Select IFS shortcut to remove`),
@@ -402,7 +411,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.sortIFSShortcuts`, async () => {
-      const config = instance.getConfig();
+      const config = instance.getConnection()?.getConfig();
 
       if (config) {
         try {
@@ -424,8 +433,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node?: IFSDirectoryItem) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
-      if (connection && config) {
+      if (connection) {
+        const config = connection.getConfig();
         const value = `${node?.path || config.homeDirectory}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
@@ -450,9 +459,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createStreamfile`, async (node?: IFSDirectoryItem) => {
-      const config = instance.getConfig();
-      const content = instance.getContent();
-      if (config && content) {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
+        const content = connection.getContent();
         const value = `${node?.path || config.homeDirectory}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
@@ -462,18 +472,17 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         });
 
         if (fullName) {
-          try {
-            vscode.window.showInformationMessage(l10n.t(`Creating streamfile {0}.`, fullName));
-            await content.createStreamFile(fullName);
-            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
-            if (IBMi.connectionManager.get(`autoRefresh`)) {
-              ifsBrowser.refresh(node);
+          if (!await content.testStreamFile(fullName, "e") || await vscode.window.showWarningMessage(l10n.t("Streamfile {0} already exists. Do you want to overwrite it?", fullName), { modal: true }, l10n.t("Overwrite"))) {
+            try {
+              await content.createStreamFile(fullName);
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
+              vscode.window.showInformationMessage(l10n.t(`Created streamfile {0}.`, fullName));
+              if (IBMi.connectionManager.get(`autoRefresh`)) {
+                ifsBrowser.refresh(node);
+              }
+            } catch (e: any) {
+              vscode.window.showErrorMessage(l10n.t(`Error creating new streamfile! {0}`, e));
             }
-            else {
-              throw new Error("")
-            }
-          } catch (e: any) {
-            vscode.window.showErrorMessage(l10n.t(`Error creating new streamfile! {0}`, e));
           }
         }
       }
@@ -481,9 +490,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node: IFSDirectoryItem, files?: vscode.Uri[]) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
 
-      if (config && connection) {
+      if (connection) {
+        const config = connection.getConfig();
         const root = node?.path || config.homeDirectory;
 
         const chosenFiles = files || await showOpenDialog();
@@ -541,13 +550,12 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
-      if (connection && config) {
+      if (connection) {
         if (items || singleItem) {
           items = (items || [singleItem]).filter(reduceIFSPath);
         }
         else {
-          items = (ifsTreeViewer.selection.filter(selected => selected instanceof IFSItem) as IFSItem[]).filter(reduceIFSPath);
+          items = getSelectedItems(singleItem).filter(reduceIFSPath);
         }
 
         if (items && items.length) {
@@ -612,82 +620,85 @@ Please type "{0}" to confirm deletion.`, dirName);
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node: IFSItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node?: IFSItem) => {
       const oldFileTabs: vscode.Tab[] = [];
-      const typeLabel = node.file.type === "streamfile" ? l10n.t("streamfile") : l10n.t("directory");
-      if (node.file.type === "streamfile") {
-        // Ensure that the file has a defined uri
-        if (!node.resourceUri) {
-          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file path could not be parsed.")));
-          return;
+      node = getSelectedItems(node).at(0);
+      if (node) {
+        const typeLabel = node.file.type === "streamfile" ? l10n.t("streamfile") : l10n.t("directory");
+        if (node.file.type === "streamfile") {
+          // Ensure that the file has a defined uri
+          if (!node.resourceUri) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file path could not be parsed.")));
+            return;
+          }
+          // Check if the streamfile is currently open in an editor tab
+          oldFileTabs.push(...VscodeTools.findUriTabs(node.resourceUri));
+          if (oldFileTabs.find(tab => tab.isDirty)) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file has unsaved changes.")));
+            return;
+          }
+        } else {
+          // Check if there are streamfiles in the directory which are currently open in an editor tab
+          oldFileTabs.push(...VscodeTools.findUriTabs(node.file.path));
+          if (oldFileTabs.find(tab => tab.isDirty)) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The directory has file(s) with unsaved changes.")));
+            return;
+          }
         }
-        // Check if the streamfile is currently open in an editor tab
-        oldFileTabs.push(...VscodeTools.findUriTabs(node.resourceUri));
-        if (oldFileTabs.find(tab => tab.isDirty)) {
-          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file has unsaved changes.")));
-          return;
-        }
-      } else {
-        // Check if there are streamfiles in the directory which are currently open in an editor tab
-        oldFileTabs.push(...VscodeTools.findUriTabs(node.file.path));
-        if (oldFileTabs.find(tab => tab.isDirty)) {
-          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The directory has file(s) with unsaved changes.")));
-          return;
-        }
-      }
-      const connection = instance.getConnection();
-      const config = instance.getConfig();
-      if (config && connection) {
-        const homeDirectory = config.homeDirectory;
-        const target = await vscode.window.showInputBox({
-          prompt: l10n.t(`Name of new path`),
-          value: node.path,
-          valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
-        });
+        const connection = instance.getConnection();
+        if (connection) {
+          const config = connection.getConfig();
+          const homeDirectory = config.homeDirectory;
+          const target = await vscode.window.showInputBox({
+            prompt: l10n.t(`Name of new path`),
+            value: node.path,
+            valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
+          });
 
-        if (target) {
-          const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
-          try {
-            const moveResult = await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
-            if (moveResult.code !== 0) {
-              throw moveResult.stderr;
-            }
+          if (target) {
+            const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
+            try {
+              const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
+              if (moveResult.code !== 0) {
+                throw moveResult.stderr;
+              }
 
-            if (IBMi.connectionManager.get(`autoRefresh`)) {
-              ifsBrowser.refresh();
-            }
-            let label;
-            if (path.posix.dirname(node.path) === path.posix.dirname(targetPath)) {
-              label = l10n.t("{0} was renamed to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
-            }
-            else {
-              label = l10n.t("{0} was moved to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
-            }
+              if (IBMi.connectionManager.get(`autoRefresh`)) {
+                ifsBrowser.refresh();
+              }
+              let label;
+              if (path.posix.dirname(node.path) === path.posix.dirname(targetPath)) {
+                label = l10n.t("{0} was renamed to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
+              }
+              else {
+                label = l10n.t("{0} was moved to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
+              }
 
-            vscode.window.showInformationMessage(label);
-            // If the file was open in any editor tabs prior to the renaming/movement,
-            // refresh those tabs to reflect the new file path/name.
-            // (Directly modifying the label or uri of an open tab is apparently not
-            // possible with the current VS Code API, so refresh the tab by closing
-            // it and then opening a new one at the new uri.)
-            oldFileTabs.forEach((tab) => {
-              vscode.window.tabGroups.close(tab).then(() => {
-                const newTargetPath = (tab.input as vscode.TabInputText).uri.path.replace(node.file.path, targetPath);
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newTargetPath);
+              vscode.window.showInformationMessage(label);
+              // If the file was open in any editor tabs prior to the renaming/movement,
+              // refresh those tabs to reflect the new file path/name.
+              // (Directly modifying the label or uri of an open tab is apparently not
+              // possible with the current VS Code API, so refresh the tab by closing
+              // it and then opening a new one at the new uri.)
+              oldFileTabs.forEach((tab) => {
+                vscode.window.tabGroups.close(tab).then(() => {
+                  const newTargetPath = (tab.input as vscode.TabInputText).uri.path.replace(node.file.path, targetPath);
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newTargetPath);
+                })
               })
-            })
 
-          } catch (e: any) {
-            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, e));
+            } catch (e: any) {
+              vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, e));
+            }
           }
         }
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.copyIFS`, async (node: IFSItem) => {
-      const config = instance.getConfig();
       const connection = instance.getConnection();
 
-      if (config && connection) {
+      if (connection) {
+        const config = connection.getConfig();
         const homeDirectory = config.homeDirectory;
         const target = await vscode.window.showInputBox({
           prompt: l10n.t(`Name of new path`),
@@ -698,7 +709,10 @@ Please type "{0}" to confirm deletion.`, dirName);
         if (target) {
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
           try {
-            await connection.sendCommand({ command: `cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            const result = await connection.getContent().copy(node.path, targetPath);
+            if (result.code !== 0) {
+              throw result.stderr;
+            }
             if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
@@ -712,18 +726,28 @@ Please type "{0}" to confirm deletion.`, dirName);
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node?: IFSItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node?: IFSItem, nodes?: IFSItem[]) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
 
-      if (connection?.remoteFeatures.grep && config) {
-        const searchPath = node?.path || await vscode.window.showInputBox({
-          value: config.homeDirectory,
-          prompt: l10n.t(`Enter IFS directory to search`),
-          title: l10n.t(`Search directory`)
-        });
+      if (connection && connection.remoteFeatures.grep) {
+        const config = connection.getConfig();
+        const searchPaths: string[] = [];
+        if (node) {
+          (nodes || [node]).forEach(n => searchPaths.push(n.path));
+        }
+        else {
+          const path = await vscode.window.showInputBox({
+            value: config.homeDirectory,
+            prompt: l10n.t(`Enter IFS directory to search`),
+            title: l10n.t(`Search directory`)
+          });
 
-        if (searchPath) {
+          if (path) {
+            searchPaths.push(path);
+          }
+        }
+
+        if (searchPaths.length) {
           const list = IBMi.GlobalStorage.getPreviousSearchTerms();
           const items: vscode.QuickPickItem[] = list.map(term => ({ label: term }));
           const listHeader = [
@@ -735,7 +759,7 @@ Please type "{0}" to confirm deletion.`, dirName);
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = items.length ? [...items, ...clearListArray] : [];
           quickPick.placeholder = items.length ? l10n.t(`Enter search term or select one of the previous search terms.`) : l10n.t("Enter search term.");
-          quickPick.title = l10n.t(`Search {0}`, searchPath);
+          quickPick.title = l10n.t(`Search`);
 
           quickPick.onDidChangeValue(() => {
             if (!quickPick.value) {
@@ -759,7 +783,7 @@ Please type "{0}" to confirm deletion.`, dirName);
               } else {
                 quickPick.hide();
                 IBMi.GlobalStorage.addPreviousSearchTerm(searchTerm);
-                await doSearchInStreamfiles(searchTerm, searchPath);
+                await doSearchInStreamfiles(searchTerm, searchPaths);
               }
             }
           });
@@ -772,18 +796,27 @@ Please type "{0}" to confirm deletion.`, dirName);
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.ifs.find`, async (node?: IFSItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.ifs.find`, async (node?: IFSItem, nodes?: IFSItem[]) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
 
-      if (connection?.remoteFeatures.find && config) {
-        const findPath = node?.path || await vscode.window.showInputBox({
-          value: config.homeDirectory,
-          prompt: l10n.t(`Enter IFS directory to find files in`),
-          title: l10n.t(`Find in directory`)
-        });
+      if (connection && connection.remoteFeatures.find) {
+        const config = connection.getConfig();
+        const findPaths: string[] = [];
+        if (node) {
+          (nodes || [node]).forEach(n => findPaths.push(n.path));
+        }
+        else {
+          const path = await vscode.window.showInputBox({
+            value: config.homeDirectory,
+            prompt: l10n.t(`Enter IFS directory to find files in`),
+            title: l10n.t(`Find in directory`)
+          });
+          if (path) {
+            findPaths.push(path);
+          }
+        }
 
-        if (findPath) {
+        if (findPaths.length) {
           const list = IBMi.GlobalStorage.getPreviousFindTerms();
           const items: vscode.QuickPickItem[] = list.map(term => ({ label: term }));
           const listHeader = [
@@ -795,7 +828,7 @@ Please type "{0}" to confirm deletion.`, dirName);
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = items.length ? [...items, ...clearListArray] : [];
           quickPick.placeholder = items.length ? l10n.t(`Enter find term or select one of the previous find terms.`) : l10n.t("Enter find term.");
-          quickPick.title = l10n.t(`Find {0}`, findPath);
+          quickPick.title = l10n.t(`Find {0}`, findPaths);
 
           quickPick.onDidChangeValue(() => {
             if (!quickPick.value) {
@@ -819,7 +852,7 @@ Please type "{0}" to confirm deletion.`, dirName);
               } else {
                 quickPick.hide();
                 IBMi.GlobalStorage.addPreviousFindTerm(findTerm);
-                await doFindStreamfiles(findTerm, findPath);
+                await doFindStreamfiles(findTerm, findPaths);
               }
             }
           });
@@ -914,7 +947,7 @@ Do you want to replace it?`, target))) {
 }
 
 vscode.commands.registerCommand(`code-for-ibmi.ifs.toggleShowHiddenFiles`, async function () {
-  const config = instance.getConfig();
+  const config = instance.getConnection()?.getConfig();
   if (config) {
     config.showHiddenFiles = !config.showHiddenFiles;
     await IBMi.connectionManager.update(config);
@@ -936,55 +969,83 @@ function storeIFSList(path: string, list: string[]) {
   }
 }
 
-async function doSearchInStreamfiles(searchTerm: string, searchPath: string) {
+async function doSearchInStreamfiles(searchTerm: string, searchPaths: string[]) {
   try {
-    await vscode.window.withProgress({
+    const total = await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
-      title: l10n.t(`Searching`),
-    }, async progress => {
-      progress.report({
-        message: l10n.t(`"{0}" in {1}.`, searchTerm, searchPath)
-      });
-      const results = await Search.searchIFS(instance.getConnection()!, searchPath, searchTerm);
-      if (results?.hits.length) {
-        openIFSSearchResults(searchPath, results);
-      } else {
-        vscode.window.showInformationMessage(l10n.t(`No results found searching for "{0}" in {1}.`, searchTerm, searchPath));
+      title: l10n.t(`Searching "{0}" in `, searchTerm),
+    }, async (progress, cancel) => {
+      const increment = 100 / searchPaths.length;
+      let total = 0;
+      let append = false;
+      for (const searchPath of searchPaths) {
+        if (cancel.isCancellationRequested) {
+          return total;
+        }
+        progress.report({
+          message: searchPath,
+          increment
+        });
+        const results = await Search.searchIFS(instance.getConnection()!, searchPath, searchTerm);
+        if (results) {
+          total += results.hits.length;
+          openIFSSearchResults(searchPath, results, append);
+          append = true;
+        }
       }
+
+      return total;
     });
 
+    if (!total) {
+      vscode.window.showInformationMessage(l10n.t(`No results found searching for "{0}".`, searchTerm));
+    }
   } catch (e) {
     vscode.window.showErrorMessage(l10n.t(`Error searching streamfiles.`));
   }
 }
 
-async function doFindStreamfiles(findTerm: string, findPath: string) {
+async function doFindStreamfiles(findTerm: string, findPaths: string[]) {
   try {
-    await vscode.window.withProgress({
+    const total = await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
-      title: l10n.t(`Finding`),
-    }, async progress => {
-      progress.report({
-        message: l10n.t(`Finding filenames with "{0}" in {1}.`, findTerm, findPath)
-      });
-      const results = (await Search.findIFS(instance.getConnection()!, findPath, findTerm));
-      if (results?.hits.length) {
-        openIFSSearchResults(findPath, results);
-      } else {
-        vscode.window.showInformationMessage(l10n.t(`No results found finding filenames with "{0}" in {1}.`, findTerm, findPath));
+      title: l10n.t(`Finding filenames with "{0}" in`, findTerm),
+    }, async (progress, cancel) => {
+      const increment = 100 / findPaths.length;
+      let total = 0;
+      let append = false;
+      for (const findPath of findPaths) {
+        if (cancel.isCancellationRequested) {
+          return total;
+        }
+        progress.report({
+          message: findPath,
+          increment
+        });
+        const results = (await Search.findIFS(instance.getConnection()!, findPath, findTerm));
+        if (results) {
+          total += results.hits.length;
+          openIFSSearchResults(findPath, results, append);
+          append = true;
+        }
       }
+
+      return total;
     });
 
+    if (!total) {
+      vscode.window.showInformationMessage(l10n.t(`No results found finding filenames with "{0}".`, findTerm));
+    }
   } catch (e) {
     vscode.window.showErrorMessage(l10n.t(`Error finding filenames.`));
   }
 }
 
-function openIFSSearchResults(searchPath: string, searchResults: SearchResults) {
+function openIFSSearchResults(searchPath: string, searchResults: SearchResults, appendResults: boolean) {
   searchResults.hits =
     searchResults.hits.map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }) as SearchHit)
       .sort((a, b) => a.path.localeCompare(b.path));
-  vscode.commands.executeCommand(`code-for-ibmi.setSearchResults`, searchResults);
+  vscode.commands.executeCommand(`code-for-ibmi.setSearchResults`, searchResults, appendResults);
 }
 
 async function showOpenDialog() {
@@ -1008,5 +1069,5 @@ async function showOpenDialog() {
  * Filters the content of an IFSItem array to keep only items whose parent are not in the array
  */
 function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {
-  return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(folder.file.path));
+  return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(`${folder.file.path}/`));
 }

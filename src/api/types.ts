@@ -1,3 +1,4 @@
+import { Variables } from "./variables";
 
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
@@ -13,7 +14,6 @@ export interface StandardIO {
 export type ActionType = "member" | "streamfile" | "object" | "file";
 export type ActionRefresh = "no" | "parent" | "filter" | "browser";
 export type ActionEnvironment = "ile" | "qsh" | "pase";
-export type Variable = Record<string, string>;
 
 export enum CcsidOrigin {
   User = "user",
@@ -25,7 +25,7 @@ export interface RemoteCommand {
   command: string;
   environment?: ActionEnvironment;
   cwd?: string;
-  env?: Record<string, string>;
+  env?: Record<string, string> | Variables;
   noLibList?: boolean
 }
 
@@ -37,21 +37,23 @@ export interface CommandData extends StandardIO {
 
 export interface CommandResult {
   code: number;
+  signal?: string|null;
   stdout: string;
   stderr: string;
   command?: string;
 }
 
 export interface Action {
-  name: string;
-  command: string;
-  type?: ActionType;
-  environment: ActionEnvironment;
-  extensions?: string[];
-  deployFirst?: boolean;
-  postDownload?: string[];
-  refresh?: ActionRefresh;
-  runOnProtected?: boolean;
+  name: string
+  command: string
+  type?: ActionType
+  environment: ActionEnvironment
+  extensions?: string[]
+  deployFirst?: boolean
+  postDownload?: string[]
+  refresh?: ActionRefresh
+  runOnProtected?: boolean
+  outputToFile?: string
 }
 
 export interface ConnectionData {
@@ -154,8 +156,19 @@ export type IBMiMessages = {
   messages: IBMiMessage[]
   findId(id: string): IBMiMessage | undefined
 }
+
 export const OBJECT_BROWSER_MIMETYPE = "application/vnd.code.tree.objectbrowser";
 export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
+export const LIBRARY_LIST_MIMETYPE = "application/vnd.code.tree.libraryListView";
+export const URI_LIST_MIMETYPE = "text/uri-list";
+export const URI_LIST_SEPARATOR = "\r\n";
+
+export type ObjectBrowserDrag = {
+  library: string
+  object: string
+  type: string
+  member?: string
+}
 
 export interface WrapResult {
   newStatements: string[];
@@ -190,22 +203,25 @@ export interface AspInfo {
 }
 
 export interface ProgramExportImportInfo {
-    programLibrary: string,
-    programName: string,
-    objectType: string,
-    symbolName: string,
-    symbolUsage: string,
-    argumentOptimization: string,
-    dataItemSize: number
+  programLibrary: string,
+  programName: string,
+  objectType: string,
+  symbolName: string,
+  symbolUsage: string,
+  argumentOptimization: string,
+  dataItemSize: number
 }
 
 export interface ModuleExport {
-    moduleLibrary: string,
-    moduleName: string,
-    moduleAttr: string,
-    symbolName: string,
-    symbolType: string,
-    argumentOptimization: string,
+  moduleLibrary: string,
+  moduleName: string,
+  moduleAttr: string,
+  symbolName: string,
+  symbolType: string,
+  argumentOptimization: string,
 }
 
+export type EditorPath = string | { fsPath: string };
+
 export * from "./configuration/config/types";
+

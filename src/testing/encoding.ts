@@ -23,13 +23,13 @@ const rtlEncodings = [`420`];
 
 async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid: number) {
   const testPgmSrcFile = `TESTING`;
-  const config = connection.config!;
+  const config = connection.getConfig();
 
   const tempLib = config.tempLibrary;
   const testPgmName = `T${commands.length}${ccsid}`;
   const sourceFileCreated = await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
 
-  await connection.content.uploadMemberContent(tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
+  await connection.getContent().uploadMemberContent(tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
 
   const compileCommand = `CRTBNDCL PGM(${tempLib}/${testPgmName}) SRCFILE(${tempLib}/${testPgmSrcFile}) SRCMBR(${testPgmName}) REPLACE(*YES)`;
   const compileResult = await connection.runCommand({ command: compileCommand, noLibList: true });
@@ -47,7 +47,7 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
 export const EncodingSuite: TestSuite = {
   name: `Encoding tests`,
   before: async () => {
-    const config = instance.getConfig();
+    const config = instance.getConnection()?.getConfig();
     if (config) {
       assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
     }
@@ -65,13 +65,13 @@ export const EncodingSuite: TestSuite = {
           const nameWithSpace = path.posix.join(dirWithSpace, fileName);
 
           await connection.sendCommand({command: `mkdir -p "${dirWithSpace}"`});
-          await connection.content.createStreamFile(nameWithSpace);
+          await connection.getContent().createStreamFile(nameWithSpace);
 
           // Resolve and get attributes
-          const resolved = await connection.content.streamfileResolve([fileName], [tempDir, dirWithSpace]);
+          const resolved = await connection.getContent().streamfileResolve([fileName], [tempDir, dirWithSpace]);
           assert.strictEqual(resolved, nameWithSpace);
 
-          const attributes = await connection.content.getAttributes(resolved, `CCSID`);
+          const attributes = await connection.getContent().getAttributes(resolved, `CCSID`);
           assert.ok(attributes);
 
           // Write and read the files
@@ -82,11 +82,11 @@ export const EncodingSuite: TestSuite = {
           assert.ok(streamfileContents.toString().includes(`Hello world`));
 
           // List files
-          const files = await connection.content.getFileList(tempDir);
+          const files = await connection.getContent().getFileList(tempDir);
           assert.strictEqual(files.length, 1);
           assert.ok(files.some(f => f.name === dirName && f.path === dirWithSpace));
 
-          const files2 = await connection.content.getFileList(dirWithSpace);
+          const files2 = await connection.getContent().getFileList(dirWithSpace);
           assert.strictEqual(files2.length, 1);
           assert.ok(files2.some(f => f.name === fileName && f.path === nameWithSpace));
         });
@@ -101,12 +101,12 @@ export const EncodingSuite: TestSuite = {
         await connection.withTempDirectory(async tempDir => {
           for (const name of nameCombos) {
             const tempFile = path.posix.join(tempDir, `${name}.txt`);
-            await connection.content.createStreamFile(tempFile);
+            await connection.getContent().createStreamFile(tempFile);
             
-            const resolved = await connection.content.streamfileResolve([tempFile], [`/`]);
+            const resolved = await connection.getContent().streamfileResolve([tempFile], [`/`]);
             assert.strictEqual(resolved, tempFile);
 
-            const attributes = await connection.content.getAttributes(resolved, `CCSID`);
+            const attributes = await connection.getContent().getAttributes(resolved, `CCSID`);
             assert.ok(attributes);
 
             const uri = Uri.from({scheme: `streamfile`, path: tempFile});
@@ -121,9 +121,9 @@ export const EncodingSuite: TestSuite = {
     })),
     ...SHELL_CHARS.map(char => ({
       name: `Test members with shell character ${char}`, test: async () => {
-        const content = instance.getContent();
-        const config = instance.getConfig();
         const connection = instance.getConnection()!;
+        const content = connection.getContent();
+        const config = connection.getConfig();
 
         if (!connection.variantChars.local.includes(char)) {
           // This test will fail if $ is not a variant character, 
@@ -174,7 +174,7 @@ export const EncodingSuite: TestSuite = {
       name: `Variant character in source names and commands`, test: async () => {
         // CHGUSRPRF X CCSID(284) CNTRYID(ES) LANGID(ESP)
         const connection = instance.getConnection()!;
-        const config = instance.getConfig()!;
+        const config = connection.getConfig()!;
 
         const ccsidData = connection.getCcsids()!;
 
@@ -193,7 +193,7 @@ export const EncodingSuite: TestSuite = {
         const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
         assert.strictEqual(addPf.code, 0);
 
-        const attributes = await connection.content.getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
+        const attributes = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
         assert.ok(attributes);
         assert.strictEqual(attributes[`CCSID`], String(ccsidData.userDefaultCCSID));
 
@@ -202,29 +202,29 @@ export const EncodingSuite: TestSuite = {
         const addPfB = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
         assert.strictEqual(addPfB.code, 0);
 
-        const attributesB = await connection.content.getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
+        const attributesB = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
         assert.ok(attributesB);
         assert.strictEqual(attributesB[`CCSID`], String(ccsidData.userDefaultCCSID));
 
         /// -----
 
-        const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
+        const objects = await connection.getContent().getObjectList({ library: tempLib, types: [`*SRCPF`] });
         assert.ok(objects.length);
         assert.ok(objects.some(obj => obj.name === testFile));
 
-        const members = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile });
+        const members = await connection.getContent().getMemberList({ library: tempLib, sourceFile: testFile });
         assert.ok(members.length);
         assert.ok(members.some(m => m.name === testMember));
         assert.ok(members.some(m => m.file === testFile));
 
-        const smallFilter = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile, members: `${varChar}*` });
+        const smallFilter = await connection.getContent().getMemberList({ library: tempLib, sourceFile: testFile, members: `${varChar}*` });
         assert.ok(smallFilter.length);
 
-        const files = await connection.content.getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
+        const files = await connection.getContent().getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
         assert.ok(files.length);
         assert.strictEqual(files[0].name, connection.sysNameInAmerican(testMember) + `.MBR`);
 
-        await connection.content.uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
+        await connection.getContent().uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
         const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
         assert.strictEqual(compileResult.code, 0);
@@ -248,8 +248,8 @@ export const EncodingSuite: TestSuite = {
 
     ...Object.keys(contents).map(ccsid => ({
       name: `Encoding ${ccsid}`, test: async () => {
-        const connection = instance.getConnection();
-        const config = instance.getConfig()!;
+        const connection = instance.getConnection()!;
+        const config = connection.getConfig();
 
         const oldLines = contents[ccsid as keyof typeof contents];
         const lines = oldLines.join(`\n`);

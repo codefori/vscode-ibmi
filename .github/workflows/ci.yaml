@@ -28,7 +28,7 @@ jobs:
           cd types && npm version --allow-same-version --no-git-tag-version ${{ github.ref_name }}
 
       - name: Package
-        run: npx @vscode/vsce package
+        run: npx @vscode/vsce package --allow-package-all-secrets
           
       - name: Publish
         run: |

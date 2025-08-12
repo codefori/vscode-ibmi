@@ -36,6 +36,10 @@ export interface ConnectionConfig extends ConnectionProfile {
   [name: string]: any;
 }
 
+export interface RemoteConfigFile {
+  codefori?: Partial<ConnectionConfig>;
+}
+
 export interface ObjectFilters {
   name: string
   filterType: FilterType

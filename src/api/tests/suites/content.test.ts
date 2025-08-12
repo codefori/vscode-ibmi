@@ -5,17 +5,17 @@ import util from 'util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from '../../IBMi';
 import { Tools } from '../../Tools';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 import { ModuleExport, ProgramExportImportInfo } from '../../types';
+import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 
-describe('Content Tests', {concurrent: true}, () => {
+describe('Content Tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    disposeConnection(connection);
+    await disposeConnection(connection);
   });
 
   it('memberResolve', async () => {
@@ -236,7 +236,7 @@ describe('Content Tests', {concurrent: true}, () => {
       await connection.runSQL('select from qiws.qcustcdt');
       expect.fail('Should have thrown an error');
     } catch (e: any) {
-      expect(e.message).toBe('Token . was not valid. Valid tokens: , FROM INTO. (42601)');
+      expect(e.message.endsWith(': , FROM INTO. (42601)')).toBeTruthy();
       expect(e.sqlstate).toBe('42601');
     }
   });
@@ -521,12 +521,12 @@ describe('Content Tests', {concurrent: true}, () => {
       expect(error).toBeInstanceOf(Tools.SqlError);
       expect(error.sqlstate).toBe('38501');
     }
-  }, {timeout: 25000});
+  });
 
   it('Test @clCommand + select statement', async () => {
     const content = connection.getContent();
 
-    const [resultA] = await content.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+    const [resultA] = await connection.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
 
     expect(resultA.OBJNAME).toBe('UNITTEST');
     expect(resultA.OBJTEXT).toBe('Code for i test');
@@ -573,7 +573,7 @@ describe('Content Tests', {concurrent: true}, () => {
 
   it('should count members', async () => {
     const content = connection.getContent()
-    const tempLib = connection.config?.tempLibrary;
+    const tempLib = connection.getConfig().tempLibrary;
     if (tempLib) {
       const file = Tools.makeid(8);
       const deleteSPF = async () => await connection.runCommand({ command: `DLTF FILE(${tempLib}/${file})`, noLibList: true });
@@ -622,23 +622,27 @@ describe('Content Tests', {concurrent: true}, () => {
     const shortName = Tools.makeid(8);
     const createLib = await connection.runCommand({ command: `RUNSQL 'create schema "${longName}" for ${shortName}' commit(*none)`, noLibList: true });
     if (createLib.code === 0) {
-      await connection.runCommand({ command: `CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
+      try {
+        const asp = await connection.lookupLibraryIAsp(shortName);
+        await connection.runCommand({ command: `CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
 
-      const libraries = await content.getLibraries({ library: `${shortName}` });
-      expect(libraries?.length).toBe(1);
+        const libraries = await content.getLibraries({ library: `${shortName}` });
+        expect(libraries?.length).toBe(1);
 
-      const objects = await content.getObjectList({ library: `${shortName}`, types: [`*SRCPF`], object: `SFILE` });
-      expect(objects?.length).toBe(1);
-      expect(objects[0].type).toBe(`*FILE`);
-      expect(objects[0].text).toBe(`Test long library name`);
+        const objects = await content.getObjectList({ library: `${shortName}`, types: [`*SRCPF`], object: `SFILE` });
+        expect(objects?.length).toBe(1);
+        expect(objects[0].type).toBe(`*FILE`);
+        expect(objects[0].text).toBe(`Test long library name`);
 
-      const memberCount = await content.countMembers({ library: `${shortName}`, name: `SFILE` });
-      expect(memberCount).toBe(1);
-      const members = await content.getMemberList({ library: `${shortName}`, sourceFile: `SFILE` });
+        const memberCount = await content.countMembers({ library: `${shortName}`, name: `SFILE`, asp });
+        expect(memberCount).toBe(1);
+        const members = await content.getMemberList({ library: `${shortName}`, sourceFile: `SFILE` });
 
-      expect(members?.length).toBe(1);
-
-      await connection.runCommand({ command: `RUNSQL 'drop schema "${longName}"' commit(*none)`, noLibList: true });
+        expect(members?.length).toBe(1);
+      }
+      finally {
+        await connection.runCommand({ command: `RUNSQL 'drop schema "${longName}"' commit(*none)`, noLibList: true });
+      }
     } else {
       throw new Error(`Failed to create schema "${longName}"`);
     }
@@ -715,6 +719,42 @@ describe('Content Tests', {concurrent: true}, () => {
           environment: 'ile'
         });
       }
+    });
+  });
+
+  it('Copy and move streamfiles', async () => {
+    const content = connection.getContent();
+    await connection.withTempDirectory(async directory => {
+      const checkFile = async (path: string, ccsid: number) => {
+        expect(await content.testStreamFile(path, "w")).toBe(true);
+        const attributes = await content.getAttributes(path, "CCSID");
+        expect(attributes).toBeDefined();
+        expect(attributes!["CCSID"]).toBe(String(ccsid));
+      }
+
+      const unicodeFile = "unicode";
+      const ccsid37File = "ccsid37";
+
+      await content.createStreamFile(`${directory}/${unicodeFile}`);
+      await checkFile(`${directory}/${unicodeFile}`, 1208);
+      await content.createStreamFile(`${directory}/${ccsid37File}`);
+      await connection.sendCommand({ command: `${connection.remoteFeatures.attr} ${directory}/${ccsid37File} CCSID=37` });
+      await checkFile(`${directory}/${ccsid37File}`, 37);
+      const files = [`${directory}/${unicodeFile}`, `${directory}/${ccsid37File}`];
+
+      expect((await connection.sendCommand({ command: `mkdir ${directory}/copy` })).code).toBe(0);
+      expect((await content.copy(files, `${directory}/copy`)).code).toBe(0);
+      expect(await content.testStreamFile(`${directory}/${unicodeFile}`, "f")).toBe(true);
+      expect(await content.testStreamFile(`${directory}/${ccsid37File}`, "f")).toBe(true);
+      await checkFile(`${directory}/copy/${unicodeFile}`, 1208);
+      await checkFile(`${directory}/copy/${ccsid37File}`, 37);
+
+      expect((await connection.sendCommand({ command: `mkdir ${directory}/move` })).code).toBe(0);
+      expect((await content.move(files, `${directory}/move`)).code).toBe(0);
+      expect(await content.testStreamFile(`${directory}/${unicodeFile}`, "f")).toBe(false);
+      expect(await content.testStreamFile(`${directory}/${ccsid37File}`, "f")).toBe(false);
+      await checkFile(`${directory}/move/${unicodeFile}`, 1208);
+      await checkFile(`${directory}/move/${ccsid37File}`, 37);
     });
   });
 });

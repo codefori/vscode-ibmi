@@ -79,7 +79,11 @@ export function initialise(context: vscode.ExtensionContext) {
             const testCase = suite.tests.find(testCase => testCase.name === testName);
 
             if (testCase) {
-              runTest(testCase);
+              if(suite.before) {
+                suite.before().then(() => runTest(testCase));
+              } else {
+                runTest(testCase);
+              }
             }
           }
         }
@@ -127,7 +131,7 @@ async function setupUserFixture(connectionName: string, fixture: ConnectionFixtu
   const user = connection.currentUser;
   fixture.user.USRPRF = user.toUpperCase();
 
-  const changeUserCommand = connection.content.toCl(`CHGUSRPRF`, fixture.user);
+  const changeUserCommand = connection.getContent().toCl(`CHGUSRPRF`, fixture.user);
   const changeResult = await connection.runCommand({ command: changeUserCommand });
 
   if (changeResult.code > 0) {

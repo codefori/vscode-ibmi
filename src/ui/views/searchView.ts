@@ -16,29 +16,35 @@ export function initializeSearchView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.refreshSearchView`, async () => searchView.refresh()),
     vscode.commands.registerCommand(`code-for-ibmi.closeSearchView`, async () => vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, false)),
     vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => searchView.collapse()),
-    vscode.commands.registerCommand(`code-for-ibmi.setSearchResults`, async (searchResults: SearchResults) => {
+    vscode.commands.registerCommand(`code-for-ibmi.setSearchResults`, async (searchResults: SearchResults, appendResults?: boolean) => {
+      const hits = appendResults ? searchView.hits + searchResults.hits.length : searchResults.hits.length;
       if (searchResults.hits.some(hit => hit.lines.length)) {
-        searchViewViewer.message = vscode.l10n.t(`{0} file(s) contain(s) '{1}'`, searchResults.hits.length,  searchResults.term);
+        searchViewViewer.message = vscode.l10n.t(`{0} file(s) contain(s) '{1}'`, hits, searchResults.term);
       }
       else {
-        searchViewViewer.message = vscode.l10n.t(`{0} file(s) named '{1}'`, searchResults.hits.length,  searchResults.term);
+        searchViewViewer.message = vscode.l10n.t(`{0} file(s) named '{1}'`, hits, searchResults.term);
       }
-      searchView.setResults(searchResults);
+      searchView.setResults(searchResults, appendResults);
     })
   )
 }
 
 class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
-  private _results: SearchResults = { term: "", hits: [] };
-  private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
+  private readonly _results: SearchResults = { term: "", hits: [] };
+  private readonly _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
   setViewVisible(visible: boolean) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, visible);
   }
 
-  setResults(results: SearchResults) {
-    this._results = results;
+  setResults(results: SearchResults, appendResults?: boolean) {
+    if(!appendResults){
+      this._results.term = results.term;
+      this._results.hits = [];      
+    }    
+    this._results.hits.push(...results.hits);
+    
     this.refresh();
     this.setViewVisible(true);
 
@@ -63,6 +69,10 @@ class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
     } else {
       return hitSource.getChildren();
     }
+  }
+
+  get hits() {
+    return this._results.hits.length;
   }
 }
 

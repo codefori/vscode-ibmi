@@ -2,21 +2,22 @@ import path from "path";
 import { commands, l10n, window } from "vscode";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
-import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE } from "../api/configuration/DebugConfiguration";
+import { DebugConfiguration, getDebugServiceDetails, getJavaHome } from "../api/configuration/DebugConfiguration";
 import { instance } from "../instantiate";
 import { CustomUI } from "../webviews/CustomUI";
-
 export type DebugJob = {
   name: string
   ports: number[]
 }
 
-export function debugPTFInstalled() {
-  return instance.getConnection()?.debugPTFInstalled()
+export const MIN_DEBUG_VERSION = 3;
+
+export function debugPTFInstalled(connection: IBMi) {
+  return connection.debugPTFInstalled()
 }
 
-export async function isSEPSupported(connection: IBMi) {
-  return (await getDebugServiceDetails(connection)).semanticVersion().major > 1;
+export async function isDebugSupported(connection: IBMi) {
+  return debugPTFInstalled(connection) && (await getDebugServiceDetails(connection)).semanticVersion().major >= MIN_DEBUG_VERSION;
 }
 
 export async function startService(connection: IBMi) {
@@ -24,22 +25,20 @@ export async function startService(connection: IBMi) {
     if (user && !await connection.getContent().checkObject({ library: "QSYS", name: user, type: "*USRPRF" }, ["*USE"])) {
       throw new Error(`You don't have *USE authority on user profile ${user}`);
     }
-    if (!(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
+    if (user !== "QDBGSRV" && !(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ", "*SECADM"], user)).valid) {
       throw new Error(`User ${user || connection.currentUser} doesn't have *ALLOBJ special authority`);
     }
   };
 
   try {
-    const debugServiceVersion = (await getDebugServiceDetails(connection)).semanticVersion();
-    const prestartCommand = (debugServiceVersion.major >= 2 && debugServiceVersion.patch >= 1) ?
-      `export DEBUG_SERVICE_EXTERNAL_CONFIG_FILE=${DEBUG_CONFIG_FILE}` :
-      `cp ${DEBUG_CONFIG_FILE} ${ORIGINAL_DEBUG_CONFIG_FILE}`
-    const debugConfig = await new DebugConfiguration(connection).load();
+    const debugServiceJavaVersion = (await getDebugServiceDetails(connection)).java;
+    // const debugConfig = await new DebugConfiguration(connection).load();
+    const javaHome = getJavaHome(connection, debugServiceJavaVersion)
 
     const submitOptions = await window.showInputBox({
       title: l10n.t(`Debug Service submit options`),
       prompt: l10n.t(`Valid parameters for SBMJOB`),
-      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) USER(*CURRENT)`
+      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) OUTQ(QUSRSYS/QDBGSRV) USER(QDBGSRV)`
     });
 
     if (submitOptions) {
@@ -50,8 +49,22 @@ export async function startService(connection: IBMi) {
       else {
         await checkAuthority();
       }
-      const command = `SBMJOB CMD(STRQSH CMD('${connection.remoteFeatures[`bash`]} -c ''${prestartCommand}; /QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh''')) JOB(DBGSVCE) ${submitOptions}`
-      const submitResult = await connection.runCommand({ command, cwd: debugConfig.getRemoteServiceWorkDir(), noLibList: true });
+
+      const debugConfig = await new DebugConfiguration(connection).load();
+
+      // Attempt to make log directory
+      await connection.sendCommand({ command: `mkdir -p ${debugConfig.getRemoteServiceWorkspace()}` });
+
+      // Change owner to QDBGSRV
+      if (submitUser && submitUser !== "QDBGSRV") {
+        await connection.sendCommand({ command: `chown ${submitUser} ${debugConfig.getRemoteServiceWorkspace()}` });
+      }
+
+      // Change the permissions to 777
+      await connection.sendCommand({ command: `chmod 777 ${debugConfig.getRemoteServiceWorkspace()}` });
+
+      const command = `QSYS/SBMJOB JOB(QDBGSRV) SYSLIBL(*SYSVAL) CURLIB(*USRPRF) INLLIBL(*JOBD) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${debugConfig.getRemoteServiceBin()}/startDebugService.sh > ${debugConfig.getNavigatorLogFile()} 2>&1'))`
+      const submitResult = await connection.runCommand({ command, noLibList: true });
       if (submitResult.code === 0) {
         const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
         if (submitMessage) {
@@ -122,7 +135,7 @@ export async function stopService(connection: IBMi) {
 export async function getDebugServiceJob() {
   const connection = instance.getConnection();
   if (connection) {
-    const rows = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only) and remote_address = '0.0.0.0'`);
+    const rows = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.getConfig().debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only) and remote_address = '0.0.0.0'`);
     if (rows && rows.length) {
       return {
         name: String(rows[0].JOB_NAME),

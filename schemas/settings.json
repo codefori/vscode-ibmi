@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "CodeForI": {
+      "type": "object",
+      "properties": {
+        "readOnlyMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Always open source members and IFS files in read-only mode."
+        },
+        "tempLibrary": {
+          "type": "string",
+          "default": "ILEDITOR",
+          "description": "Temporary library. Cannot be QTEMP.",
+          "maxLength": 10
+        },
+        "tempDir": {
+          "type": "string",
+          "default": "/tmp",
+          "description": "Temporary directory."
+        },
+        "autoClearTempData": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically delete temporary objects from the temporary library on startup."
+        },
+        "sourceFileCCSID": {
+          "type": "string",
+          "default": "*FILE",
+          "description": "The CCSID of source files on your system. You should only change this setting from `*FILE` if you have a source file that is 65535 - otherwise use `*FILE`. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems."
+        },
+        "enableSourceDates": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
+        },
+        "encodingFor5250": {
+          "type": "string",
+          "default": "default",
+          "enum": [
+            "default",
+            "37",
+            "256",
+            "273",
+            "277",
+            "278",
+            "280",
+            "284",
+            "285",
+            "297",
+            "500",
+            "871",
+            "870",
+            "905",
+            "880",
+            "420",
+            "875",
+            "424",
+            "1026",
+            "290",
+            "win37",
+            "win256",
+            "win273",
+            "win277",
+            "win278",
+            "win280",
+            "win284",
+            "win285",
+            "win297",
+            "win500",
+            "win871",
+            "win870",
+            "win905",
+            "win880",
+            "win420",
+            "win875",
+            "win424",
+            "win1026"
+          ],
+          "description": "The encoding for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+        },
+        "terminalFor5250": {
+          "type": "string",
+          "default": "default",
+          "enum": [
+            "default",
+            "IBM-3477-FC",
+            "IBM-3477-FG",
+            "IBM-3180-2 ",
+            "IBM-3179-2 ",
+            "IBM-3196-A1",
+            "IBM-5292-2",
+            "IBM-5291-1",
+            "IBM-5251-11"
+          ],
+          "description": "The terminal type for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+        },
+        "connectringStringFor5250": {
+          "type": "string",
+          "default": "+uninhibited localhost",
+          "description": "The connectring string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+        },
+        "debugPort": {
+          "type": "string",
+          "default": "8005",
+          "description": "Port to connect to IBM i Debug Service."
+        },
+        "debugSepPort": {
+          "type": "string",
+          "default": "8008",
+          "description": "Port to connect to IBM i Debug Service for SEP."
+        }
+      }
+    },
+    "TopLevel": {
+      "type": "object",
+      "properties": {
+        "codefori": {
+          "$ref": "#/definitions/CodeForI"
+        }
+      }
+    }
+  },
+  "$ref": "#/definitions/TopLevel"
+}

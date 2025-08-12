@@ -23,7 +23,5 @@ export interface DeploymentParameters {
   ignoreRules?: Ignore
 }
 
-export type EditorPath = string | { fsPath: string };
-
 export * from "./api/types";
 export * from "./ui/types";

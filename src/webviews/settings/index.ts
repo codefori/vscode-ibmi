@@ -1,14 +1,13 @@
 import { existsSync } from "fs";
-import vscode from "vscode";
+import vscode, { window } from "vscode";
 import { extensionComponentRegistry } from "../../api/components/manager";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
 import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
-import { isSEPSupported } from "../../debug/server";
 import { instance } from "../../instantiate";
-import { ConnectionConfig, ConnectionData, Server } from '../../typings';
+import { ConnectionConfig, ConnectionData, RemoteConfigFile, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
 import { ComplexTab, CustomUI, Section } from "../CustomUI";
 
@@ -41,18 +40,39 @@ export class SettingsUI {
         const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
 
         let config: ConnectionConfig;
+        let serverConfig: RemoteConfigFile|undefined;
 
         if (connectionSettings && server) {
           config = await IBMi.connectionManager.load(server.name);
 
         } else {
-          config = instance.getConfig()!;
-          if (connection && config) {
+          if (connection) {
             // Reload config to initialize any new config parameters.
-            config = await IBMi.connectionManager.load(config.name);
+            config = await IBMi.connectionManager.load(connection.currentConnectionName);
+
+            const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
+            const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
+
+            if (serverConfigOk) {
+              serverConfig = await remoteConnectionConfig.get();
+            }
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
             return;
+          }
+        }
+
+        const hasServerProperties = serverConfig && serverConfig.codefori && Object.keys(serverConfig.codefori).length > 0;
+
+        const setFieldsReadOnly = async (currentSection: Section) => {
+          if (serverConfig && serverConfig.codefori) {
+            for (const field of currentSection.fields) {
+              if (!field.id) continue;
+                
+              if (serverConfig.codefori[field.id] !== undefined) {
+                field.readonly = true;
+              }
+            }
           }
         }
 
@@ -60,6 +80,13 @@ export class SettingsUI {
         let restart = false;
 
         const featuresTab = new Section();
+
+        if (hasServerProperties) {
+          featuresTab
+            .addParagraph(`Some of these settings have been set on the server and cannot be changed here.`)
+            .addHorizontalRule();
+        }
+
         featuresTab
           .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect)
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
@@ -70,11 +97,15 @@ export class SettingsUI {
           .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
           .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) })
 
+        setFieldsReadOnly(featuresTab);
+
         const tempDataTab = new Section();
         tempDataTab
           .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary, minlength: 1, maxlength: 10 })
           .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir, minlength: 1 })
           .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData);
+
+        setFieldsReadOnly(tempDataTab);
 
         const sourceTab = new Section();
         sourceTab
@@ -82,7 +113,7 @@ export class SettingsUI {
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
-          .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
+          .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter. This also enables date search and sequence view.`, config.sourceDateGutter)
           .addHorizontalRule()
           .addSelect(`defaultDeploymentMethod`, `Default Deployment Method`, [
             {
@@ -126,6 +157,8 @@ export class SettingsUI {
           .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, source members and IFS files will always be opened in read-only mode.`, config.readOnlyMode)
           .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
 
+        setFieldsReadOnly(sourceTab);
+
         const terminalsTab = new Section();
         if (connection && connection.remoteFeatures.tn5250) {
           terminalsTab
@@ -155,12 +188,14 @@ export class SettingsUI {
               }))
             ], `The terminal type for the 5250 emulator.`)
             .addCheckbox(`setDeviceNameFor5250`, `Set Device Name for 5250`, `When enabled, the user will be able to enter a device name before the terminal starts.`, config.setDeviceNameFor5250)
-            .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
+            .addInput(`connectringStringFor5250`, `Connection string for 5250`, `The syntax for tn5250 is <code>[options] [ssl:]HOST[:PORT]</code> (default is <code>+uninhibited localhost</code>)<br /><ul><li><b>options</b>: a list of options that changes tn5250 behaviour; this list is whitespace separated (e.g. <code>+uninhibited +ruler</code>)</li><li><b>ssl</b>: allows you to connect to your system using TELNET over SSL</li><li><b>host</b>: the host you need to connect to (usually <code>localhost</code>)</li><li><b>port</b>: TCP port for the connection</li></ul><br>Further documentation is available at <a href="https://linux.die.net/man/5/tn5250rc">this link</a>, enjoy 😎`, { default: config.connectringStringFor5250 });
         } else if (connection) {
           terminalsTab.addParagraph('Enable 5250 emulation to change these settings');
         } else {
           terminalsTab.addParagraph('Connect to the server to see these settings.');
         }
+
+        setFieldsReadOnly(terminalsTab);
 
         const debuggerTab = new Section();
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
@@ -168,9 +203,8 @@ export class SettingsUI {
           const debugServiceConfig: Map<string, string> = new Map()
             .set("Debug port", config.debugPort);
 
-          if (await isSEPSupported(connection)) {
-            debugServiceConfig.set("SEP debug port", config.debugSepPort)
-          }
+          debugServiceConfig.set("SEP debug port", config.debugSepPort)
+          
           debuggerTab.addParagraph(`<ul>${Array.from(debugServiceConfig.entries()).map(([label, value]) => `<li><code>${label}</code>: ${value}</li>`).join("")}</ul>`);
 
           debuggerTab.addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
@@ -190,10 +224,6 @@ export class SettingsUI {
                 .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
                 .addButtons({ id: `import`, label: `Download client certificate` });
             }
-            else {
-              debuggerTab.addParagraph(`The service certificate doesn't exist or is incomplete; it must be generated before the debug service can be started.`)
-                .addButtons({ id: `generate`, label: `Generate service certificate` })
-            }
           }
         } else if (connection) {
           debuggerTab.addParagraph('Enable the debug service to change these settings');
@@ -201,22 +231,31 @@ export class SettingsUI {
           debuggerTab.addParagraph('Connect to the server to see these settings.');
         }
 
+        setFieldsReadOnly(debuggerTab);
+
         const componentsTab = new Section();
         if (connection) {
-          const states = connection.getComponentStates();
+          const states = connection.getComponentManager().getComponentStates();
           componentsTab.addParagraph(`The following extensions contribute these components:`);
           extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
             const extension = vscode.extensions.getExtension(extensionId);
             componentsTab.addParagraph(`<p>
-              <h3>${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
+              <h3 style="padding-bottom: 1em;">${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
               <ul>
-              ${components.map(component => `<li><code>${component?.getIdentification().name} (version ${component?.getIdentification().version})</code>: ${states.find(c => c.id.name === component.getIdentification().name)?.state}</li>`).join(``)}
+              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.id.name === component.getIdentification().name)?.state} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
               </ul>
               </p>`);
-          })
+          });
+
+          const userInstallableComponents = states.filter(c => c.id.userManaged && c.state !== `Installed`);
+          if (userInstallableComponents.length) {
+            componentsTab.addButtons({ id: `installComponent`, label: `Install component` })
+          }
         } else {
           componentsTab.addParagraph('Connect to the server to see these settings.');
         }
+
+        setFieldsReadOnly(componentsTab);
 
         const tabs: ComplexTab[] = [
           { label: `Features`, fields: featuresTab.fields },
@@ -261,12 +300,14 @@ export class SettingsUI {
                   vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
                   break;
 
-                case `generate`:
-                  vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`);
-                  break;
-
                 case `clearAllowedExts`:
                   instance.getStorage()?.revokeAllExtensionAuthorisations();
+                  break;
+
+                case `installComponent`:
+                  if (connection) {
+                    installComponentsQuickPick(connection);
+                  }
                   break;
 
                 default:
@@ -415,4 +456,38 @@ export class SettingsUI {
       })
     )
   }
+}
+
+function installComponentsQuickPick(connection: IBMi) {
+  const components = connection.getComponentManager().getComponentStates();
+  const installable = components.filter(c => c.id.userManaged && c.state !== `Installed`);
+
+  if (installable.length === 0) {
+    return;
+  }
+
+  const withS = installable.length > 1 ? `s` : ``;
+  const quickPick = window.showQuickPick(installable.map(c => ({
+    label: c.id.name,
+    description: c.state,
+    id: c.id.name
+  })), {
+    title: `Install component${withS}`,
+    canPickMany: true,
+    placeHolder: `Select component${withS} to install`
+  }).then(async result => {
+    if (result) {
+      window.withProgress({title: `Component${withS}`, location: vscode.ProgressLocation.Notification}, async (progress) => {
+        for (const item of result) {
+          progress.report({message: `Installing ${item.label}...`});
+          try {
+            await connection.getComponentManager().installComponent(item.id);
+          } catch (e) {
+            // TODO: handle errors!
+          }
+        }
+      });
+    }
+  })
+
 }

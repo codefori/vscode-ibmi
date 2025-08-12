@@ -27,7 +27,7 @@ const dist = path.resolve(__dirname, `dist`);
 
 fs.mkdirSync(dist, {recursive: true});
 
-const files = [{relative: `src/components/cqsh/cqsh`, name: `cqsh_1`}];
+const files = [{relative: `src/api/components/cqsh/cqsh`, name: `cqsh_1`}];
 
 for (const file of files) {
   const src = path.resolve(__dirname, file.relative);
@@ -37,6 +37,9 @@ for (const file of files) {
   if (fs.existsSync(src)) {
     // Overwrites by default
     fs.copyFileSync(src, dest);
+  }
+  else{
+    throw `File ${src} not found for copy!`
   }
 }
 

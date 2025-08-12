@@ -7,7 +7,7 @@ import { IBMiMember } from "../types";
 export class GetMemberInfo implements IBMiComponent {
   static ID = 'GetMemberInfo';
   private readonly procedureName = 'GETMBRINFO';
-  private readonly currentVersion = 2;
+  private readonly currentVersion = 3;
   private installedVersion = 0;
 
   reset() {
@@ -19,7 +19,7 @@ export class GetMemberInfo implements IBMiComponent {
   }
 
   async getRemoteState(connection: IBMi): Promise<ComponentState> {
-    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysroutines where routine_schema = '${connection.config?.tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
+    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysroutines where routine_schema = '${connection.getConfig().tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
     if (result?.LONG_COMMENT) {
       const comment = result.LONG_COMMENT as string;
       const dash = comment.indexOf('-');
@@ -72,9 +72,9 @@ export class GetMemberInfo implements IBMiComponent {
   }
 
   async getMemberInfo(connection: IBMi, library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
-    const config = connection.config!;
+    const config = connection.getConfig();
     const tempLib = config.tempLibrary;
-    const statement = `select * from table(${tempLib}.${this.procedureName}('${library}', '${sourceFile}', '${member}'))`;
+    const statement = `select * from table(${tempLib}.${this.procedureName}('${connection.upperCaseName(library)}', '${connection.upperCaseName(sourceFile)}', '${connection.upperCaseName(member)}'))`;
 
     let results: Tools.DB2Row[] = [];
     if (connection.enableSQL) {
@@ -83,7 +83,7 @@ export class GetMemberInfo implements IBMiComponent {
       } catch (e) { } // Ignore errors, will return undefined.
     }
     else {
-      results = await connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+      results = await connection.getContent().getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
     }
 
     if (results.length === 1 && results[0].ISSOURCE === 'Y') {
@@ -103,7 +103,7 @@ export class GetMemberInfo implements IBMiComponent {
   }
 
   async getMultipleMemberInfo(connection: IBMi, members: IBMiMember[]): Promise<IBMiMember[] | undefined> {
-    const config = connection.config!;
+    const config = connection.getConfig();
     const tempLib = config.tempLibrary;
     const statement = members
       .map(member => `select * from table(${tempLib}.${this.procedureName}('${member.library}', '${member.file}', '${member.name}'))`)
@@ -116,7 +116,7 @@ export class GetMemberInfo implements IBMiComponent {
       } catch (e) { }; // Ignore errors, will return undefined.
     }
     else {
-      results = await connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+      results = await connection.getContent().getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
     }
 
     return results.filter(row => row.ISSOURCE === 'Y').map(result => {
@@ -170,7 +170,7 @@ function getSource(library: string, name: string, version: number) {
     `  declare  FORMAT  char(   8 ) constant 'MBRD0100' ;`,
     `  declare  OVR     char(   1 ) constant '0' ;`,
     ``,
-    `  call ${library}.QUSRMBRD( buffer, BUFLEN, FORMAT, upper( inFil ) concat upper( inLib ), upper( inMbr ), OVR );`,
+    `  call ${library}.QUSRMBRD( buffer, BUFLEN, FORMAT, inFil concat inLib, inMbr, OVR );`,
     ``,
     `  pipe ( rtrim( substr( Buffer, 19, 10 ) )`,
     `       , rtrim( substr( Buffer,  9, 10 ) )`,

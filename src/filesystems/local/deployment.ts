@@ -3,12 +3,13 @@ import path from 'path';
 import tar from 'tar';
 import tmp from 'tmp';
 import vscode from 'vscode';
-import { instance } from '../../instantiate';
 import IBMi from '../../api/IBMi';
+import IBMiContent from '../../api/IBMiContent';
 import { Tools } from '../../api/Tools';
-import { getLocalActions } from './actions';
-import { DeployTools } from './deployTools';
+import { instance } from '../../instantiate';
 import { DeploymentParameters } from '../../typings';
+import { getLocalActions, getLocalActionsFiles } from './actions';
+import { DeployTools } from './deployTools';
 
 export namespace Deployment {
   export interface MD5Entry {
@@ -42,7 +43,7 @@ export namespace Deployment {
 
     const workspaces = vscode.workspace.workspaceFolders;
     if (workspaces && workspaces.length > 0) {
-      buildWatcher().then(context.subscriptions.push);
+      workspaceWatcher().then(context.subscriptions.push);
     }
 
     instance.subscribe(
@@ -52,10 +53,9 @@ export namespace Deployment {
       () => {
         const workspaces = vscode.workspace.workspaceFolders;
         const connection = instance.getConnection();
-        const config = instance.getConfig();
         const storage = instance.getStorage();
 
-        if (workspaces && connection && storage && config) {
+        if (workspaces && connection && storage) {
           if (workspaces.length > 0) {
             button.show();
           }
@@ -111,12 +111,12 @@ export namespace Deployment {
     return connection;
   }
 
-  export function getContent() {
-    const content = instance.getContent();
-    if (!content) {
+  export function getContent(): IBMiContent {
+    const connection = getConnection();
+    if (!connection) {
       throw new Error("Please connect to an IBM i");
     }
-    return content;
+    return connection.getContent();
   }
 
   export async function createRemoteDirectory(remotePath: string) {
@@ -125,7 +125,7 @@ export namespace Deployment {
     });
   }
 
-  async function buildWatcher() {
+  async function workspaceWatcher() {
     const invalidFs = [`member`, `streamfile`];
     const watcher = vscode.workspace.createFileSystemWatcher(`**`);
 
@@ -143,18 +143,39 @@ export namespace Deployment {
       }
     }
 
+    const checkLocalActionsFiles = async (uri: vscode.Uri | vscode.WorkspaceFolder) => {
+      let workspace: vscode.WorkspaceFolder | undefined;
+      if (uri instanceof vscode.Uri) {
+        if (uri.path.endsWith('/.vscode/actions.json')) {
+          workspace = vscode.workspace.getWorkspaceFolder(uri);
+        }
+        else {
+          return;
+        }
+      }
+      else {
+        workspace = uri;
+      }
+
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasLocalActions`, (await getLocalActionsFiles(workspace)).length > 0);
+    };
+
     watcher.onDidChange(uri => {
       getChangesMap(uri)?.set(uri.fsPath, uri);
     });
     watcher.onDidCreate(async uri => {
+      checkLocalActionsFiles(uri);
       const fileStat = await vscode.workspace.fs.stat(uri);
       if (fileStat.type === vscode.FileType.File) {
         getChangesMap(uri)?.set(uri.fsPath, uri);
       }
     });
     watcher.onDidDelete(uri => {
+      checkLocalActionsFiles(uri);
       getChangesMap(uri)?.delete(uri.fsPath);
     });
+
+    vscode.workspace.workspaceFolders?.forEach(checkLocalActionsFiles);
 
     return watcher;
   }
@@ -223,7 +244,7 @@ export namespace Deployment {
   export async function sendCompressed(parameters: DeploymentParameters, files: vscode.Uri[], progress: vscode.Progress<{ message?: string }>) {
     const connection = getConnection();
     const localTarball = tmp.fileSync({ postfix: ".tar" });
-    const remoteTarball = path.posix.join(getConnection().config?.tempDir || '/tmp', `deploy_${Tools.makeid()}.tar`);
+    const remoteTarball = path.posix.join(getConnection().getConfig().tempDir || '/tmp', `deploy_${Tools.makeid()}.tar`);
     try {
       const toSend = files.map(file => path.relative(parameters.workspaceFolder.uri.fsPath, file.fsPath));
 

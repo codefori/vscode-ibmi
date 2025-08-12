@@ -28,7 +28,7 @@ export class HelpView implements vscode.TreeDataProvider<vscode.TreeItem> {
 
   public async getChildren(): Promise<HelpItem[]> {
     const children = [
-      new HelpOpenUrlItem(`book`, vscode.l10n.t(`Get started`), `https://codefori.github.io/docs/#/`),
+      new HelpOpenUrlItem(`book`, vscode.l10n.t(`Get Started & Documentation`), `https://codefori.github.io/docs/#/`),
       new HelpOpenUrlItem(`output`, vscode.l10n.t(`Open official Forum`), `https://github.com/codefori/vscode-ibmi/discussions`),
       new HelpOpenUrlItem(`eye`, vscode.l10n.t(`Review Issues`), `https://github.com/codefori/vscode-ibmi/issues/`),
       new HelpIssueItem()
@@ -160,6 +160,20 @@ async function downloadLogs() {
       } catch (err) { }
 
       try {
+        const debugNavigatorLogPath = debugConfig.getNavigatorLogFile();
+        const debugNavigatorLog = (await content.downloadStreamfileRaw(debugNavigatorLogPath));
+        if (debugNavigatorLog) {
+          logs.push({
+            label: vscode.l10n.t(`Debug Service Navigator Log`),
+            detail: debugNavigatorLogPath,
+            picked: true,
+            fileName: 'startDebugServiceNavigator.log',
+            fileContent: debugNavigatorLog
+          });
+        }
+      } catch (err) { }
+
+      try {
         const debugServiceEclipseInstancePath = `${debugConfig.getRemoteServiceWorkDir()}/startDebugService_workspace/.metadata/.log`;
         const debugServiceEclipseInstanceLog = (await content.downloadStreamfileRaw(debugServiceEclipseInstancePath));
         if (debugServiceEclipseInstanceLog) {
@@ -245,9 +259,9 @@ function getExtensions(active: boolean) {
 
 async function getRemoteSection() {
   const connection = instance.getConnection();
-  const config = instance.getConfig();
-  const content = instance.getContent();
-  if (connection && config && content) {
+  if (connection) {
+    const config = connection.getConfig();
+    
     return await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: `Gathering issue details...`,
@@ -257,7 +271,7 @@ async function getRemoteSection() {
         TR: "n/a"
       };
       try {
-        const [osVersionRow] = await content.runSQL(
+        const [osVersionRow] = await connection.runSQL(
           `SELECT PTF_GROUP_TARGET_RELEASE as OS, PTF_GROUP_LEVEL AS TR ` +
           `FROM QSYS2.GROUP_PTF_INFO ` +
           `WHERE PTF_GROUP_DESCRIPTION = 'TECHNOLOGY REFRESH' AND PTF_GROUP_STATUS = 'INSTALLED' ` +
@@ -269,7 +283,7 @@ async function getRemoteSection() {
       catch (error) {
         console.log(`Couldn't run QSYS2.GROUP_PTF_INFO: ${error}`);
         try {
-          const [osVersionRow] = await content.runSQL(`Select Substring(DATA_AREA_VALUE, 0, 7) as OS ` +
+          const [osVersionRow] = await connection.runSQL(`Select Substring(DATA_AREA_VALUE, 0, 7) as OS ` +
             `From TABLE(QSYS2.DATA_AREA_INFO(` +
             `DATA_AREA_NAME => 'QSS1MRI',` +
             `DATA_AREA_LIBRARY => 'QUSRSYS'))` +

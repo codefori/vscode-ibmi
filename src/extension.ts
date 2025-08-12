@@ -1,40 +1,42 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, commands, extensions, languages, window, workspace } from "vscode";
+import { commands, ExtensionContext, languages, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import { CustomUI } from "./webviews/CustomUI";
-import { instance, loadAllofExtension } from './instantiate';
-import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
-import { Tools } from "./api/Tools";
-import * as Debug from './debug';
-import { parseErrors } from "./api/errors/parser";
-import { DeployTools } from "./filesystems/local/deployTools";
-import { Deployment } from "./filesystems/local/deployment";
+import path from "path";
+import IBMi from "./api/IBMi";
 import { CopyToImport } from "./api/components/copyToImport";
 import { CustomQSh } from "./api/components/cqsh";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
+import { parseErrors } from "./api/errors/parser";
+import { CustomCLI } from "./api/tests/components/customCli";
+import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
+import * as Debug from './debug';
 import { IFSFS } from "./filesystems/ifsFs";
+import { DeployTools } from "./filesystems/local/deployTools";
+import { Deployment } from "./filesystems/local/deployment";
+import { instance, loadAllofExtension } from './instantiate';
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
-import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
-import { CodeForIBMi, ConnectionData } from "./typings";
+import { CodeForIBMi } from "./typings";
+import { VscodeTools } from "./ui/Tools";
+import { registerActionTools } from "./ui/actions";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
-import { LibraryListProvider } from "./ui/views/LibraryListView";
+import { initializeLibraryListView } from "./ui/views/LibraryListView";
 import { ProfilesView } from "./ui/views/ProfilesView";
 import { initializeDebugBrowser } from "./ui/views/debugView";
 import { HelpView } from "./ui/views/helpView";
 import { initializeIFSBrowser } from "./ui/views/ifsBrowser";
 import { initializeObjectBrowser } from "./ui/views/objectBrowser";
 import { initializeSearchView } from "./ui/views/searchView";
+import { registerURIHandler } from "./uri";
+import { openURIHandler } from "./uri/handlers/open";
+import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
+import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
-import { registerActionTools } from "./ui/actions";
-import IBMi from "./api/IBMi";
-import path from "path";
-import { VscodeTools } from "./ui/Tools";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -58,6 +60,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   initializeIFSBrowser(context);
   initializeDebugBrowser(context);
   initializeSearchView(context);
+  initializeLibraryListView(context);
 
   context.subscriptions.push(
     window.registerTreeDataProvider(
@@ -65,19 +68,15 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       new HelpView(context)
     ),
     window.registerTreeDataProvider(
-      `libraryListView`,
-      new LibraryListProvider(context)
-    ),
-    window.registerTreeDataProvider(
       `profilesView`,
       new ProfilesView(context)
     ),
-    
+
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
       if (connection) {
-        const config = instance.getConfig();
+        const config = connection.getConfig();
         if (config) {
           Object.assign(config, (await IBMi.connectionManager.load(config.name)));
         }
@@ -94,13 +93,15 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   Deployment.initialize(context);
   updateLastConnectionAndServerCache();
 
-  Sandbox.handleStartup();
-  Sandbox.registerUriHandler(context);
+  initializeSandbox();
 
   console.log(`Developer environment: ${process.env.DEV}`);
   if (process.env.DEV) {
     // Run tests if not in production build
     initialise(context);
+
+    // Test user-component
+    extensionComponentRegistry.registerComponent(context, new CustomCLI());
   }
 
   instance.subscribe(
@@ -121,6 +122,11 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(context, new CopyToImport());
+
+  registerURIHandler(context,
+    sandboxURIHandler,
+    openURIHandler
+  );
 
   return {
     instance, customUI: () => new CustomUI(),

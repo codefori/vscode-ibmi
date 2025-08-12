@@ -3,21 +3,22 @@ import { existsSync } from "fs";
 import * as node_ssh from "node-ssh";
 import os from "os";
 import path, { parse as parsePath } from 'path';
+import { EventEmitter } from 'stream';
+import { EditorPath } from './types';
+import { CompileTools } from "./CompileTools";
+import IBMiContent from "./IBMiContent";
+import { Tools } from './Tools';
 import { IBMiComponent } from "./components/component";
 import { CopyToImport } from "./components/copyToImport";
 import { CustomQSh } from './components/cqsh';
-import { ComponentManager } from "./components/manager";
-import { CompileTools } from "./CompileTools";
-import IBMiContent from "./IBMiContent";
-import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { Tools } from './Tools';
+import { ComponentManager, ComponentSearchProps } from "./components/manager";
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
+import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
+import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
 import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
-import { EventEmitter } from 'stream';
-import { ConnectionConfig } from './configuration/config/types';
-import { EditorPath } from '../typings';
+import { ConfigFile } from './configuration/serverFile';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -56,6 +57,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 type DisconnectCallback = (conn: IBMi) => Promise<void>;
+
 interface ConnectionCallbacks {
   onConnectedOperations?: Function[],
   timeoutCallback?: (conn: IBMi) => Promise<void>,
@@ -63,6 +65,17 @@ interface ConnectionCallbacks {
   progress: (detail: { message: string }) => void,
   message: (type: ConnectionMessageType, message: string) => void,
   cancelEmitter?: EventEmitter,
+}
+
+interface ConnectionOptions {
+  callbacks: ConnectionCallbacks,
+  reconnecting?: boolean,
+  reloadServerSettings?: boolean,
+  customClient?: node_ssh.NodeSSH
+}
+
+interface ConnectionConfigFiles {
+  settings: ConfigFile<RemoteConfigFile>;
 }
 
 export default class IBMi {
@@ -81,6 +94,10 @@ export default class IBMi {
   private sshdCcsid: number | undefined;
 
   private componentManager = new ComponentManager(this);
+
+  private configFiles: ConnectionConfigFiles = {
+    settings: new ConfigFile<RemoteConfigFile>(this, `settings`, {})
+  };
 
   /**
    * @deprecated Will become private in v3.0.0 - use {@link IBMi.getConfig} instead.
@@ -146,6 +163,10 @@ export default class IBMi {
    */
   setDisconnectedCallback(callback: DisconnectCallback) {
     this.disconnectedCallback = callback;
+  }
+
+  getConfigFile<T>(id: keyof ConnectionConfigFiles) {
+    return this.configFiles[id] as ConfigFile<T>;
   }
 
   get canUseCqsh() {
@@ -230,11 +251,10 @@ export default class IBMi {
     };
   }
 
-  /**
-   * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
-   */
-  async connect(connectionObject: ConnectionData, callbacks: ConnectionCallbacks, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<ConnectionResult> {
+  async connect(connectionObject: ConnectionData, options: ConnectionOptions): Promise<ConnectionResult> {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
+    const callbacks = options.callbacks;
+
     try {
       connectionObject.keepaliveInterval = 35000;
 
@@ -246,7 +266,11 @@ export default class IBMi {
 
       const delayedOperations: Function[] = callbacks.onConnectedOperations ? [...callbacks.onConnectedOperations] : [];
 
-      this.client = new node_ssh.NodeSSH;
+      if (options.customClient) {
+        this.client = options.customClient;
+      } else {
+        this.client = new node_ssh.NodeSSH;
+      }
       await this.client.connect({
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined
@@ -280,7 +304,7 @@ export default class IBMi {
 
       // Reload server settings?
       const quickConnect = () => {
-        return (this.config!.quickConnect === true && reloadServerSettings === false);
+        return (this.config!.quickConnect === true && options.reloadServerSettings === false);
       }
 
       // Check shell output for additional user text - this will confuse Code...
@@ -360,7 +384,7 @@ export default class IBMi {
             await callbacks.message(`warning`, `Your home directory (${actualHomeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator.`);
           }
         }
-        else if (reconnecting) {
+        else if (options.reconnecting) {
           callbacks.message(`warning`, `Your home directory (${actualHomeDir}) does not exist. Code for IBM i may not function correctly.`);
         }
         else {
@@ -395,7 +419,7 @@ export default class IBMi {
 
       // If the version has changed (by update for example), then fetch everything again
       if (cachedServerSettings?.lastCheckedOnVersion !== currentExtensionVersion) {
-        reloadServerSettings = true;
+        options.reloadServerSettings = true;
       }
 
       // Check for installed components?
@@ -482,12 +506,30 @@ export default class IBMi {
 
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
-      const componentStates = await this.componentManager.getInstallState();
+      const componentStates = this.componentManager.getComponentStates();
       this.appendOutput(`\nCode for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
       }
       this.appendOutput(`\n`);
+
+      // Load the remote connection configuration and apply it to the connection
+
+      callbacks.progress({ message: `Loading remote configuration files.` });
+      await this.loadRemoteConfigs();
+
+      const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
+      if (remoteConnectionConfig.getState().server === `ok`) {
+        const remoteConfig = await remoteConnectionConfig.get();
+
+        if (remoteConfig.codefori) {
+          for (const [key, value] of Object.entries(remoteConfig.codefori)) {
+            if (this.config[key] !== undefined) {
+              this.config[key] = value;
+            }
+          }
+        }
+      }
 
       callbacks.progress({
         message: `Checking library list configuration.`
@@ -917,7 +959,7 @@ export default class IBMi {
         callbacks.message(`warning`, `The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
       }
 
-      if (!reconnecting) {
+      if (!options.reconnecting) {
         for (const operation of delayedOperations) {
           await operation();
         }
@@ -1045,6 +1087,20 @@ export default class IBMi {
     return this.shell === IBMi.bashShellPath;
   }
 
+  async loadRemoteConfigs() {
+    for (const configFile in this.configFiles) {
+      const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
+
+      this.configFiles[configFile as keyof ConnectionConfigFiles].reset();
+
+      try {
+        await this.configFiles[configFile as keyof ConnectionConfigFiles].loadFromServer();
+      } catch (e) { }
+
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+    }
+  }
+
   /**
    * - Send PASE/QSH/ILE commands simply
    * - Commands sent here end in the 'IBM i Output' channel
@@ -1116,6 +1172,7 @@ export default class IBMi {
 
     // Some simplification
     if (result.code === null) result.code = 0;
+    if (result.signal === `SIGABRT`) result.code = 127;
 
     this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
 
@@ -1314,12 +1371,12 @@ export default class IBMi {
     }
   }
 
-  getComponent<T extends IBMiComponent>(name: string, ignoreState?: boolean) {
-    return this.componentManager.get<T>(name, ignoreState);
+  getComponentManager() {
+    return this.componentManager;
   }
 
-  getComponentStates() {
-    return this.componentManager.getInstallState();
+  getComponent<T extends IBMiComponent>(name: string, options?: ComponentSearchProps) {
+    return this.componentManager.get<T>(name, options);
   }
 
   /**
@@ -1408,7 +1465,7 @@ export default class IBMi {
         if (returningAsCsv) {
           // Will throw an error if stdout contains an error
 
-          const csvContent = await this.content.downloadStreamfile(returningAsCsv.outStmf);
+          const csvContent = await this.content.downloadStreamfileRaw(returningAsCsv.outStmf);
           if (csvContent) {
             this.sendCommand({ command: `rm -rf "${returningAsCsv.outStmf}"` });
 
@@ -1505,6 +1562,7 @@ export default class IBMi {
     return this.currentAsp;
   }
   async lookupLibraryIAsp(library: string): Promise<string|undefined> {
+    library = this.upperCaseName(library);
     let foundNumber = this.libraryAsps.get(library);
 
     if (!foundNumber) {

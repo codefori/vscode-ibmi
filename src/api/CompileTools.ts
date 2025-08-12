@@ -1,7 +1,8 @@
 
 import IBMi from './IBMi';
 import { Tools } from './Tools';
-import { Variable, RemoteCommand, CommandResult, StandardIO } from './types';
+import { CommandResult, RemoteCommand, StandardIO } from './types';
+import { Variables } from './variables';
 
 export interface ILELibrarySettings {
   currentLibrary: string;
@@ -11,43 +12,6 @@ export interface ILELibrarySettings {
 export namespace CompileTools {
   export const NEWLINE = `\r\n`;
   export const DID_NOT_RUN = -123;
-
-  function expandVariables(variables: Variable) {
-    for (const key in variables) {
-      for (const key2 in variables) {
-        if (key !== key2) { // Do not expand one self
-          variables[key] = variables[key].replace(new RegExp(key2, `g`), variables[key2]);
-        }
-      }
-    }
-  }
-
-  function expandCommand(inputValue: string, variables: Variable) {
-    for (const key in variables) {
-      if (variables[key]) {
-        inputValue = inputValue.replace(new RegExp(key, `g`), variables[key]);
-      }
-    };
-
-    return inputValue;
-  }
-
-  function applyDefaultVariables(connection: IBMi, variables: Variable) {
-    const config = connection.getConfig();
-    variables[`&BUILDLIB`] = variables[`CURLIB`] || config.currentLibrary;
-    if (!variables[`&CURLIB`]) variables[`&CURLIB`] = config.currentLibrary;
-    if (!variables[`\\*CURLIB`]) variables[`\\*CURLIB`] = config.currentLibrary;
-    variables[`&USERNAME`] = connection.currentUser;
-    variables[`{usrprf}`] = connection.currentUser;
-    variables[`&HOST`] = connection.currentHost;
-    variables[`{host}`] = connection.currentHost;
-    variables[`&HOME`] = config.homeDirectory;
-    variables[`&WORKDIR`] = config.homeDirectory;
-
-    for (const variable of config.customVariables) {
-      variables[`&${variable.name.toUpperCase()}`] = variable.value;
-    }
-  }
 
   interface RunCommandEvents {
     writeEvent?: (content: string) => void;
@@ -61,25 +25,19 @@ export namespace CompileTools {
     const config = connection.getConfig();
     if (config && connection) {
       const cwd = options.cwd;
-      const variables = options.env || {};
-
-      applyDefaultVariables(connection, variables);
-      expandVariables(variables);
+      const variables = new Variables(connection, options.env);
 
       const ileSetup: ILELibrarySettings = {
-        currentLibrary: variables[`&CURLIB`] || config.currentLibrary,
-        libraryList: variables[`&LIBL`]?.split(` `) || config.libraryList,
+        currentLibrary: variables.get(`&CURLIB`) || config.currentLibrary,
+        libraryList: variables.get(`&LIBL`)?.split(` `) || config.libraryList,
       };
       // Remove any duplicates from the library list
       ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
 
       const libraryList = buildLibraryList(ileSetup);
-      variables[`&LIBLS`] = libraryList.join(` `);
+      variables.set(`&LIBLS`, libraryList.join(` `));
 
-      let commandString = expandCommand(
-        options.command,
-        variables
-      );
+      let commandString = variables.expand(options.command);
 
       if (events.commandConfirm) {
         commandString = await events.commandConfirm(commandString);
@@ -111,20 +69,10 @@ export namespace CompileTools {
         let commandResult;
         switch (options.environment) {
           case `pase`:
-            // We build environment variables for the environment to be ready
-            const paseVars: Variable = {};
-
-            // Append any variables passed into the API
-            Object.entries(variables).forEach(([key, value]) => {
-              if ((/^[A-Za-z\&]/i).test(key)) {
-                paseVars[key.startsWith('&') ? key.substring(1) : key] = value;
-              }
-            });
-
             commandResult = await connection.sendCommand({
               command: commands.join(` && `),
               directory: cwd,
-              env: paseVars,
+              env: variables.toPaseVariables(),
               ...callbacks
             });
             break;
@@ -132,7 +80,7 @@ export namespace CompileTools {
           case `qsh`:
             commandResult = await connection.sendQsh({
               command: [
-                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
+                ...options.noLibList ? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands,
               ].join(` && `),
               directory: cwd,
@@ -145,7 +93,7 @@ export namespace CompileTools {
             // escape $ and # in commands
             commandResult = await connection.sendQsh({
               command: [
-                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
+                ...options.noLibList ? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
                   `${`system "${IBMi.escapeForShell(command)}"`}`,
                 )
@@ -158,7 +106,7 @@ export namespace CompileTools {
 
         commandResult.command = commandString;
         return commandResult;
-        
+
       } else {
         return {
           code: DID_NOT_RUN,

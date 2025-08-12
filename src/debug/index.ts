@@ -1,22 +1,25 @@
-import { ExtensionContext, Uri } from "vscode";
+import { env, ExtensionContext, Uri } from "vscode";
 import Instance from "../Instance";
 
 import path from "path";
 import * as vscode from 'vscode';
 
+import { ILELibrarySettings } from "../api/CompileTools";
+import { getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
+import IBMi from "../api/IBMi";
+import { getStoredPassword } from "../config/passwords";
+import { Env, getEnvConfig } from "../filesystems/local/env";
 import { instance } from "../instantiate";
 import { ObjectItem } from "../typings";
-import { ILELibrarySettings } from "../api/CompileTools";
-import { Env, getEnvConfig } from "../filesystems/local/env";
-import * as certificates from "./certificates";
-import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
-import * as server from "./server";
 import { VscodeTools } from "../ui/Tools";
-import { getStoredPassword } from "../config/passwords";
+import * as certificates from "./certificates";
+import * as server from "./server";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
 const debugContext = 'code-for-ibmi:debug';
+
+// TODO: Remove this by 4.0.0
 const debugSEPContext = 'code-for-ibmi:debug.SEP';
 
 // These context values are used for walkthroughs only
@@ -46,8 +49,8 @@ export async function initialize(context: ExtensionContext) {
   const startDebugging = async (type: DebugType, objectType: DebugObjectType, objectLibrary: string, objectName: string, env?: Env) => {
     if (debugExtensionAvailable()) {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
-      if (connection && config) {
+      if (connection) {
+        const config = connection.getConfig();
         if (connection.remoteFeatures[`startDebugService.sh`]) {
           const password = await getPassword();
 
@@ -120,9 +123,9 @@ export async function initialize(context: ExtensionContext) {
     if (cachedResolvedTypes[path]) {
       return cachedResolvedTypes[path];
     } else {
-      const content = instance.getContent()!;
+      const connection = instance.getConnection()!;
 
-      const [row] = await content.runSQL(`select OBJTYPE from table(qsys2.object_statistics('${library}', '*PGM *SRVPGM', '${objectName}')) X`) as { OBJTYPE: DebugObjectType }[];
+      const [row] = await connection.runSQL(`select OBJTYPE from table(qsys2.object_statistics('${library}', '*PGM *SRVPGM', '${objectName}')) X`) as { OBJTYPE: DebugObjectType }[];
 
       if (row) {
         cachedResolvedTypes[path] = row.OBJTYPE;
@@ -133,14 +136,14 @@ export async function initialize(context: ExtensionContext) {
 
   const getObjectFromUri = (uri: Uri, env?: Env) => {
     const connection = instance.getConnection();
-    const configuration = instance.getConfig();
 
     const qualifiedPath: {
       library: string | undefined,
       object: string | undefined
     } = { library: undefined, object: undefined };
 
-    if (connection && configuration) {
+    if (connection) {
+      const configuration = connection.getConfig();
 
       switch (uri.scheme) {
         case `member`:
@@ -252,95 +255,14 @@ export async function initialize(context: ExtensionContext) {
         }
       }
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.debug.redo.setup`, async () => {
-      const connection = instance.getConnection();
-      if (connection) {
-        const doSetup = await vscode.window.showWarningMessage(`Do you confirm you want to generate or import a new certificate for the Debug Service?`, { modal: true }, 'Generate', 'Import');
-        if (doSetup) {
-          VscodeTools.withContext("code-for-ibmi:debugWorking", async () => {
-            if (!(await server.getDebugServiceJob()) || await server.stopService(connection)) {
-              const debugConfig = await new DebugConfiguration(connection).load();
-              const clearResult = await connection.sendCommand({ command: `rm -f ${debugConfig.getRemoteServiceCertificatePath()} ${debugConfig.getRemoteClientCertificatePath()}` });
-              if (clearResult.code) {
-                vscode.window.showErrorMessage(`Failed to clear existing certificate: ${clearResult.stderr}`);
-              }
-              else {
-                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`, doSetup);
-              }
-            }
-            else {
-              vscode.window.showErrorMessage(`Debug Service could not be stopped; new certificate cannot be generated.`);
-            }
-          });
-        }
-      }
-    }),
-    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, (doSetup?: 'Generate' | 'Import') =>
-      VscodeTools.withContext("code-for-ibmi:debugWorking", async () => {
-        const connection = instance.getConnection();
-        if (connection) {
-          const ptfInstalled = server.debugPTFInstalled();
-
-          if (ptfInstalled) {
-            const debugConfig = await new DebugConfiguration(connection).load()
-            const remoteCertsExists = await certificates.remoteCertificatesExists(debugConfig);
-            if (remoteCertsExists && await certificates.debugKeyFileExists(connection, debugConfig) && debugConfig.getCode4iDebug()) {
-              await certificates.downloadClientCert(connection);
-              vscode.window.showInformationMessage(`Debug Service Certificate already exist on the server. The client certificate has been downloaded to enable debugging.`);
-            }
-            else {
-              doSetup = doSetup || await vscode.window.showInformationMessage(`Debug setup`, {
-                modal: true,
-                detail: `Debug service server and client certificates do not exist on the system or they need to be re-created. You can either import an existing server certificate or generate one. Then the client certificate will be generated and downloaded to your device.`
-              }, `Generate`, `Import`);
-
-              if (doSetup) {
-                try {
-                  let imported: certificates.ImportedCertificate | undefined;
-                  if (doSetup === "Import") {
-                    const localFile = (await vscode.window.showOpenDialog({
-                      canSelectFiles: true,
-                      canSelectFolders: false,
-                      canSelectMany: false,
-                      title: `Select debug service server certificate`,
-                      filters: { "PFX certificate": ["pfx"] }
-                    }))?.at(0);
-
-                    if (localFile) {
-                      const password = await vscode.window.showInputBox({ password: true, title: "Enter certificate's password" });
-                      if (password) {
-                        imported = { localFile, password };
-                      }
-                    }
-                  }
-                  await certificates.setup(connection, imported);
-                  vscode.window.showInformationMessage(`Debug Service server and client certificates successfully ${imported ? "imported" : "generated"}.`);
-                  await certificates.downloadClientCert(connection);
-                  vscode.window.showInformationMessage(`Debug Service client certificate downloaded from the server.`);
-                } catch (e: any) {
-                  vscode.window.showErrorMessage(e.message || e);
-                }
-              }
-            }
-
-            server.refreshDebugSensitiveItems();
-          } else {
-            vscode.window.showErrorMessage(`Debug PTF not installed.`);
-          }
-
-        } else {
-          vscode.window.showErrorMessage(`No connection to IBM i available.`);
-        }
-      })
-    ),
 
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, () =>
       vscode.window.withProgress({ title: "Downloading Debug Service Certificate", location: vscode.ProgressLocation.Window }, async () =>
         await VscodeTools.withContext("code-for-ibmi:debugWorking", async () => {
           const connection = instance.getConnection();
           if (connection) {
-            const ptfInstalled = server.debugPTFInstalled();
-            if (ptfInstalled) {
+            const debugEnabled = await server.isDebugSupported(connection)
+            if (debugEnabled) {
               try {
                 const remoteCertExists = await certificates.remoteCertificatesExists();
 
@@ -353,11 +275,7 @@ export async function initialize(context: ExtensionContext) {
                 vscode.window.showErrorMessage(`Failed to work with debug client certificate. See Code for IBM i logs. (${e})`);
               }
             } else {
-              vscode.window.showInformationMessage(`Import of debug client certificate skipped as not required in current mode.`, `Open configuration`).then(result => {
-                if (result) {
-                  vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
-                }
-              });
+              vscode.window.showInformationMessage(`Import of debug client certificate skipped as debug is either not installed or not version 3.`);
             }
 
             server.refreshDebugSensitiveItems();
@@ -367,7 +285,7 @@ export async function initialize(context: ExtensionContext) {
         })
       )
     ),
-    vscode.commands.registerCommand("code-for-ibmi.debug.open.service.config", () => vscode.commands.executeCommand("code-for-ibmi.openEditable", DEBUG_CONFIG_FILE))
+    vscode.commands.registerCommand("code-for-ibmi.debug.open.service.config", () => vscode.commands.executeCommand("code-for-ibmi.openEditable", ORIGINAL_DEBUG_CONFIG_FILE))
   );
 
   // Run during startup:
@@ -378,24 +296,56 @@ export async function initialize(context: ExtensionContext) {
     async () => {
       activateDebugExtension();
       const connection = instance.getConnection();
-      if (connection && server.debugPTFInstalled()) {
-        const content = connection.getContent();
-        vscode.commands.executeCommand(`setContext`, ptfContext, true);
+      if (connection) {
+        const debuggerInstalled = server.debugPTFInstalled(connection);
+        const debugDetails = await getDebugServiceDetails(connection);
+        if (debuggerInstalled) {
+          if (debugDetails.semanticVersion().major >= server.MIN_DEBUG_VERSION) {
+            vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
-        //Enable debug related commands
-        vscode.commands.executeCommand(`setContext`, debugContext, true);
+            //Enable debug related commands
+            vscode.commands.executeCommand(`setContext`, debugContext, true);
 
-        //Enable service entry points related commands
-        vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported(connection));
+            //Enable service entry points related commands
+            vscode.commands.executeCommand(`setContext`, debugSEPContext, true);
 
-        const isDebugManaged = isManaged();
-        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
-        if (!isDebugManaged) {
-          if (validateIPv4address(connection.currentHost)) {
-            vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
+            const isDebugManaged = isManaged();
+            vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
+
+            if (!isDebugManaged) {
+              if (validateIPv4address(connection.currentHost)) {
+                vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
+              }
+
+              // Set the debug environment variables early to be safe
+              setCertEnv(true, connection);
+
+              // Download the client certificate if it doesn't exist.
+              certificates.checkClientCertificate(connection).catch(() => {
+                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+              });
+            }
           }
+          else {
+            const storage = instance.getStorage();
+            if (storage && debugDetails.semanticVersion().major < server.MIN_DEBUG_VERSION) {
+              const debugUpdateMessageId = `debugUpdateRequired-${server.MIN_DEBUG_VERSION}`;
+              const showMessage = !storage.hasMessageBeenShown(debugUpdateMessageId);
 
-          certificates.sanityCheck(connection, content);
+              if (showMessage) {
+                vscode.window.showWarningMessage(`Debug service version ${debugDetails.version} is below the minimum required version ${server.MIN_DEBUG_VERSION}.0.0. Please update the debug service PTF.`, `Open docs`, `Dismiss`).then(selected => {
+                  switch (selected) {
+                    case `Open docs`:
+                      env.openExternal(Uri.parse(`https://codefori.github.io/docs/developing/debug/`));
+                      break;
+                    case `Dismiss`:
+                      storage.markMessageAsShown(debugUpdateMessageId);
+                      break;
+                  }
+                });
+              }
+            }
+          }
         }
       }
     });
@@ -446,15 +396,10 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
 
   let secure = true;
 
-  if (isManaged()) {
-    // If we're in a managed environment, only set secure if a cert is set
-    secure = process.env[`DEBUG_CA_PATH`] ? true : false;
-  } else {
-    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
-  }
+  secure = setCertEnv(secure, connection);
 
   if (options.sep) {
-    if (serviceDetails.version === `1.0.0`) {
+    if (serviceDetails.semanticVersion().major < 2) {
       vscode.window.showErrorMessage(`The debug service on this system, version ${serviceDetails.version}, does not support service entry points.`);
       return;
     }
@@ -519,4 +464,15 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       }
     }
   }
+}
+
+function setCertEnv(secure: boolean, connection: IBMi) {
+  if (isManaged()) {
+    // If we're in a managed environment, only set secure if a cert is set
+    secure = process.env[`DEBUG_CA_PATH`] ? true : false;
+  } else {
+    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
+  }
+
+  return secure;
 }

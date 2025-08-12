@@ -1,6 +1,6 @@
 import vscode from "vscode";
 import { Tools } from "../../api/Tools";
-import { checkClientCertificate, debugKeyFileExists, remoteCertificatesExists } from "../../debug/certificates";
+import { checkClientCertificate, remoteCertificatesExists } from "../../debug/certificates";
 import { DebugConfiguration, getDebugServiceDetails, SERVICE_CERTIFICATE } from "../../api/configuration/DebugConfiguration";
 import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../../debug/server";
 import { instance } from "../../instantiate";
@@ -75,7 +75,6 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
     const connection = instance.getConnection();
     if (connection) {
       const debugConfig = await new DebugConfiguration(connection).load();
-      const keyFileExists = await debugKeyFileExists(connection, debugConfig);
 
       const certificates: Certificates = {
         remoteCertificate: await remoteCertificatesExists(debugConfig),
@@ -108,8 +107,7 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
             stopFunction: () => stopService(connection),
             debugJob,
             debugConfig,
-            certificates,
-            keyFileExists
+            certificates
           })
         )
       ]);
@@ -155,22 +153,13 @@ class DebugJobItem extends DebugItem {
     stopFunction: () => Promise<boolean>,
     debugJob?: DebugJob,
     certificates?: Certificates,
-    debugConfig?: DebugConfiguration,
-    keyFileExists?: boolean
+    debugConfig?: DebugConfiguration
   }) {
     let problem: undefined | DebugServiceIssue
     let cantRun = false;
     const running = !cantRun && parameters.debugJob !== undefined;
     if (parameters.certificates && parameters.debugConfig) {
-      if (parameters.debugConfig && (!parameters.debugConfig.getCode4iDebug() || !parameters.keyFileExists)) {
-        cantRun = true;
-        problem = {
-          context: "noremote",
-          label: vscode.l10n.t(`Incomplete configuration`),
-          detail: vscode.l10n.t(`Certificate needs to be regenerated`, SERVICE_CERTIFICATE, parameters.certificates.remoteCertificatePath!)
-        }
-      }
-      else if (!parameters.certificates.remoteCertificate) {
+      if (!parameters.certificates.remoteCertificate) {
         cantRun = true;
         problem = {
           context: "noremote",

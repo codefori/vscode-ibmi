@@ -1,11 +1,12 @@
 import { BaseStorage } from "./BaseStorage";
-import { PathContent, DeploymentPath, DebugCommands } from "./CodeForIStorage";
+import { DebugCommands, DeploymentPath, PathContent } from "./CodeForIStorage";
 
 const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
 const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
+const MESSAGE_SHOWN_KEY = `messageShown`;
 
 const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
 const AUTHORISED_EXTENSIONS_KEY = `authorisedExtensions`
@@ -19,7 +20,8 @@ type AuthorisedExtension = {
 
 export class ConnectionStorage {
   private connectionName: string = "";
-  constructor(private internalStorage: BaseStorage) {}
+  constructor(private internalStorage: BaseStorage) {
+  }
 
   get ready(): boolean {
     if (this.connectionName) {
@@ -32,10 +34,7 @@ export class ConnectionStorage {
 
   setConnectionName(connectionName: string) {
     this.connectionName = connectionName;
-  }
-
-  protected getStorageKey(key: string): string {
-    return `${this.connectionName}.${key}`;
+    this.internalStorage.setUniqueKeyPrefix(connectionName ? `settings-${connectionName}` : '');
   }
 
   getSourceList() {
@@ -127,5 +126,18 @@ export class ConnectionStorage {
   revokeExtensionAuthorisation(...extensions: AuthorisedExtension[]) {
     const newExtensions = this.getAuthorisedExtensions().filter(ext => !extensions.includes(ext));
     return this.internalStorage.set(AUTHORISED_EXTENSIONS_KEY, newExtensions);
+  }
+
+  hasMessageBeenShown(messageId: string): boolean {
+    const shownMessages = this.internalStorage.get<string[]>(MESSAGE_SHOWN_KEY) || [];
+    return shownMessages.includes(messageId);
+  }
+
+  async markMessageAsShown(messageId: string): Promise<void> {
+    const shownMessages = this.internalStorage.get<string[]>(MESSAGE_SHOWN_KEY) || [];
+    if (!shownMessages.includes(messageId)) {
+      shownMessages.push(messageId);
+      await this.internalStorage.set(MESSAGE_SHOWN_KEY, shownMessages);
+    }
   }
 }
