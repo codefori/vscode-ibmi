@@ -1720,7 +1720,7 @@
 				"command": "code-for-ibmi.launchDeploy",
 				"key": "ctrl+shift+e",
 				"mac": "cmd+shift+e",
-				"when": "workspaceFolderCount >= 1 && code-for-ibmi:connected"
+				"when": "workspaceFolderCount >= 1 && code-for-ibmi:connected && !code-for-ibmi:isReadonly"
 			},
 			{
 				"command": "code-for-ibmi.goToFile",
