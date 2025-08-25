@@ -1,10 +1,10 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
-import { CustomUI, Section } from "../CustomUI";
+import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
+import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
 import { instance, safeDisconnect } from "../../instantiate";
 import { ConnectionData } from '../../typings';
-import IBMi from "../../api/IBMi";
-import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
+import { CustomUI, Section } from "../CustomUI";
 
 type NewLoginSettings = ConnectionData & {
   savePassword: boolean
@@ -120,7 +120,7 @@ export class Login {
                     }
 
                   } else {
-                    vscode.window.showErrorMessage(`Not connected to ${data.host}!`);
+                    vscode.window.showErrorMessage(`Not connected to ${data.host}${connected.error ? `: ${connected.error}` : '!'}`);
                   }
                 } catch (e) {
                   vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e}`);
@@ -180,7 +180,7 @@ export class Login {
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
-          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}!`);
+          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}${connected.error ? `: ${connected.error}` : '!'}`);
         }
 
         return true;

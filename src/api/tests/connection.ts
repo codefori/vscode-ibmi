@@ -102,7 +102,7 @@ export async function newConnection(reloadSettings?: boolean) {
   }
 
   if (!result.success) {
-    throw new Error(`Failed to connect to IBMi`);
+    throw new Error(`Failed to connect to IBMi${result.error ? `: ${result.error}` : '!'}`);
   }
 
   return conn;

@@ -4,7 +4,6 @@ import * as node_ssh from "node-ssh";
 import os from "os";
 import path, { parse as parsePath } from 'path';
 import { EventEmitter } from 'stream';
-import { EditorPath } from './types';
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { Tools } from './Tools';
@@ -16,9 +15,9 @@ import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
-import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
 import { ConfigFile } from './configuration/serverFile';
+import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
+import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, WrapResult } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -28,8 +27,9 @@ export type ConnectionMessageType = 'info' | 'warning' | 'error';
 export type ConnectionErrorCode = `shell_config` | `home_directory_creation` | `QCPTOIMPF_exists` | `QCPFRMIMPF_exists` | `default_not_bash` | `invalid_bashrc` | `invalid_temp_lib` | `no_auto_conv_ebcdic` | `not_loaded_debug_config` | `no_sql_runner` | `ccsid_warning`;
 
 export interface ConnectionResult {
-  success: boolean,
-  errorCodes?: ConnectionErrorCode[],
+  success: boolean
+  error?: string
+  errorCodes?: ConnectionErrorCode[]
 }
 
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
@@ -122,7 +122,7 @@ export default class IBMi {
    * the root of the IFS, thus why we store it.
    */
   private iAspInfo: AspInfo[] = [];
-  private currentAsp: string|undefined;
+  private currentAsp: string | undefined;
   private libraryAsps = new Map<string, number>();
 
   /**
@@ -990,16 +990,22 @@ export default class IBMi {
 
       let error = e.message;
       if (e.code === "ENOTFOUND") {
-        error = `Host is unreachable. Check the connection's hostname/IP address.`;
+        error = `host is unreachable. Check the connection's hostname/IP address.`;
       }
       else if (e.code === "ECONNREFUSED") {
-        error = `Port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
+        error = `port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
       }
       else if (e.level === "client-authentication") {
-        error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
+        error = `check your credentials${e.message ? ` (${e.message})` : ''}.`;
+      }
+
+      this.appendOutput(`${JSON.stringify(e)}`);
+      if (typeof e.stack === "string") {
+        this.appendOutput(`\n\n${e.stack}`);
       }
 
       return {
+        error,
         success: false
       };
     }
@@ -1523,7 +1529,7 @@ export default class IBMi {
     return this.remoteFeatures[`startDebugService.sh`] !== undefined;
   }
 
-  private async getUserProfileAsp(): Promise<string|undefined> {
+  private async getUserProfileAsp(): Promise<string | undefined> {
     const [currentRdb] = await this.runSQL(`values current_server`);
 
     if (currentRdb) {
@@ -1541,8 +1547,8 @@ export default class IBMi {
     return this.iAspInfo;
   }
 
-  getIAspDetail(by: string|number) {
-    let asp: AspInfo|undefined;
+  getIAspDetail(by: string | number) {
+    let asp: AspInfo | undefined;
     if (typeof by === 'string') {
       asp = this.iAspInfo.find(asp => asp.name === by);
     } else {
@@ -1554,14 +1560,14 @@ export default class IBMi {
     }
   }
 
-  getIAspName(by: string|number): string|undefined {
+  getIAspName(by: string | number): string | undefined {
     return this.getIAspDetail(by)?.name;
   }
 
   getCurrentIAspName() {
     return this.currentAsp;
   }
-  async lookupLibraryIAsp(library: string): Promise<string|undefined> {
+  async lookupLibraryIAsp(library: string): Promise<string | undefined> {
     library = this.upperCaseName(library);
     let foundNumber = this.libraryAsps.get(library);
 
