@@ -1566,7 +1566,7 @@ export default class IBMi {
     let foundNumber = this.libraryAsps.get(library);
 
     if (!foundNumber) {
-      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}'))`);
+      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}', DETAILED_INFO=>'NO'))`);
       const iaspNumber = Number(row?.IASP_NUMBER);
       if (iaspNumber >= 0) {
         this.libraryAsps.set(library, iaspNumber);
