@@ -65,6 +65,7 @@ export interface ConnectionData {
   privateKeyPath?: string;
   keepaliveInterval?: number;
   readyTimeout?: number;
+  sshDebug?: boolean;
 }
 
 export interface Server {
