@@ -40,7 +40,7 @@ export class SettingsUI {
         const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
 
         let config: ConnectionConfig;
-        let serverConfig: RemoteConfigFile|undefined;
+        let serverConfig: RemoteConfigFile | undefined;
 
         if (connectionSettings && server) {
           config = await IBMi.connectionManager.load(server.name);
@@ -68,7 +68,7 @@ export class SettingsUI {
           if (serverConfig && serverConfig.codefori) {
             for (const field of currentSection.fields) {
               if (!field.id) continue;
-                
+
               if (serverConfig.codefori[field.id] !== undefined) {
                 field.readonly = true;
               }
@@ -204,7 +204,7 @@ export class SettingsUI {
             .set("Debug port", config.debugPort);
 
           debugServiceConfig.set("SEP debug port", config.debugSepPort)
-          
+
           debuggerTab.addParagraph(`<ul>${Array.from(debugServiceConfig.entries()).map(([label, value]) => `<li><code>${label}</code>: ${value}</li>`).join("")}</ul>`);
 
           debuggerTab.addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
@@ -395,7 +395,8 @@ export class SettingsUI {
               .addPassword(`password`, `${vscode.l10n.t(`Password`)}${storedPassword ? ` (${vscode.l10n.t(`stored`)})` : ``}`, vscode.l10n.t("Only provide a password if you want to update an existing one or set a new one."))
               .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${privateKeyPath})` : ``}`, privateKeyWarning + vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
               .addHorizontalRule()
-              .addInput(`readyTimeout`, vscode.l10n.t(`Connection Timeout (in milliseconds)`), vscode.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })              
+              .addInput(`readyTimeout`, vscode.l10n.t(`Connection Timeout (in milliseconds)`), vscode.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })
+              .addCheckbox(`sshDebug`, vscode.l10n.t(`Turn on SSH debug output`), vscode.l10n.t(`Enable this to output debug traces in the Code for i and help diagnose SSH connection issues.`), stored.sshDebug)
               .addButtons(
                 { id: `submitButton`, label: vscode.l10n.t(`Save`), requiresValidation: true },
                 { id: `removeAuth`, label: vscode.l10n.t(`Remove auth methods`) }
@@ -477,9 +478,9 @@ function installComponentsQuickPick(connection: IBMi) {
     placeHolder: `Select component${withS} to install`
   }).then(async result => {
     if (result) {
-      window.withProgress({title: `Component${withS}`, location: vscode.ProgressLocation.Notification}, async (progress) => {
+      window.withProgress({ title: `Component${withS}`, location: vscode.ProgressLocation.Notification }, async (progress) => {
         for (const item of result) {
-          progress.report({message: `Installing ${item.label}...`});
+          progress.report({ message: `Installing ${item.label}...` });
           try {
             await connection.getComponentManager().installComponent(item.id);
           } catch (e) {

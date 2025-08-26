@@ -36,8 +36,8 @@ export class Login {
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
       .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716 and PPK formats are supported.`))
       .addHorizontalRule()
-      .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" });
-
+      .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" })
+      .addCheckbox(`sshDebug`, l10n.t(`Turn on SSH debug output`), l10n.t(`Enable this to output debug traces in the Code for i and help diagnose SSH connection issues.`));
     const tempTab = new Section()
       .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: `ILEDITOR`, minlength: 1, maxlength: 10 })
       .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: '/tmp', minlength: 1 });
