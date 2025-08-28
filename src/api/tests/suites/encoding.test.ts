@@ -49,6 +49,31 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
   }
 }
 
+async function convertToUTF8WithCCSID(connection: IBMi, text: string, baseCcsid: string, intermediateCcsid: string): Promise<string> {
+  const content = connection.getContent();
+  const config = connection.getConfig();
+
+  const tempLib = config.tempLibrary;
+  const tempSPF = Tools.makeid(8);
+  const tempMbr = Tools.makeid(4);
+
+  config.bidi = true;
+  config.bidiCcsid = intermediateCcsid;
+
+  const createResult = await connection!.runCommand({
+    command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr}) CCSID(${baseCcsid})`,
+    environment: `ile`,
+  });
+  console.log(`${tempLib}/${tempSPF} MBR(${tempMbr})`);
+
+  const uploadResult = await content.uploadMemberContent(tempLib, tempSPF, tempMbr, text);
+  expect(uploadResult).toBeTruthy();
+
+  const memberContent = await content.downloadMemberContent(tempLib, tempSPF, tempMbr);
+  
+  return memberContent;
+}
+
 describe('Encoding tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
@@ -379,5 +404,56 @@ describe('Encoding tests', { concurrent: true }, () => {
     for (const varChar of connection.variantChars.local) {
       await testSingleVariant(varChar);
     }
+  });
+});
+
+// seperate suite for tests that require synchronous execution
+// as global variables are modified in each test
+describe('BiDi encoding tests', () => {
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  }, CONNECTION_TIMEOUT);
+
+  // test data
+  const BidiContents = {
+    "420": {
+      compatCcsid: "8612",
+      incompatCcsid: "273",
+      text: [
+        "مرحبا بالعالم",
+        "Welcome to البرمجة",
+        "if a = 'با';",
+        "code then comment // مرحبا بالعالم",
+      ],
+    },
+    "424": {
+      compatCcsid: "62211",
+      incompatCcsid: "273",
+      text: [
+        "שלום עולם",
+        "English and Hebrew - עברית",
+        "if a = 'אר';",
+        "code then comment // הערה כלשהי",
+      ],
+    },
+  };
+
+  const bidiEntries = Object.entries(BidiContents);
+
+  bidiEntries.forEach(([baseCcsid, bidiContent]) => {
+    it(`Valid conversion of CCSID ${baseCcsid} to UTF8`, async () => {
+      const baseContent = bidiContent.text.join("\r\n") + "\r\n";
+      const converted = await convertToUTF8WithCCSID(connection, baseContent, baseCcsid, bidiContent.compatCcsid);
+      expect(converted).toBe(baseContent);
+    });
+  });
+
+  bidiEntries.forEach(([baseCcsid, bidiContent]) => {
+    it(`invalid conversion of CCSID ${baseCcsid} to UTF8`, async () => {
+      const baseContent = bidiContent.text.join("\r\n") + "\r\n";
+      const converted = await convertToUTF8WithCCSID(connection, baseContent, baseCcsid, bidiContent.incompatCcsid);
+      expect(converted).not.toBe(baseContent);
+    });
   });
 });
