@@ -738,7 +738,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
         if (changeResult.code === 0) {
           node.description = newText.toUpperCase() !== `*BLANK` ? newText : ``;
-          objectBrowser.refresh(node);
+          objectBrowser.refresh(node.parent?.parent);
         } else {
           vscode.window.showErrorMessage(vscode.l10n.t(`Error changing member description! {0}`, changeResult.stderr));
         }
