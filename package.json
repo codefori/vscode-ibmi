@@ -1713,7 +1713,23 @@
 			{
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
-				"mac": "cmd+e"
+				"mac": "cmd+e",
+				"when": "editorFocus",
+				"args": "editor"
+			},
+			{
+				"command": "code-for-ibmi.runAction",
+				"key": "ctrl+e",
+				"mac": "cmd+e",
+				"when": "focusedView == objectBrowser && listHasSelectionOrFocus",
+				"args": "objectBrowser"
+			},
+			{
+				"command": "code-for-ibmi.runAction",
+				"key": "ctrl+e",
+				"mac": "cmd+e",
+				"when": "focusedView === ifsBrowser && listHasSelectionOrFocus",
+				"args": "ifsBrowser"
 			},
 			{
 				"command": "code-for-ibmi.launchDeploy",
