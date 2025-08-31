@@ -1362,7 +1362,8 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       else if (node instanceof ObjectBrowserMemberItem) {
         vscode.commands.executeCommand(`code-for-ibmi.renameMember`, node);
       }
-    })
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.objectBrowser.selection`, getSelectedItems)
   );
 }
 
