@@ -737,8 +737,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         });
 
         if (changeResult.code === 0) {
+          //pre updating description to avoid old description when multiple updates are performed without refreshing 
           node.description = newText.toUpperCase() !== `*BLANK` ? newText : ``;
-          objectBrowser.refresh(node.parent?.parent);
+          node.member.text = newText.toUpperCase() !== `*BLANK` ? newText : ``;
+          objectBrowser.refresh(node);
         } else {
           vscode.window.showErrorMessage(vscode.l10n.t(`Error changing member description! {0}`, changeResult.stderr));
         }
