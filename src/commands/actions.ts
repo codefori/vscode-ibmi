@@ -8,8 +8,7 @@ import { runAction } from "../ui/actions";
 import { refreshDiagnosticsFromServer } from "../ui/diagnostics";
 import { BrowserItem } from "../ui/types";
 
-const CommandOrigins = ["editor", "objectBrowser", "ifsBrowser"] as const;
-type CommandOrigin = typeof CommandOrigins[number];
+type CommandOrigin = "editor" | "objectBrowser" | "ifsBrowser";
 
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [
