@@ -942,7 +942,8 @@ Do you want to replace it?`, target))) {
     vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async () => {
       vscode.commands.executeCommand('ifsBrowser.focus');
       vscode.commands.executeCommand('list.find');
-    })
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.ifsBrowser.selection`, getSelectedItems)
   )
 }
 

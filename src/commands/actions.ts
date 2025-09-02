@@ -8,17 +8,39 @@ import { runAction } from "../ui/actions";
 import { refreshDiagnosticsFromServer } from "../ui/diagnostics";
 import { BrowserItem } from "../ui/types";
 
+type CommandOrigin = "editor" | "objectBrowser" | "ifsBrowser";
+
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [
-    commands.registerCommand(`code-for-ibmi.runAction`, async (item?: (TreeItem | BrowserItem | Uri), items?: (TreeItem | BrowserItem | Uri)[], action?: Action, method?: DeploymentMethod, workspaceFolder?: WorkspaceFolder) => {
+    commands.registerCommand(`code-for-ibmi.runAction`, async (item: (CommandOrigin | TreeItem | BrowserItem | Uri), items?: (TreeItem | BrowserItem | Uri)[], action?: Action, method?: DeploymentMethod, workspaceFolder?: WorkspaceFolder) => {
       const connection = instance.getConnection()!;
       if (connection) {
         const editor = window.activeTextEditor;
         const browserItems: BrowserItem[] = [];
         const uris: Uri[] = [];
-        if (!item) {
-          if (editor?.document.uri) {
-            uris.push(editor?.document.uri);
+        const addTreeItem = (target: TreeItem | BrowserItem) => {
+          if (target.resourceUri) {
+            uris.push(target.resourceUri);
+            if (target instanceof BrowserItem) {
+              browserItems.push(target);
+            }
+          }
+        };
+
+        if (typeof item === "string") {
+          switch (item) {
+            case "objectBrowser":
+              (await commands.executeCommand<BrowserItem[]>("code-for-ibmi.objectBrowser.selection")).forEach(addTreeItem);
+              break;
+
+            case "ifsBrowser":
+              (await commands.executeCommand<BrowserItem[]>("code-for-ibmi.ifsBrowser.selection")).forEach(addTreeItem);
+              break;
+
+            default:
+              if (editor?.document.uri) {
+                uris.push(editor.document.uri);
+              }
           }
         }
         else {
@@ -26,11 +48,8 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
             if (target instanceof Uri) {
               uris.push(target);
             }
-            else if (target.resourceUri) {
-              uris.push(target.resourceUri);
-              if (target instanceof BrowserItem) {
-                browserItems.push(target);
-              }
+            else {
+              addTreeItem(target);
             }
           }
         }
@@ -42,7 +61,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
             return false;
           }
 
-          const config = connection.getConfig();          
+          const config = connection.getConfig();
 
           for (const openedEditor of window.visibleTextEditors) {
             const path = openedEditor.document.uri.path;
