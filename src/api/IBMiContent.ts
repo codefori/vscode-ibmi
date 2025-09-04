@@ -170,25 +170,57 @@ export default class IBMiContent {
     const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
     const tempRmt = this.getTempRemote(path);
     let retry = false;
-    while (true) {
+    
+    // BiDi handling if enabled
+    const isBidi = this.config.bidi;
+    const bidiCcsid = this.config.bidiCcsid;
+
+  
+  while (true) {
       let copyResult: CommandResult;
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
-        try {
+
+        if (isBidi) {
           await this.ibmi.runSQL([
+            `@QSYS/RMVLNK OBJLNK('${tempRmt}');`, 
             `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
-          ].join("\n"));
-        } catch (error: any) {
-          copyResult.code = -1;
-          copyResult.stderr = String(error);
+            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${bidiCcsid}) DBFCCSID(${this.config.sourceFileCCSID});`,
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES);`
+          ].join("\n")).catch(e => {
+            copyResult.code = -1;
+            copyResult.stderr = String(e);
+          });
+        } else {
+          try {
+            await this.ibmi.runSQL([
+              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+              `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
+            ].join("\n"));
+          } catch (error: any) {
+            copyResult.code = -1;
+            copyResult.stderr = String(error);
+          }
         }
       }
       else {
-        copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-          noLibList: true
-        });
+        if (isBidi) {
+          copyResult = { code: 0, stdout: '', stderr: '' };
+
+          await this.ibmi.runSQL([
+            `@QSYS/RMVLNK OBJLNK('${tempRmt}');`,  
+            `@QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${bidiCcsid}) DBFCCSID(${this.config.sourceFileCCSID});`,
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES);`
+          ].join("\n")).catch(e => {
+            copyResult.code = -1;
+            copyResult.stderr = String(e);
+          });
+        } else {
+          copyResult = await this.ibmi.runCommand({
+            command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            noLibList: true
+          });
+        }
       }
 
       if (copyResult.code === 0) {
@@ -253,6 +285,10 @@ export default class IBMiContent {
     const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
 
+    // BiDi handling if enabled
+    const isBidi = this.config.bidi;
+    const bidiCcsid = this.config.bidiCcsid;
+
     try {
       await writeFileAsync(tmpobj, content || memberOrContent, `utf8`);
       const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
@@ -262,6 +298,19 @@ export default class IBMiContent {
       let copyResult: CommandResult;
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
+
+        if (isBidi) {
+          await this.ibmi.runSQL([
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${bidiCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
+            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`,
+            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`,
+            `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208);`,
+          ].join("\n")).catch(e => {
+            copyResult.code = -1;
+            copyResult.stderr = String(e);
+          });
+        } else {
         try {
           await this.ibmi.runSQL([
             `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
@@ -273,11 +322,24 @@ export default class IBMiContent {
           copyResult.stderr = String(error);
         }
       }
+      }
       else {
+         if (isBidi) {
+          copyResult = { code: 0, stdout: '', stderr: '' };
+            await this.ibmi.runSQL([            
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${bidiCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
+            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${bidiCcsid}) DBFCCSID(${this.config.sourceFileCCSID});`,
+            `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208);`,
+          ].join("\n")).catch(e => {
+            copyResult.code = -1;
+            copyResult.stderr = String(e);
+          });
+        } else {
         copyResult = await this.ibmi.runCommand({
           command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
           noLibList: true
         });
+      }
       }
 
       if (copyResult.code === 0) {
@@ -288,6 +350,7 @@ export default class IBMiContent {
         }
         return true;
       } else {
+        console.log(copyResult.command);
         throw new Error(`Failed uploading member: ${copyResult.stderr}`);
       }
     } catch (error) {
