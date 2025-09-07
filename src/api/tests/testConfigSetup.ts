@@ -40,7 +40,7 @@ export class JsonStorage extends BaseStorage {
   private readonly config: JSONMap;
 
   constructor() {
-    const jsonMap = new JSONMap(path.join(__dirname, `.storage.json`))
+    const jsonMap = new JSONMap(path.join(__dirname, `.storage.json`));
     super(jsonMap);
     this.config = jsonMap;
   }
