@@ -1,30 +1,30 @@
-import { existsSync } from "fs";
-import { writeFile } from "fs/promises";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 import path from "path";
 import { Config } from "../configuration/config/VirtualConfig";
 import { BaseStorage } from "../configuration/storage/BaseStorage";
 
-const configPath = path.join(__dirname, `config.json`);
-const storagePath = path.join(__dirname, `storage.json`);
+class JSONMap extends Map<string, any> {
 
-export class JsonConfig extends Config {
-  private readonly config: Map<string, any> = new Map();
-
-  public async load() {
-    if (existsSync(configPath)) {
-      const data = await import(configPath);
-      for (const key in data) {
-        this.config.set(key, data[key]);
-      }
+  constructor(private readonly filePath: string) {
+    if (existsSync(filePath)) {
+      const data = JSON.parse(readFileSync(filePath).toString("utf-8"));
+      super(Object.entries(data));
+    }
+    else {
+      super();
     }
   }
 
-  public save() {
-    const data: any = {};
-    Array.from(this.config.entries()).forEach(([key, value]) => data[key] = value);
-    delete data.default;
+  save() {
+    return writeFileSync(this.filePath, JSON.stringify(Object.fromEntries(this), null, 2));
+  }
+}
 
-    return writeFile(configPath, JSON.stringify(data, null, 2));
+export class JSONConfig extends Config {
+  private readonly config: JSONMap = new JSONMap(path.join(__dirname, `.config.json`));
+
+  public save() {
+    this.config.save();
   }
 
   get<T>(key: string): T | undefined {
@@ -37,33 +37,15 @@ export class JsonConfig extends Config {
 }
 
 export class JsonStorage extends BaseStorage {
-  protected readonly globalState: Map<string, any>;
+  private readonly config: JSONMap;
 
   constructor() {
-    const newState = new Map<string, any>()
-    super(newState);
-
-    this.globalState = newState;
-  }
-
-  exists() {
-    return existsSync(storagePath);
-  }
-
-  public async load() {
-    if (this.exists()) {
-      const data = await import(storagePath);
-      for (const key in data) {
-        this.globalState.set(key, data[key]);
-      }
-    }
+    const jsonMap = new JSONMap(path.join(__dirname, `.storage.json`))
+    super(jsonMap);
+    this.config = jsonMap;
   }
 
   public save() {
-    const data: any = {};
-    Array.from(this.globalState.entries()).forEach(([key, value]) => data[key] = value);
-    delete data.default;
-
-    return writeFile(storagePath, JSON.stringify(data, null, 2));
+    this.config.save();
   }
 }

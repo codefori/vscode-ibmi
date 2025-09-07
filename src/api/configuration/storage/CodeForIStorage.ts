@@ -1,5 +1,5 @@
+import { ComponentInstallState } from "../../components/component";
 import { AspInfo, ConnectionData } from "../../types";
-import { ComponentIdentification, ComponentInstallState, IBMiComponent } from "../../components/component";
 import { BaseStorage } from "./BaseStorage";
 const SERVER_SETTINGS_CACHE_PREFIX = `serverSettingsCache_`;
 const SERVER_SETTINGS_CACHE_KEY = (name: string) => SERVER_SETTINGS_CACHE_PREFIX + name;
