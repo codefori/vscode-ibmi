@@ -1,5 +1,5 @@
 /**
- * A common type that works for both a Map of VS Code's Memento
+ * A common type that works for both a Map and VS Code's Memento
  */
 export type GlobalState = {
   keys(): readonly string[];
