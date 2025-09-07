@@ -19,7 +19,7 @@ type AuthorisedExtension = {
 }
 
 export class ConnectionStorage {
-  private connectionName: string = "";
+  private connectionName?: string;
   constructor(private internalStorage: BaseStorage) {
   }
 
