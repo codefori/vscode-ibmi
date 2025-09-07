@@ -3,7 +3,6 @@ import { BaseStorage } from '../api/configuration/storage/BaseStorage';
 
 export class VsStorage extends BaseStorage {
   declare protected readonly globalState: vscode.Memento;
-  private connectionName: string = "";
 
   constructor(context: vscode.ExtensionContext) {
     super(context.globalState);
