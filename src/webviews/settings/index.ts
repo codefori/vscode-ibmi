@@ -45,21 +45,20 @@ export class SettingsUI {
         if (connectionSettings && server) {
           config = await IBMi.connectionManager.load(server.name);
 
-        } else {
-          if (connection) {
-            // Reload config to initialize any new config parameters.
-            config = await IBMi.connectionManager.load(connection.currentConnectionName);
+        } else if (connection) {
+          // Reload config to initialize any new config parameters.
+          config = await IBMi.connectionManager.load(connection.currentConnectionName);
 
-            const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
-            const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
+          const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
+          const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
 
-            if (serverConfigOk) {
-              serverConfig = await remoteConnectionConfig.get();
-            }
-          } else {
-            vscode.window.showErrorMessage(`No connection is active.`);
-            return;
+          if (serverConfigOk) {
+            serverConfig = await remoteConnectionConfig.get();
           }
+        } else {
+          vscode.window.showErrorMessage(`No connection is active.`);
+          return;
+
         }
 
         const hasServerProperties = serverConfig && serverConfig.codefori && Object.keys(serverConfig.codefori).length > 0;
