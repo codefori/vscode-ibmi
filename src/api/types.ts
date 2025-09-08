@@ -65,6 +65,7 @@ export interface ConnectionData {
   privateKeyPath?: string;
   keepaliveInterval?: number;
   readyTimeout?: number;
+  sshDebug?: boolean;
 }
 
 export interface Server {
@@ -220,6 +221,8 @@ export interface ModuleExport {
   symbolType: string,
   argumentOptimization: string,
 }
+
+export type EditorPath = string | { fsPath: string };
 
 export * from "./configuration/config/types";
 
