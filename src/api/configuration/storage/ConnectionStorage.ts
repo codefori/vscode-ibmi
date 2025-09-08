@@ -140,4 +140,11 @@ export class ConnectionStorage {
       await this.internalStorage.set(MESSAGE_SHOWN_KEY, shownMessages);
     }
   }
+
+  async unmarkMessageAsShown(messageId: string): Promise<void> {
+    const shownMessages = this.internalStorage.get<string[]>(MESSAGE_SHOWN_KEY) || [];
+    if (shownMessages.includes(messageId)) {
+      await this.internalStorage.set(MESSAGE_SHOWN_KEY, shownMessages.filter(message => message !== messageId));
+    }
+  }
 }

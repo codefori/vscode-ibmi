@@ -1,6 +1,6 @@
 import { parse as parsePath } from "path";
 import { parse, ParsedUrlQueryInput, stringify } from "querystring";
-import vscode, { FilePermission, FileSystemError } from "vscode";
+import vscode, { FilePermission, FileSystemError, l10n } from "vscode";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
@@ -68,6 +68,18 @@ export class QSysFS implements vscode.FileSystemProvider {
             () => {
                 this.updateMemberSupport();
             });
+
+        context.subscriptions.push(onCodeForIBMiConfigurationChange("connectionSettings", () => {
+            if (this.extendedMemberSupport !== instance.getConnection()?.getConfig().enableSourceDates) {
+                instance.getStorage()?.unmarkMessageAsShown(SOURCE_DATES_RESET_WARNING);
+                this.updateMemberSupport();
+                const openedMembers = vscode.window.visibleTextEditors.map(e => e.document.uri).filter(uri => uri.scheme === "member");
+                if (this.extendedMemberSupport === instance.getConnection()?.getConfig().enableSourceDates && openedMembers.length) {
+                    vscode.window.showWarningMessage(l10n.t("Source date support is now {0}. Please backup and then close opened IBM i source member(s):", this.extendedMemberSupport ? l10n.t("enabled") : l10n.t("disabled")),
+                        { modal: true, detail: openedMembers.map(e => `- ${e.path.substring(1)}`).join("\n") });
+                }
+            }
+        }));
     }
 
     private updateMemberSupport() {
@@ -97,10 +109,10 @@ export class QSysFS implements vscode.FileSystemProvider {
         const connection = instance.getConnection();
         if (connection) {
             const filePathLength = connection.getIAspDetail(pathParts[0]) ? 4 : 3;
-            if(pathParts.length < filePathLength){
+            if (pathParts.length < filePathLength) {
                 type = vscode.FileType.Directory;
             }
-            
+
             if (type === vscode.FileType.File) {
                 const member = parsePath(path).name;
                 const qsysPath = { ...Tools.parseQSysPath(path), member };
@@ -177,7 +189,6 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
-        const path = uri.path;
         const connection = instance.getConnection();
         if (connection) {
             const contentApi = connection.getContent();
@@ -198,9 +209,12 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
             else {
                 this.savedAsMembers.delete(uri.path);
-                this.extendedMemberSupport ?
-                    await this.extendedContent.uploadMemberContentWithDates(uri, content.toString()) :
+                if (this.extendedMemberSupport) {
+                    await this.extendedContent.uploadMemberContentWithDates(uri, content.toString());
+                } else {
+                    await warnAboutSourceDates();
                     await contentApi.uploadMemberContent(library, file, member, content);
+                }
             }
         }
         else {
@@ -264,5 +278,35 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
         throw new FileSystemError("Method not implemented.");
+    }
+}
+
+const SOURCE_DATES_RESET_WARNING = 'sourceDatesResetWarning';
+async function warnAboutSourceDates() {
+    const storage = instance.getStorage();
+    if (!storage?.hasMessageBeenShown(SOURCE_DATES_RESET_WARNING)) {
+        const save = l10n.t("Save");
+        const dismiss = l10n.t("Save & don't show again");
+        const abort = l10n.t("Abort");
+        const openSettings = l10n.t("Abort & open settings");
+        const choice = await vscode.window.showWarningMessage(l10n.t("Source dates support is disabled. Saving now will set all the dates to 0. Do you whish to proceed anyway?"),
+            { modal: true },
+            save, openSettings, abort, dismiss);
+        switch (choice) {
+            case save:
+                //Do nothing, proceed
+                break;
+
+            case dismiss:
+                await storage?.markMessageAsShown(SOURCE_DATES_RESET_WARNING);
+                break;
+
+            case openSettings:
+                vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Source Code`);
+
+            case abort:
+            default:
+                throw FileSystemError.Unavailable(l10n.t("Save operation aborted"));
+        }
     }
 }
