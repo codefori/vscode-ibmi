@@ -73,7 +73,11 @@ export class QSysFS implements vscode.FileSystemProvider {
             if (this.extendedMemberSupport !== instance.getConnection()?.getConfig().enableSourceDates) {
                 instance.getStorage()?.unmarkMessageAsShown(SOURCE_DATES_RESET_WARNING);
                 this.updateMemberSupport();
-                const openedMembers = vscode.window.visibleTextEditors.map(e => e.document.uri).filter(uri => uri.scheme === "member");
+                const openedMembers = vscode.window.tabGroups.all
+                    .flatMap(group => group.tabs)
+                    .filter(tab => tab.input instanceof vscode.TabInputText)
+                    .map(tab => (tab.input as vscode.TabInputText).uri)
+                    .filter(uri => uri.scheme === "member");
                 if (this.extendedMemberSupport === instance.getConnection()?.getConfig().enableSourceDates && openedMembers.length) {
                     vscode.window.showWarningMessage(l10n.t("Source date support is now {0}. Please backup and then close opened IBM i source member(s):", this.extendedMemberSupport ? l10n.t("enabled") : l10n.t("disabled")),
                         { modal: true, detail: openedMembers.map(e => `- ${e.path.substring(1)}`).join("\n") });
@@ -287,11 +291,10 @@ async function warnAboutSourceDates() {
     if (!storage?.hasMessageBeenShown(SOURCE_DATES_RESET_WARNING)) {
         const save = l10n.t("Save");
         const dismiss = l10n.t("Save & don't show again");
-        const abort = l10n.t("Abort");
-        const openSettings = l10n.t("Abort & open settings");
+        const openSettings = l10n.t("Cancel & open settings");
         const choice = await vscode.window.showWarningMessage(l10n.t("Source dates support is disabled. Saving now will set all the dates to 0. Do you whish to proceed anyway?"),
             { modal: true },
-            save, openSettings, abort, dismiss);
+            save, dismiss, openSettings);
         switch (choice) {
             case save:
                 //Do nothing, proceed
@@ -304,7 +307,6 @@ async function warnAboutSourceDates() {
             case openSettings:
                 vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Source Code`);
 
-            case abort:
             default:
                 throw FileSystemError.Unavailable(l10n.t("Save operation aborted"));
         }
