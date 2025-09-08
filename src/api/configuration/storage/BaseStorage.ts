@@ -2,7 +2,7 @@
  * A common type that works for both a Map and VS Code's Memento
  */
 export type GlobalState = {
-  keys(): readonly string[] | MapIterator<string>;
+  keys(): Iterable<string>;
   get<T>(key: string): T | undefined;
   update?(key: string, value: any): Thenable<void>;
   set?(key: string, value: any): void;
