@@ -292,7 +292,7 @@ async function warnAboutSourceDates() {
         const save = l10n.t("Save");
         const dismiss = l10n.t("Save & don't show again");
         const openSettings = l10n.t("Cancel & open settings");
-        const choice = await vscode.window.showWarningMessage(l10n.t("Source dates support is disabled. Saving now will set all the dates to 0. Do you whish to proceed anyway?"),
+        const choice = await vscode.window.showWarningMessage(l10n.t("Source date support is disabled. Saving now will set all the dates to 0. Do you wish to proceed anyway?"),
             { modal: true },
             save, dismiss, openSettings);
         switch (choice) {
