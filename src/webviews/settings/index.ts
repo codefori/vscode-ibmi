@@ -35,7 +35,7 @@ export class SettingsUI {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
-        const connectionSettings = await IBMi.connectionManager.getAll();
+        const connectionSettings = IBMi.connectionManager.getAll();
         const connection = instance.getConnection();
         const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
 
