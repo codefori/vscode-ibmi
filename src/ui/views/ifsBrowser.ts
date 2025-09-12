@@ -383,25 +383,19 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node: IFSShortcutItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node: IFSShortcutItem, nodes?: IFSShortcutItem[]) => {
       const connection = instance.getConnection();
       if (connection) {
         const config = connection.getConfig();
         const shortcuts = config.ifsShortcuts;
-        const removeDir = (node.path || (await vscode.window.showQuickPick(shortcuts, {
-          placeHolder: l10n.t(`Select IFS shortcut to remove`),
-        })))?.trim();
+        const toBeRemoved = (nodes || [node]).map(n => n.path);
 
         try {
-          if (removeDir) {
-            const inx = shortcuts.indexOf(removeDir);
-            if (inx >= 0) {
-              shortcuts.splice(inx, 1);
-              config.ifsShortcuts = shortcuts;
-              await IBMi.connectionManager.update(config);
-              if (IBMi.connectionManager.get(`autoRefresh`)) {
-                ifsBrowser.refresh();
-              }
+          if (toBeRemoved.length) {
+            config.ifsShortcuts = shortcuts.filter(path => !toBeRemoved.includes(path));
+            await IBMi.connectionManager.update(config);
+            if (IBMi.connectionManager.get(`autoRefresh`)) {
+              ifsBrowser.refresh();
             }
           }
         } catch (e) {
