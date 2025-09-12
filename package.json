@@ -2860,7 +2860,7 @@
 				},
 				{
 					"command": "code-for-ibmi.removeIFSShortcut",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
 					"group": "3_ifsStuff@2"
 				},
 				{
