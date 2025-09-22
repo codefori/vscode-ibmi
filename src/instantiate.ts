@@ -14,6 +14,7 @@ import Instance from "./Instance";
 import { Terminal } from './ui/Terminal';
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import { RemoteConfigFile } from './api/configuration/config/types';
 
 export let instance: Instance;
 
@@ -104,18 +105,30 @@ async function updateConnectedBar() {
   const connection = instance.getConnection();
   if (connection) {
     const config = connection.getConfig();
-    connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
-    const terminalMenuItem = config.readOnlyMode ? `` : `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`;
+
+    const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
+    const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
+    let serverConfig: RemoteConfigFile|undefined;
+    if (serverConfigOk) {
+      serverConfig = await remoteConnectionConfig.get();
+    }
+
+    const systemReadOnly = serverConfig?.codefori?.readOnlyMode || false;
+    connectedBarItem.text = `$(${systemReadOnly ? "shield" : (config.readOnlyMode ? "lock" : "settings-gear")}) ${config.name}`;
+    const terminalMenuItem = systemReadOnly ? `` : `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`;
+    const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`;
     const debugRunning = await isDebugEngineRunning();
-    connectedBarItem.tooltip = new vscode.MarkdownString([
+    const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
+    connectedBarItemTooltips.push(
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
-      `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
+      actionsMenuItem,
       terminalMenuItem,
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
         :
         `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
-    ].join(`\n\n---\n\n`), true);
+    );
+    connectedBarItem.tooltip = new vscode.MarkdownString(connectedBarItemTooltips.join(`\n\n---\n\n`), true);
     connectedBarItem.tooltip.isTrusted = true;
   }
 }
