@@ -1028,7 +1028,7 @@
 			},
 			{
 				"command": "code-for-ibmi.launchTerminalPicker",
-				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Launch Terminal Picker",
 				"category": "IBM i"
 			},
@@ -1162,7 +1162,7 @@
 			},
 			{
 				"command": "code-for-ibmi.runAction",
-				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Run Action...",
 				"category": "IBM i",
 				"icon": "$(file-binary)"
@@ -1599,7 +1599,7 @@
 			},
 			{
 				"command": "code-for-ibmi.openTerminalHere",
-        "enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
+        "enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Open Terminal Here",
 				"category": "IBM i"
 			},
@@ -1693,7 +1693,7 @@
 				"title": "Reset keyboard",
 				"category": "IBM i",
 				"icon": "$(keyboard)",
-				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly"
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly"
 			},
 			{
 				"command": "code-for-ibmi.testing.connectWithFixture",

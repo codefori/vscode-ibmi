@@ -130,6 +130,9 @@ async function updateConnectedBar() {
     );
     connectedBarItem.tooltip = new vscode.MarkdownString(connectedBarItemTooltips.join(`\n\n---\n\n`), true);
     connectedBarItem.tooltip.isTrusted = true;
+
+    vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isReadonly`, config?.readOnlyMode || systemReadOnly);
+    vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isSystemReadonly`, systemReadOnly);
   }
 }
 
@@ -141,8 +144,6 @@ async function onConnected() {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isReadonly`, config?.readOnlyMode);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
