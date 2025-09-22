@@ -76,19 +76,21 @@ export async function newConnection(reloadSettings?: boolean) {
   const result = await conn.connect(
     creds,
     {
-      message: (type: string, message: string) => {
-        // console.log(`${type.padEnd(10)} ${message}`);
+      callbacks: {
+        message: (type: string, message: string) => {
+          // console.log(`${type.padEnd(10)} ${message}`);
+        },
+        progress: ({ message }) => {
+          // console.log(`PROGRESS: ${message}`);
+        },
+        uiErrorHandler: async (connection, code, data) => {
+          console.log(`Connection warning: ${code}: ${JSON.stringify(data)}`);
+          return false;
+        },
       },
-      progress: ({ message }) => {
-        // console.log(`PROGRESS: ${message}`);
-      },
-      uiErrorHandler: async (connection, code, data) => {
-        console.log(`Connection warning: ${code}: ${JSON.stringify(data)}`);
-        return false;
-      },
-    },
-    false,
-    reloadSettings
+      reloadServerSettings: reloadSettings,
+      reconnecting: false,
+    }
   );
 
   if (reloadSettings) {
@@ -100,7 +102,7 @@ export async function newConnection(reloadSettings?: boolean) {
   }
 
   if (!result.success) {
-    throw new Error(`Failed to connect to IBMi`);
+    throw new Error(`Failed to connect to IBMi${result.error ? `: ${result.error}` : '!'}`);
   }
 
   return conn;

@@ -1,5 +1,5 @@
 import { BaseStorage } from "./BaseStorage";
-import { PathContent, DeploymentPath, DebugCommands } from "./CodeForIStorage";
+import { DebugCommands, DeploymentPath, PathContent } from "./CodeForIStorage";
 
 const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
 const LAST_PROFILE_KEY = `currentProfile`;
@@ -34,7 +34,7 @@ export class ConnectionStorage {
 
   setConnectionName(connectionName: string) {
     this.connectionName = connectionName;
-    this.internalStorage.setUniqueKeyPrefix(`settings-${connectionName}`);
+    this.internalStorage.setUniqueKeyPrefix(connectionName ? `settings-${connectionName}` : '');
   }
 
   getSourceList() {
