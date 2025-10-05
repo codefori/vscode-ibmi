@@ -75,7 +75,7 @@ export class SettingsUI {
           }
         }
 
-        const restartFields = [`showDescInLibList`, `tempDir`, `debugCertDirectory`];
+        const restartFields = [`readOnlyMode`, `showDescInLibList`, `tempDir`, `debugCertDirectory`];
         let restart = false;
 
         const featuresTab = new Section();
@@ -87,6 +87,8 @@ export class SettingsUI {
         }
 
         featuresTab
+          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, content on the server can not be changed. Requires restart when changed.`, config.readOnlyMode)
+          .addHorizontalRule()
           .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect)
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
           .addCheckbox(`showHiddenFiles`, `Show hidden files and directories in IFS browser.`, `When disabled, hidden files and directories (i.e. names starting with '.') will not be shown in the IFS browser, except for special config files.`, config.showHiddenFiles)
@@ -153,7 +155,6 @@ export class SettingsUI {
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()
-          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, source members and IFS files will always be opened in read-only mode.`, config.readOnlyMode)
           .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
 
         setFieldsReadOnly(sourceTab);
@@ -337,7 +338,7 @@ export class SettingsUI {
                     }
                   }
 
-                  if (restartFields.some(item => data[item] && data[item] !== config[item])) {
+                  if (restartFields.some(item => data[item] !== config[item])) {
                     restart = true;
                   }
 
@@ -395,6 +396,7 @@ export class SettingsUI {
               .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${privateKeyPath})` : ``}`, privateKeyWarning + vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
               .addHorizontalRule()
               .addInput(`readyTimeout`, vscode.l10n.t(`Connection Timeout (in milliseconds)`), vscode.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })
+
               .addCheckbox(`sshDebug`, vscode.l10n.t(`Turn on SSH debug output`), vscode.l10n.t(`Enable this to output debug traces in the Code for i and help diagnose SSH connection issues.`), stored.sshDebug)
               .addButtons(
                 { id: `submitButton`, label: vscode.l10n.t(`Save`), requiresValidation: true },
