@@ -4,13 +4,12 @@ import * as node_ssh from "node-ssh";
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import { EditorPath } from './types';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { ObjectTypes } from './import/Objects';
-import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, ModuleExport, ProgramExportImportInfo, QsysPath, SpecialAuthorities } from './types';
+import { AttrOperands, CommandResult, EditorPath, IBMiError, IBMiMember, IBMiObject, IFSFile, ModuleExport, ProgramExportImportInfo, QsysPath, SpecialAuthorities } from './types';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -1155,7 +1154,7 @@ export default class IBMiContent {
     paths = Array.isArray(paths) ? paths : [paths];
     const toPathIsDir = await this.isDirectory(Tools.escapePath(toPath));
     for (const path of paths) {
-      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ(' }'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
+      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ('}'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
       if (result.code !== 0) {
         return result;
       }

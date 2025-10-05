@@ -26,9 +26,15 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 ### Building from source
 
 1. This project requires VS Code and Node.js.
-2. fork & clone repo
-3. `npm i`
-4. 'Run Extension' from vscode debug.
+2. Fork & clone repo
+3. Run `npm i` from the repository root
+4. Run the 'Run Extension' VS Code debug configuration.
+
+### Running tests
+
+1. Make a copy of `src/api/tests/.env.sample` into `src/api/tests/.env`.
+2. Change the target address, user and password in the `.env` file
+3. Run `npm run test`
 
 ---
 

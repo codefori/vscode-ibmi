@@ -32,7 +32,7 @@
         },
         "enableSourceDates": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
         },
         "encodingFor5250": {

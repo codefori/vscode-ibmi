@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.17.1-dev.0",
+	"version": "2.17.3-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -236,7 +236,7 @@
 							},
 							"enableSourceDates": {
 								"type": "boolean",
-								"default": false,
+								"default": true,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
 							"sourceDateGutter": {
@@ -2861,7 +2861,7 @@
 				},
 				{
 					"command": "code-for-ibmi.removeIFSShortcut",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
 					"group": "3_ifsStuff@2"
 				},
 				{

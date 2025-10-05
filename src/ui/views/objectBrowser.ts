@@ -1,7 +1,7 @@
 import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
-import vscode, { DataTransferItem, l10n } from "vscode";
+import vscode, { DataTransferItem, l10n, Uri } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
@@ -635,7 +635,18 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: ObjectBrowserMemberItem, fullPath?: string) => {
       const connection = getConnection();
+
+      const oldUri = node.resourceUri as Uri;
       const oldMember = node.member;
+
+      const oldMemberTabs = VscodeTools.findUriTabs(oldUri);
+      if (oldMemberTabs.find(tab => tab.isDirty)) {
+        const result = await vscode.window.showWarningMessage(vscode.l10n.t(`The member {0} has unsaved changes. The copied member will not include these changes. Do you want to continue?`, oldMember.name), { modal: true }, vscode.l10n.t("Yes"), vscode.l10n.t("No"));
+        if (result === vscode.l10n.t("No")) {
+          return;
+        }
+      }
+
       fullPath = await vscode.window.showInputBox({
         prompt: vscode.l10n.t(`New path for copy of source member`),
         value: node.path || fullPath,

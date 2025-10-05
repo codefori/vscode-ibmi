@@ -1,8 +1,7 @@
 
 import os from "os";
 import path from "path";
-import { IBMiMessage, IBMiMessages, QsysPath } from './types';
-import { EditorPath } from "./types";
+import { EditorPath, IBMiMessage, IBMiMessages, QsysPath } from './types';
 
 export namespace Tools {
   export class SqlError extends Error {
@@ -224,7 +223,7 @@ export namespace Tools {
     if (alreadyQuoted) {
       return Path.replace(/"|\$|\\/g, matched => `\\`.concat(matched));
     } else {
-      return Path.replace(/'|"|\$|\\| /g, matched => `\\`.concat(matched));
+      return Path.replace(/'|"|\$|&|\\| /g, matched => `\\`.concat(matched));
     }
   }
 

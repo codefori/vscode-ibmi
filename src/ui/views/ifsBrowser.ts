@@ -1,6 +1,6 @@
 import os from "os";
 import path, { dirname, extname } from "path";
-import vscode, { FileType, l10n, window } from "vscode";
+import vscode, { FileType, l10n, Uri, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import IBMi from "../../api/IBMi";
@@ -383,25 +383,19 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node: IFSShortcutItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node: IFSShortcutItem, nodes?: IFSShortcutItem[]) => {
       const connection = instance.getConnection();
       if (connection) {
         const config = connection.getConfig();
         const shortcuts = config.ifsShortcuts;
-        const removeDir = (node.path || (await vscode.window.showQuickPick(shortcuts, {
-          placeHolder: l10n.t(`Select IFS shortcut to remove`),
-        })))?.trim();
+        const toBeRemoved = (nodes || [node]).map(n => n.path);
 
         try {
-          if (removeDir) {
-            const inx = shortcuts.indexOf(removeDir);
-            if (inx >= 0) {
-              shortcuts.splice(inx, 1);
-              config.ifsShortcuts = shortcuts;
-              await IBMi.connectionManager.update(config);
-              if (IBMi.connectionManager.get(`autoRefresh`)) {
-                ifsBrowser.refresh();
-              }
+          if (toBeRemoved.length) {
+            config.ifsShortcuts = shortcuts.filter(path => !toBeRemoved.includes(path));
+            await IBMi.connectionManager.update(config);
+            if (IBMi.connectionManager.get(`autoRefresh`)) {
+              ifsBrowser.refresh();
             }
           }
         } catch (e) {
@@ -696,6 +690,17 @@ Please type "{0}" to confirm deletion.`, dirName);
     }),
     vscode.commands.registerCommand(`code-for-ibmi.copyIFS`, async (node: IFSItem) => {
       const connection = instance.getConnection();
+
+      const oldFile = node.file;
+      const oldUri = node.resourceUri as Uri;
+
+      const oldIfsTabs = VscodeTools.findUriTabs(oldUri);
+      if (oldIfsTabs.find(tab => tab.isDirty)) {
+        const result = await vscode.window.showWarningMessage(vscode.l10n.t(`The stream file {0} has unsaved changes. The copied stream file will not include these changes. Do you want to continue?`, oldFile.name), { modal: true }, vscode.l10n.t("Yes"), vscode.l10n.t("No"));
+        if (result === vscode.l10n.t("No")) {
+          return;
+        }
+      }
 
       if (connection) {
         const config = connection.getConfig();

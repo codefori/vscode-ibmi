@@ -305,7 +305,7 @@ export default class IBMi {
 
       // Reload server settings?
       const quickConnect = () => {
-        return (this.config!.quickConnect === true && options.reloadServerSettings === false);
+        return Boolean(this.config!.quickConnect && !options.reloadServerSettings);
       }
 
       // Check shell output for additional user text - this will confuse Code...
