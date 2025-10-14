@@ -379,7 +379,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             fromWorkspace && chosenAction.postDownload &&
                             (chosenAction.postDownload.includes(`.evfevent`) || chosenAction.postDownload.includes(`.evfevent/`));
 
-                          const possibleObject = getObjectFromCommand(commandResult.command);
+                          const possibleObject = getObjectFromJoblog(commandResult.stderr) || getObjectFromCommand(commandResult.command);
                           if (isIleCommand && possibleObject) {
                             Object.assign(evfeventInfo, possibleObject);
                           }
@@ -544,7 +544,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
               resultsPanel.addParagraph(`<pre>${targets[0].output.join("")}</pre>`)
                 .setOptions({ fullPage: true ,
                   css: /* css */ `
-                  pre{              
+                  pre{
                     background-color: transparent;
                   }
                 `
@@ -564,7 +564,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                   pre {
                     margin: 1em;
                     background-color: transparent;
-                  }                  
+                  }
                 `
                 });
             }
@@ -622,6 +622,27 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     }));
 
   return availableActions;
+}
+
+function getObjectFromJoblog(stderr: string): CommandObject | undefined {
+  const joblogLines = stderr.split(`\n`).filter(line => line.slice(7, 19).toUpperCase() === `:  EVFEVENT:`);
+  if (joblogLines.length < 1) return;
+  const evfevent = joblogLines[0].slice(19).trim();
+  if (evfevent.length) {
+    const object = evfevent.split(/[,\|/]/);
+    if (object) {
+      if (object.length === 2) {
+        return {
+          library: object[0].trim(),
+          object: object[1].trim()
+        };
+      } else {
+        return {
+          object: object[0].trim()
+        };
+      }
+    }
+  }
 }
 
 function getObjectFromCommand(baseCommand?: string): CommandObject | undefined {
