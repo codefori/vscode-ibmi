@@ -409,7 +409,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           }
                           else if (evfeventInfo[0].object && evfeventInfo[0].library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
-                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfo.length > 1 ? `multiple objects` : `evfeventInfo[0].library/evfeventInfo[0].object}.`) + CompileTools.NEWLINE);
+                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfo.length > 1 ? `multiple objects` : `${evfeventInfo[0].library}/${evfeventInfo[0].object}.`) + CompileTools.NEWLINE);
                               await refreshDiagnosticsFromServer(instance, evfeventInfo);
                               problemsFetched = true;
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
