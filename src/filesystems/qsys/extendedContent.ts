@@ -5,6 +5,7 @@ import vscode from "vscode";
 import IBMi from "../../api/IBMi";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
+import { CommandResult } from "../../api/types";
 
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -173,10 +174,25 @@ export class ExtendedIBMiContent {
           await connection.sendCommand({ command: `${setccsid} 1208 ${tempRmt}` });
         }
 
-        const insertResult = await connection.runCommand({
-          command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
-          noLibList: true
-        });
+        // BiDi handling if enabled
+        const isBidi = config?.bidi;
+        const bidiCcsid = config?.bidiCcsid;
+
+        let insertResult: CommandResult = { code: 0, stdout: '', stderr: '' };
+        if (isBidi) {
+          await connection.runSQL([
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${bidiCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
+            `@QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
+          ].join("\n")).catch(e => {
+            insertResult.code = -1;
+            insertResult.stderr = String(e);
+          });
+        } else {
+          insertResult = await connection.runCommand({
+            command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
+            noLibList: true
+          });
+        }
 
         if (insertResult.code !== 0) {
           throw new Error(`Failed to save member: ` + insertResult.stderr);
