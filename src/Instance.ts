@@ -2,10 +2,10 @@ import { EventEmitter } from "stream";
 import * as vscode from "vscode";
 import { ILELibrarySettings } from "./api/CompileTools";
 import IBMi, { ConnectionResult } from "./api/IBMi";
+import { BaseStorage } from "./api/configuration/storage/BaseStorage";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 import { VsCodeConfig } from "./config/Configuration";
-import { VsStorage } from "./config/Storage";
 import { getEnvConfig } from "./filesystems/local/env";
 import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
 import { VscodeTools } from "./ui/Tools";
@@ -42,9 +42,8 @@ export default class Instance {
   private deprecationCount = 0; //TODO: remove in v3.0.0
 
   constructor(context: vscode.ExtensionContext) {
-    const vscodeStorage = new VsStorage(context);
-    this.storage = new ConnectionStorage(vscodeStorage);
-    IBMi.GlobalStorage = new CodeForIStorage(vscodeStorage);
+    this.storage = new ConnectionStorage(new BaseStorage(context.globalState));
+    IBMi.GlobalStorage = new CodeForIStorage(new BaseStorage(context.globalState));
     IBMi.connectionManager.configMethod = new VsCodeConfig();
 
     this.emitter.event(e => this.processEvent(e));

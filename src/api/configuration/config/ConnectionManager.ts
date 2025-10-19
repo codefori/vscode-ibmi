@@ -136,7 +136,7 @@ export class ConnectionManager {
     if (existingConfig) {
       config = initialize(existingConfig);
     } else {
-      config = initialize({ name: name });
+      config = initialize({ name: name, enableSourceDates: true });
       connections.push(config);
       await this.updateAll(connections);
     }

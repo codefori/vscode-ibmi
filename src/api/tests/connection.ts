@@ -8,10 +8,10 @@ import { extensionComponentRegistry } from "../components/manager";
 import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
 import { ConnectionData } from "../types";
 import { CustomCLI } from "./components/customCli";
-import { JsonConfig, JsonStorage } from "./testConfigSetup";
+import { JSONConfig, JsonStorage } from "./testConfigSetup";
 
 export const testStorage = new JsonStorage();
-const testConfig = new JsonConfig();
+const testConfig = new JSONConfig();
 
 export const CONNECTION_TIMEOUT = process.env.VITE_CONNECTION_TIMEOUT ? parseInt(process.env.VITE_CONNECTION_TIMEOUT) : 25000;
 
@@ -47,9 +47,6 @@ export async function newConnection(reloadSettings?: boolean) {
 
   IBMi.GlobalStorage = new CodeForIStorage(virtualStorage);
   IBMi.connectionManager.configMethod = testConfig;
-
-  await testStorage.load();
-  await testConfig.load();
 
   const conn = new IBMi();
 
@@ -102,19 +99,16 @@ export async function newConnection(reloadSettings?: boolean) {
   }
 
   if (!result.success) {
-    throw new Error(`Failed to connect to IBMi`);
+    throw new Error(`Failed to connect to IBMi${result.error ? `: ${result.error}` : '!'}`);
   }
 
   return conn;
 }
 
-export async function disposeConnection(conn?: IBMi) {
-  if (!conn) {
-    return;
+export async function disposeConnection(connection?: IBMi) {
+  if (connection) {
+    await connection.dispose();
+    testStorage.save();
+    testConfig.save();
   }
-
-  await Promise.all([
-    conn.dispose(),
-    testStorage.save(),
-    testConfig.save()]);
 }

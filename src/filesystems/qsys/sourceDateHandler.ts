@@ -1,13 +1,10 @@
 import Crypto from "crypto";
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
-
-import IBMi from "../../api/IBMi";
 import { instance } from "../../instantiate";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);
-const highlightedColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 
 const annotationDecoration = vscode.window.createTextEditorDecorationType({
   before: {

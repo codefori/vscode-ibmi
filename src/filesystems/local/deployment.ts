@@ -56,8 +56,12 @@ export namespace Deployment {
         const storage = instance.getStorage();
 
         if (workspaces && connection && storage) {
-          if (workspaces.length > 0) {
+          const config = connection.getConfig();
+
+          if (workspaces.length > 0 && !config.readOnlyMode) {
             button.show();
+          } else {
+            button.hide();
           }
 
           const existingPaths = storage.getDeployment();

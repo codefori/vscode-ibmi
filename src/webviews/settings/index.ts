@@ -35,31 +35,30 @@ export class SettingsUI {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
-        const connectionSettings = await IBMi.connectionManager.getAll();
+        const connectionSettings = IBMi.connectionManager.getAll();
         const connection = instance.getConnection();
         const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
 
         let config: ConnectionConfig;
-        let serverConfig: RemoteConfigFile|undefined;
+        let serverConfig: RemoteConfigFile | undefined;
 
         if (connectionSettings && server) {
           config = await IBMi.connectionManager.load(server.name);
 
-        } else {
-          if (connection) {
-            // Reload config to initialize any new config parameters.
-            config = await IBMi.connectionManager.load(connection.currentConnectionName);
+        } else if (connection) {
+          // Reload config to initialize any new config parameters.
+          config = await IBMi.connectionManager.load(connection.currentConnectionName);
 
-            const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
-            const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
+          const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
+          const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
 
-            if (serverConfigOk) {
-              serverConfig = await remoteConnectionConfig.get();
-            }
-          } else {
-            vscode.window.showErrorMessage(`No connection is active.`);
-            return;
+          if (serverConfigOk) {
+            serverConfig = await remoteConnectionConfig.get();
           }
+        } else {
+          vscode.window.showErrorMessage(`No connection is active.`);
+          return;
+
         }
 
         const hasServerProperties = serverConfig && serverConfig.codefori && Object.keys(serverConfig.codefori).length > 0;
@@ -68,7 +67,7 @@ export class SettingsUI {
           if (serverConfig && serverConfig.codefori) {
             for (const field of currentSection.fields) {
               if (!field.id) continue;
-                
+
               if (serverConfig.codefori[field.id] !== undefined) {
                 field.readonly = true;
               }
@@ -76,7 +75,7 @@ export class SettingsUI {
           }
         }
 
-        const restartFields = [`showDescInLibList`, `tempDir`, `debugCertDirectory`];
+        const restartFields = [`readOnlyMode`, `showDescInLibList`, `tempDir`, `debugCertDirectory`];
         let restart = false;
 
         const featuresTab = new Section();
@@ -88,6 +87,8 @@ export class SettingsUI {
         }
 
         featuresTab
+          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, content on the server can not be changed. Requires restart when changed.`, config.readOnlyMode)
+          .addHorizontalRule()
           .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect)
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
           .addCheckbox(`showHiddenFiles`, `Show hidden files and directories in IFS browser.`, `When disabled, hidden files and directories (i.e. names starting with '.') will not be shown in the IFS browser, except for special config files.`, config.showHiddenFiles)
@@ -156,7 +157,6 @@ export class SettingsUI {
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()
-          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, source members and IFS files will always be opened in read-only mode.`, config.readOnlyMode)
           .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
 
         setFieldsReadOnly(sourceTab);
@@ -206,7 +206,7 @@ export class SettingsUI {
             .set("Debug port", config.debugPort);
 
           debugServiceConfig.set("SEP debug port", config.debugSepPort)
-          
+
           debuggerTab.addParagraph(`<ul>${Array.from(debugServiceConfig.entries()).map(([label, value]) => `<li><code>${label}</code>: ${value}</li>`).join("")}</ul>`);
 
           debuggerTab.addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
@@ -340,7 +340,7 @@ export class SettingsUI {
                     }
                   }
 
-                  if (restartFields.some(item => data[item] && data[item] !== config[item])) {
+                  if (restartFields.some(item => data[item] !== config[item])) {
                     restart = true;
                   }
 
@@ -397,7 +397,9 @@ export class SettingsUI {
               .addPassword(`password`, `${vscode.l10n.t(`Password`)}${storedPassword ? ` (${vscode.l10n.t(`stored`)})` : ``}`, vscode.l10n.t("Only provide a password if you want to update an existing one or set a new one."))
               .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${privateKeyPath})` : ``}`, privateKeyWarning + vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
               .addHorizontalRule()
-              .addInput(`readyTimeout`, vscode.l10n.t(`Connection Timeout (in milliseconds)`), vscode.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })              
+              .addInput(`readyTimeout`, vscode.l10n.t(`Connection Timeout (in milliseconds)`), vscode.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })
+
+              .addCheckbox(`sshDebug`, vscode.l10n.t(`Turn on SSH debug output`), vscode.l10n.t(`Enable this to output debug traces in the Code for i and help diagnose SSH connection issues.`), stored.sshDebug)
               .addButtons(
                 { id: `submitButton`, label: vscode.l10n.t(`Save`), requiresValidation: true },
                 { id: `removeAuth`, label: vscode.l10n.t(`Remove auth methods`) }
@@ -479,9 +481,9 @@ function installComponentsQuickPick(connection: IBMi) {
     placeHolder: `Select component${withS} to install`
   }).then(async result => {
     if (result) {
-      window.withProgress({title: `Component${withS}`, location: vscode.ProgressLocation.Notification}, async (progress) => {
+      window.withProgress({ title: `Component${withS}`, location: vscode.ProgressLocation.Notification }, async (progress) => {
         for (const item of result) {
-          progress.report({message: `Installing ${item.label}...`});
+          progress.report({ message: `Installing ${item.label}...` });
           try {
             await connection.getComponentManager().installComponent(item.id);
           } catch (e) {
