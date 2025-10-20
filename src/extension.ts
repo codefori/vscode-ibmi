@@ -26,7 +26,7 @@ import { VscodeTools } from "./ui/Tools";
 import { registerActionTools } from "./ui/actions";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
 import { initializeLibraryListView } from "./ui/views/LibraryListView";
-import { ProfilesView } from "./ui/views/ProfilesView";
+import { initializeContextView } from "./ui/views/contextView";
 import { initializeDebugBrowser } from "./ui/views/debugView";
 import { HelpView } from "./ui/views/helpView";
 import { initializeIFSBrowser } from "./ui/views/ifsBrowser";
@@ -61,15 +61,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   initializeDebugBrowser(context);
   initializeSearchView(context);
   initializeLibraryListView(context);
+  initializeContextView(context);
 
   context.subscriptions.push(
     window.registerTreeDataProvider(
       `helpView`,
       new HelpView(context)
-    ),
-    window.registerTreeDataProvider(
-      `profilesView`,
-      new ProfilesView(context)
     ),
 
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),

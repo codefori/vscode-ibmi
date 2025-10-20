@@ -1,14 +1,27 @@
 
 import vscode, { l10n, window } from 'vscode';
 import { GetNewLibl } from '../../api/components/getNewLibl';
-import { instance } from '../../instantiate';
-import { ConnectionProfile, Profile } from '../../typings';
-import { CommandProfileUi } from '../../webviews/commandProfile';
 import IBMi from '../../api/IBMi';
+import { instance } from '../../instantiate';
+import { BrowserItem, ConnectionProfile, Profile } from '../../typings';
+import { CommandProfileUi } from '../../webviews/commandProfile';
 
-export class ProfilesView {
-  private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
-  readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
+export function initializeContextView(context: vscode.ExtensionContext) {
+  const contextView = new ContextView(context);
+  const contextTreeViewer = vscode.window.createTreeView(
+    `contextView`, {
+    treeDataProvider: contextView,
+    showCollapseAll: true
+  });
+
+  context.subscriptions.push(
+    contextTreeViewer,
+    vscode.commands.registerCommand("code-for-ibmi.context.refresh", () => contextView.refresh())
+  );
+}
+class ContextView implements vscode.TreeDataProvider<BrowserItem> {
+  private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
+  readonly onDidChangeTreeData = this.emitter.event;
 
   constructor(context: vscode.ExtensionContext) {
     context.subscriptions.push(
@@ -189,19 +202,15 @@ export class ProfilesView {
     )
   }
 
-  refresh() {
-    const config = instance.getConnection()?.getConfig();
-    if (config) {
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0 || config.commandProfiles.length > 0);
-      this._onDidChangeTreeData.fire(null);
-    }
+  refresh(target?: BrowserItem) {
+    this.emitter.fire(target);
   }
 
-  getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
+  getTreeItem(element: BrowserItem): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(): Promise<vscode.TreeItem[]> {
+  async getChildren() {
     const connection = instance.getConnection();
 
     if (connection) {
@@ -266,10 +275,10 @@ function cloneProfile(fromProfile: ConnectionProfile, newName: string): Connecti
   }
 }
 
-class ProfileItem extends vscode.TreeItem implements Profile {
+class ProfileItem extends BrowserItem implements Profile {
   readonly profile;
   constructor(name: string, active: boolean) {
-    super(name, vscode.TreeItemCollapsibleState.None);
+    super(name);
 
     this.contextValue = `profile`;
     this.iconPath = new vscode.ThemeIcon(active ? `layers-active` : `layers`);
@@ -280,10 +289,10 @@ class ProfileItem extends vscode.TreeItem implements Profile {
   }
 }
 
-class CommandProfileItem extends vscode.TreeItem implements Profile {
+class CommandProfileItem extends BrowserItem implements Profile {
   readonly profile;
   constructor(name: string, active: boolean) {
-    super(name, vscode.TreeItemCollapsibleState.None);
+    super(name);
 
     this.contextValue = `commandProfile`;
     this.iconPath = new vscode.ThemeIcon(active ? `layers-active` : `console`);
@@ -294,10 +303,10 @@ class CommandProfileItem extends vscode.TreeItem implements Profile {
   }
 }
 
-class ResetProfileItem extends vscode.TreeItem implements Profile {
+class ResetProfileItem extends BrowserItem implements Profile {
   readonly profile;
   constructor() {
-    super(`Reset to Default`, vscode.TreeItemCollapsibleState.None);
+    super(`Reset to Default`);
 
     this.contextValue = `resetProfile`;
     this.iconPath = new vscode.ThemeIcon(`debug-restart`);

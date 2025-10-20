@@ -1,5 +1,6 @@
 
 import * as vscode from "vscode";
+import { RemoteConfigFile } from './api/configuration/config/types';
 import { getDebugServiceDetails } from './api/configuration/DebugConfiguration';
 import { registerActionsCommands } from './commands/actions';
 import { registerCompareCommands } from './commands/compare';
@@ -14,7 +15,6 @@ import Instance from "./Instance";
 import { Terminal } from './ui/Terminal';
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import { RemoteConfigFile } from './api/configuration/config/types';
 
 export let instance: Instance;
 
@@ -144,9 +144,6 @@ async function onConnected() {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-
-  // Enable the profile view if profiles exist.
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
 }
 
 async function onDisconnected() {

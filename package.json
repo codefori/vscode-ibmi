@@ -1599,7 +1599,7 @@
 			},
 			{
 				"command": "code-for-ibmi.openTerminalHere",
-        "enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Open Terminal Here",
 				"category": "IBM i"
 			},
@@ -1708,6 +1708,13 @@
 				"category": "IBM i",
 				"icon": "$(plus)",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly"
+			},
+			{
+				"command": "code-for-ibmi.context.refresh",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Refresh",
+				"category": "IBM i",
+				"icon": "$(refresh)"
 			}
 		],
 		"keybindings": [
@@ -1816,9 +1823,9 @@
 					"when": "!code-for-ibmi:connecting && !code-for-ibmi:connected && !code-for-ibmi:connectionBrowserDisabled"
 				},
 				{
-					"id": "profilesView",
-					"name": "Profiles",
-					"when": "code-for-ibmi:connected && code-for-ibmi:hasProfiles && code-for-ibmi:profilesViewDisabled !== true",
+					"id": "contextView",
+					"name": "Context",
+					"when": "code-for-ibmi:connected && !(code-for-ibmi:profilesViewDisabled || code-for-ibmi:contextViewDisabled)",
 					"visibility": "collapsed"
 				},
 				{
@@ -2367,6 +2374,10 @@
 				{
 					"command": "code-for-ibmi.generateBinderSource",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.refresh",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2408,12 +2419,12 @@
 				{
 					"command": "code-for-ibmi.newConnectionProfile",
 					"group": "navigation@profile",
-					"when": "view == profilesView"
+					"when": "view == contextView"
 				},
 				{
 					"command": "code-for-ibmi.manageCommandProfile",
 					"group": "navigation@profile",
-					"when": "view == profilesView"
+					"when": "view == contextView"
 				},
 				{
 					"command": "code-for-ibmi.createFilter",
@@ -2509,6 +2520,11 @@
 					"command": "code-for-ibmi.term5250.resetPosition",
 					"group": "navigation",
 					"when": "code-for-ibmi:term5250Halted"
+				},
+				{
+					"command": "code-for-ibmi.context.refresh",
+					"when": "view === contextView",
+					"group": "navigation@99"
 				}
 			],
 			"editor/title": [
@@ -2591,17 +2607,17 @@
 				},
 				{
 					"command": "code-for-ibmi.loadConnectionProfile",
-					"when": "view == profilesView && viewItem == profile",
+					"when": "view === contextView && viewItem == profile",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.loadCommandProfile",
-					"when": "view == profilesView && viewItem == commandProfile",
+					"when": "view === contextView && viewItem == commandProfile",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.setToDefault",
-					"when": "view == profilesView && viewItem == resetProfile",
+					"when": "view === contextView && viewItem == resetProfile",
 					"group": "inline"
 				},
 				{
@@ -2631,22 +2647,22 @@
 				},
 				{
 					"command": "code-for-ibmi.saveConnectionProfile",
-					"when": "view == profilesView && viewItem == profile",
+					"when": "view === contextView && viewItem == profile",
 					"group": "profiles@1"
 				},
 				{
 					"command": "code-for-ibmi.manageCommandProfile",
-					"when": "view == profilesView && viewItem == commandProfile",
+					"when": "view === contextView && viewItem == commandProfile",
 					"group": "profiles@1"
 				},
 				{
 					"command": "code-for-ibmi.deleteConnectionProfile",
-					"when": "view == profilesView && viewItem == profile",
+					"when": "view === contextView && viewItem == profile",
 					"group": "profiles@2"
 				},
 				{
 					"command": "code-for-ibmi.deleteCommandProfile",
-					"when": "view == profilesView && viewItem == commandProfile",
+					"when": "view === contextView && viewItem == commandProfile",
 					"group": "profiles@2"
 				},
 				{
