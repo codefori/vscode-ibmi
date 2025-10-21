@@ -12,6 +12,7 @@ export interface ILELibrarySettings {
 export namespace CompileTools {
   export const NEWLINE = `\r\n`;
   export const DID_NOT_RUN = -123;
+  const HIDE_MESSAGE_IDS = [`CPF3485`];
 
   let jobLogOrdinal = 0;
 
@@ -114,27 +115,38 @@ export namespace CompileTools {
               commandResult.code = 1;
             }
 
-            try {
-              const lastSpool = await connection.runSQL(LAST_SPOOL_STATEMENT);
-              
-              if (lastSpool && lastSpool.length > 0) {
-                commandResult.stdout = lastSpool.map(r => r.SPOOLED_DATA).join(NEWLINE);
-              }
-            } catch (e) {
-              commandResult.code = 2; 
-              console.log(`Failed to get spool output: `, e);
-            }
+            // Do we really care about the job log and spool output when this is used?
 
-            try {
-              const lastJobLog = await connection.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) where ordinal_position > ?`, {fakeBindings: [jobLogOrdinal]});
-              if (lastJobLog && lastJobLog.length > 0) {
-                commandResult.stderr = lastJobLog.map(r => `${r.MESSAGE_ID}: ${r.MESSAGE_TEXT}`).join(NEWLINE);
-                jobLogOrdinal = Number(lastJobLog[lastJobLog.length - 1].ORDINAL_POSITION);
-              } else {
-                jobLogOrdinal = 0; // Reset if no job log
+            if (!options.noLibList) {
+              // Then fetch the job log
+
+              try {
+                const lastJobLog = await connection.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) where ordinal_position > ?`, {fakeBindings: [jobLogOrdinal]});
+                if (lastJobLog && lastJobLog.length > 0) {
+                  commandResult.stderr = lastJobLog
+                    .filter(r => !HIDE_MESSAGE_IDS.includes(r.MESSAGE_ID as string))
+                    .map(r => `${r.MESSAGE_ID}: ${r.MESSAGE_TEXT}`).join(`\n`);
+                  callbacks.onStderr?.(Buffer.from(commandResult.stderr));
+                  jobLogOrdinal = Number(lastJobLog[lastJobLog.length - 1].ORDINAL_POSITION);
+                } else {
+                  jobLogOrdinal = 0; // Reset if no job log
+                }
+              } catch (e) {
+                commandResult.code = 3;
               }
-            } catch (e) {
-              commandResult.code = 3;
+
+              // Then fetch the spool file
+              try {
+                const lastSpool = await connection.runSQL(LAST_SPOOL_STATEMENT);
+                
+                if (lastSpool && lastSpool.length > 0) {
+                  commandResult.stdout = lastSpool.map(r => (r.SPOOLED_DATA as string).trimEnd()).join(`\n`);
+                  callbacks.onStdout?.(Buffer.from(commandResult.stdout));
+                }
+              } catch (e) {
+                commandResult.code = 2; 
+                console.log(`Failed to get spool output: `, e);
+              }
             }
             
             break;
