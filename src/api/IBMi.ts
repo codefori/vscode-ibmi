@@ -481,13 +481,8 @@ export default class IBMi {
 
       callbacks.progress({ message: `Checking Code for IBM i components.` });
 
-      await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
-
-      const componentStates = this.componentManager.getComponentStates();
-      this.appendOutput(`\nCode for IBM i components:\n`);
-      for (const state of componentStates) {
-        this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
-      }
+      // We always start up Mapepire first
+      await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
 
       const mapepire = this.getComponent<Mapepire>(Mapepire.ID);
       if (mapepire) {
@@ -496,6 +491,16 @@ export default class IBMi {
           const javaPath = path.posix.join(useJavaVersion, `bin`, `java`);
           this.sqlJob = await mapepire.newJob(this, javaPath);
         }
+      }
+
+      // Then check the remaining components
+
+      await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
+
+      const componentStates = this.componentManager.getComponentStates();
+      this.appendOutput(`\nCode for IBM i components:\n`);
+      for (const state of componentStates) {
+        this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
       }
 
       this.appendOutput(`\n`);

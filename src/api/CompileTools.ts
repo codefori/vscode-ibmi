@@ -102,6 +102,10 @@ export namespace CompileTools {
               stderr: ``,
               stdout: ``, // TODO: job log?
               command: commands.join(`, `),
+            };
+
+            if (options.skipDetail) {
+              options.noLibList = true;
             }
 
             try {
@@ -117,9 +121,9 @@ export namespace CompileTools {
 
             // Do we really care about the job log and spool output when this is used?
 
-            if (!options.noLibList) {
-              // Then fetch the job log
+            // Then fetch the job log
 
+            if (!options.skipDetail) {
               try {
                 const lastJobLog = await connection.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) where ordinal_position > ?`, {fakeBindings: [jobLogOrdinal]});
                 if (lastJobLog && lastJobLog.length > 0) {
