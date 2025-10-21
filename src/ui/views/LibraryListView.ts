@@ -1,5 +1,5 @@
 import path from "path";
-import vscode, { commands, l10n } from "vscode";
+import vscode, { CancellationToken, commands, Event, FileDecoration, FileDecorationProvider, l10n, ProviderResult, ThemeColor, ThemeIcon, Uri, window } from "vscode";
 import IBMi from "../../api/IBMi";
 import { instance } from "../../instantiate";
 import { ConnectionConfig, IBMiObject, LIBRARY_LIST_MIMETYPE, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithLibrary } from "../../typings";
@@ -14,6 +14,7 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
     canSelectMany: true,
     dragAndDropController: new LibraryListDragAndDrop()
   });
+  const liblDecorationProvider = new LiblDecorationProvider();
 
   const updateConfig = async (config: ConnectionConfig) => {
     await IBMi.connectionManager.update(config);
@@ -24,6 +25,7 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     libraryListViewViewer,
+    window.registerFileDecorationProvider(liblDecorationProvider),
     vscode.commands.registerCommand(`code-for-ibmi.userLibraryList.enable`, () => {
       commands.executeCommand(`setContext`, `code-for-ibmi:libraryListDisabled`, false);
     }),
@@ -371,6 +373,9 @@ class LibraryListNode extends vscode.TreeItem implements WithLibrary {
     super(library, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = context;
+    this.iconPath = new ThemeIcon('library');
+    const isFound = object.text !== `*** NOT FOUND ***`;
+    this.resourceUri = Uri.parse(`${context}:${library}?isFound=${isFound}`);
     this.description =
       ((context === `currentLibrary` ? `${l10n.t(`(current library)`)}` : ``)
         + (object.text !== `` && showDescInLibList ? ` ${object.text}` : ``)
@@ -398,6 +403,23 @@ async function changeCurrentLibrary(library: string) {
     } else {
       vscode.window.showErrorMessage(l10n.t(`Failed to set {0} as current library: {1}`, library, commandResult.stderr));
       return false;
+    }
+  }
+}
+
+export class LiblDecorationProvider implements FileDecorationProvider {
+  onDidChangeFileDecorations?: Event<Uri | Uri[] | undefined> | undefined;
+  provideFileDecoration(uri: Uri, token: CancellationToken): ProviderResult<FileDecoration> {
+    const params = new URLSearchParams(uri.query);
+
+    if (uri.scheme === 'currentLibrary' || uri.scheme === 'library') {
+      const isNotFound = params.get('isFound') === 'false';
+      if (isNotFound) {
+        return {
+          badge: '⚠',
+          color: new ThemeColor('errorForeground')
+        };
+      }
     }
   }
 }
