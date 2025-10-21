@@ -51,8 +51,8 @@ export async function newConnection(reloadSettings?: boolean) {
   const conn = new IBMi();
 
   const mapepire = new Mapepire();
-  const cqshPath = path.join(__dirname, `..`, `..`, `..`, `dist`, SERVER_VERSION_FILE);
-  mapepire.setLocalAssetPath(cqshPath);
+  const mapepireAssetPath = path.join(__dirname, `..`, `..`, `..`, `dist`, SERVER_VERSION_FILE);
+  mapepire.setLocalAssetPath(mapepireAssetPath);
 
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);
