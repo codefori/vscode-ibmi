@@ -3,9 +3,13 @@ import { stat } from "fs/promises";
 import path from "path";
 import IBMi from "../../IBMi";
 import { ComponentState, IBMiComponent } from "../component";
+import { SERVER_VERSION_FILE, VERSION_NUMBER } from "./version";
+import { sshSqlJob } from "./sqlJob";
 
-export class CustomQSh implements IBMiComponent {
-  static ID = "cqsh";
+const DEFAULT_JAVA_EIGHT = `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit/bin/java`;
+
+export class Mapepire implements IBMiComponent {
+  static ID = "mapepire";
   private localAssetPath: string|undefined;
 
   setLocalAssetPath(newPath: string) {
@@ -15,12 +19,11 @@ export class CustomQSh implements IBMiComponent {
   installPath = "";
 
   getIdentification() {
-    return { name: CustomQSh.ID, version: 1 };
+    return { name: Mapepire.ID, version: VERSION_NUMBER };
   }
 
   getFileName() {
-    const id = this.getIdentification();
-    return `${id.name}_${id.version}`;
+    return SERVER_VERSION_FILE;
   }
 
   async setInstallDirectory(installDirectory: string): Promise<void> {
@@ -33,12 +36,6 @@ export class CustomQSh implements IBMiComponent {
 
     if (!result) {
       return `NotInstalled`;
-    }
-
-    const testResult = await this.testCommand(connection);
-
-    if (!testResult) {
-      return `Error`;
     }
 
     return `Installed`;
@@ -61,27 +58,42 @@ export class CustomQSh implements IBMiComponent {
       command: `chmod +x ${this.installPath}`,
     });
 
-    const testResult = await this.testCommand(connection);
-
-    if (!testResult) {
-      return `Error`;
-    }
-
     return `Installed`;
   }
 
-  async testCommand(connection: IBMi) {
-    const text = `Hello world`;
-    const result = await connection.sendCommand({
-      stdin: `echo "${text}"`,
-      command: this.installPath,
-    });
+  getInitCommand(javaVersion = DEFAULT_JAVA_EIGHT): string | undefined {
+    if (this.installPath) {
+      return `${javaVersion} -Dos400.stdio.convert=N -jar ${this.installPath} --single`
+    }
+  }
 
-    if (result.code !== 0 || result.stdout !== text) {
-      return false;
+  public static async useExec(connection: IBMi) {
+    let useExec = false;
+
+    const bashPathAvailable = connection.remoteFeatures[`bash`];
+    if (bashPathAvailable) {
+      const commandShellResult = await connection.sendCommand({
+        command: `echo $SHELL`
+      });
+      if (!commandShellResult.stderr) {
+        let userDefaultShell = commandShellResult.stdout.trim();
+        if (userDefaultShell === bashPathAvailable) {
+          useExec = true;
+        }
+      }
     }
 
-    return true;
+    return useExec;
+  }
+
+  public async newJob(connection: IBMi) {
+    const sqlJob = new sshSqlJob();
+    
+    const stream = await sqlJob.getSshChannel(this, connection);
+    
+    await sqlJob.connectSsh(stream);
+
+    return sqlJob;
   }
 }
 
