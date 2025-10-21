@@ -1,7 +1,7 @@
 import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
-import vscode, { DataTransferItem, l10n, Uri } from "vscode";
+import vscode, { commands, DataTransferItem, l10n, Uri } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
@@ -1518,9 +1518,16 @@ async function deleteObject(object: IBMiObject) {
     noLibList: true
   });
 
-  if (deleteResult.code !== 0) {
+  const isSuccess = deleteResult.code === 0;
+  if (isSuccess) {
+    const config = connection.getConfig();
+    const libraryList = [config.currentLibrary, ...config.libraryList].map(library => library.toUpperCase());
+    if (libraryList.includes(object.name)) {
+      commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+    }
+  } else {
     vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting object! {0}`, deleteResult.stderr));
   }
 
-  return deleteResult.code === 0;
+  return isSuccess;
 }
