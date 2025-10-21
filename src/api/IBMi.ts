@@ -1142,7 +1142,7 @@ export default class IBMi {
       this.sqlJob.close();
       this.sqlJob = undefined;
     }
-    
+
     if (this.client) {
       this.client = undefined;
 
@@ -1355,7 +1355,7 @@ export default class IBMi {
 
       for (let i = 0; i < list.length; i++) {
         let statement = list[i];
-        let isLast = i === (statement.length-1);
+        let isLast = i === (list.length-1);
 
         if (statement.startsWith(`@`)) {
           await this.sqlJob.execute(statement.substring(1), {isClCommand: true});
