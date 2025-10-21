@@ -13,6 +13,8 @@ export namespace CompileTools {
   export const NEWLINE = `\r\n`;
   export const DID_NOT_RUN = -123;
 
+  let jobLogOrdinal = 0;
+
   interface RunCommandEvents {
     writeEvent?: (content: string) => void;
     commandConfirm?: (command: string) => Promise<string>;
@@ -108,7 +110,7 @@ export namespace CompileTools {
                 ...commands.map(c => `@${c}`)
               ]);
             } catch (e: any) {
-              commandResult.stderr = e.message;
+              commandResult.stdout = e.message;
               commandResult.code = 1;
             }
 
@@ -116,11 +118,23 @@ export namespace CompileTools {
               const lastSpool = await connection.runSQL(LAST_SPOOL_STATEMENT);
               
               if (lastSpool && lastSpool.length > 0) {
-                commandResult.stderr = lastSpool.map(r => r.SPOOLED_DATA).join(``);
+                commandResult.stdout = lastSpool.map(r => r.SPOOLED_DATA).join(NEWLINE);
               }
             } catch (e) {
               commandResult.code = 2; 
               console.log(`Failed to get spool output: `, e);
+            }
+
+            try {
+              const lastJobLog = await connection.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) where ordinal_position > ?`, {fakeBindings: [jobLogOrdinal]});
+              if (lastJobLog && lastJobLog.length > 0) {
+                commandResult.stderr = lastJobLog.map(r => `${r.MESSAGE_ID}: ${r.MESSAGE_TEXT}`).join(NEWLINE);
+                jobLogOrdinal = Number(lastJobLog[lastJobLog.length - 1].ORDINAL_POSITION);
+              } else {
+                jobLogOrdinal = 0; // Reset if no job log
+              }
+            } catch (e) {
+              commandResult.code = 3;
             }
             
             break;
