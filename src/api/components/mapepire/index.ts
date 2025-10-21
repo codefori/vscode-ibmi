@@ -86,10 +86,10 @@ export class Mapepire implements IBMiComponent {
     return useExec;
   }
 
-  public async newJob(connection: IBMi) {
+  public async newJob(connection: IBMi, javaPath?: string) {
     const sqlJob = new sshSqlJob();
     
-    const stream = await sqlJob.getSshChannel(this, connection);
+    const stream = await sqlJob.getSshChannel(this, connection, javaPath);
     
     await sqlJob.connectSsh(stream);
 

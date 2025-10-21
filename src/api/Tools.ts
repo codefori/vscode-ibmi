@@ -271,33 +271,6 @@ export namespace Tools {
     }
   }
 
-  /**
-   * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
-   * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls
-   * - Makes sure each comment (`--`) starts on a new line
-   * @param statement the statement to fix
-   * @returns statement compatible with QZDFMDB2
-   */
-  export function fixSQL(statement: string, removeComments = false): string {
-    let statements = statement.split("\n").map(line => {
-      if (line.startsWith('@')) {
-        //- Escape all '
-        //- Remove any trailing ;
-        //- Put the command in a Call QSYS2.QCMDEXC statement
-        line = `Call QSYS2.QCMDEXC('${line.substring(1, line.endsWith(";") ? line.length - 1 : undefined).replaceAll("'", "''")}');`;
-      }
-
-      //Make each comment start on a new line
-      return line.replaceAll("--", "\n--");
-    }).join(`\n`);
-
-    if (removeComments) {
-      statements = statements.split(`\n`).filter(l => !l.trim().startsWith(`--`)).join(`\n`);
-    }
-
-    return statements;
-  }
-
   export function fileToPath(file: EditorPath): string {
     if (typeof file === "string") {
       return Tools.fixWindowsPath(file);

@@ -66,7 +66,7 @@ export namespace CompileTools {
           }
         } : {};
 
-        let commandResult;
+        let commandResult: CommandResult;
         switch (options.environment) {
           case `pase`:
             commandResult = await connection.sendCommand({
@@ -90,17 +90,39 @@ export namespace CompileTools {
 
           case `ile`:
           default:
-            // escape $ and # in commands
-            commandResult = await connection.sendQsh({
-              command: [
-                ...options.noLibList ? [] : buildLiblistCommands(connection, ileSetup),
-                ...commands.map(command =>
-                  `${`system "${IBMi.escapeForShell(command)}"`}`,
-                )
-              ].join(` && `),
-              directory: cwd,
-              ...callbacks
-            });
+            // TODO: fetch job log
+            // TODO: exit code?
+            let results;
+
+            commandResult = {
+              code: 0, // TODO: exit code based on job log?
+              stderr: ``,
+              stdout: ``, // TODO: job log?
+              command: commands.join(`, `),
+            }
+
+            try {
+              results = await connection.runSQL([
+                ...(cwd ? [`@CHGCURDIR DIR('${cwd}')`] : []),
+                ...(options.noLibList ? [] : [`@CHGLIBL CURLIB(${ileSetup.currentLibrary}) LIBL(${ileSetup.libraryList.join(` `)})`]),
+                ...commands.map(c => `@${c}`)
+              ]);
+            } catch (e: any) {
+              commandResult.stderr = e.message;
+              commandResult.code = 1;
+            }
+
+            try {
+              const lastSpool = await connection.runSQL(LAST_SPOOL_STATEMENT);
+              
+              if (lastSpool && lastSpool.length > 0) {
+                commandResult.stderr = lastSpool.map(r => r.SPOOLED_DATA).join(``);
+              }
+            } catch (e) {
+              commandResult.code = 2; 
+              console.log(`Failed to get spool output: `, e);
+            }
+            
             break;
         }
 
@@ -134,3 +156,30 @@ export namespace CompileTools {
     ];
   }
 }
+
+const LAST_SPOOL_STATEMENT = [
+  `WITH my_spooled_files (`,
+  `    job,`,
+  `    FILE,`,
+  `    file_number,`,
+  `    user_data,`,
+  `    create_timestamp`,
+  ` )`,
+  `    AS (SELECT job_name,`,
+  `               spooled_file_name,`,
+  `               file_number,`,
+  `               user_data,`,
+  `               create_timestamp`,
+  `          FROM qsys2.output_queue_entries_basic`,
+  `          WHERE user_name = USER`,
+  `          ORDER BY create_timestamp DESC`,
+  `          LIMIT 1)`,
+  ` SELECT `,
+  `        spooled_data`,
+  `    FROM my_spooled_files,`,
+  `         TABLE (`,
+  `            systools.spooled_file_data(`,
+  `               job_name => job, spooled_file_name => FILE,`,
+  `               spooled_file_number => file_number)`,
+  `         )`,
+].join(` `);

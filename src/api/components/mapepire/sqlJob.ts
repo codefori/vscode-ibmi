@@ -1,13 +1,14 @@
 import { SQLJob } from "@ibm/mapepire-js";
-import { ConnectionResult, JDBCOptions, QueryResult, ServerRequest, ServerResponse } from "@ibm/mapepire-js/dist/src/types";
+import type { ConnectionResult, JDBCOptions, QueryResult, ServerRequest, ServerResponse } from "@ibm/mapepire-js";
+import {ClientChannel} from "ssh2";
 import IBMi from "../../IBMi";
-import { JobStatus } from "@ibm/mapepire-js/dist/src/states";
 import { Mapepire } from ".";
+import { JobStatus } from "./types";
 
 const DB2I_VERSION = (process.env[`DB2I_VERSION`] || `<version unknown>`) + ((process.env.DEV) ? ``:`-dev`);
 
 export class sshSqlJob extends SQLJob {
-  private channel: any;
+  private channel: ClientChannel|undefined;
 
   private currentSchemaStore: string | undefined;
 
@@ -15,12 +16,12 @@ export class sshSqlJob extends SQLJob {
     this.currentSchemaStore = undefined;
   }
 
-  async getSshChannel(mapepire: Mapepire, connection: IBMi) {
+  async getSshChannel(mapepire: Mapepire, connection: IBMi, javaPath?: string): Promise<ClientChannel> {
     let useExec = await Mapepire.useExec(connection);
 
     return new Promise((resolve, reject) => {
       // Setting QIBM_JAVA_STDIO_CONVERT and QIBM_PASE_DESCRIPTOR_STDIO to make sure all PASE and Java converters are off
-      const startingCommand = `QIBM_JAVA_STDIO_CONVERT=N QIBM_PASE_DESCRIPTOR_STDIO=B QIBM_USE_DESCRIPTOR_STDIO=Y QIBM_MULTI_THREADED=Y ${useExec ? `exec ` : ``}` + mapepire.getInitCommand();
+      const startingCommand = `QIBM_JAVA_STDIO_CONVERT=N QIBM_PASE_DESCRIPTOR_STDIO=B QIBM_USE_DESCRIPTOR_STDIO=Y QIBM_MULTI_THREADED=Y ${useExec ? `exec ` : ``}` + mapepire.getInitCommand(javaPath);
 
       // ServerComponent.writeOutput(startingCommand);
 
@@ -32,8 +33,9 @@ export class sshSqlJob extends SQLJob {
 
         let outString = ``;
 
+        // TODO: on is undefined?
         stream.stderr.on(`data`, (data: Buffer) => {
-          // ServerComponent.writeOutput(data.toString());
+          console.log(data);
         })
 
         stream.stdout.on(`data`, (data: Buffer) => {
@@ -58,12 +60,13 @@ export class sshSqlJob extends SQLJob {
 
         resolve(stream);
       });
-
-      console.log(a);
     })
   }
 
   override async send<T>(content: ServerRequest): Promise<T> {
+    if (!this.channel) {
+      throw new Error("SQL client is not yet setup.");
+    }
     // if (this.isTracingChannelData) ServerComponent.writeOutput(JSON.stringify(content));
 
     this.channel.stdin.write(JSON.stringify(content) + `\n`);
@@ -84,8 +87,10 @@ export class sshSqlJob extends SQLJob {
   /**
    * The same as mapepire-js#connect, but with SSH
    */
-  async connectSsh(channel: any): Promise<ConnectionResult> {
+  async connectSsh(channel: ClientChannel): Promise<ConnectionResult> {
     this.isTracingChannelData = true;
+
+    this.channel = channel;
 
     this.channel.on(`error`, (err: any) => {
       // ServerComponent.writeOutput(err);
@@ -154,7 +159,7 @@ export class sshSqlJob extends SQLJob {
   }
 
  private end() {
-    this.channel.close();
+    this.channel?.close();
     this.channel = undefined;
     this.status = JobStatus.ENDED;
     this.responseEmitter.removeAllListeners();
