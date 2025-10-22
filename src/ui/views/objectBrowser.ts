@@ -1090,7 +1090,15 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           noLibList: true
         });
 
-        if (createResult.code !== 0) {
+
+        const isSuccess = createResult.code === 0;
+        if (isSuccess) {
+          const config = connection.getConfig();
+          const libraryList = [config.currentLibrary, ...config.libraryList].map(library => library.toUpperCase());
+          if (libraryList.includes(newLibrary)) {
+            commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+          }
+        } else {
           vscode.window.showErrorMessage(vscode.l10n.t(`Cannot create library "{0}": {1}`, newLibrary, createResult.stderr));
         }
 
