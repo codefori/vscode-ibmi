@@ -542,73 +542,91 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
+    vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem | IFSShortcutItem, items?: IFSItem[] | IFSShortcutItem[]) => {
       const connection = instance.getConnection();
       if (connection) {
-        if (items || singleItem) {
-          items = (items || [singleItem]).filter(reduceIFSPath);
-        }
-        else {
-          items = getSelectedItems(singleItem).filter(reduceIFSPath);
-        }
+        if (singleItem instanceof IFSShortcutItem || items instanceof IFSShortcutItem) {
+          const config = connection.getConfig();
+          const shortcuts = config.ifsShortcuts;
+          const toBeRemoved = (items || [singleItem]).map(n => n.path);
 
-        if (items && items.length) {
-          if (!items.find(n => isProtected(n.path))) {
-            let deletionConfirmed = false;
-            const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t("Are you sure you want to delete the {0} selected files?", items.length);
-            const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
-            if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
-              const toBeDeleted: string[] = [];
-              for (const item of items) {
-                if ((IBMi.connectionManager.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
-                  const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
+          try {
+            if (toBeRemoved.length) {
+              config.ifsShortcuts = shortcuts.filter(path => !toBeRemoved.includes(path));
+              await IBMi.connectionManager.update(config);
+              if (IBMi.connectionManager.get(`autoRefresh`)) {
+                ifsBrowser.refresh();
+              }
+            }
+          } catch (e) {
+            console.log(e);
+          }
+        } else {
+          if (items || singleItem) {
+            items = (items || [singleItem]).filter(reduceIFSPath);
+          }
+          else {
+            items = getSelectedItems(singleItem).filter(reduceIFSPath);
+          }
 
-                  const deletionPrompt = l10n.t(`Once you delete the directory, it cannot be restored.
+          if (items && items.length) {
+            if (!items.find(n => isProtected(n.path))) {
+              let deletionConfirmed = false;
+              const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t("Are you sure you want to delete the {0} selected files?", items.length);
+              const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
+              if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
+                const toBeDeleted: string[] = [];
+                for (const item of items) {
+                  if ((IBMi.connectionManager.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
+                    const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
+
+                    const deletionPrompt = l10n.t(`Once you delete the directory, it cannot be restored.
 Please type "{0}" to confirm deletion.`, dirName);
-                  const input = await vscode.window.showInputBox({
-                    placeHolder: dirName,
-                    prompt: deletionPrompt,
-                    validateInput: text => {
-                      return (text === dirName) ? null : deletionPrompt + l10n.t(` (Press "Escape" to cancel)`);
-                    }
-                  });
-                  deletionConfirmed = (input === dirName);
-                }
-                else {
-                  // If deleting a file rather than a directory, skip the name entry
-                  // Do not delete a file if one of its parent directory is going to be deleted
-                  deletionConfirmed = true;
+                    const input = await vscode.window.showInputBox({
+                      placeHolder: dirName,
+                      prompt: deletionPrompt,
+                      validateInput: text => {
+                        return (text === dirName) ? null : deletionPrompt + l10n.t(` (Press "Escape" to cancel)`);
+                      }
+                    });
+                    deletionConfirmed = (input === dirName);
+                  }
+                  else {
+                    // If deleting a file rather than a directory, skip the name entry
+                    // Do not delete a file if one of its parent directory is going to be deleted
+                    deletionConfirmed = true;
+                  }
+
+                  if (deletionConfirmed) {
+                    toBeDeleted.push(item.path);
+                  }
                 }
 
-                if (deletionConfirmed) {
-                  toBeDeleted.push(item.path);
+                try {
+                  const removeResult = await vscode.window.withProgress({ title: l10n.t(`Deleting {0} element(s)...`, toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
+                    return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
+                  });
+
+                  if (removeResult.code !== 0) {
+                    throw removeResult.stderr;
+                  }
+                  if (IBMi.connectionManager.get(`autoRefresh`)) {
+                    items.map(item => item.parent)
+                      .filter(Tools.distinct)
+                      .forEach(async parent => parent?.refresh?.());
+                  }
+                } catch (e: any) {
+                  vscode.window.showErrorMessage(l10n.t(`Error deleting streamfile! {0}`, e));
                 }
               }
-
-              try {
-                const removeResult = await vscode.window.withProgress({ title: l10n.t(`Deleting {0} element(s)...`, toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
-                  return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
-                });
-
-                if (removeResult.code !== 0) {
-                  throw removeResult.stderr;
-                }
-                if (IBMi.connectionManager.get(`autoRefresh`)) {
-                  items.map(item => item.parent)
-                    .filter(Tools.distinct)
-                    .forEach(async parent => parent?.refresh?.());
-                }
-              } catch (e: any) {
-                vscode.window.showErrorMessage(l10n.t(`Error deleting streamfile! {0}`, e));
+              else {
+                vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
               }
             }
             else {
-              vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
-            }
-          }
-          else {
-            vscode.window.showErrorMessage(l10n.t(`Unable to delete protected directories from the IFS Browser!
+              vscode.window.showErrorMessage(l10n.t(`Unable to delete protected directories from the IFS Browser!
 {0}`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
+            }
           }
         }
       }
