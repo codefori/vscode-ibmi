@@ -719,6 +719,8 @@ export default class IBMi {
           let validLibs: string[] = [];
           let badLibs: string[] = [];
 
+          // TODO: swap liblist with object_statistics?
+
           const result = await this.sendQsh({
             command: [
               `liblist -d ` + IBMi.escapeForShell(this.defaultUserLibraries.join(` `)),
@@ -806,6 +808,8 @@ export default class IBMi {
         });
 
         this.currentAsp = await this.getUserProfileAsp();
+
+        // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
 
         // Fetch conversion values?
         if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
