@@ -19,7 +19,6 @@ export class SimpleQueue {
 	next<T>(run: () => Promise<T>, cancelCheck?: () => boolean): Promise<T> {
 		return new Promise<T>((resolve, reject) => {
 			this.queue.push(async () => {
-
 				if (this.delay) {
 					// We intentially do the cancel check twice.
 					if (cancelCheck && cancelCheck()) {

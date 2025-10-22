@@ -57,6 +57,11 @@ export class GetMemberInfo implements IBMiComponent {
     if (!tsString) {
       return undefined;
     }
+
+    let possibleDate = new Date(tsString);
+    if (!isNaN(possibleDate.getTime())) {
+      return possibleDate;
+    }
     
     const dateParts = tsString.split('-');
     const timeParts = dateParts[3].split('.');

@@ -300,7 +300,7 @@ export default class IBMiContent {
    * @returns result set
    */
   runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
-    return this.ibmi.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
+    return this.ibmi.runSQL(statements);
   }
 
   /**

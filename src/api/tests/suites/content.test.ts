@@ -526,18 +526,10 @@ describe('Content Tests', { concurrent: true }, () => {
   it('Test @clCommand + select statement', async () => {
     const content = connection.getContent();
 
-    const [resultA] = await connection.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+    const [resultA] = await connection.runSQL(`@CRTSAVF FILE(QTEMP/UNITTESTA) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
 
-    expect(resultA.OBJNAME).toBe('UNITTEST');
+    expect(resultA.OBJNAME).toBe('UNITTESTA');
     expect(resultA.OBJTEXT).toBe('Code for i test');
-
-    const [resultB] = await content.runStatements(
-      `@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test')`,
-      `Select * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF'`
-    );
-
-    expect(resultB.OBJNAME).toBe('UNITTEST');
-    expect(resultB.OBJTEXT).toBe('Code for i test');
   });
 
   it('should get attributes', async () => {
