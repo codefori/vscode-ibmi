@@ -621,7 +621,7 @@ export default class IBMi {
 
         const QCPTOIMPF = await this.runCommand({
           command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-          noLibList: true
+          skipDetail: true
         });
 
         if (QCPTOIMPF?.code === 0) {
@@ -630,7 +630,7 @@ export default class IBMi {
 
         const QCPFRMIMPF = await this.runCommand({
           command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-          noLibList: true
+          skipDetail: true
         })
 
         if (QCPFRMIMPF?.code === 0) {
@@ -997,7 +997,7 @@ export default class IBMi {
       else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
         const tempLibExists = await this.runCommand({
           command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-          noLibList: true
+          skipDetail: true
         });
 
         if (tempLibExists.code === 0) {
