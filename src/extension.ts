@@ -15,6 +15,7 @@ import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import * as Debug from './debug';
+import { CustomEditor, CustomEditorProvider } from "./editors/customEditorProvider";
 import { IFSFS } from "./filesystems/ifsFs";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
@@ -82,7 +83,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     workspace.registerFileSystemProvider(`streamfile`, new IFSFS(), {
       isCaseSensitive: false
     }),
-    languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&")
+    languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&"),
+    window.registerCustomEditorProvider(`code-for-ibmi.editor`, new CustomEditorProvider(), {
+      webviewOptions: {
+        retainContextWhenHidden: true
+      }
+    })
   );
 
   registerActionTools(context);
@@ -126,7 +132,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   );
 
   return {
-    instance, customUI: () => new CustomUI(),
+    instance,
+    customUI: () => new CustomUI(),
+    customEditor: (target, onSave) => new CustomEditor(target, onSave),
     deployTools: DeployTools,
     evfeventParser: parseErrors,
     tools: VscodeTools,

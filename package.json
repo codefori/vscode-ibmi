@@ -1717,6 +1717,17 @@
 				"icon": "$(refresh)"
 			}
 		],
+		"customEditors": [
+			{
+				"viewType": "code-for-ibmi.editor",
+				"displayName": "Code for i editor",
+				"selector": [
+					{
+						"filenamePattern": "code4i:*/**/*"
+					}
+				]
+			}
+		],
 		"keybindings": [
 			{
 				"command": "code-for-ibmi.runAction",
