@@ -467,6 +467,12 @@ export default class IBMi {
           }
         }
 
+        this.appendOutput(`\nIBM i components:\n`);
+        for (const [feature, state] of Object.entries(this.remoteFeatures)) {
+          this.appendOutput(`\t${feature}: ${state}\n`);
+        }
+        this.appendOutput(`\n`);
+
         //Specific Java installations check
         callbacks.progress({
           message: `Checking installed components on host IBM i: Java`
