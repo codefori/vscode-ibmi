@@ -1006,13 +1006,6 @@
 				"icon": "$(go-to-file)"
 			},
 			{
-				"command": "code-for-ibmi.showVariableMaintenance",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Maintain Custom Variables...",
-				"category": "IBM i",
-				"icon": "$(variable)"
-			},
-			{
 				"command": "code-for-ibmi.toggleSourceDateGutter",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Toggle Source Date Gutter",
@@ -1715,6 +1708,37 @@
 				"title": "Run on active editor",
 				"category": "IBM i",
 				"icon": "$(debug-start)"
+			},
+			{
+				"command": "code-for-ibmi.context.variable.declare",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Declare custom variable",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.context.variable.edit",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Change value...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.context.variable.rename",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Rename...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.context.variable.copy",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Copy...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.context.variable.delete",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Delete...",
+				"category": "IBM i"
 			}
 		],
 		"customEditors": [
@@ -2413,6 +2437,26 @@
 				{
 					"command": "code-for-ibmi.context.action.runOnEditor",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.variable.declare",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.variable.edit",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.variable.rename",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.variable.copy",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.variable.delete",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2470,11 +2514,6 @@
 					"command": "code-for-ibmi.goToFile",
 					"group": "navigation@4",
 					"when": "view == objectBrowser"
-				},
-				{
-					"command": "code-for-ibmi.showVariableMaintenance",
-					"group": "",
-					"when": "view == libraryListView"
 				},
 				{
 					"command": "code-for-ibmi.cleanupLibraryList",
@@ -3054,6 +3093,26 @@
 					"command": "code-for-ibmi.context.action.delete",
 					"when": "view === contextView && viewItem =~ /^actionItem/",
 					"group": "20_actionItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.context.variable.declare",
+					"when": "view === contextView && viewItem =~ /^customVariablesNode/",
+					"group": "inline@01"
+				},
+				{
+					"command": "code-for-ibmi.context.variable.rename",
+					"when": "view === contextView && viewItem =~ /^customVariableItem/",
+					"group": "00_customVariableItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.context.variable.copy",
+					"when": "view === contextView && viewItem =~ /^customVariableItem/",
+					"group": "10_customVariableItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.context.variable.delete",
+					"when": "view === contextView && viewItem =~ /^customVariableItem/",
+					"group": "20_customVariableItemAction01"
 				}
 			],
 			"explorer/context": [

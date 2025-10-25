@@ -1,5 +1,5 @@
 
-import vscode, { l10n, window } from 'vscode';
+import vscode, { l10n } from 'vscode';
 import { getActions, saveAction } from '../../api/actions';
 import { GetNewLibl } from '../../api/components/getNewLibl';
 import IBMi from '../../api/IBMi';
@@ -7,6 +7,56 @@ import { editAction } from '../../editors/actionEditor';
 import { instance } from '../../instantiate';
 import { Action, ActionEnvironment, ActionType, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions, Profile } from '../../typings';
 import { uriToActionTarget } from '../actions';
+
+function validateActionName(name: string, names: string[]) {
+  name = sanitizeVariableName(name);
+  if (!name) {
+    return l10n.t('Name cannot be empty');
+  }
+  else if (names.includes(name.toLocaleUpperCase())) {
+    return l10n.t("This name is already used by another action");
+  }
+}
+
+function getCustomVariables() {
+  return instance.getConnection()?.getConfig().customVariables || [];
+}
+
+function sanitizeVariableName(name: string) {
+  return name.replace(/ /g, '_').replace(/&/g, '').toUpperCase();
+}
+
+function validateVariableName(name: string, names: string[]) {
+  name = sanitizeVariableName(name);
+  if (!name) {
+    return l10n.t('Name cannot be empty');
+  }
+  else if (names.includes(name.toLocaleUpperCase())) {
+    return l10n.t("Custom variable {0} already exists", name);
+  }
+}
+
+async function updateCustomVariable(targetVariable: CustomVariable, options?: { newName?: string, delete?: boolean }) {
+  const config = instance.getConnection()?.getConfig();
+  if (config) {
+    targetVariable.name = sanitizeVariableName(targetVariable.name);
+    const variables = config.customVariables;
+    const index = variables.findIndex(v => v.name === targetVariable.name);
+
+    if (options?.delete) {
+      if (index < 0) {
+        throw new Error(l10n.t("Custom variable {0} not found for deletion.", targetVariable.name));
+      }
+      variables.splice(index, 1);
+    }
+    else {
+      const variable = { name: sanitizeVariableName(options?.newName || targetVariable.name), value: targetVariable.value };
+      variables[index < 0 ? variables.length : index] = variable;
+    }
+
+    await IBMi.connectionManager.update(config);
+  }
+}
 
 export function initializeContextView(context: vscode.ExtensionContext) {
   const contextView = new ContextView();
@@ -64,7 +114,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         const name = await vscode.window.showInputBox({
           title: l10n.t("Enter new action name"),
           placeHolder: l10n.t("action name..."),
-          validateInput: (newName) => existingNames.includes(newName) ? l10n.t("This name is already used by another action") : undefined
+          validateInput: name => validateActionName(name, existingNames)
         });
 
         if (name) {
@@ -75,7 +125,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
             command: ''
           };
           await saveAction(action, typeNode.workspace);
-          contextView.refresh();
+          contextView.refresh(typeNode.parent);
           vscode.commands.executeCommand("code-for-ibmi.context.action.edit", { action, workspace: typeNode.workspace });
         }
       }
@@ -87,12 +137,12 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       const newName = await vscode.window.showInputBox({
         title: l10n.t("Rename action"),
         value: action.name,
-        validateInput: (newName) => existingNames.includes(newName) ? l10n.t("This name is already used by another action") : undefined
+        validateInput: newName => validateActionName(newName, existingNames)
       });
 
       if (newName) {
         await saveAction(action, node.workspace, { newName });
-        contextView.refresh();
+        contextView.refresh(node.parent?.parent);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.action.edit", (node: ActionItem) => {
@@ -111,13 +161,13 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       if (copyName) {
         const newCopyAction = { ...action, name: copyName } as Action;
         await saveAction(newCopyAction, node.workspace);
-        contextView.refresh();
+        contextView.refresh(node.parent?.parent);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.action.delete", async (node: ActionItem) => {
       if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
         await saveAction(node.action, node.workspace, { delete: true });
-        contextView.refresh();
+        contextView.refresh(node.parent?.parent);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.action.runOnEditor", (node: ActionItem) => {
@@ -144,6 +194,57 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         }
 
         vscode.commands.executeCommand(`code-for-ibmi.runAction`, uri, undefined, action, undefined, workspace);
+      }
+    }),
+
+    vscode.commands.registerCommand("code-for-ibmi.context.variable.declare", async (variablesNode: CustomVariablesNode, value?: string) => {
+      const existingNames = getCustomVariables().map(v => v.name);
+      const name = (await vscode.window.showInputBox({
+        title: l10n.t('Enter new Custom Variable name'),
+        prompt: l10n.t("The name will automatically be uppercased"),
+        placeHolder: l10n.t('new custom variable name...'),
+        validateInput: name => validateVariableName(name, existingNames)
+      }));
+
+      if (name) {
+        const variable = { name, value } as CustomVariable;
+        await updateCustomVariable(variable);
+        contextView.refresh(variablesNode);
+        if (!value) {
+          vscode.commands.executeCommand("code-for-ibmi.context.variable.edit", variable, variablesNode);
+        }
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.variable.edit", async (variable: CustomVariable, variablesNode?: CustomVariablesNode) => {
+      const value = await vscode.window.showInputBox({ title: l10n.t('Enter {0} value', variable.name), value: variable.value });
+      if (value !== undefined) {
+        variable.value = value;
+        await updateCustomVariable(variable);
+        contextView.refresh(variablesNode);
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.variable.rename", async (variableItem: CustomVariableItem) => {
+      const variable = variableItem.customVariable;
+      const existingNames = getCustomVariables().map(v => v.name).filter(name => name !== variable.name);
+      const newName = (await vscode.window.showInputBox({
+        title: l10n.t('Enter Custom Variable {0} new name', variable.name),
+        prompt: l10n.t("The name will automatically be uppercased"),
+        validateInput: name => validateVariableName(name, existingNames)
+      }));
+
+      if (newName) {
+        await updateCustomVariable(variable, { newName });
+        contextView.refresh(variableItem.parent);
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.variable.copy", async (variableItem: CustomVariableItem) => {
+      vscode.commands.executeCommand("code-for-ibmi.context.variable.declare", variableItem.parent, variableItem.customVariable.value);
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.variable.delete", async (variableItem: CustomVariableItem) => {
+      const variable = variableItem.customVariable;
+      if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete Custom Variable '{0}' ?", variable.name), { modal: true }, l10n.t("Yes"))) {
+        await updateCustomVariable(variable, { delete: true });
+        contextView.refresh(variableItem.parent);
       }
     }),
 
@@ -249,11 +350,11 @@ export function initializeContextView(context: vscode.ExtensionContext) {
               vscode.window.showInformationMessage(l10n.t(`Switched to profile "{0}".`, storedProfile.name));
               contextView.refresh();
             } else {
-              window.showWarningMessage(l10n.t(`Failed to get library list from command. Feature not installed.`));
+              vscode.window.showWarningMessage(l10n.t(`Failed to get library list from command. Feature not installed.`));
             }
 
           } catch (e: any) {
-            window.showErrorMessage(l10n.t(`Failed to get library list from command: {0}`, e.message));
+            vscode.window.showErrorMessage(l10n.t(`Failed to get library list from command: {0}`, e.message));
           }
         }
       }
@@ -265,7 +366,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
 
       if (connection && storage) {
         const config = connection.getConfig();
-        window.showInformationMessage(l10n.t(`Reset to default`), {
+        vscode.window.showInformationMessage(l10n.t(`Reset to default`), {
           detail: l10n.t(`This will reset the User Library List, working directory and Custom Variables back to the defaults.`),
           modal: true
         }, l10n.t(`Continue`)).then(async result => {
@@ -471,7 +572,7 @@ class CustomVariablesNode extends ContextIem {
   }
 
   getChildren() {
-    return instance.getConnection()?.getConfig().customVariables.map(customVariable => new CustomVariableItem(this, customVariable));
+    return getCustomVariables().map(customVariable => new CustomVariableItem(this, customVariable));
   }
 }
 
@@ -480,6 +581,12 @@ class CustomVariableItem extends ContextIem {
     super(customVariable.name, { parent, icon: "symbol-variable" });
     this.contextValue = `customVariableItem`;
     this.description = customVariable.value;
+
+    this.command = {
+      title: "Change value",
+      command: "code-for-ibmi.context.variable.edit",
+      arguments: [this.customVariable]
+    }
   }
 }
 
