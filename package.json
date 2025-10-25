@@ -156,26 +156,6 @@
 								"default": [],
 								"description": "A collection of connection settings to easily switch between them on this system."
 							},
-							"commandProfiles": {
-								"type": "array",
-								"items": {
-									"type": "object",
-									"title": "Command Profile",
-									"properties": {
-										"name": {
-											"type": "string",
-											"description": "Profile name"
-										},
-										"command": {
-											"type": "string",
-											"description": "Command"
-										}
-									},
-									"additionalProperties": true
-								},
-								"default": [],
-								"description": "A collection of commands to easily switch between library list configurations on this system."
-							},
 							"ifsShortcuts": {
 								"type": "array",
 								"items": {
@@ -897,27 +877,6 @@
 				"icon": "$(arrow-circle-right)"
 			},
 			{
-				"command": "code-for-ibmi.manageCommandProfile",
-				"title": "Create/edit command profile...",
-				"category": "IBM i",
-				"enablement": "code-for-ibmi:connected == true",
-				"icon": "$(library)"
-			},
-			{
-				"command": "code-for-ibmi.deleteCommandProfile",
-				"title": "Delete command profile...",
-				"category": "IBM i",
-				"enablement": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true",
-				"icon": "$(remove)"
-			},
-			{
-				"command": "code-for-ibmi.loadCommandProfile",
-				"title": "Load command profile",
-				"category": "IBM i",
-				"enablement": "code-for-ibmi:connected == true",
-				"icon": "$(arrow-circle-right)"
-			},
-			{
 				"command": "code-for-ibmi.debug.setup.local",
 				"title": "Import Client Certificate",
 				"category": "IBM i Debug",
@@ -1165,7 +1124,7 @@
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Run Action...",
 				"category": "IBM i",
-				"icon": "$(file-binary)"
+				"icon": "$(github-action)"
 			},
 			{
 				"command": "code-for-ibmi.userLibraryList.enable",
@@ -1311,12 +1270,6 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.revealInIFSBrowser",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Reveal Browser Item",
-				"category": "IBM i"
-			},
-			{
 				"command": "code-for-ibmi.changeWorkingDirectory",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change Working Directory",
@@ -1393,9 +1346,10 @@
 			},
 			{
 				"command": "code-for-ibmi.launchActionsSetup",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Launch Actions Setup...",
-				"category": "IBM i"
+				"enablement": "code-for-ibmi:connected && workspaceFolderCount > 0",
+				"title": "Launch Workspace Actions Setup...",
+				"category": "IBM i",
+				"icon": "$(new-folder)"
 			},
 			{
 				"command": "code-for-ibmi.addIFSShortcut",
@@ -1527,12 +1481,6 @@
 				"command": "code-for-ibmi.refreshObjectBrowserItem",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Refresh",
-				"category": "IBM i"
-			},
-			{
-				"command": "code-for-ibmi.revealInObjectBrowser",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Reveal Object Browser Item",
 				"category": "IBM i"
 			},
 			{
@@ -1715,6 +1663,58 @@
 				"title": "Refresh",
 				"category": "IBM i",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.context.action.search",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Search action",
+				"category": "IBM i",
+				"icon": "$(search)"
+			},
+			{
+				"command": "code-for-ibmi.context.action.search.next",
+				"enablement": "code-for-ibmi:connected && code-for-ibmi:hasActionSearched",
+				"title": "Go to next search match",
+				"category": "IBM i",
+				"icon": "$(go-to-search)"
+			},
+			{
+				"command": "code-for-ibmi.context.action.search.clear",
+				"enablement": "code-for-ibmi:connected && code-for-ibmi:hasActionSearched",
+				"title": "Clear search",
+				"category": "IBM i",
+				"icon": "$(search-stop)"
+			},
+			{
+				"command": "code-for-ibmi.context.action.create",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Create action",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.context.action.rename",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Rename...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.context.action.copy",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Copy...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.context.action.delete",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Delete...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.context.action.runOnEditor",
+				"title": "Run on active editor",
+				"category": "IBM i",
+				"icon": "$(debug-start)"
 			}
 		],
 		"customEditors": [
@@ -2211,19 +2211,11 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.revealInObjectBrowser",
-					"when": "never"
-				},
-				{
 					"command": "code-for-ibmi.refreshObjectBrowserItem",
 					"when": "never"
 				},
 				{
 					"command": "code-for-ibmi.refreshIFSBrowser",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.revealInIFSBrowser",
 					"when": "never"
 				},
 				{
@@ -2389,6 +2381,38 @@
 				{
 					"command": "code-for-ibmi.context.refresh",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.action.search",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.action.search.next",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.action.search.clear",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.action.create",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.action.rename",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.action.copy",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.action.delete",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.context.action.runOnEditor",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2429,11 +2453,6 @@
 				},
 				{
 					"command": "code-for-ibmi.newConnectionProfile",
-					"group": "navigation@profile",
-					"when": "view == contextView"
-				},
-				{
-					"command": "code-for-ibmi.manageCommandProfile",
 					"group": "navigation@profile",
 					"when": "view == contextView"
 				},
@@ -2622,14 +2641,34 @@
 					"group": "inline"
 				},
 				{
-					"command": "code-for-ibmi.loadCommandProfile",
-					"when": "view === contextView && viewItem == commandProfile",
-					"group": "inline"
-				},
-				{
 					"command": "code-for-ibmi.setToDefault",
 					"when": "view === contextView && viewItem == resetProfile",
 					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.context.action.create",
+					"when": "view === contextView && viewItem =~ /^(actionsNode|actionTypeNode)/",
+					"group": "inline@01"
+				},
+				{
+					"command": "code-for-ibmi.launchActionsSetup",
+					"when": "view === contextView && viewItem =~ /^actionsNode/",
+					"group": "inline@02"
+				},
+				{
+					"command": "code-for-ibmi.context.action.search",
+					"when": "view === contextView && viewItem === actionsNode",
+					"group": "inline@10"
+				},
+				{
+					"command": "code-for-ibmi.context.action.search.next",
+					"when": "view === contextView && viewItem === actionsNode",
+					"group": "inline@11"
+				},
+				{
+					"command": "code-for-ibmi.context.action.search.clear",
+					"when": "view === contextView && viewItem === actionsNode",
+					"group": "inline@12"
 				},
 				{
 					"command": "code-for-ibmi.createMember",
@@ -2662,18 +2701,8 @@
 					"group": "profiles@1"
 				},
 				{
-					"command": "code-for-ibmi.manageCommandProfile",
-					"when": "view === contextView && viewItem == commandProfile",
-					"group": "profiles@1"
-				},
-				{
 					"command": "code-for-ibmi.deleteConnectionProfile",
 					"when": "view === contextView && viewItem == profile",
-					"group": "profiles@2"
-				},
-				{
-					"command": "code-for-ibmi.deleteCommandProfile",
-					"when": "view === contextView && viewItem == commandProfile",
 					"group": "profiles@2"
 				},
 				{
@@ -3005,6 +3034,26 @@
 					"command": "code-for-ibmi.generateBinderSource",
 					"when": "view == objectBrowser && viewItem =~ /^object.(module|srvpgm).*/",
 					"group": "1_objActions@6"
+				},
+				{
+					"command": "code-for-ibmi.context.action.runOnEditor",
+					"when": "view === contextView && ((viewItem =~ /^actionItemRemote/ && code-for-ibmi:editorCanRunRemoteAction) || (viewItem =~ /^actionItemLocal/ && code-for-ibmi:editorCanRunLocalAction))",
+					"group": "inline@00"
+				},
+				{
+					"command": "code-for-ibmi.context.action.rename",
+					"when": "view === contextView && viewItem =~ /^actionItem/",
+					"group": "00_actionItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.context.action.copy",
+					"when": "view === contextView && viewItem =~ /^actionItem/",
+					"group": "10_actionItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.context.action.delete",
+					"when": "view === contextView && viewItem =~ /^actionItem/",
+					"group": "20_actionItemAction01"
 				}
 			],
 			"explorer/context": [

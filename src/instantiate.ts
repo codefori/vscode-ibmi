@@ -13,7 +13,6 @@ import { setupGitEventHandler } from './filesystems/local/git';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
 import Instance from "./Instance";
 import { Terminal } from './ui/Terminal';
-import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
 
 export let instance: Instance;
@@ -84,7 +83,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
   );
 
-  ActionsUI.initialize(context);
   VariablesUI.initialize(context);
   instance.subscribe(context, 'connected', 'Load status bars', onConnected);
   instance.subscribe(context, 'disconnected', 'Unload status bars', onDisconnected);
@@ -108,7 +106,7 @@ async function updateConnectedBar() {
 
     const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
     const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
-    let serverConfig: RemoteConfigFile|undefined;
+    let serverConfig: RemoteConfigFile | undefined;
     if (serverConfigOk) {
       serverConfig = await remoteConnectionConfig.get();
     }
@@ -116,12 +114,10 @@ async function updateConnectedBar() {
     const systemReadOnly = serverConfig?.codefori?.readOnlyMode || false;
     connectedBarItem.text = `$(${systemReadOnly ? "shield" : (config.readOnlyMode ? "lock" : "settings-gear")}) ${config.name}`;
     const terminalMenuItem = systemReadOnly ? `` : `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`;
-    const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`;
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
     connectedBarItemTooltips.push(
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
-      actionsMenuItem,
       terminalMenuItem,
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
@@ -137,7 +133,6 @@ async function updateConnectedBar() {
 }
 
 async function onConnected() {
-  const config = instance.getConnection()?.getConfig();
   [
     connectedBarItem,
     disconnectBarItem,

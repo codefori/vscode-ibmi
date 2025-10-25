@@ -110,9 +110,10 @@ export class Section {
     return this;
   }
 
-  addSelect(id: string, label: string, items: SelectItem[], description?: string) {
+  addSelect(id: string, label: string, items: SelectItem[], description?: string, readonly?: boolean) {
     const select = new Field('select', id, label, description);
     select.items = items;
+    select.readonly = readonly;
     this.addField(select);
     return this;
   }
@@ -679,7 +680,7 @@ export class Field {
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-single-select id="${this.id}" name="${this.id}" ${this.readonly ? `readonly` : ``}>
+              <vscode-single-select id="${this.id}" name="${this.id}" ${this.readonly ? `disabled` : ``}>
                   ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
               </vscode-single-select>
           </vscode-form-group>`;
