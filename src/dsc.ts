@@ -1,11 +1,23 @@
 import path from "path";
 
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, statSync } from "fs";
 import { writeFile } from "fs/promises";
 import { Octokit } from "@octokit/rest";
 import { SERVER_VERSION_FILE, SERVER_VERSION_TAG } from "./api/components/mapepire/version";
 
 async function work() {
+  const distDirectory = path.join(`.`, `dist`);
+  if (!existsSync(distDirectory)) {
+    mkdirSync(distDirectory);
+  }
+
+  const serverFile = path.join(distDirectory, SERVER_VERSION_FILE);
+
+  if (exists(serverFile)) {
+    console.log(`Server file exists: ${SERVER_VERSION_FILE}`)
+    return;
+  }
+
   const octokit = new Octokit();
 
   const owner = `Mapepire-IBMi`;
@@ -26,12 +38,7 @@ async function work() {
       console.log(`Asset found: ${newAsset.name}`);
 
       const url = newAsset.browser_download_url;
-      const distDirectory = path.join(`.`, `dist`);
-      if (!existsSync(distDirectory)) {
-        mkdirSync(distDirectory);
-      }
 
-      const serverFile = path.join(distDirectory, SERVER_VERSION_FILE);
       await downloadFile(url, serverFile);
 
       console.log(`Asset downloaded: ${serverFile}`);
@@ -50,6 +57,15 @@ function downloadFile(url: string, outputPath: string) {
   return fetch(url)
     .then(x => x.arrayBuffer())
     .then(x => writeFile(outputPath, Buffer.from(x)));
+}
+
+function exists(localPath: string): boolean {
+  try {
+    statSync(localPath)
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 work();
