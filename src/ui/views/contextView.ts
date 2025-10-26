@@ -83,7 +83,10 @@ export function initializeContextView(context: vscode.ExtensionContext) {
     showCollapseAll: true
   });
 
-  const updateContextViewDescription = (profileName?: string) => contextTreeViewer.description = profileName ? l10n.t("Current profile: {0}", profileName) : l10n.t("No active profile");
+  const updateUIContext = async (profileName?: string) => {
+    await vscode.commands.executeCommand(`setContext`, "code-for-ibmi:activeProfile", profileName);
+    contextTreeViewer.description = profileName ? l10n.t("Current profile: {0}", profileName) : l10n.t("No active profile");
+  };
 
   context.subscriptions.push(
     contextTreeViewer,
@@ -315,7 +318,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         if (config?.currentProfile === currentName) {
           config.currentProfile = newName;
           await IBMi.connectionManager.update(config);
-          updateContextViewDescription(newName);
+          updateUIContext(newName);
         }
         contextView.refresh(item.parent);
       }
@@ -342,7 +345,6 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         }
         assignProfile(profile, config);
         config.currentProfile = profile.name || undefined;
-        await vscode.commands.executeCommand(`setContext`, "code-for-ibmi:activeProfile", config.currentProfile);
         await IBMi.connectionManager.update(config);
 
         await Promise.all([
@@ -356,8 +358,8 @@ export function initializeContextView(context: vscode.ExtensionContext) {
           await vscode.commands.executeCommand("code-for-ibmi.context.profile.runLiblistCommand", profile);
         }
 
-        updateContextViewDescription(profile.name);
-        vscode.window.showInformationMessage(l10n.t(`Switched to profile "{0}".`, profile.name));
+        await updateUIContext(profile.name);
+        vscode.window.showInformationMessage(config.currentProfile ? l10n.t(`Switched to profile "{0}".`, profile.name) : l10n.t("Active profile unloaded"));
       }
     }),
 
@@ -394,7 +396,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
     })
   );
 
-  instance.subscribe(context, 'connected', 'Update context view description', () => updateContextViewDescription(instance.getConnection()?.getConfig().currentProfile));
+  instance.subscribe(context, 'connected', 'Update context view description', () => updateUIContext(instance.getConnection()?.getConfig().currentProfile));
 }
 
 class ContextIem extends BrowserItem {
