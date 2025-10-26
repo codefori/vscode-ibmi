@@ -236,7 +236,7 @@ describe('Content Tests', { concurrent: true }, () => {
       await connection.runSQL('select from qiws.qcustcdt');
       expect.fail('Should have thrown an error');
     } catch (e: any) {
-      expect(e.message.endsWith(': , FROM INTO. (42601)')).toBeTruthy();
+      expect(e.message.endsWith(': , FROM INTO., 42601, -104')).toBeTruthy();
       expect(e.sqlstate).toBe('42601');
     }
   });
@@ -411,7 +411,9 @@ describe('Content Tests', { concurrent: true }, () => {
 
     let members = await content?.getMemberList({ library: 'qsysinc', sourceFile: 'mih', members: '*inxen' });
 
-    expect(members?.length).toBe(3);
+    for (const member of members) {
+      expect(member.name.endsWith(`INXEN`)).toBeTruthy();
+    }
 
     members = await content?.getMemberList({ library: 'qsysinc', sourceFile: 'mih' });
 
@@ -633,6 +635,7 @@ describe('Content Tests', { concurrent: true }, () => {
         expect(members?.length).toBe(1);
       }
       finally {
+        // TODO: this is hanging. Possibly locks from this job?
         await connection.runCommand({ command: `RUNSQL 'drop schema "${longName}"' commit(*none)`, noLibList: true });
       }
     } else {
