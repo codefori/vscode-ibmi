@@ -190,7 +190,7 @@ export namespace VscodeTools {
   }
 
   export function profileToToolTip(profile: ConnectionProfile) {
-    const tooltip = new MarkdownString(generateTooltipHtmlTable(profile.name, {
+    const tooltip = new MarkdownString(generateTooltipHtmlTable('', {
       "Home directory": profile.homeDirectory,
       "Current Library": profile.currentLibrary,
       "Library List": profile.libraryList,
