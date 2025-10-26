@@ -81,9 +81,6 @@ export default class IBMi {
   private systemVersion: number = 0;
   private qccsid: number = IBMi.CCSID_NOCONVERSION;
   private userJobCcsid: number = IBMi.CCSID_SYSVAL;
-  /** User default CCSID is job default CCSID */
-  private userDefaultCCSID: number = 0;
-  private sshdCcsid: number | undefined;
 
   private componentManager = new ComponentManager(this);
 
@@ -812,10 +809,9 @@ export default class IBMi {
         // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
 
         // Fetch conversion values?
-        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.qccsid) {
           this.qccsid = cachedServerSettings.qccsid;
           this.userJobCcsid = cachedServerSettings.jobCcsid;
-          this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
         } else {
           callbacks.progress({
             message: `Fetching conversion values.`
@@ -842,49 +838,19 @@ export default class IBMi {
               this.userJobCcsid = this.qccsid;
             }
 
-            // Let's also get the user's default CCSID
-            try {
-              const [activeJob] = await this.runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
-              this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
-            }
-            catch (error) {
-              const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
-                .stdout
-                .split("\n")
-                .filter(line => line.includes("DFTCCSID"));
-
-              const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
-              if (defaultCCSCID && !isNaN(defaultCCSCID)) {
-                this.userDefaultCCSID = defaultCCSCID;
-              }
-            }
-
           } catch (e) {
             // Oh well!
             console.log(e);
           }
         }
 
-        let userCcsidNeedsFixing = false;
-        let sshdCcsidMismatch = false;
-
         const showCcsidWarning = (message: string) => {
           callbacks.uiErrorHandler(this, `ccsid_warning`, message);
-        }
-
-        if (userCcsidNeedsFixing) {
-          showCcsidWarning(`The job CCSID is set to ${IBMi.CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`);
-        } else if (sshdCcsidMismatch) {
-          showCcsidWarning(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${this.getCcsid()}). This may cause issues with objects with variant characters.`);
         }
 
         this.appendOutput(`\nCCSID information:\n`);
         this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
         this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
-        this.appendOutput(`\tUser Default CCSID: ${this.userDefaultCCSID}\n`);
-        if (this.sshdCcsid) {
-          this.appendOutput(`\tSSHD CCSID: ${this.sshdCcsid}\n`);
-        }
 
         // We only do this check if we're on 7.3 or below.
         if (this.systemVersion && this.systemVersion <= 7.3) {
@@ -941,7 +907,6 @@ export default class IBMi {
         badDataAreasChecked: true,
         libraryListValidated: true,
         pathChecked: true,
-        userDefaultCCSID: this.userDefaultCCSID,
         debugConfigLoaded,
         maximumArgsLength: this.maximumArgsLength
       });
@@ -1395,17 +1360,13 @@ export default class IBMi {
   }
 
   getCcsid() {
-    const fallbackToDefault = ((this.userJobCcsid < 1 || this.userJobCcsid === IBMi.CCSID_NOCONVERSION) && this.userDefaultCCSID > 0);
-    const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.userJobCcsid;
-    return ccsid;
+    return this.userJobCcsid;
   }
 
   getCcsids() {
     return {
       qccsid: this.qccsid,
       runtimeCcsid: this.userJobCcsid,
-      userDefaultCCSID: this.userDefaultCCSID,
-      sshdCcsid: this.sshdCcsid
     };
   }
 

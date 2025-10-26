@@ -306,8 +306,6 @@ async function getRemoteSection() {
           `|Tech Refresh|${osVersion?.TR || '?'}|`,
           `|CCSID Origin|${ccsids.qccsid}|`,
           `|Runtime CCSID|${ccsids.runtimeCcsid || '?'}|`,
-          `|Default CCSID|${ccsids.userDefaultCCSID || '?'}|`,
-          `|SSHD CCSID|${ccsids.sshdCcsid || '?'}|`,
           `|SQL runner|${connection.sqlRunnerAvailable}|`,
           `|SQL|${connection.enableSQL ? 'Enabled' : 'Disabled'}`,
           `|Source dates|${config.enableSourceDates ? 'Enabled' : 'Disabled'}`,
