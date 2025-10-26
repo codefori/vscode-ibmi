@@ -45,14 +45,6 @@ export class ConnectionStorage {
     await this.internalStorage.set(SOURCE_LIST_KEY, sourceList);
   }
 
-  getLastProfile() {
-    return this.internalStorage.get<string>(LAST_PROFILE_KEY);
-  }
-
-  async setLastProfile(lastProfile: string) {
-    await this.internalStorage.set(LAST_PROFILE_KEY, lastProfile);
-  }
-
   getPreviousCurLibs() {
     return this.internalStorage.get<string[]>(PREVIOUS_CUR_LIBS_KEY) || [];
   }

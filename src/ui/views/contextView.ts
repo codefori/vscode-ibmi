@@ -1,60 +1,77 @@
 
 import vscode, { l10n } from 'vscode';
-import { getActions, saveAction } from '../../api/actions';
+import { getActions, updateAction } from '../../api/actions';
 import { GetNewLibl } from '../../api/components/getNewLibl';
+import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../api/connectionProfiles';
 import IBMi from '../../api/IBMi';
 import { editAction } from '../../editors/actionEditor';
+import { editConnectionProfile } from '../../editors/connectionProfileEditor';
 import { instance } from '../../instantiate';
-import { Action, ActionEnvironment, ActionType, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions, Profile } from '../../typings';
+import { Action, ActionEnvironment, ActionType, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions } from '../../typings';
 import { uriToActionTarget } from '../actions';
+import { VscodeTools } from '../Tools';
 
-function validateActionName(name: string, names: string[]) {
-  name = sanitizeVariableName(name);
-  if (!name) {
-    return l10n.t('Name cannot be empty');
-  }
-  else if (names.includes(name.toLocaleUpperCase())) {
-    return l10n.t("This name is already used by another action");
-  }
-}
-
-function getCustomVariables() {
-  return instance.getConnection()?.getConfig().customVariables || [];
-}
-
-function sanitizeVariableName(name: string) {
-  return name.replace(/ /g, '_').replace(/&/g, '').toUpperCase();
-}
-
-function validateVariableName(name: string, names: string[]) {
-  name = sanitizeVariableName(name);
-  if (!name) {
-    return l10n.t('Name cannot be empty');
-  }
-  else if (names.includes(name.toLocaleUpperCase())) {
-    return l10n.t("Custom variable {0} already exists", name);
+namespace Actions {
+  export function validateName(name: string, names: string[]) {
+    if (!name) {
+      return l10n.t('Name cannot be empty');
+    }
+    else if (names.includes(name.toLocaleUpperCase())) {
+      return l10n.t("This name is already used by another action");
+    }
   }
 }
 
-async function updateCustomVariable(targetVariable: CustomVariable, options?: { newName?: string, delete?: boolean }) {
-  const config = instance.getConnection()?.getConfig();
-  if (config) {
-    targetVariable.name = sanitizeVariableName(targetVariable.name);
-    const variables = config.customVariables;
-    const index = variables.findIndex(v => v.name === targetVariable.name);
+namespace ConnectionProfiles {
+  export function validateName(name: string, names: string[]) {
+    if (!name) {
+      return l10n.t('Name cannot be empty');
+    }
+    else if (names.includes(name.toLocaleUpperCase())) {
+      return l10n.t("Profile {0} already exists", name);
+    }
+  }
+}
 
-    if (options?.delete) {
-      if (index < 0) {
-        throw new Error(l10n.t("Custom variable {0} not found for deletion.", targetVariable.name));
+namespace CustomVariables {
+  export function getAll() {
+    return instance.getConnection()?.getConfig().customVariables || [];
+  }
+
+  export function validateName(name: string, names: string[]) {
+    name = sanitizeVariableName(name);
+    if (!name) {
+      return l10n.t('Name cannot be empty');
+    }
+    else if (names.includes(name.toLocaleUpperCase())) {
+      return l10n.t("Custom variable {0} already exists", name);
+    }
+  }
+
+  function sanitizeVariableName(name: string) {
+    return name.replace(/ /g, '_').replace(/&/g, '').toUpperCase();
+  }
+
+  export async function update(targetVariable: CustomVariable, options?: { newName?: string, delete?: boolean }) {
+    const config = instance.getConnection()?.getConfig();
+    if (config) {
+      targetVariable.name = sanitizeVariableName(targetVariable.name);
+      const variables = config.customVariables;
+      const index = variables.findIndex(v => v.name === targetVariable.name);
+
+      if (options?.delete) {
+        if (index < 0) {
+          throw new Error(l10n.t("Custom variable {0} not found for deletion.", targetVariable.name));
+        }
+        variables.splice(index, 1);
       }
-      variables.splice(index, 1);
-    }
-    else {
-      const variable = { name: sanitizeVariableName(options?.newName || targetVariable.name), value: targetVariable.value };
-      variables[index < 0 ? variables.length : index] = variable;
-    }
+      else {
+        const variable = { name: sanitizeVariableName(options?.newName || targetVariable.name), value: targetVariable.value };
+        variables[index < 0 ? variables.length : index] = variable;
+      }
 
-    await IBMi.connectionManager.update(config);
+      await IBMi.connectionManager.update(config);
+    }
   }
 }
 
@@ -65,6 +82,8 @@ export function initializeContextView(context: vscode.ExtensionContext) {
     treeDataProvider: contextView,
     showCollapseAll: true
   });
+
+  const updateContextViewDescription = (profileName?: string) => contextTreeViewer.description = profileName ? l10n.t("Current profile: {0}", profileName) : l10n.t("No active profile");
 
   context.subscriptions.push(
     contextTreeViewer,
@@ -86,7 +105,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
     }),
     vscode.window.registerFileDecorationProvider({
       provideFileDecoration(uri: vscode.Uri, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FileDecoration> {
-        if (uri.scheme === ProfileItem.contextValue && uri.query === "active") {
+        if (uri.scheme.startsWith(ProfileItem.contextValue) && uri.query === "active") {
           return { color: new vscode.ThemeColor(ProfileItem.activeColor) };
         }
         else if (uri.scheme === ActionItem.contextValue && uri.query === "matched") {
@@ -94,37 +113,34 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         }
       }
     }),
+
     vscode.commands.registerCommand("code-for-ibmi.context.refresh", () => contextView.refresh()),
     vscode.commands.registerCommand("code-for-ibmi.context.refresh.item", (item: BrowserItem) => contextView.refresh(item)),
     vscode.commands.registerCommand("code-for-ibmi.context.reveal", (item: BrowserItem, options?: FocusOptions) => contextTreeViewer.reveal(item, options)),
 
-    vscode.commands.registerCommand(`code-for-ibmi.newConnectionProfile`, () => {
-      // Call it with no profile parameter
-      vscode.commands.executeCommand(`code-for-ibmi.saveConnectionProfile`);
-    }),
-
     vscode.commands.registerCommand("code-for-ibmi.context.action.search", (node: ActionsNode) => node.searchActions()),
     vscode.commands.registerCommand("code-for-ibmi.context.action.search.next", (node: ActionsNode) => node.goToNextSearchMatch()),
     vscode.commands.registerCommand("code-for-ibmi.context.action.search.clear", (node: ActionsNode) => node.clearSearch()),
-    vscode.commands.registerCommand("code-for-ibmi.context.action.create", async (node: ActionsNode | ActionTypeNode) => {
+    vscode.commands.registerCommand("code-for-ibmi.context.action.create", async (node: ActionsNode | ActionTypeNode, from?: ActionItem) => {
       const typeNode = "type" in node ? node : (await vscode.window.showQuickPick(node.getChildren().map(typeNode => ({ label: typeNode.label as string, description: typeNode.description ? typeNode.description as string : undefined, typeNode })), { title: l10n.t("Select an action type") }))?.typeNode;
       if (typeNode) {
         const existingNames = (await getActions(typeNode.workspace)).map(act => act.name);
 
         const name = await vscode.window.showInputBox({
-          title: l10n.t("Enter new action name"),
+          title: from ? l10n.t("Copy action '{0}'", from.action.name) : l10n.t("New action"),
           placeHolder: l10n.t("action name..."),
-          validateInput: name => validateActionName(name, existingNames)
+          value: from?.action.name,
+          validateInput: name => Actions.validateName(name, existingNames)
         });
 
         if (name) {
-          const action = {
+          const action = from ? { ...from.action, name } : {
             name,
             type: typeNode.type,
             environment: "ile" as ActionEnvironment,
             command: ''
           };
-          await saveAction(action, typeNode.workspace);
+          await updateAction(action, typeNode.workspace);
           contextView.refresh(typeNode.parent);
           vscode.commands.executeCommand("code-for-ibmi.context.action.edit", { action, workspace: typeNode.workspace });
         }
@@ -136,37 +152,25 @@ export function initializeContextView(context: vscode.ExtensionContext) {
 
       const newName = await vscode.window.showInputBox({
         title: l10n.t("Rename action"),
+        placeHolder: l10n.t("action name..."),
         value: action.name,
-        validateInput: newName => validateActionName(newName, existingNames)
+        validateInput: newName => Actions.validateName(newName, existingNames)
       });
 
       if (newName) {
-        await saveAction(action, node.workspace, { newName });
+        await updateAction(action, node.workspace, { newName });
         contextView.refresh(node.parent?.parent);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.action.edit", (node: ActionItem) => {
-      editAction(node.action, async () => contextView.refresh(), node.workspace);
+      editAction(node.action, async () => contextView.refresh(node.parent?.parent), node.workspace);
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.action.copy", async (node: ActionItem) => {
-      const action = node.action;
-      const existingNames = (await getActions(node.workspace)).map(act => act.name);
-
-      const copyName = await vscode.window.showInputBox({
-        title: l10n.t("Copy action '{0}'", action.name),
-        placeHolder: l10n.t("new action name..."),
-        validateInput: (newName) => existingNames.includes(newName) ? l10n.t("This name is already used by another action") : undefined
-      });
-
-      if (copyName) {
-        const newCopyAction = { ...action, name: copyName } as Action;
-        await saveAction(newCopyAction, node.workspace);
-        contextView.refresh(node.parent?.parent);
-      }
+      vscode.commands.executeCommand('code-for-ibmi.context.action.create', node.parent, node);
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.action.delete", async (node: ActionItem) => {
       if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
-        await saveAction(node.action, node.workspace, { delete: true });
+        await updateAction(node.action, node.workspace, { delete: true });
         contextView.refresh(node.parent?.parent);
       }
     }),
@@ -197,20 +201,20 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.context.variable.declare", async (variablesNode: CustomVariablesNode, value?: string) => {
-      const existingNames = getCustomVariables().map(v => v.name);
+    vscode.commands.registerCommand("code-for-ibmi.context.variable.declare", async (variablesNode: CustomVariablesNode, from?: CustomVariable) => {
+      const existingNames = CustomVariables.getAll().map(v => v.name);
       const name = (await vscode.window.showInputBox({
         title: l10n.t('Enter new Custom Variable name'),
         prompt: l10n.t("The name will automatically be uppercased"),
         placeHolder: l10n.t('new custom variable name...'),
-        validateInput: name => validateVariableName(name, existingNames)
+        validateInput: name => CustomVariables.validateName(name, existingNames)
       }));
 
       if (name) {
-        const variable = { name, value } as CustomVariable;
-        await updateCustomVariable(variable);
+        const variable = { name, value: from?.value } as CustomVariable;
+        await CustomVariables.update(variable);
         contextView.refresh(variablesNode);
-        if (!value) {
+        if (!from) {
           vscode.commands.executeCommand("code-for-ibmi.context.variable.edit", variable, variablesNode);
         }
       }
@@ -219,184 +223,178 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       const value = await vscode.window.showInputBox({ title: l10n.t('Enter {0} value', variable.name), value: variable.value });
       if (value !== undefined) {
         variable.value = value;
-        await updateCustomVariable(variable);
+        await CustomVariables.update(variable);
         contextView.refresh(variablesNode);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.variable.rename", async (variableItem: CustomVariableItem) => {
       const variable = variableItem.customVariable;
-      const existingNames = getCustomVariables().map(v => v.name).filter(name => name !== variable.name);
+      const existingNames = CustomVariables.getAll().map(v => v.name).filter(name => name !== variable.name);
       const newName = (await vscode.window.showInputBox({
         title: l10n.t('Enter Custom Variable {0} new name', variable.name),
         prompt: l10n.t("The name will automatically be uppercased"),
-        validateInput: name => validateVariableName(name, existingNames)
+        validateInput: name => CustomVariables.validateName(name, existingNames)
       }));
 
       if (newName) {
-        await updateCustomVariable(variable, { newName });
+        await CustomVariables.update(variable, { newName });
         contextView.refresh(variableItem.parent);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.variable.copy", async (variableItem: CustomVariableItem) => {
-      vscode.commands.executeCommand("code-for-ibmi.context.variable.declare", variableItem.parent, variableItem.customVariable.value);
+      vscode.commands.executeCommand("code-for-ibmi.context.variable.declare", variableItem.parent, variableItem.customVariable);
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.variable.delete", async (variableItem: CustomVariableItem) => {
       const variable = variableItem.customVariable;
       if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete Custom Variable '{0}' ?", variable.name), { modal: true }, l10n.t("Yes"))) {
-        await updateCustomVariable(variable, { delete: true });
+        await CustomVariables.update(variable, { delete: true });
         contextView.refresh(variableItem.parent);
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.saveConnectionProfile`, async (profileNode?: Profile) => {
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.create", async (profilesNode: ProfilesNode, from?: ConnectionProfile) => {
+      const existingNames = getConnectionProfiles().map(profile => profile.name);
+
+      const name = await vscode.window.showInputBox({
+        title: l10n.t("Enter new profile name"),
+        placeHolder: l10n.t("profile name..."),
+        value: from?.name,
+        validateInput: name => Actions.validateName(name, existingNames)
+      });
+
+      if (name) {
+        const connection = instance.getConnection();
+        const homeDirectory = connection?.getConfig().homeDirectory || `/home/${connection?.currentUser || 'QPGMR'}`; //QPGMR case should not happen, but better be safe here
+        const profile: ConnectionProfile = from ? cloneProfile(from, name) : {
+          name,
+          homeDirectory,
+          currentLibrary: 'QGPL',
+          libraryList: ["QGPL", "QTEMP"],
+          customVariables: [],
+          ifsShortcuts: [homeDirectory],
+          objectFilters: [],
+        };
+        await updateConnectionProfile(profile);
+        contextView.refresh(profilesNode);
+        if (!from) {
+          vscode.commands.executeCommand("code-for-ibmi.context.profile.edit", profile, profilesNode);
+        }
+        else {
+          vscode.window.showInformationMessage(l10n.t("Created connection Profile '{0}'.", profile.name), l10n.t("Activate profile {0}", profile.name))
+            .then(doSwitch => {
+              if (doSwitch) {
+                vscode.commands.executeCommand("code-for-ibmi.context.profile.activate", profile);
+              }
+            })
+        }
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.fromCurrent", async (profilesNode: ProfilesNode) => {
+      const config = instance.getConnection()?.getConfig();
+
+      if (config) {
+        const current = cloneProfile(config, "");
+        vscode.commands.executeCommand("code-for-ibmi.context.profile.create", profilesNode, current);
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.edit", async (profile: ConnectionProfile, parentNode?: BrowserItem) => {
+      editConnectionProfile(profile, async () => contextView.refresh(parentNode))
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.rename", async (item: ProfileItem) => {
+      const currentName = item.profile.name;
+      const existingNames = getConnectionProfiles().map(profile => profile.name).filter(name => name !== currentName);
+      const newName = await vscode.window.showInputBox({
+        title: l10n.t('Enter Profile {0} new name', item.profile.name),
+        placeHolder: l10n.t("profile name..."),
+        validateInput: name => ConnectionProfiles.validateName(name, existingNames)
+      });
+
+      if (newName) {
+        await updateConnectionProfile(item.profile, { newName });
+        const config = instance.getConnection()?.getConfig();
+        if (config?.currentProfile === currentName) {
+          config.currentProfile = newName;
+          await IBMi.connectionManager.update(config);
+          updateContextViewDescription(newName);
+        }
+        contextView.refresh(item.parent);
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.copy", async (item: ProfileItem) => {
+      vscode.commands.executeCommand("code-for-ibmi.context.profile.create", item.parent, item.profile);
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.delete", async (item: ProfileItem) => {
+      if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete profile '{0}' ?", item.profile.name), { modal: true }, l10n.t("Yes"))) {
+        await updateConnectionProfile(item.profile, { delete: true });
+        contextView.refresh(item.parent);
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.activate", async (item: ProfileItem | ConnectionProfile) => {
+      const connection = instance.getConnection();
+      const storage = instance.getStorage();
+      if (connection && storage) {
+        const profile = "profile" in item ? item.profile : item;
+        const config = connection.getConfig();
+
+        const profileToBackup = config.currentProfile ? getConnectionProfile(config.currentProfile) : getDefaultProfile();
+        if (profileToBackup) {
+          assignProfile(config, profileToBackup);
+        }
+        assignProfile(profile, config);
+        config.currentProfile = profile.name || undefined;
+        await vscode.commands.executeCommand(`setContext`, "code-for-ibmi:activeProfile", config.currentProfile);
+        await IBMi.connectionManager.update(config);
+
+        await Promise.all([
+          vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
+          vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
+          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
+        ]);
+        contextView.refresh();
+
+        if (profile.name && profile.setLibraryListCommand) {
+          await vscode.commands.executeCommand("code-for-ibmi.context.profile.runLiblistCommand", profile);
+        }
+
+        updateContextViewDescription(profile.name);
+        vscode.window.showInformationMessage(l10n.t(`Switched to profile "{0}".`, profile.name));
+      }
+    }),
+
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.runLiblistCommand", async (profileItem?: ProfileItem) => {
       const connection = instance.getConnection();
       const storage = instance.getStorage();
       if (connection && storage) {
         const config = connection.getConfig();
-        const currentProfile = storage.getLastProfile() || '';
-        let currentProfiles = config.connectionProfiles;
+        const profile = profileItem?.profile || getConnectionProfile(config.get);
 
-        const savedProfileName = profileNode?.profile || await vscode.window.showInputBox({
-          value: currentProfile,
-          prompt: l10n.t(`Name of profile`)
-        });
+        if (profile?.setLibraryListCommand) {
+          return await vscode.window.withProgress({ title: l10n.t("Running {0} profile's Library List Command...", profile.name), location: vscode.ProgressLocation.Notification }, async () => {
+            try {
+              const component = connection.getComponent<GetNewLibl>(GetNewLibl.ID)
+              const newSettings = await component?.getLibraryListFromCommand(connection, profile.setLibraryListCommand!);
 
-        if (savedProfileName) {
-          let savedProfile = currentProfiles.find(profile => profile.name.toUpperCase() === savedProfileName.toUpperCase());
-          if (savedProfile) {
-            assignProfile(config, savedProfile);
-          } else {
-            savedProfile = cloneProfile(config, savedProfileName);
-            currentProfiles.push(savedProfile);
-          }
-
-          await Promise.all([
-            IBMi.connectionManager.update(config),
-            storage.setLastProfile(savedProfileName)
-          ]);
-          contextView.refresh();
-
-          vscode.window.showInformationMessage(l10n.t(`Saved current settings to profile "{0}".`, savedProfileName));
-        }
-      }
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.deleteConnectionProfile`, async (profileNode?: Profile) => {
-      const connection = instance.getConnection();
-      if (connection) {
-        const config = connection.getConfig();
-        const currentProfiles = config.connectionProfiles;
-        const chosenProfile = await getOrPickAvailableProfile(currentProfiles, profileNode);
-        if (chosenProfile) {
-          vscode.window.showWarningMessage(l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t("Yes")).then(async result => {
-            if (result === l10n.t(`Yes`)) {
-              currentProfiles.splice(currentProfiles.findIndex(profile => profile === chosenProfile), 1);
-              config.connectionProfiles = currentProfiles;
-              await IBMi.connectionManager.update(config)
-              contextView.refresh();
-              // TODO: Add message about deleted profile!
+              if (newSettings) {
+                config.libraryList = newSettings.libraryList;
+                config.currentLibrary = newSettings.currentLibrary;
+                await IBMi.connectionManager.update(config);
+                await vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+              } else {
+                vscode.window.showWarningMessage(l10n.t(`Failed to get library list from command. Feature not installed; try to reload settings when connecting.`));
+              }
+            } catch (e: any) {
+              vscode.window.showErrorMessage(l10n.t(`Failed to get library list from command: {0}`, e.message));
             }
           })
         }
       }
     }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.loadConnectionProfile`, async (profileNode?: Profile) => {
-      const connection = instance.getConnection();
-      const storage = instance.getStorage();
-      if (connection && storage) {
-        const config = connection.getConfig();
-        const chosenProfile = await getOrPickAvailableProfile(config.connectionProfiles, profileNode);
-        if (chosenProfile) {
-          assignProfile(chosenProfile, config);
-          await IBMi.connectionManager.update(config);
-
-          await Promise.all([
-            vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-            vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-            vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
-            storage.setLastProfile(chosenProfile.name)
-          ]);
-
-          vscode.window.showInformationMessage(l10n.t(`Switched to profile "{0}".`, chosenProfile.name));
-          contextView.refresh();
-        }
-      }
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.loadCommandProfile`, async (commandProfile?: any) => {
-      //TODO
-      const connection = instance.getConnection();
-      const storage = instance.getStorage();
-      if (commandProfile && connection && storage) {
-        const config = connection.getConfig();
-        const storedProfile = config.connectionProfiles.find(profile => profile.name === commandProfile.profile);
-
-        if (storedProfile && storedProfile.setLibraryListCommand) {
-          try {
-            const component = connection?.getComponent<GetNewLibl>(GetNewLibl.ID)
-            const newSettings = await component?.getLibraryListFromCommand(connection, storedProfile.setLibraryListCommand);
-
-            if (newSettings) {
-              config.libraryList = newSettings.libraryList;
-              config.currentLibrary = newSettings.currentLibrary;
-              await IBMi.connectionManager.update(config);
-
-              await Promise.all([
-                storage.setLastProfile(storedProfile.name),
-                vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-              ]);
-
-              vscode.window.showInformationMessage(l10n.t(`Switched to profile "{0}".`, storedProfile.name));
-              contextView.refresh();
-            } else {
-              vscode.window.showWarningMessage(l10n.t(`Failed to get library list from command. Feature not installed.`));
-            }
-
-          } catch (e: any) {
-            vscode.window.showErrorMessage(l10n.t(`Failed to get library list from command: {0}`, e.message));
-          }
-        }
-      }
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.setToDefault`, () => {
-      const connection = instance.getConnection();
-      const storage = instance.getStorage();
-
-      if (connection && storage) {
-        const config = connection.getConfig();
-        vscode.window.showInformationMessage(l10n.t(`Reset to default`), {
-          detail: l10n.t(`This will reset the User Library List, working directory and Custom Variables back to the defaults.`),
-          modal: true
-        }, l10n.t(`Continue`)).then(async result => {
-          if (result === l10n.t(`Continue`)) {
-            const defaultName = `Default`;
-
-            assignProfile({
-              name: defaultName,
-              libraryList: connection?.defaultUserLibraries || [],
-              currentLibrary: config.currentLibrary,
-              customVariables: [],
-              homeDirectory: config.homeDirectory,
-              ifsShortcuts: config.ifsShortcuts,
-              objectFilters: config.objectFilters,
-            }, config);
-
-            await IBMi.connectionManager.update(config);
-
-            await Promise.all([
-              vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-              vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-              vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
-              storage.setLastProfile(defaultName)
-            ]);
-          }
-        })
-      }
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.unload", async () => {
+      vscode.commands.executeCommand("code-for-ibmi.context.profile.activate", getDefaultProfile());
     })
+  );
 
-  )
+  instance.subscribe(context, 'connected', 'Update context view description', () => updateContextViewDescription(instance.getConnection()?.getConfig().currentProfile));
 }
 
 class ContextIem extends BrowserItem {
@@ -545,8 +543,8 @@ class ProfilesNode extends ContextIem {
   }
 
   getChildren() {
-    const currentProfile = instance.getStorage()?.getLastProfile();
-    return instance.getConnection()?.getConfig().connectionProfiles
+    const currentProfile = instance.getConnection()?.getConfig().currentProfile;
+    return getConnectionProfiles()
       .sort((p1, p2) => p1.name.localeCompare(p2.name))
       .map(profile => new ProfileItem(this, profile, profile.name === currentProfile));
   }
@@ -560,8 +558,17 @@ class ProfileItem extends ContextIem {
     super(profile.name, { parent, icon: "person", color: active ? ProfileItem.activeColor : undefined });
 
     this.contextValue = `${ProfileItem.contextValue}${active ? '_active' : ''}`;
-    this.description = active ? l10n.t(`Active`) : ``;
+    this.description = active ? l10n.t(`Active profile`) : ``;
     this.resourceUri = vscode.Uri.from({ scheme: this.contextValue, authority: profile.name, query: active ? "active" : "" });
+    this.tooltip = VscodeTools.profileToToolTip(profile)
+
+    if (!active) {
+      this.command = {
+        title: "Edit connection profile",
+        command: "code-for-ibmi.context.profile.edit",
+        arguments: [this.profile, this.parent]
+      }
+    }
   }
 }
 
@@ -572,7 +579,7 @@ class CustomVariablesNode extends ContextIem {
   }
 
   getChildren() {
-    return getCustomVariables().map(customVariable => new CustomVariableItem(this, customVariable));
+    return CustomVariables.getAll().map(customVariable => new CustomVariableItem(this, customVariable));
   }
 }
 
@@ -589,67 +596,3 @@ class CustomVariableItem extends ContextIem {
     }
   }
 }
-
-async function getOrPickAvailableProfile(availableProfiles: ConnectionProfile[], profileNode?: Profile): Promise<ConnectionProfile | undefined> {
-  if (availableProfiles.length > 0) {
-    if (profileNode) {
-      return availableProfiles.find(profile => profile.name === profileNode.profile);
-    }
-    else {
-      const items = availableProfiles.map(profile => {
-        return {
-          label: profile.name,
-          profile: profile
-        }
-      });
-      return (await vscode.window.showQuickPick(items))?.profile;
-    }
-  }
-  else {
-    vscode.window.showInformationMessage(`No profiles exist for this system.`);
-  }
-}
-
-function assignProfile(fromProfile: ConnectionProfile, toProfile: ConnectionProfile) {
-  toProfile.homeDirectory = fromProfile.homeDirectory;
-  toProfile.currentLibrary = fromProfile.currentLibrary;
-  toProfile.libraryList = fromProfile.libraryList;
-  toProfile.objectFilters = fromProfile.objectFilters;
-  toProfile.ifsShortcuts = fromProfile.ifsShortcuts;
-  toProfile.customVariables = fromProfile.customVariables;
-}
-
-function cloneProfile(fromProfile: ConnectionProfile, newName: string): ConnectionProfile {
-  return {
-    name: newName,
-    homeDirectory: fromProfile.homeDirectory,
-    currentLibrary: fromProfile.currentLibrary,
-    libraryList: fromProfile.libraryList,
-    objectFilters: fromProfile.objectFilters,
-    ifsShortcuts: fromProfile.ifsShortcuts,
-    customVariables: fromProfile.customVariables
-  }
-}
-
-
-
-class ResetProfileItem extends BrowserItem implements Profile {
-  readonly profile;
-  constructor() {
-    super(`Reset to Default`);
-
-    this.contextValue = `resetProfile`;
-    this.iconPath = new vscode.ThemeIcon(`debug-restart`);
-    this.tooltip = ``;
-
-    this.profile = `Default`;
-  }
-}
-
-
-
-/* saved for later
-.addParagraph(`Command Profiles can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list. Commands should be as explicit as possible. When refering to commands and objects, both should be qualified with a library.`)
-    .addInput(`name`, `Name`, `Name of the Command Profile`, {default: currentSettings.name})
-    .addInput(`setLibraryListCommand`, `Library list command`, `Command to be executed that will set the library list`, {default: currentSettings.command})
-  */

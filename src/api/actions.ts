@@ -6,7 +6,7 @@ export async function getActions(workspace?: vscode.WorkspaceFolder) {
   return workspace ? await getLocalActions(workspace) : (IBMi.connectionManager.get<Action[]>(`actions`) || []);
 }
 
-export async function saveAction(action: Action, workspace?: vscode.WorkspaceFolder, options?: { newName?: string, delete?: boolean }) {
+export async function updateAction(action: Action, workspace?: vscode.WorkspaceFolder, options?: { newName?: string, delete?: boolean }) {
   const actions = await getActions(workspace);
   const currentIndex = actions.findIndex(a => action.name === a.name);
 

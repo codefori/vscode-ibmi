@@ -32,6 +32,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   protectedPaths: string[];
   showHiddenFiles: boolean;
   lastDownloadLocation: string;
+  currentProfile?: string
   [name: string]: any;
 }
 

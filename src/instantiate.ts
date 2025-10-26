@@ -13,7 +13,6 @@ import { setupGitEventHandler } from './filesystems/local/git';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
 import Instance from "./Instance";
 import { Terminal } from './ui/Terminal';
-import { VariablesUI } from "./webviews/variables";
 
 export let instance: Instance;
 
@@ -83,7 +82,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
   );
 
-  VariablesUI.initialize(context);
   instance.subscribe(context, 'connected', 'Load status bars', onConnected);
   instance.subscribe(context, 'disconnected', 'Unload status bars', onDisconnected);
 

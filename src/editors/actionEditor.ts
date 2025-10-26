@@ -1,5 +1,5 @@
 import vscode from "vscode";
-import { saveAction } from "../api/actions";
+import { updateAction } from "../api/actions";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../typings";
@@ -132,7 +132,7 @@ async function save(targetAction: Action, actionData: ActionData, workspace?: vs
   // We don't want \r (Windows line endings)
   targetAction.command = targetAction.command.replace(new RegExp(`\\\r`, `g`), ``);
   targetAction.extensions = actionData.extensions.split(`,`).map(item => item.trim().toUpperCase())
-  await saveAction(targetAction, workspace);
+  await updateAction(targetAction, workspace);
 }
 
 const generic: () => VariableInfo[] = () => [
