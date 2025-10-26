@@ -1321,7 +1321,7 @@ export default class IBMi {
    */
   async runSQL(statements: string|string[], options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
     if (this.sqlJob) {
-      let list = Array.isArray(statements) ? statements : statements.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
+      let list = Array.isArray(statements) ? statements : statements.split(`;`).filter(x => x.trim().length > 0);
 
       let lastResultSet: any;
 
@@ -1332,9 +1332,13 @@ export default class IBMi {
         if (statement.startsWith(`@`)) {
           await this.sqlJob.execute(statement.substring(1), {isClCommand: true});
         } else {
-          const rs = await this.sqlJob.execute(statement, {
-            parameters: isLast ? options.fakeBindings : undefined
-          });
+          const query = this.sqlJob.query(statement, {
+            parameters: isLast ? options.fakeBindings : undefined,
+          })
+
+          const rs = await query.execute(99999);
+
+          await query.close();
 
           lastResultSet = rs.data;
         }
