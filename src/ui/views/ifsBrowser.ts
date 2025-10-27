@@ -1,6 +1,6 @@
 import os from "os";
 import path, { dirname, extname } from "path";
-import vscode, { FileType, l10n, Uri, window } from "vscode";
+import vscode, { CancellationToken, Event, FileDecoration, FileDecorationProvider, FileType, l10n, ProviderResult, ThemeColor, Uri, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import IBMi from "../../api/IBMi";
@@ -187,6 +187,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon(protectedDir ? "lock-small" : "folder-library");
     this.tooltip = ``;
+    this.resourceUri = Uri.parse(`shortcut:${shortcut}`);
   }
 }
 
@@ -312,12 +313,17 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     canSelectMany: true,
     dragAndDropController: new IFSBrowserDragAndDrop()
   });
+  const shortcutDecorationProvider = new ShortcutDecorationProvider();
 
   const getSelectedItems = <T>(node?: T | T[]) => node ? Array.isArray(node) ? node : [node] : ifsTreeViewer.selection as T[];
 
   context.subscriptions.push(
     ifsTreeViewer,
-    vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, () => ifsBrowser.refresh()),
+    window.registerFileDecorationProvider(shortcutDecorationProvider),
+    vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, () => {
+      ifsBrowser.refresh();
+      shortcutDecorationProvider.refresh();
+    }),
     vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowserItem`, (item?: BrowserItem) => ifsBrowser.refresh(item)),
 
     vscode.commands.registerCommand(`code-for-ibmi.revealInIFSBrowser`, async (item: BrowserItem, options?: FocusOptions) => {
@@ -443,6 +449,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
             if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
+              vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
             }
 
           } catch (e: any) {
@@ -542,91 +549,86 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem | IFSShortcutItem, items?: IFSItem[] | IFSShortcutItem[]) => {
+    vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
       const connection = instance.getConnection();
       if (connection) {
-        if (singleItem instanceof IFSShortcutItem || items instanceof IFSShortcutItem) {
-          const config = connection.getConfig();
-          const shortcuts = config.ifsShortcuts;
-          const toBeRemoved = (items || [singleItem]).map(n => n.path);
+        const config = connection.getConfig();
+        const shortcuts = config.ifsShortcuts;
+        if (items || singleItem) {
+          items = (items || [singleItem]).filter(reduceIFSPath);
+        }
+        else {
+          items = getSelectedItems(singleItem).filter(reduceIFSPath);
+        }
 
-          try {
-            if (toBeRemoved.length) {
-              config.ifsShortcuts = shortcuts.filter(path => !toBeRemoved.includes(path));
-              await IBMi.connectionManager.update(config);
-              if (IBMi.connectionManager.get(`autoRefresh`)) {
-                ifsBrowser.refresh();
-              }
-            }
-          } catch (e) {
-            console.log(e);
-          }
-        } else {
-          if (items || singleItem) {
-            items = (items || [singleItem]).filter(reduceIFSPath);
-          }
-          else {
-            items = getSelectedItems(singleItem).filter(reduceIFSPath);
-          }
+        if (items && items.length) {
+          if (!items.find(n => isProtected(n.path))) {
+            let deletionConfirmed = false;
+            const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t("Are you sure you want to delete the {0} selected files?", items.length);
+            const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
+            if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
+              const toBeDeleted: string[] = [];
+              for (const item of items) {
+                if ((IBMi.connectionManager.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
+                  const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
 
-          if (items && items.length) {
-            if (!items.find(n => isProtected(n.path))) {
-              let deletionConfirmed = false;
-              const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t("Are you sure you want to delete the {0} selected files?", items.length);
-              const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
-              if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
-                const toBeDeleted: string[] = [];
-                for (const item of items) {
-                  if ((IBMi.connectionManager.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
-                    const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
-
-                    const deletionPrompt = l10n.t(`Once you delete the directory, it cannot be restored.
+                  const deletionPrompt = l10n.t(`Once you delete the directory, it cannot be restored.
 Please type "{0}" to confirm deletion.`, dirName);
-                    const input = await vscode.window.showInputBox({
-                      placeHolder: dirName,
-                      prompt: deletionPrompt,
-                      validateInput: text => {
-                        return (text === dirName) ? null : deletionPrompt + l10n.t(` (Press "Escape" to cancel)`);
-                      }
-                    });
-                    deletionConfirmed = (input === dirName);
-                  }
-                  else {
-                    // If deleting a file rather than a directory, skip the name entry
-                    // Do not delete a file if one of its parent directory is going to be deleted
-                    deletionConfirmed = true;
-                  }
-
-                  if (deletionConfirmed) {
-                    toBeDeleted.push(item.path);
-                  }
+                  const input = await vscode.window.showInputBox({
+                    placeHolder: dirName,
+                    prompt: deletionPrompt,
+                    validateInput: text => {
+                      return (text === dirName) ? null : deletionPrompt + l10n.t(` (Press "Escape" to cancel)`);
+                    }
+                  });
+                  deletionConfirmed = (input === dirName);
+                }
+                else {
+                  // If deleting a file rather than a directory, skip the name entry
+                  // Do not delete a file if one of its parent directory is going to be deleted
+                  deletionConfirmed = true;
                 }
 
-                try {
-                  const removeResult = await vscode.window.withProgress({ title: l10n.t(`Deleting {0} element(s)...`, toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
-                    return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
-                  });
-
-                  if (removeResult.code !== 0) {
-                    throw removeResult.stderr;
-                  }
-                  if (IBMi.connectionManager.get(`autoRefresh`)) {
-                    items.map(item => item.parent)
-                      .filter(Tools.distinct)
-                      .forEach(async parent => parent?.refresh?.());
-                  }
-                } catch (e: any) {
-                  vscode.window.showErrorMessage(l10n.t(`Error deleting streamfile! {0}`, e));
+                if (deletionConfirmed) {
+                  toBeDeleted.push(item.path);
                 }
               }
-              else {
-                vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
+
+              try {
+                const removeResult = await vscode.window.withProgress({ title: l10n.t(`Deleting {0} element(s)...`, toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
+                  return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
+                });
+
+                if (removeResult.code !== 0) {
+                  throw removeResult.stderr;
+                }
+
+                const deletedShortcuts = shortcuts.filter(path => toBeDeleted.includes(path));
+                if (deletedShortcuts.length) {
+                  const message = deletedShortcuts.length === 1 ? l10n.t(`Do you also want to remove the IFS shortcut to the folder {0}?`, deletedShortcuts[0]) : l10n.t("Do you also want to remove the IFS shortcuts to the folders {0}?", deletedShortcuts.length);
+                  const detail = deletedShortcuts.length === 1 ? undefined : deletedShortcuts.map(i => `- ${i}`).join("\n");
+                  if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
+                    config.ifsShortcuts = shortcuts.filter(path => !deletedShortcuts.includes(path));
+                  }
+                }
+
+                if (IBMi.connectionManager.get(`autoRefresh`)) {
+                  items.map(item => item.parent)
+                    .filter(Tools.distinct)
+                    .forEach(async parent => parent?.refresh?.());
+                  vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
+                }
+              } catch (e: any) {
+                vscode.window.showErrorMessage(l10n.t(`Error deleting streamfile! {0}`, e));
               }
             }
             else {
-              vscode.window.showErrorMessage(l10n.t(`Unable to delete protected directories from the IFS Browser!
-{0}`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
+              vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
             }
+          }
+          else {
+            vscode.window.showErrorMessage(l10n.t(`Unable to delete protected directories from the IFS Browser!
+{0}`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
           }
         }
       }
@@ -1094,4 +1096,27 @@ async function showOpenDialog() {
  */
 function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {
   return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(`${folder.file.path}/`));
+}
+export class ShortcutDecorationProvider implements FileDecorationProvider {
+  private readonly _onDidChangeFileDecorations = new vscode.EventEmitter<vscode.Uri | vscode.Uri[] | undefined>();
+  readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
+
+  provideFileDecoration(uri: Uri, token: CancellationToken): ProviderResult<FileDecoration> {
+    if (uri.scheme === 'shortcut') {
+      return instance.getConnection()?.getContent().isDirectory(uri.path).then(isFound => {
+        if (!isFound) {
+          return {
+            badge: '⚠',
+            color: new ThemeColor('errorForeground'),
+            tooltip: l10n.t(`Directory does not exist.`)
+          };
+        }
+        return undefined;
+      });
+    }
+  }
+  
+  refresh(uri?: vscode.Uri | vscode.Uri[]) {
+    this._onDidChangeFileDecorations.fire(uri);
+  }
 }
