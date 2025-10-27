@@ -27,7 +27,7 @@ import { VscodeTools } from "./ui/Tools";
 import { registerActionTools } from "./ui/actions";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
 import { initializeLibraryListView } from "./ui/views/LibraryListView";
-import { initializeContextView } from "./ui/views/contextView";
+import { initializeContextView } from "./ui/views/context/contextView";
 import { initializeDebugBrowser } from "./ui/views/debugView";
 import { HelpView } from "./ui/views/helpView";
 import { initializeIFSBrowser } from "./ui/views/ifsBrowser";
