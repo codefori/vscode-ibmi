@@ -19,13 +19,13 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
     .addInput("setLibraryListCommand", l10n.t("Library List Command"), l10n.t("Library List Command can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.<br/>Commands should be as explicit as possible.<br/>When refering to commands and objects, both should be qualified with a library."), { default: profile.setLibraryListCommand })
     .addHorizontalRule()
     .addHeading(l10n.t("Object filters"), 3)
-    .addParagraph(profile.objectFilters.length ? `<ul>${profile.objectFilters.map(filter => `<li>${filter.name}</li>`).join()}</ul>` : l10n.t("None"))
+    .addParagraph(profile.objectFilters.length ? `<ul>${profile.objectFilters.map(filter => `<li>${filter.name}</li>`).join('')}</ul>` : l10n.t("None"))
     .addHorizontalRule()
     .addHeading(l10n.t("IFS shortcuts"), 3)
-    .addParagraph(profile.ifsShortcuts.length ? `<ul>${profile.ifsShortcuts.map(shortcut => `<li>${shortcut}</li>`).join()}</ul>` : l10n.t("None"))
+    .addParagraph(profile.ifsShortcuts.length ? `<ul>${profile.ifsShortcuts.map(shortcut => `<li>${shortcut}</li>`).join('')}</ul>` : l10n.t("None"))
     .addHorizontalRule()
     .addHeading(l10n.t("Custom variables"), 3)
-    .addParagraph(profile.customVariables.length ? `<ul>${profile.customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join()}</ul>` : l10n.t("None"))
+    .addParagraph(profile.customVariables.length ? `<ul>${profile.customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join('')}</ul>` : l10n.t("None"))
     .open();
 }
 
