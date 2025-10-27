@@ -203,6 +203,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand(`code-for-ibmi.runAction`, uri, undefined, action, undefined, workspace);
       }
     }),
+    vscode.commands.registerCommand("code-for-ibmi.context.actions.focus", () => contextView.actionsNode?.reveal({ focus: true, expand: true })),
 
     vscode.commands.registerCommand("code-for-ibmi.context.variable.declare", async (variablesNode: CustomVariablesNode, from?: CustomVariable) => {
       const existingNames = CustomVariables.getAll().map(v => v.name);
@@ -427,6 +428,7 @@ class ContextIem extends BrowserItem {
 class ContextView implements vscode.TreeDataProvider<BrowserItem> {
   private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
   readonly onDidChangeTreeData = this.emitter.event;
+  actionsNode?: ActionsNode
 
   refresh(target?: BrowserItem) {
     this.emitter.fire(target);
@@ -456,8 +458,10 @@ class ContextView implements vscode.TreeDataProvider<BrowserItem> {
         }
       }
 
+      this.actionsNode = new ActionsNode(actions, localActions);
+
       return [
-        new ActionsNode(actions, localActions),
+        this.actionsNode,
         new CustomVariablesNode(),
         new ProfilesNode()
       ];

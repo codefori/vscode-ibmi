@@ -112,11 +112,13 @@ async function updateConnectedBar() {
     const systemReadOnly = serverConfig?.codefori?.readOnlyMode || false;
     connectedBarItem.text = `$(${systemReadOnly ? "shield" : (config.readOnlyMode ? "lock" : "settings-gear")}) ${config.name}`;
     const terminalMenuItem = systemReadOnly ? `` : `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`;
+    const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.context.actions.focus)`;
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
     connectedBarItemTooltips.push(
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       terminalMenuItem,
+      actionsMenuItem,
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
         :
