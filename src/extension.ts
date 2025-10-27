@@ -1,5 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { commands, ExtensionContext, l10n, languages, window, workspace } from "vscode";
+import { commands, ExtensionContext, languages, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -21,6 +21,7 @@ import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
 import { instance, loadAllofExtension } from './instantiate';
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
+import { mergeCommandProfiles } from "./mergeProfiles";
 import { initialise } from "./testing";
 import { CodeForIBMi } from "./typings";
 import { VscodeTools } from "./ui/Tools";
@@ -147,31 +148,4 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
 // this method is called when your extension is deactivated
 export async function deactivate() {
   await commands.executeCommand(`code-for-ibmi.disconnect`, true);
-}
-
-async function mergeCommandProfiles() {
-  const connectionSettings = IBMi.connectionManager.getConnectionSettings();
-  let updateSettings = false;
-  for (const settings of connectionSettings.filter(setting => setting.commandProfiles)) {
-    for (const commandProfile of settings.commandProfiles) {
-      settings.connectionProfiles.push({
-        name: commandProfile.name as string,
-        setLibraryListCommand: commandProfile.command as string,
-        currentLibrary: "QGPL",
-        customVariables: [],
-        homeDirectory: settings.homeDirectory,
-        ifsShortcuts: [],
-        libraryList: ["QGPL", "QTEMP"],
-        objectFilters: []
-      });
-    }
-    delete settings.commandProfiles;
-    updateSettings = true;
-  }
-  if (updateSettings) {
-    window.showInformationMessage(
-      l10n.t("Your Command Profiles have been turned into Profiles since these two concepts have been merged with this new version of the Code for IBM i extension."),
-      { modal: true, detail: l10n.t("Open the Context view once connected to find your profile(s) and run your library list command(s).") });
-    await IBMi.connectionManager.updateAll(connectionSettings);
-  }
 }
