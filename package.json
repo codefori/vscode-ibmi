@@ -3156,7 +3156,7 @@
 				},
 				{
 					"command": "code-for-ibmi.context.profile.runLiblistCommand",
-					"when": "view === contextView && viewItem =~ /^profileItem_active/",
+					"when": "view === contextView && viewItem =~ /^profileItem_active_command/",
 					"group": "inline@01"
 				},
 				{

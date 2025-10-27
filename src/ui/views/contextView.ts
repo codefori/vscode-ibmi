@@ -363,12 +363,12 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.runLiblistCommand", async (profileItem?: ProfileItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.runLiblistCommand", async (profileItem?: ProfileItem | ConnectionProfile) => {
       const connection = instance.getConnection();
       const storage = instance.getStorage();
       if (connection && storage) {
         const config = connection.getConfig();
-        const profile = profileItem?.profile || getConnectionProfile(config.get);
+        const profile = profileItem && ("profile" in profileItem ? profileItem?.profile : profileItem) || getConnectionProfile(config.get);
 
         if (profile?.setLibraryListCommand) {
           return await vscode.window.withProgress({ title: l10n.t("Running {0} profile's Library List Command...", profile.name), location: vscode.ProgressLocation.Notification }, async () => {
@@ -396,7 +396,22 @@ export function initializeContextView(context: vscode.ExtensionContext) {
     })
   );
 
-  instance.subscribe(context, 'connected', 'Update context view description', () => updateUIContext(instance.getConnection()?.getConfig().currentProfile));
+  instance.subscribe(context, 'connected', 'Update context view description', async () => {
+    const config = instance.getConnection()?.getConfig();
+    const storage = instance.getStorage();
+    if (config && storage) {
+      //Retrieve and clear old value for last used profile
+      const deprecatedLastProfile = storage.getLastProfile();
+      if (deprecatedLastProfile) {
+        if (deprecatedLastProfile.toLocaleLowerCase() !== 'default') {
+          config.currentProfile = deprecatedLastProfile;
+          await IBMi.connectionManager.update(config);
+        }
+        await storage.clearDeprecatedLastProfile();
+      }
+      updateUIContext(config.currentProfile);
+    }
+  });
 }
 
 class ContextIem extends BrowserItem {
@@ -559,7 +574,7 @@ class ProfileItem extends ContextIem {
   constructor(parent: BrowserItem, readonly profile: ConnectionProfile, active: boolean) {
     super(profile.name, { parent, icon: "person", color: active ? ProfileItem.activeColor : undefined });
 
-    this.contextValue = `${ProfileItem.contextValue}${active ? '_active' : ''}`;
+    this.contextValue = `${ProfileItem.contextValue}${active ? '_active' : ''}${profile.setLibraryListCommand ? '_command' : ''}`;
     this.description = active ? l10n.t(`Active profile`) : ``;
     this.resourceUri = vscode.Uri.from({ scheme: this.contextValue, authority: profile.name, query: active ? "active" : "" });
     this.tooltip = VscodeTools.profileToToolTip(profile)

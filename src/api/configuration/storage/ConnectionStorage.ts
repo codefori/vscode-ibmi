@@ -86,6 +86,15 @@ export class ConnectionStorage {
     await this.internalStorage.set(RECENTLY_OPENED_FILES_KEY, undefined);
   }
 
+  /** @deprecated stored in ConnectionSettings now */
+  getLastProfile() {
+    return this.internalStorage.get<string>(LAST_PROFILE_KEY);
+  }
+
+  async clearDeprecatedLastProfile() {
+    await this.internalStorage.set(LAST_PROFILE_KEY, undefined);
+  }
+
   async grantExtensionAuthorisation(extensionId: string, displayName: string) {
     const extensions = this.getAuthorisedExtensions();
     if (!this.getExtensionAuthorisation(extensionId)) {
