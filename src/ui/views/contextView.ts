@@ -450,7 +450,10 @@ class ContextView implements vscode.TreeDataProvider<BrowserItem> {
       const actions = (await getActions()).sort(sortActions);
       const localActions = new Map<vscode.WorkspaceFolder, Action[]>();
       for (const workspace of vscode.workspace.workspaceFolders || []) {
-        localActions.set(workspace, (await getActions(workspace)).sort(sortActions));
+        const workspaceActions = (await getActions(workspace));
+        if (workspaceActions.length) {
+          localActions.set(workspace, workspaceActions.sort(sortActions));
+        }
       }
 
       return [
