@@ -1,5 +1,5 @@
 
-import vscode, { l10n } from 'vscode';
+import vscode, { l10n, QuickPickItem } from 'vscode';
 import { getActions, updateAction } from '../../../api/actions';
 import { GetNewLibl } from '../../../api/components/getNewLibl';
 import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
@@ -63,7 +63,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.context.action.search.next", (node: ActionsNode) => node.goToNextSearchMatch()),
     vscode.commands.registerCommand("code-for-ibmi.context.action.search.clear", (node: ActionsNode) => node.clearSearch()),
     vscode.commands.registerCommand("code-for-ibmi.context.action.create", async (node: ActionsNode | ActionTypeNode, from?: ActionItem) => {
-      const typeNode = "type" in node ? node : (await vscode.window.showQuickPick(node.getChildren().map(typeNode => ({ label: typeNode.label as string, description: typeNode.description ? typeNode.description as string : undefined, typeNode })), { title: l10n.t("Select an action type") }))?.typeNode;
+      const typeNode = "type" in node ? node : (await vscode.window.showQuickPick<QuickPickItem & { typeNode: ActionTypeNode }>(node.getChildren().map(typeNode => ({ label: typeNode.label as string, description: typeNode.description ? typeNode.description as string : undefined, typeNode })), { title: l10n.t("Select an action type") }))?.typeNode;
       if (typeNode) {
         const existingNames = (await getActions(typeNode.workspace)).map(act => act.name);
 
