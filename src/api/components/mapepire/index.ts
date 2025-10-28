@@ -93,6 +93,9 @@ export class Mapepire implements IBMiComponent {
     
     await sqlJob.connectSsh(stream);
 
+    // sqlJob.setTraceConfig(`IN_MEM`, `ON`);
+    // sqlJob.enableLocalTrace();
+
     return sqlJob;
   }
 }
