@@ -67,7 +67,7 @@ export class sshSqlJob extends SQLJob {
     if (!this.channel) {
       throw new Error("SQL client is not yet setup.");
     }
-    // if (this.isTracingChannelData) ServerComponent.writeOutput(JSON.stringify(content));
+    if (this.isTracingChannelData) console.log(JSON.stringify(content));
 
     this.channel.stdin.write(JSON.stringify(content) + `\n`);
     return new Promise((resolve, reject) => {
@@ -88,17 +88,17 @@ export class sshSqlJob extends SQLJob {
    * The same as mapepire-js#connect, but with SSH
    */
   async connectSsh(channel: ClientChannel): Promise<ConnectionResult> {
-    this.isTracingChannelData = true;
+    // this.isTracingChannelData = true;
 
     this.channel = channel;
 
     this.channel.on(`error`, (err: any) => {
-      // ServerComponent.writeOutput(err);
+      console.warn(err);
       this.end();
     })
 
     this.channel.on(`close`, (code: number) => {
-      // ServerComponent.writeOutput(`Exited with code ${code}.`)
+      console.warn(`Exited with code ${code}.`)
       this.end();
     })
 

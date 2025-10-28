@@ -1332,15 +1332,54 @@ export default class IBMi {
         if (statement.startsWith(`@`)) {
           await this.sqlJob.execute(statement.substring(1), {isClCommand: true});
         } else {
-          const query = this.sqlJob.query(statement, {
-            parameters: isLast ? options.fakeBindings : undefined,
-          })
+          if (isLast) {
+            // There is a bug with Mapepire handling of binding parameters.
+            // We work around it by using these fake parameters and passing
+            // in UTF8 encoding strings/numbers.
+            const fakeBindings = options.fakeBindings;
+            if (statement.includes(`?`) && fakeBindings && fakeBindings.length > 0) {
+              const parts = statement.split(`?`);
 
-          const rs = await query.execute(99999);
+              statement = ``;
+              for (let partsIndex = 0; partsIndex < parts.length; partsIndex++) {
+                statement += parts[partsIndex];
+                if (fakeBindings[partsIndex] !== undefined) {
+                  switch (typeof fakeBindings[partsIndex]) {
+                    case `number`:
+                      statement += fakeBindings[partsIndex];
+                      break;
 
-          await query.close();
+                    case `string`:
+                      statement += Tools.bufferToUx(fakeBindings[partsIndex] as string);
+                      break;
+                  }
+                }
+              }
+            }
 
-          lastResultSet = rs.data;
+            let query;
+            let error: Tools.SqlError|undefined;
+            try {
+              query = this.sqlJob.query(statement);
+              const rs = await query.execute(99999);
+              lastResultSet = rs.data;
+            } catch (e: any) {
+              console.log(e);
+              error = new Tools.SqlError(e.message);
+              error.cause = statement
+              
+              const parts: string[] = e.message.split(`,`);
+              if (parts.length > 3) {
+                error.sqlstate = parts[parts.length-2].trim();
+              }
+            } finally {
+              query?.close();
+            }
+
+            if (error) {
+              throw error;
+            }
+          }
         }
       }
 
