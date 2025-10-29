@@ -1364,7 +1364,6 @@ export default class IBMi {
               const rs = await query.execute(99999);
               lastResultSet = rs.data;
             } catch (e: any) {
-              console.log(e);
               error = new Tools.SqlError(e.message);
               error.cause = statement
               
