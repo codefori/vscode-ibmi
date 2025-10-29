@@ -13,7 +13,7 @@ export interface ILELibrarySettings {
 export namespace CompileTools {
   export const NEWLINE = `\r\n`;
   export const DID_NOT_RUN = -123;
-  const HIDE_MESSAGE_IDS = [`CPF3485`];
+  const HIDE_MESSAGE_IDS = [`CPF3485`, `SQL0462`];
 
   const ileQueue = new SimpleQueue();
 
@@ -125,8 +125,16 @@ export namespace CompileTools {
 
               // Then fetch the job log
 
-              if (!options.skipDetail) {
+              if (options.skipDetail) {
+                // We still need to skip all the messages for the next time the commands are run
+                const lastMessage = await connection.runSQL(`select max(ORDINAL_POSITION) as O from table(qsys2.joblog_info('*'))`);
+                if (lastMessage && lastMessage.length === 1) {
+                  jobLogOrdinal = Number(lastMessage[0].O);
+                }
+
+              } else {
                 try {
+                  // We only care about messages since the last run :)
                   const lastJobLog = await connection.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) where ordinal_position > ?`, { fakeBindings: [jobLogOrdinal] });
                   if (lastJobLog && lastJobLog.length > 0) {
                     commandResult.stderr = lastJobLog

@@ -21,7 +21,8 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
   const config = connection.getConfig();
 
   const tempLib = config.tempLibrary;
-  const testPgmName = connection.upperCaseName(`T${commands.length}${ccsid}${Tools.makeid(2)}`);
+  const name = `T${commands.length}${ccsid}${Tools.makeid(2)}`.padEnd(10).substring(0, 10).trim();
+  const testPgmName = connection.upperCaseName(name);
 
   await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testPgmSrcFile}) OBJTYPE(*FILE)`, noLibList: true });
   await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testPgmName}) OBJTYPE(*PGM)`, noLibList: true });
@@ -329,7 +330,7 @@ describe('Encoding tests', { concurrent: true }, () => {
 
       await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
 
-      const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`], ccsidData.userDefaultCCSID);
+      const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.runtimeCcsid})`], ccsidData.runtimeCcsid);
       expect(createResult.code).toBe(0);
       try {
         const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
@@ -337,14 +338,14 @@ describe('Encoding tests', { concurrent: true }, () => {
 
         const attributes = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
         expect(attributes).toBeTruthy();
-        expect(attributes![`CCSID`]).toBe(String(ccsidData.userDefaultCCSID));
+        expect(attributes![`CCSID`]).toBe(String(ccsidData.runtimeCcsid));
 
         const addPfB = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
         expect(addPfB.code).toBe(0);
 
         const attributesB = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
         expect(attributesB).toBeTruthy();
-        expect(attributesB![`CCSID`]).toBe(String(ccsidData.userDefaultCCSID));
+        expect(attributesB![`CCSID`]).toBe(String(ccsidData.runtimeCcsid));
 
         const objects = await connection.getContent().getObjectList({ library: tempLib, types: [`*SRCPF`] });
         expect(objects.length).toBeTruthy();
@@ -366,7 +367,6 @@ describe('Encoding tests', { concurrent: true }, () => {
         await connection.getContent().uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
         const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
-        console.log(compileResult);
         expect(compileResult.code).toBe(0);
 
         await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testMember}) OBJTYPE(*PGM)`, noLibList: true });
