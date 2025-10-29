@@ -650,7 +650,6 @@ describe('Content Tests', { concurrent: true }, () => {
     const id = `${Tools.makeid().toUpperCase()}`;
     await connection.withTempDirectory(async directory => {
       const source = `${directory}/vscodetemp-${id}.clle`;
-      console.log(source);
       try {
         await content.runStatements(
           `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
@@ -661,9 +660,10 @@ describe('Content Tests', { concurrent: true }, () => {
                            LINE => 'ENDPGM', 
                            OVERWRITE => 'APPEND', 
                            END_OF_LINE => 'CRLF')`,
-          `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
-          `select 1 from sysibm.sysdummy1`
         );
+
+        await connection.runCommand({environment: `ile`, command: `CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`})
+
         let exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
 
         expect(exports.length).toBe(1);
