@@ -65,6 +65,8 @@ export async function newConnection(reloadSettings?: boolean) {
     name: `${ENV_CREDS.host}_${ENV_CREDS.username}_test`
   };
 
+  console.log(`Connecting to ${creds.username}@${creds.host}`);
+
   // Override this so not to spam the console.
   conn.appendOutput = (data) => { };
 
