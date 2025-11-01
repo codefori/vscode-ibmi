@@ -42,12 +42,10 @@ export class ProfileItem extends ContextItem {
     this.resourceUri = vscode.Uri.from({ scheme: this.contextValue, authority: profile.name, query: active ? "active" : "" });
     this.tooltip = VscodeTools.profileToToolTip(profile)
 
-    if (!active) {
-      this.command = {
-        title: "Edit connection profile",
-        command: "code-for-ibmi.context.profile.edit",
-        arguments: [this.profile, this.parent]
-      }
+    this.command = {
+      title: "Edit connection profile",
+      command: "code-for-ibmi.context.profile.edit",
+      arguments: [this.profile]
     }
   }
 }

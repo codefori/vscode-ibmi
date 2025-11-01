@@ -219,7 +219,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         await updateConnectionProfile(profile);
         contextView.refresh(profilesNode);
         if (!from) {
-          vscode.commands.executeCommand("code-for-ibmi.context.profile.edit", profile, profilesNode);
+          vscode.commands.executeCommand("code-for-ibmi.context.profile.edit", profile);
         }
         else {
           vscode.window.showInformationMessage(l10n.t("Created connection Profile '{0}'.", profile.name), l10n.t("Activate profile {0}", profile.name))
