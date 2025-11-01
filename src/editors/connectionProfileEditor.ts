@@ -16,7 +16,7 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
     .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory })
     .addInput("currentLibrary", l10n.t("Current Library"), '', { minlength: 1, maxlength: 10, default: profile.currentLibrary })
     .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries."), { default: profile.libraryList.join(",") })
-    .addInput("setLibraryListCommand", l10n.t("Library List Command"), l10n.t("Library List Command can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.<br/>Commands should be as explicit as possible.<br/>When refering to commands and objects, both should be qualified with a library."), { default: profile.setLibraryListCommand })
+    .addInput("setLibraryListCommand", l10n.t("Library List Command"), l10n.t("Library List Command can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.<br/>Commands should be as explicit as possible.<br/>When refering to commands and objects, both should be qualified with a library.<br/>Put <code>?</code> in front of the command to prompt it before execution."), { default: profile.setLibraryListCommand })
     .addHorizontalRule()
     .addHeading(l10n.t("Object filters"), 3)
     .addParagraph(profile.objectFilters.length ? `<ul>${profile.objectFilters.map(filter => `<li>${filter.name}</li>`).join('')}</ul>` : l10n.t("None"))

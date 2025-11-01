@@ -239,8 +239,8 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand("code-for-ibmi.context.profile.create", profilesNode, current);
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.edit", async (profile: ConnectionProfile, parentNode?: BrowserItem) => {
-      editConnectionProfile(profile, async () => contextView.refresh(parentNode))
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.edit", async (profile: ConnectionProfile) => {
+      editConnectionProfile(profile, async () => contextView.refresh(contextView.profilesNode))
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.profile.rename", async (item: ProfileItem) => {
       const currentName = item.profile.name;
@@ -310,23 +310,29 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         const profile = profileItem && ("profile" in profileItem ? profileItem?.profile : profileItem) || getConnectionProfile(config.get);
 
         if (profile?.setLibraryListCommand) {
-          return await vscode.window.withProgress({ title: l10n.t("Running {0} profile's Library List Command...", profile.name), location: vscode.ProgressLocation.Notification }, async () => {
-            try {
-              const component = connection.getComponent<GetNewLibl>(GetNewLibl.ID)
-              const newSettings = await component?.getLibraryListFromCommand(connection, profile.setLibraryListCommand!);
+          const command = profile.setLibraryListCommand.startsWith(`?`) ?
+            await vscode.window.showInputBox({ title: l10n.t(`Run Library List Command`), value: profile.setLibraryListCommand.substring(1) }) :
+            profile.setLibraryListCommand;
 
-              if (newSettings) {
-                config.libraryList = newSettings.libraryList;
-                config.currentLibrary = newSettings.currentLibrary;
-                await IBMi.connectionManager.update(config);
-                await vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
-              } else {
-                vscode.window.showWarningMessage(l10n.t(`Failed to get library list from command. Feature not installed; try to reload settings when connecting.`));
+          if (command) {
+            return await vscode.window.withProgress({ title: l10n.t("Running {0} profile's Library List Command...", profile.name), location: vscode.ProgressLocation.Notification }, async () => {
+              try {
+                const component = connection.getComponent<GetNewLibl>(GetNewLibl.ID)
+                const newSettings = await component?.getLibraryListFromCommand(connection, command);
+
+                if (newSettings) {
+                  config.libraryList = newSettings.libraryList;
+                  config.currentLibrary = newSettings.currentLibrary;
+                  await IBMi.connectionManager.update(config);
+                  await vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+                } else {
+                  vscode.window.showWarningMessage(l10n.t(`Failed to get library list from command. Feature not installed; try to reload settings when connecting.`));
+                }
+              } catch (e: any) {
+                vscode.window.showErrorMessage(l10n.t(`Failed to get library list from command: {0}`, e.message));
               }
-            } catch (e: any) {
-              vscode.window.showErrorMessage(l10n.t(`Failed to get library list from command: {0}`, e.message));
-            }
-          })
+            });
+          }
         }
       }
     }),
@@ -357,6 +363,7 @@ class ContextView implements vscode.TreeDataProvider<BrowserItem> {
   private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
   readonly onDidChangeTreeData = this.emitter.event;
   actionsNode?: ActionsNode
+  profilesNode?: ProfilesNode
 
   refresh(target?: BrowserItem) {
     this.emitter.fire(target);
@@ -387,11 +394,11 @@ class ContextView implements vscode.TreeDataProvider<BrowserItem> {
       }
 
       this.actionsNode = new ActionsNode(actions, localActions);
-
+      this.profilesNode = new ProfilesNode();
       return [
         this.actionsNode,
         new CustomVariablesNode(),
-        new ProfilesNode()
+        this.profilesNode
       ];
     }
   }
