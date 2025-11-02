@@ -642,12 +642,13 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
 function getObjectsFromJoblog(stderr: string): CommandObject[] | undefined {
   const objects: CommandObject[] = [];
 
-  const joblogLines = stderr.split(`\n`).filter(line => line.slice(7, 19).toUpperCase() === `:  EVFEVENT:`);
+  // Filter lines with EVFEVENT info from server.
+  const joblogLines = stderr.split(`\n`).filter(line => line.match(/:  EVFEVENT:/i));
 
   for(const joblogLine of joblogLines) {
-    const evfevent = joblogLine.slice(19).trim();
+    const evfevent = joblogLine.match(/:  EVFEVENT:(.*)/i) || '';
     if (evfevent.length) {
-      const object = evfevent.split(/[,\|/]/);
+      const object = evfevent[1].trim().split(/[,\|/]/);
       if (object) {
         if (object.length >= 2) {
           objects.push({
