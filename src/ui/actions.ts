@@ -161,21 +161,22 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             }
 
             Object.entries(envFileVars).forEach(([key, value]) => variables.set(`&${key}`, value));
-            let evfeventInfo: EvfEventInfo[] = [{
+            const evfeventInfo: EvfEventInfo = {
               object: '',
               library: '',
               extension: target.extension,
               workspace: fromWorkspace
-            }];
+            };
+            const evfeventInfos: EvfEventInfo[] = [];
 
             let processedPath = "";
             switch (chosenAction.type) {
               case `member`:
                 const memberDetail = connection.parserMemberPath(target.uri.path);
-                evfeventInfo[0].library = memberDetail.library;
-                evfeventInfo[0].object = memberDetail.name;
-                evfeventInfo[0].extension = memberDetail.extension;
-                evfeventInfo[0].asp = memberDetail.asp;
+                evfeventInfo.library = memberDetail.library;
+                evfeventInfo.object = memberDetail.name;
+                evfeventInfo.extension = memberDetail.extension;
+                evfeventInfo.asp = memberDetail.asp;
 
                 processedPath = `${memberDetail.library}/${memberDetail.file}/${memberDetail.basename}`;
 
@@ -214,14 +215,14 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                   name = name.substring(0, name.indexOf(`-`));
                 }
 
-                evfeventInfo[0].library = connection.upperCaseName(variables.get(`&CURLIB`) || config.currentLibrary);
-                evfeventInfo[0].object = connection.upperCaseName(name);
-                evfeventInfo[0].extension = ext;
+                evfeventInfo.library = connection.upperCaseName(variables.get(`&CURLIB`) || config.currentLibrary);
+                evfeventInfo.object = connection.upperCaseName(name);
+                evfeventInfo.extension = ext;
 
                 if (chosenAction.command.includes(`&SRCFILE`)) {
-                  variables.set(`&SRCLIB`, evfeventInfo[0].library)
+                  variables.set(`&SRCLIB`, evfeventInfo.library)
                     .set(`&SRCPF`, `QTMPSRC`)
-                    .set(`&SRCFILE`, `${evfeventInfo[0].library}/QTMPSRC`);
+                    .set(`&SRCFILE`, `${evfeventInfo.library}/QTMPSRC`);
                 }
 
                 switch (chosenAction.type) {
@@ -270,8 +271,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 const [_, library, fullName] = connection.upperCaseName(target.uri.path).split(`/`);
                 const object = fullName.substring(0, fullName.lastIndexOf(`.`));
 
-                evfeventInfo[0].library = library;
-                evfeventInfo[0].object = object;
+                evfeventInfo.library = library;
+                evfeventInfo.object = object;
 
                 processedPath = `${library}/${object}.${target.extension}`;
 
@@ -330,7 +331,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                         // If &SRCFILE is set, we need to copy the file to a temporary source file from the IFS
                         const fullPath = variables.get(`&FULLPATH`);
                         const srcFile = variables.get(`&SRCFILE`);
-                        if (fullPath && srcFile && evfeventInfo[0].object) {
+                        if (fullPath && srcFile && evfeventInfo.object) {
                           const [lib, srcpf] = srcFile.split(`/`);
 
                           const createSourceFile = content.toCl(`CRTSRCPF`, {
@@ -340,7 +341,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                           const copyFromStreamfile = content.toCl(`CPYFRMSTMF`, {
                             fromstmf: fullPath,
-                            tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo[0].object)}'`,
+                            tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
                             mbropt: `*REPLACE`,
                             dbfccsid: `*FILE`,
                             stmfccsid: 1208,
@@ -381,24 +382,24 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                           const possibleObjects = getObjectsFromJoblog(commandResult.stderr) || getObjectFromCommand(commandResult.command);
                           if (isIleCommand && possibleObjects) {
+                            evfeventInfos.length = 0;
                             if (Array.isArray(possibleObjects)) {
-                              const tempEvfeventInfo = evfeventInfo[0];
-                              evfeventInfo = [];
                               for(const o of possibleObjects) {
-                                evfeventInfo.push({
-                                  library: o.library ? o.library : tempEvfeventInfo.library,
+                                evfeventInfos.push({
+                                  library: o.library || evfeventInfo.library,
                                   object: o.object,
-                                  extension: tempEvfeventInfo.extension,
-                                  asp: tempEvfeventInfo.asp
+                                  extension: evfeventInfo.extension,
+                                  asp: evfeventInfo.asp
                                 })
                               };
                             } else {
-                              evfeventInfo[0].library = possibleObjects.library ? possibleObjects.library : evfeventInfo[0].library;
-                              evfeventInfo[0].object = possibleObjects.object;
+                              evfeventInfo.library = possibleObjects.library ? possibleObjects.library : evfeventInfo.library;
+                              evfeventInfo.object = possibleObjects.object;
+                              evfeventInfos.push(evfeventInfo);
                             }
                           }
 
-                          actionName = (isIleCommand && possibleObjects ? `${chosenAction.name} for ${evfeventInfo[0].library}/${evfeventInfo[0].object}` : actionName);
+                          actionName = (isIleCommand && possibleObjects ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
                           successful = (commandResult.code === 0 || commandResult.code === null);
 
                           writeEmitter.fire(CompileTools.NEWLINE);
@@ -407,13 +408,13 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             writeEmitter.fire(`Fetching errors from .evfevent.${CompileTools.NEWLINE}`);
 
                           }
-                          else if (evfeventInfo[0].object && evfeventInfo[0].library) {
+                          else if (evfeventInfo.object && evfeventInfo.library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
-                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfo.length > 1 ? `multiple objects` : `${evfeventInfo[0].library}/${evfeventInfo[0].object}.`) + CompileTools.NEWLINE);
-                              await refreshDiagnosticsFromServer(instance, evfeventInfo);
+                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfo.library}/${evfeventInfo.object}.`) + CompileTools.NEWLINE);
+                              await refreshDiagnosticsFromServer(instance, evfeventInfos);
                               problemsFetched = true;
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
-                              writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo[0].library}/${evfeventInfo[0].object}.` + CompileTools.NEWLINE);
+                              writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
                             }
                           }
 
@@ -495,7 +496,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                                   // Process locally downloaded evfevent files:
                                   if (useLocalEvfevent) {
-                                    await refreshDiagnosticsFromLocal(instance, evfeventInfo[0]);
+                                    await refreshDiagnosticsFromLocal(instance, evfeventInfo);
                                     problemsFetched = true;
                                   }
                                 })
@@ -516,7 +517,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                       } catch (e) {
                         writeEmitter.fire(`${e}\n`);
-                        vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo[0].library}/${evfeventInfo[0].object} failed. (internal error).`);
+                        vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
                         successful = false;
                       }
 
