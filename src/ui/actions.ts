@@ -505,7 +505,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                       } catch (e) {
                         writeEmitter.fire(`${e}\n`);
-                        vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
+                        vscode.window.showErrorMessage(`Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
                         successful = false;
                       }
 
