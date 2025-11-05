@@ -24,6 +24,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
   const updateUIContext = async (profileName?: string) => {
     await vscode.commands.executeCommand(`setContext`, "code-for-ibmi:activeProfile", profileName);
     contextTreeViewer.description = profileName ? l10n.t("Current profile: {0}", profileName) : l10n.t("No active profile");
+    vscode.commands.executeCommand("code-for-ibmi.updateConnectedBar");
   };
 
   context.subscriptions.push(
