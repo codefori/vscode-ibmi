@@ -549,10 +549,10 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                   .setOptions({
                     fullPage: true,
                     css: /* css */ `
-                  pre{              
-                    background-color: transparent;
-                  }
-                `
+                      pre{              
+                        background-color: transparent;
+                      }
+                    `
                   });
               }
               else {
@@ -560,17 +560,17 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                   .setOptions({
                     fullPage: true,
                     css: /* css */ `
-                  body{
-                    margin: 0;
-                    padding: 0;
-                    overflow: hidden;
-                  }
+                      body{
+                        margin: 0;
+                        padding: 0;
+                        overflow: hidden;
+                      }
 
-                  pre {
-                    margin: 1em;
-                    background-color: transparent;
-                  }                  
-                `
+                      pre {
+                        margin: 1em;
+                        background-color: transparent;
+                      }                  
+                    `
                   });
               }
               resultsPanel.loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
