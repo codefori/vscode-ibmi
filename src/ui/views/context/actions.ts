@@ -1,4 +1,5 @@
 import vscode, { l10n } from "vscode";
+import { getActions } from "../../../api/actions";
 import { Action, ActionType } from "../../../typings";
 import { ContextItem } from "./contextItem";
 
@@ -17,32 +18,43 @@ export class ActionsNode extends ContextItem {
   private readonly foundActions: ActionItem[] = [];
   private revealIndex = -1;
 
-  private readonly children;
+  private readonly children: ActionTypeNode[] = [];
 
-  constructor(actions: Action[], localActions: Map<vscode.WorkspaceFolder, Action[]>) {
+  constructor() {
     super(l10n.t("Actions"), { state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = "actionsNode";
-    this.children = [
-      new ActionTypeNode(this, l10n.t("Member"), 'member', actions),
-      new ActionTypeNode(this, l10n.t("Object"), 'object', actions),
-      new ActionTypeNode(this, l10n.t("Streamfile"), 'streamfile', actions),
-      ...Array.from(localActions).map((([workspace, localActions]) => new ActionTypeNode(this, workspace.name, 'file', localActions, workspace)))
-    ]
   }
 
-  getChildren() {
+  async getChildren() {
+    if (!this.children.length) {
+      const actions = (await getActions()).sort(sortActions);
+      const localActions = new Map<vscode.WorkspaceFolder, Action[]>();
+      for (const workspace of vscode.workspace.workspaceFolders || []) {
+        const workspaceActions = (await getActions(workspace));
+        if (workspaceActions.length) {
+          localActions.set(workspace, workspaceActions.sort(sortActions));
+        }
+      }
+
+      this.children.push(
+        new ActionTypeNode(this, l10n.t("Member"), 'member', actions),
+        new ActionTypeNode(this, l10n.t("Object"), 'object', actions),
+        new ActionTypeNode(this, l10n.t("Streamfile"), 'streamfile', actions),
+        ...Array.from(localActions).map((([workspace, localActions]) => new ActionTypeNode(this, workspace.name, 'file', localActions, workspace)))
+      );
+    }
     return this.children;
   }
 
-  getAllActionItems() {
-    return this.children.flatMap(child => child.actionItems);
+  private async getAllActionItems() {
+    return (await this.getChildren()).flatMap(child => child.actionItems);
   }
 
   async searchActions() {
     const nameOrCommand = (await vscode.window.showInputBox({ title: l10n.t("Search action"), placeHolder: l10n.t("name or command...") }))?.toLocaleLowerCase();
     if (nameOrCommand) {
       await this.clearSearch();
-      const found = this.foundActions.push(...this.getAllActionItems().filter(action => [action.action.name, action.action.command].some(text => text.toLocaleLowerCase().includes(nameOrCommand)))) > 0;
+      const found = this.foundActions.push(...(await this.getAllActionItems()).filter(action => [action.action.name, action.action.command].some(text => text.toLocaleLowerCase().includes(nameOrCommand)))) > 0;
       await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasActionSearched`, found);
       if (found) {
         this.foundActions.forEach(node => node.setContext(true));
@@ -52,6 +64,11 @@ export class ActionsNode extends ContextItem {
     }
   }
 
+  forceRefresh() {
+    this.children.splice(0, this.children.length);
+    this.refresh();
+  }
+
   goToNextSearchMatch() {
     this.revealIndex += (this.revealIndex + 1) < this.foundActions.length ? 1 : -this.revealIndex;
     const actionNode = this.foundActions[this.revealIndex];
@@ -59,7 +76,7 @@ export class ActionsNode extends ContextItem {
   }
 
   async clearSearch() {
-    this.getAllActionItems().forEach(node => node.setContext(false));
+    (await this.getAllActionItems()).forEach(node => node.setContext(false));
     this.revealIndex = -1;
     this.foundActions.splice(0, this.foundActions.length);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasActionSearched`, false);
@@ -102,4 +119,8 @@ export class ActionItem extends ContextItem {
     this.description = matched ? l10n.t("search match") : undefined;
     this.tooltip = this.action.command;
   }
+}
+
+function sortActions(a1: Action, a2: Action) {
+  return a1.name.localeCompare(a2.name);
 }
