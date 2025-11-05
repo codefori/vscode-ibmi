@@ -194,7 +194,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.create", async (from?: ConnectionProfile) => {
+    vscode.commands.registerCommand("code-for-ibmi.context.profile.create", async (node?: ProfilesNode, from?: ConnectionProfile) => {
       const existingNames = getConnectionProfiles().map(profile => profile.name);
 
       const name = await vscode.window.showInputBox({
@@ -236,7 +236,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
 
       if (config) {
         const current = cloneProfile(config, "");
-        vscode.commands.executeCommand("code-for-ibmi.context.profile.create", current);
+        vscode.commands.executeCommand("code-for-ibmi.context.profile.create", undefined, current);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.profile.edit", async (profile: ConnectionProfile) => {
@@ -263,7 +263,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.profile.copy", async (item: ProfileItem) => {
-      vscode.commands.executeCommand("code-for-ibmi.context.profile.create", item.profile);
+      vscode.commands.executeCommand("code-for-ibmi.context.profile.create", undefined, item.profile);
     }),
     vscode.commands.registerCommand("code-for-ibmi.context.profile.delete", async (item: ProfileItem) => {
       if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete profile '{0}' ?", item.profile.name), { modal: true }, l10n.t("Yes"))) {
