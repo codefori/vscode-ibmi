@@ -1208,10 +1208,19 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const connection = getConnection();
 
           newPathOK = true;
+
+          let command:string;
+
+          if(node.object.type.toLocaleLowerCase() === `*lib`){
+            command= `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})`;
+          } else if(node.object.type.toLocaleLowerCase() === `*file`){
+            command=`CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) DATA(*YES)`
+          } else {
+            command=`CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
+          }
+
           const commandRes = await connection.runCommand({
-            command: node.object.type.toLocaleLowerCase() === `*lib` ?
-              `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})` :
-              `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`,
+            command,
             noLibList: true
           });
 
