@@ -1095,7 +1095,8 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         if (isSuccess) {
           const config = connection.getConfig();
           const libraryList = [config.currentLibrary, ...config.libraryList].map(library => library.toUpperCase());
-          if (libraryList.includes(newLibrary)) {
+          const libraryList = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+          if (libraryList.includes(connection.upperCaseName(newLibrary))) {
             commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
           }
         } else {
