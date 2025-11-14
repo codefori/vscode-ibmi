@@ -1094,7 +1094,6 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         const isSuccess = createResult.code === 0;
         if (isSuccess) {
           const config = connection.getConfig();
-          const libraryList = [config.currentLibrary, ...config.libraryList].map(library => library.toUpperCase());
           const libraryList = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
           if (libraryList.includes(connection.upperCaseName(newLibrary))) {
             commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
@@ -1537,8 +1536,8 @@ async function deleteObject(object: IBMiObject) {
   const isSuccess = deleteResult.code === 0;
   if (isSuccess) {
     const config = connection.getConfig();
-    const libraryList = [config.currentLibrary, ...config.libraryList].map(library => library.toUpperCase());
-    if (libraryList.includes(object.name)) {
+    const libraryList = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+    if (libraryList.includes(connection.upperCaseName(object.name))) {
       commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
     }
   } else {
