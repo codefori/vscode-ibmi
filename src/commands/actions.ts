@@ -169,7 +169,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const [library, object] = inputPath.split(`/`);
         if (library && object) {
           const nameDetail = path.parse(object);
-          refreshDiagnosticsFromServer(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }, options.keepDiagnostics);
+          refreshDiagnosticsFromServer(instance, [{ library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }], options.keepDiagnostics);
         }
       }
     }),
