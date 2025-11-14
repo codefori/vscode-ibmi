@@ -4,7 +4,6 @@ import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 import { Variables } from '../api/variables';
-import { getLocalActions } from '../filesystems/local/actions';
 import { DeployTools } from '../filesystems/local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from '../filesystems/local/env';
 import { getGitBranch } from '../filesystems/local/git';
@@ -14,6 +13,7 @@ import { Action, DeploymentMethod } from '../typings';
 import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 
+import { getActions } from '../api/actions';
 import { BrowserItem } from './types';
 
 type CommandObject = {
@@ -542,7 +542,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             const resultsPanel = new CustomUI();
             if (targets.length === 1) {
               resultsPanel.addParagraph(`<pre>${targets[0].output.join("")}</pre>`)
-                .setOptions({ fullPage: true ,
+                .setOptions({
+                  fullPage: true,
                   css: /* css */ `
                   pre{              
                     background-color: transparent;
@@ -587,7 +588,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 export type AvailableAction = { label: string; action: Action; }
 
 export async function getAllAvailableActions(targets: ActionTarget[], scheme: string) {
-  const allActions = [...IBMi.connectionManager.get<Action[]>(`actions`) || []];
+  const allActions = [...await getActions()];
 
   // Then, if we're being called from a local file
   // we fetch the Actions defined from the workspace.
@@ -599,7 +600,7 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     const allTargetsInOne = targets.every(t => t.workspaceFolder?.index === workspaceId);
 
     if (allTargetsInOne) {
-      const localActions = await getLocalActions(firstWorkspace);
+      const localActions = await getActions(firstWorkspace);
       allActions.push(...localActions);
     }
   }

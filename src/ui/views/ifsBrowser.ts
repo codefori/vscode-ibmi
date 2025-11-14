@@ -8,7 +8,7 @@ import { SortOptions } from "../../api/IBMiContent";
 import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
-import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithPath } from "../../typings";
+import { FocusOptions, IFS_BROWSER_MIMETYPE, IFSFile, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithPath } from "../../typings";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
@@ -116,7 +116,7 @@ class IFSItem extends BrowserItem implements WithPath {
     this.refresh();
   }
 
-  refresh(): void {
+  async refresh() {
     vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowserItem`, this);
   }
 

@@ -1,11 +1,10 @@
 
 import * as vscode from "vscode";
-import { FileError } from "../typings";
 import Instance from "../Instance";
-import { getEvfeventFiles } from "../filesystems/local/actions";
-import { parseErrors } from "../api/errors/parser";
-import { VscodeTools } from "./Tools";
 import IBMi from "../api/IBMi";
+import { parseErrors } from "../api/errors/parser";
+import { FileError } from "../typings";
+import { VscodeTools } from "./Tools";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
 
@@ -78,7 +77,7 @@ export async function refreshDiagnosticsFromServer(instance: Instance, evfeventI
 
 export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventInfo: EvfEventInfo) {
   if (evfeventInfo.workspace) {
-    const evfeventFiles = await getEvfeventFiles(evfeventInfo.workspace);
+    const evfeventFiles = await vscode.workspace.findFiles(new vscode.RelativePattern(evfeventInfo.workspace, `**/.evfevent/*`), null);
     if (evfeventFiles) {
       const filesContent = await Promise.all(evfeventFiles.map(uri => vscode.workspace.fs.readFile(uri)));
 
@@ -153,7 +152,7 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
             if (connection) {
               // Belive it or not, sometimes if the deploy directory is symlinked into as ASP, this can be a problem
               const aspNames = connection.getAllIAsps().map(asp => asp.name);
-              
+
               for (const aspName of aspNames) {
                 const aspRoot = `/${aspName}`;
                 if (relativeCompilePath.startsWith(aspRoot)) {

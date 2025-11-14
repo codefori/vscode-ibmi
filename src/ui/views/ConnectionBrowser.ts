@@ -1,10 +1,10 @@
 import vscode from 'vscode';
 import { ConnectionConfig, ConnectionData, Server } from '../../typings';
 
-import { instance } from '../../instantiate';
-import { Login } from '../../webviews/login';
 import IBMi from '../../api/IBMi';
 import { deleteStoredPassword, getStoredPassword, setStoredPassword } from '../../config/passwords';
+import { instance } from '../../instantiate';
+import { Login } from '../../webviews/login';
 
 type CopyOperationItem = {
   label: string
@@ -199,7 +199,6 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
               { label: vscode.l10n.t(`Object filters`), picked: true, copy: (from, to) => to.objectFilters = from.objectFilters },
               { label: vscode.l10n.t(`IFS shortcuts`), picked: true, copy: (from, to) => to.ifsShortcuts = from.ifsShortcuts },
               { label: vscode.l10n.t(`Custom variables`), picked: true, copy: (from, to) => to.customVariables = from.customVariables },
-              { label: vscode.l10n.t(`Command profiles`), picked: true, copy: (from, to) => to.commandProfiles = from.commandProfiles },
               { label: vscode.l10n.t(`Connection profiles`), picked: true, copy: (from, to) => to.connectionProfiles = from.connectionProfiles }
             ],
               {
@@ -222,7 +221,6 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
           newConnectionSetting.objectFilters = [];
           newConnectionSetting.ifsShortcuts = [];
           newConnectionSetting.customVariables = [];
-          newConnectionSetting.commandProfiles = [];
           newConnectionSetting.connectionProfiles = [];
           copyOperations.forEach(operation => operation(connectionSetting, newConnectionSetting));
           connectionSettings.push(newConnectionSetting);

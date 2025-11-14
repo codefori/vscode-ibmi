@@ -55,7 +55,7 @@ abstract class ObjectBrowserItem extends BrowserItem {
     super(label, params);
   }
 
-  refresh(): void {
+  async refresh() {
     vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowserItem`, this);
   }
 
