@@ -1213,10 +1213,8 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
 
           if(node.object.type.toLocaleLowerCase() === `*lib`){
             command= `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})`;
-          } else if(node.object.type.toLocaleLowerCase() === `*file`){
-            command=`CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) DATA(*YES)`
           } else {
-            command=`CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
+            command=`CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
           }
 
           const commandRes = await connection.runCommand({
