@@ -467,12 +467,6 @@ export default class IBMi {
           }
         }
 
-        this.appendOutput(`\nIBM i components:\n`);
-        for (const [feature, state] of Object.entries(this.remoteFeatures)) {
-          this.appendOutput(`\t${feature}: ${state}\n`);
-        }
-        this.appendOutput(`\n`);
-
         //Specific Java installations check
         callbacks.progress({
           message: `Checking installed components on host IBM i: Java`
@@ -490,6 +484,12 @@ export default class IBMi {
           javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`)
         ]);
       }
+
+      this.appendOutput(`\nIBM i components:\n`);
+      for (const [feature, state] of Object.entries(this.remoteFeatures)) {
+        this.appendOutput(`\t${feature}: ${state}\n`);
+      }
+      this.appendOutput(`\n`);
 
       if (this.remoteFeatures.uname) {
         callbacks.progress({
