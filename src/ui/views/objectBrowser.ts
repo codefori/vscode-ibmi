@@ -1082,7 +1082,6 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       });
 
       if (newLibrary) {
-
         const filters = config.objectFilters;
 
         const createResult = await connection.runCommand({
@@ -1094,41 +1093,44 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         const isSuccess = createResult.code === 0;
         if (isSuccess) {
           const config = connection.getConfig();
-          const libraryList = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
-          if (libraryList.includes(connection.upperCaseName(newLibrary))) {
+          const libl = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+          const existsInLibl = libl.includes(connection.upperCaseName(newLibrary));
+          if (existsInLibl) {
             commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+          }
+
+          filters.push({
+            name: newLibrary,
+            filterType: 'simple',
+            library: newLibrary,
+            object: `*ALL`,
+            types: [`*ALL`],
+            member: `*`,
+            memberType: `*`,
+            protected: false
+          });
+
+          config.objectFilters = filters;
+          IBMi.connectionManager.update(config);
+          const autoRefresh = objectBrowser.autoRefresh();
+
+          if(!existsInLibl) {
+            // Add to library list ?
+            await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Yes`))
+              .then(async result => {
+                switch (result) {
+                  case vscode.l10n.t(`Yes`):
+                    await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, { library: newLibrary });
+                    if (autoRefresh) {
+                      vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+                    }
+                    break;
+                }
+              });
           }
         } else {
           vscode.window.showErrorMessage(vscode.l10n.t(`Cannot create library "{0}": {1}`, newLibrary, createResult.stderr));
         }
-
-        filters.push({
-          name: newLibrary,
-          filterType: 'simple',
-          library: newLibrary,
-          object: `*ALL`,
-          types: [`*ALL`],
-          member: `*`,
-          memberType: `*`,
-          protected: false
-        });
-
-        config.objectFilters = filters;
-        IBMi.connectionManager.update(config);
-        const autoRefresh = objectBrowser.autoRefresh();
-
-        // Add to library list ?
-        await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Yes`))
-          .then(async result => {
-            switch (result) {
-              case vscode.l10n.t(`Yes`):
-                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, { library: newLibrary });
-                if (autoRefresh) {
-                  vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
-                }
-                break;
-            }
-          });
       }
     }),
 
@@ -1529,8 +1531,8 @@ async function deleteObject(object: IBMiObject) {
   const isSuccess = deleteResult.code === 0;
   if (isSuccess) {
     const config = connection.getConfig();
-    const libraryList = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
-    if (libraryList.includes(connection.upperCaseName(object.name))) {
+    const libl = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+    if (libl.includes(connection.upperCaseName(object.name))) {
       commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
     }
   } else {
