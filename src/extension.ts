@@ -6,8 +6,6 @@ import { commands, ExtensionContext, languages, window, workspace } from "vscode
 
 import path from "path";
 import IBMi from "./api/IBMi";
-import { CopyToImport } from "./api/components/copyToImport";
-import { CustomQSh } from "./api/components/cqsh";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
@@ -37,6 +35,7 @@ import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
+import { Mapepire } from "./api/components/mapepire";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -115,13 +114,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
-  const customQsh = new CustomQSh();
-  customQsh.setLocalAssetPath(path.join(context.extensionPath, `dist`, customQsh.getFileName()));
+  const mapepire = new Mapepire();
+  mapepire.setLocalAssetPath(path.join(context.extensionPath, `dist`, mapepire.getFileName()));
 
-  extensionComponentRegistry.registerComponent(context, customQsh);
+  extensionComponentRegistry.registerComponent(context, mapepire);
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
-  extensionComponentRegistry.registerComponent(context, new CopyToImport());
 
   registerURIHandler(context,
     sandboxURIHandler,
