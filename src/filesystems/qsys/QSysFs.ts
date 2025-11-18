@@ -195,6 +195,10 @@ export class QSysFS implements vscode.FileSystemProvider {
     async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
         const connection = instance.getConnection();
         if (connection) {
+            const readonly = connection.getConfig().readOnlyMode;
+            if (readonly) {
+              throw new FileSystemError("Connection is in readonly mode");
+            }
             const contentApi = connection.getContent();
             let { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
             asp = asp || await connection.lookupLibraryIAsp(library);

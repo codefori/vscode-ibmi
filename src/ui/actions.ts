@@ -42,12 +42,12 @@ export function registerActionTools(context: vscode.ExtensionContext) {
   );
 }
 
-export function uriToActionTarget(uri: vscode.Uri, workspaceFolder?: WorkspaceFolder): ActionTarget {
+export function uriToActionTarget(uri: vscode.Uri, workspaceFolder?: WorkspaceFolder, ibmi?: IBMi): ActionTarget {
   return {
     uri,
     extension: uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase(),
     fragment: uri.fragment.toUpperCase(),
-    protected: parseFSOptions(uri).readonly || false,
+    protected: parseFSOptions(uri).readonly || ibmi?.getConfig().readOnlyMode || ibmi?.getContent().isProtectedPath(uri.path) || false,
     workspaceFolder: workspaceFolder || vscode.workspace.getWorkspaceFolder(uri),
     executionOK: false,
     hasRun: false,
@@ -70,7 +70,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
     const config = connection.getConfig();
     const content = connection.getContent();
 
-    const targets = uris.map(uri => uriToActionTarget(uri, workspaceFolder));
+    const targets = uris.map(uri => uriToActionTarget(uri, workspaceFolder, connection));
 
     workspaceFolder = targets[0].workspaceFolder;
     if (!targets.every(target => target.workspaceFolder === workspaceFolder)) {
@@ -142,6 +142,9 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         //Prompt once now in case of multiple targets
         const promptOnce = targets.length > 1;
         const command = promptOnce ? await commandConfirm(chosenAction.command) : chosenAction.command;
+        if (!command) {
+          return false;
+        }
 
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Running action {0} on", chosenAction.name, targets.length) }, async (task, canceled) => {
           const increment = 100 / targets.length;
@@ -517,7 +520,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                       } catch (e) {
                         writeEmitter.fire(`${e}\n`);
-                        vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
+                        vscode.window.showErrorMessage(`Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
                         successful = false;
                       }
 
@@ -539,53 +542,56 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
           }
         });
 
-        const openOutputAction = l10n.t("Open output(s)");
-        let uiPromise;
-        if (cancelled) {
-          uiPromise = vscode.window.showWarningMessage(l10n.t(`Action {0} was cancelled; ({1} processed).`, chosenAction.name, targets.filter(target => target.processed).length), openOutputAction);
-        }
-        else if (targets.every(target => target.executionOK)) {
-          uiPromise = vscode.window.showInformationMessage(l10n.t(`Action {0} was successful.`, chosenAction.name), openOutputAction);
-        }
-        else {
-          uiPromise = vscode.window.showErrorMessage(l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length), openOutputAction);
-        }
-
-        uiPromise.then(openOutput => {
-          if (openOutput) {
-            const now = new Date();
-            const resultsPanel = new CustomUI();
-            if (targets.length === 1) {
-              resultsPanel.addParagraph(`<pre>${targets[0].output.join("")}</pre>`)
-                .setOptions({ fullPage: true ,
-                  css: /* css */ `
-                  pre{
-                    background-color: transparent;
-                  }
-                `
-                });
-            }
-            else {
-              resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre>${target.output.join("")}</pre>` } as TreeListItem)))
-                .setOptions({
-                  fullPage: true,
-                  css: /* css */ `
-                  body{
-                    margin: 0;
-                    padding: 0;
-                    overflow: hidden;
-                  }
-
-                  pre {
-                    margin: 1em;
-                    background-color: transparent;
-                  }
-                `
-                });
-            }
-            resultsPanel.loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+        if (targets.some(target => target.hasRun)) {
+          const openOutputAction = l10n.t("Open output(s)");
+          let uiPromise;
+          if (cancelled) {
+            uiPromise = vscode.window.showWarningMessage(l10n.t(`Action {0} was cancelled; ({1} processed).`, chosenAction.name, targets.filter(target => target.processed).length), openOutputAction);
           }
-        })
+          else if (targets.every(target => target.executionOK)) {
+            uiPromise = vscode.window.showInformationMessage(l10n.t(`Action {0} was successful.`, chosenAction.name), openOutputAction);
+          }
+          else {
+            uiPromise = vscode.window.showErrorMessage(l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length), openOutputAction);
+          }
+
+          uiPromise.then(openOutput => {
+            if (openOutput) {
+              const now = new Date();
+              const resultsPanel = new CustomUI();
+              if (targets.length === 1) {
+                resultsPanel.addParagraph(`<pre>${targets[0].output.join("")}</pre>`)
+                  .setOptions({
+                    fullPage: true,
+                    css: /* css */ `
+                      pre{              
+                        background-color: transparent;
+                      }
+                    `
+                  });
+              }
+              else {
+                resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre>${target.output.join("")}</pre>` } as TreeListItem)))
+                  .setOptions({
+                    fullPage: true,
+                    css: /* css */ `
+                      body{
+                        margin: 0;
+                        padding: 0;
+                        overflow: hidden;
+                      }
+
+                      pre {
+                        margin: 1em;
+                        background-color: transparent;
+                      }                  
+                    `
+                  });
+              }
+              resultsPanel.loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+            }
+          })
+        }
       }
       return targets.every(target => target.executionOK);
     }

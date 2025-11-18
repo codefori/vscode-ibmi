@@ -485,6 +485,12 @@ export default class IBMi {
         ]);
       }
 
+      this.appendOutput(`\nIBM i components:\n`);
+      for (const [feature, state] of Object.entries(this.remoteFeatures)) {
+        this.appendOutput(`\t${feature}: ${state}\n`);
+      }
+      this.appendOutput(`\n`);
+
       if (this.remoteFeatures.uname) {
         callbacks.progress({
           message: `Checking OS version.`
@@ -618,7 +624,7 @@ export default class IBMi {
           .catch(e => {
             // CPF2125: No objects deleted.
             // @ts-ignore We know the config exists.
-            callbacks.message(`errror`, `Temporary data not cleared from ${this.config.tempDir}.`);
+            callbacks.message(`error`, `Temporary data not cleared from ${this.config.tempDir}.`);
           });
       }
 
@@ -692,7 +698,7 @@ export default class IBMi {
                     break;
                   }
                 }
-                // If reason is still undefined, then we know the user has all the required paths. Then we don't 
+                // If reason is still undefined, then we know the user has all the required paths. Then we don't
                 // need to check for their existence before checking the order of the required paths.
                 if (!reason &&
                   (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin")
@@ -940,7 +946,7 @@ export default class IBMi {
           }
         }
 
-        // We always need to fetch the local variants because 
+        // We always need to fetch the local variants because
         // now we pickup CCSID changes faster due to cqsh
         callbacks.progress({
           message: `Fetching local encoding values.`
