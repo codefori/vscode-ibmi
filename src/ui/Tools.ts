@@ -102,12 +102,22 @@ export namespace VscodeTools {
   }
 
 
+  export function escapeHtml(html: string) {
+    return html
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+
   const activeContexts: Map<string, number> = new Map;
   /**
    * Runs a function while a context value is set to true.
-   * 
+   *
    * If multiple callers call this function with the same context, only the last one returning will unset the context value.
-   * 
+   *
    * @param context the context value that will be set to `true` during `task` execution
    * @param task the function to run while the context value is `true`
    */
