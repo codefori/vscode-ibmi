@@ -13,6 +13,7 @@ import Instance from '../Instance';
 import { Action, DeploymentMethod } from '../typings';
 import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
+import { VscodeTools } from './Tools';
 
 import { BrowserItem } from './types';
 
@@ -545,18 +546,18 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
               const now = new Date();
               const resultsPanel = new CustomUI();
               if (targets.length === 1) {
-                resultsPanel.addParagraph(`<pre>${targets[0].output.join("")}</pre>`)
+                resultsPanel.addParagraph(`<pre>${VscodeTools.escapeHtml(targets[0].output.join(""))}</pre>`)
                   .setOptions({
                     fullPage: true,
                     css: /* css */ `
-                      pre{              
+                      pre{
                         background-color: transparent;
                       }
                     `
                   });
               }
               else {
-                resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre>${target.output.join("")}</pre>` } as TreeListItem)))
+                resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre>${VscodeTools.escapeHtml(target.output.join(""))}</pre>` } as TreeListItem)))
                   .setOptions({
                     fullPage: true,
                     css: /* css */ `
@@ -569,7 +570,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                       pre {
                         margin: 1em;
                         background-color: transparent;
-                      }                  
+                      }
                     `
                   });
               }
