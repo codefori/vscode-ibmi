@@ -11,9 +11,15 @@ type ConnectionProfileData = {
   setLibraryListCommand: string
 }
 
+const editedProfiles : Set<string> = new Set;
+
+export function isProfileEdited(profile: ConnectionProfile){
+  return editedProfiles.has(profile.name);
+}
+
 export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: () => Thenable<void>) {
   const activeProfile = instance.getConnection()?.getConfig().currentProfile === profile.name;
-  new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave))
+  new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave), () => editedProfiles.delete(profile.name))
     .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory, readonly: activeProfile})
     .addInput("currentLibrary", l10n.t("Current Library"), '', { minlength: 1, maxlength: 10, default: profile.currentLibrary, readonly: activeProfile })
     .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries."), { default: profile.libraryList.join(","), readonly: activeProfile })
@@ -28,6 +34,8 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
     .addHeading(l10n.t("Custom variables"), 3)
     .addParagraph(profile.customVariables.length ? `<ul>${profile.customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join('')}</ul>` : l10n.t("None"))
     .open();
+
+    editedProfiles.add(profile.name);
 }
 
 async function save(profile: ConnectionProfile, data: ConnectionProfileData) {

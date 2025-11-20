@@ -4,8 +4,8 @@ import { getActions, updateAction } from '../../../api/actions';
 import { GetNewLibl } from '../../../api/components/getNewLibl';
 import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
-import { editAction } from '../../../editors/actionEditor';
-import { editConnectionProfile } from '../../../editors/connectionProfileEditor';
+import { editAction, isActionEdited } from '../../../editors/actionEditor';
+import { editConnectionProfile, isProfileEdited } from '../../../editors/connectionProfileEditor';
 import { instance } from '../../../instantiate';
 import { Action, ActionEnvironment, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions } from '../../../typings';
 import { uriToActionTarget } from '../../actions';
@@ -76,7 +76,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         });
 
         if (name) {
-          const action : Action = from ? { ...from.action, name } : {
+          const action: Action = from ? { ...from.action, name } : {
             name,
             type: typeNode.type,
             environment: "ile" as ActionEnvironment,
@@ -90,18 +90,23 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.rename", async (node: ActionItem) => {
       const action = node.action;
-      const existingNames = (await getActions(node.workspace)).filter(act => act.name === action.name).map(act => act.name);
+      if (isActionEdited(node.action)) {
+        vscode.window.showWarningMessage(l10n.t("Action '{0}' is being edited. Please close its editor first.", action.name));
+      }
+      else {
+        const existingNames = (await getActions(node.workspace)).filter(act => act.name === action.name).map(act => act.name);
 
-      const newName = await vscode.window.showInputBox({
-        title: l10n.t("Rename action"),
-        placeHolder: l10n.t("action name..."),
-        value: action.name,
-        validateInput: newName => Actions.validateName(newName, existingNames)
-      });
+        const newName = await vscode.window.showInputBox({
+          title: l10n.t("Rename action"),
+          placeHolder: l10n.t("action name..."),
+          value: action.name,
+          validateInput: newName => Actions.validateName(newName, existingNames)
+        });
 
-      if (newName) {
-        await updateAction(action, node.workspace, { newName });
-        environmentView.actionsNode?.forceRefresh();
+        if (newName) {
+          await updateAction(action, node.workspace, { newName });
+          environmentView.actionsNode?.forceRefresh();
+        }
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.edit", (node: ActionItem) => {
@@ -111,7 +116,10 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       vscode.commands.executeCommand('code-for-ibmi.environment.action.create', node.parent, node);
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.delete", async (node: ActionItem) => {
-      if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
+      if (isActionEdited(node.action)) {
+        vscode.window.showWarningMessage(l10n.t("Action '{0}' is being edited. Please close its editor first.", node.action.name));
+      }
+      else if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
         await updateAction(node.action, node.workspace, { delete: true });
         environmentView.actionsNode?.forceRefresh();
       }
@@ -244,30 +252,38 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       editConnectionProfile(profile, async () => environmentView.refresh(environmentView.profilesNode))
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.profile.rename", async (item: ProfileItem) => {
-      const currentName = item.profile.name;
-      const existingNames = getConnectionProfiles().map(profile => profile.name).filter(name => name !== currentName);
-      const newName = await vscode.window.showInputBox({
-        title: l10n.t('Enter Profile {0} new name', item.profile.name),
-        placeHolder: l10n.t("profile name..."),
-        validateInput: name => ConnectionProfiles.validateName(name, existingNames)
-      });
+      if (isProfileEdited(item.profile)) {
+        vscode.window.showWarningMessage(l10n.t("Profile {0} is being edited. Please close its editor first.", item.profile.name));
+      }
+      else {
+        const currentName = item.profile.name;
+        const existingNames = getConnectionProfiles().map(profile => profile.name).filter(name => name !== currentName);
+        const newName = await vscode.window.showInputBox({
+          title: l10n.t('Enter Profile {0} new name', item.profile.name),
+          placeHolder: l10n.t("profile name..."),
+          validateInput: name => ConnectionProfiles.validateName(name, existingNames)
+        });
 
-      if (newName) {
-        await updateConnectionProfile(item.profile, { newName });
-        const config = instance.getConnection()?.getConfig();
-        if (config?.currentProfile === currentName) {
-          config.currentProfile = newName;
-          await IBMi.connectionManager.update(config);
-          updateUIContext(newName);
+        if (newName) {
+          await updateConnectionProfile(item.profile, { newName });
+          const config = instance.getConnection()?.getConfig();
+          if (config?.currentProfile === currentName) {
+            config.currentProfile = newName;
+            await IBMi.connectionManager.update(config);
+            updateUIContext(newName);
+          }
+          environmentView.refresh(environmentView.profilesNode);
         }
-        environmentView.refresh(environmentView.profilesNode);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.profile.copy", async (item: ProfileItem) => {
       vscode.commands.executeCommand("code-for-ibmi.environment.profile.create", undefined, item.profile);
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.profile.delete", async (item: ProfileItem) => {
-      if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete profile '{0}' ?", item.profile.name), { modal: true }, l10n.t("Yes"))) {
+      if (isProfileEdited(item.profile)) {
+        vscode.window.showWarningMessage(l10n.t("Profile {0} is being edited. Please close its editor first.", item.profile.name));
+      }
+      else if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete profile '{0}' ?", item.profile.name), { modal: true }, l10n.t("Yes"))) {
         await updateConnectionProfile(item.profile, { delete: true });
         environmentView.refresh(environmentView.profilesNode);
       }
