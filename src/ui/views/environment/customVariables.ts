@@ -2,7 +2,7 @@ import vscode, { l10n } from "vscode";
 import IBMi from "../../../api/IBMi";
 import { instance } from "../../../instantiate";
 import { CustomVariable } from "../../../typings";
-import { ContextItem } from "./contextItem";
+import { EnvironmentItem } from "./environmentItem";
 
 export namespace CustomVariables {
   export function getAll() {
@@ -46,7 +46,7 @@ export namespace CustomVariables {
   }
 }
 
-export class CustomVariablesNode extends ContextItem {
+export class CustomVariablesNode extends EnvironmentItem {
   constructor() {
     super(l10n.t("Custom Variables"), { state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = `customVariablesNode`;
@@ -57,8 +57,8 @@ export class CustomVariablesNode extends ContextItem {
   }
 }
 
-export class CustomVariableItem extends ContextItem {
-  constructor(parent: ContextItem, readonly customVariable: CustomVariable) {
+export class CustomVariableItem extends EnvironmentItem {
+  constructor(parent: EnvironmentItem, readonly customVariable: CustomVariable) {
     super(customVariable.name, { parent, icon: "symbol-variable" });
     this.contextValue = `customVariableItem`;
     this.description = customVariable.value;

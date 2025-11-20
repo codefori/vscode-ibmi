@@ -2,7 +2,7 @@ import vscode from "vscode";
 import { FocusOptions } from "../../../typings";
 import { BrowserItem } from "../../types";
 
-export class ContextItem extends BrowserItem {
+export class EnvironmentItem extends BrowserItem {
   async refresh() {
     await vscode.commands.executeCommand("code-for-ibmi.environment.refresh.item", this);
   }

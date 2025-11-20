@@ -3,7 +3,7 @@ import { getConnectionProfiles } from "../../../api/connectionProfiles";
 import { instance } from "../../../instantiate";
 import { ConnectionProfile } from "../../../typings";
 import { VscodeTools } from "../../Tools";
-import { ContextItem } from "./contextItem";
+import { EnvironmentItem } from "./environmentItem";
 
 export namespace ConnectionProfiles {
   export function validateName(name: string, names: string[]) {
@@ -16,7 +16,7 @@ export namespace ConnectionProfiles {
   }
 }
 
-export class ProfilesNode extends ContextItem {
+export class ProfilesNode extends EnvironmentItem {
   constructor() {
     super(l10n.t("Profiles"), { state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = "profilesNode";
@@ -30,11 +30,11 @@ export class ProfilesNode extends ContextItem {
   }
 }
 
-export class ProfileItem extends ContextItem {
+export class ProfileItem extends EnvironmentItem {
   static contextValue = `profileItem`;
   static activeColor = "charts.green";
 
-  constructor(parent: ContextItem, readonly profile: ConnectionProfile, active: boolean) {
+  constructor(parent: EnvironmentItem, readonly profile: ConnectionProfile, active: boolean) {
     super(profile.name, { parent, icon: "person", color: active ? ProfileItem.activeColor : undefined });
 
     this.contextValue = `${ProfileItem.contextValue}${active ? '_active' : ''}${profile.setLibraryListCommand ? '_command' : ''}`;

@@ -1,7 +1,7 @@
 import vscode, { l10n } from "vscode";
 import { getActions } from "../../../api/actions";
 import { Action, ActionType } from "../../../typings";
-import { ContextItem } from "./contextItem";
+import { EnvironmentItem } from "./environmentItem";
 
 export namespace Actions {
   export function validateName(name: string, names: string[]) {
@@ -14,7 +14,7 @@ export namespace Actions {
   }
 }
 
-export class ActionsNode extends ContextItem {
+export class ActionsNode extends EnvironmentItem {
   private readonly foundActions: ActionItem[] = [];
   private revealIndex = -1;
 
@@ -84,9 +84,9 @@ export class ActionsNode extends ContextItem {
   }
 }
 
-export class ActionTypeNode extends ContextItem {
+export class ActionTypeNode extends EnvironmentItem {
   readonly actionItems: ActionItem[];
-  constructor(parent: ContextItem, label: string, readonly type: ActionType, actions: Action[], readonly workspace?: vscode.WorkspaceFolder) {
+  constructor(parent: EnvironmentItem, label: string, readonly type: ActionType, actions: Action[], readonly workspace?: vscode.WorkspaceFolder) {
     super(label, { parent, state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = `actionTypeNode_${type}`;
     this.description = workspace ? l10n.t("workspace actions") : undefined;
@@ -98,11 +98,11 @@ export class ActionTypeNode extends ContextItem {
   }
 }
 
-export class ActionItem extends ContextItem {
+export class ActionItem extends EnvironmentItem {
   static matchedColor = "charts.yellow";
   static contextValue = `actionItem`;
 
-  constructor(parent: ContextItem, readonly action: Action, readonly workspace?: vscode.WorkspaceFolder) {
+  constructor(parent: EnvironmentItem, readonly action: Action, readonly workspace?: vscode.WorkspaceFolder) {
     super(action.name, { parent });
     this.setContext();
     this.command = {
