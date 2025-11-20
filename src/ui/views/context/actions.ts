@@ -107,7 +107,7 @@ export class ActionItem extends ContextItem {
     this.setContext();
     this.command = {
       title: "Edit action",
-      command: "code-for-ibmi.context.action.edit",
+      command: "code-for-ibmi.environment.action.edit",
       arguments: [this]
     }
   }

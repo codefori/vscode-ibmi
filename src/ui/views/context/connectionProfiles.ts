@@ -44,7 +44,7 @@ export class ProfileItem extends ContextItem {
 
     this.command = {
       title: "Edit connection profile",
-      command: "code-for-ibmi.context.profile.edit",
+      command: "code-for-ibmi.environment.profile.edit",
       arguments: [this.profile]
     }
   }

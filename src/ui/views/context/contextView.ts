@@ -16,7 +16,7 @@ import { CustomVariableItem, CustomVariables, CustomVariablesNode } from './cust
 export function initializeContextView(context: vscode.ExtensionContext) {
   const contextView = new ContextView();
   const contextTreeViewer = vscode.window.createTreeView(
-    `contextView`, {
+    `environmentView`, {
     treeDataProvider: contextView,
     showCollapseAll: true
   });
@@ -56,14 +56,14 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.context.refresh", () => contextView.refresh()),
-    vscode.commands.registerCommand("code-for-ibmi.context.refresh.item", (item: BrowserItem) => contextView.refresh(item)),
-    vscode.commands.registerCommand("code-for-ibmi.context.reveal", (item: BrowserItem, options?: FocusOptions) => contextTreeViewer.reveal(item, options)),
+    vscode.commands.registerCommand("code-for-ibmi.environment.refresh", () => contextView.refresh()),
+    vscode.commands.registerCommand("code-for-ibmi.environment.refresh.item", (item: BrowserItem) => contextView.refresh(item)),
+    vscode.commands.registerCommand("code-for-ibmi.environment.reveal", (item: BrowserItem, options?: FocusOptions) => contextTreeViewer.reveal(item, options)),
 
-    vscode.commands.registerCommand("code-for-ibmi.context.action.search", (node: ActionsNode) => node.searchActions()),
-    vscode.commands.registerCommand("code-for-ibmi.context.action.search.next", (node: ActionsNode) => node.goToNextSearchMatch()),
-    vscode.commands.registerCommand("code-for-ibmi.context.action.search.clear", (node: ActionsNode) => node.clearSearch()),
-    vscode.commands.registerCommand("code-for-ibmi.context.action.create", async (node: ActionsNode | ActionTypeNode, from?: ActionItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.search", (node: ActionsNode) => node.searchActions()),
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.search.next", (node: ActionsNode) => node.goToNextSearchMatch()),
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.search.clear", (node: ActionsNode) => node.clearSearch()),
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.create", async (node: ActionsNode | ActionTypeNode, from?: ActionItem) => {
       const typeNode = "type" in node ? node : (await vscode.window.showQuickPick<QuickPickItem & { typeNode: ActionTypeNode }>((await node.getChildren()).map(typeNode => ({ label: typeNode.label as string, description: typeNode.description ? typeNode.description as string : undefined, typeNode })), { title: l10n.t("Select an action type") }))?.typeNode;
       if (typeNode) {
         const existingNames = (await getActions(typeNode.workspace)).map(act => act.name);
@@ -84,11 +84,11 @@ export function initializeContextView(context: vscode.ExtensionContext) {
           };
           await updateAction(action, typeNode.workspace);
           contextView.actionsNode?.forceRefresh();
-          vscode.commands.executeCommand("code-for-ibmi.context.action.edit", { action, workspace: typeNode.workspace });
+          vscode.commands.executeCommand("code-for-ibmi.environment.action.edit", { action, workspace: typeNode.workspace });
         }
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.action.rename", async (node: ActionItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.rename", async (node: ActionItem) => {
       const action = node.action;
       const existingNames = (await getActions(node.workspace)).filter(act => act.name === action.name).map(act => act.name);
 
@@ -104,22 +104,22 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         contextView.actionsNode?.forceRefresh();
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.action.edit", (node: ActionItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.edit", (node: ActionItem) => {
       editAction(node.action, async () => contextView.actionsNode?.forceRefresh(), node.workspace);
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.action.copy", async (node: ActionItem) => {
-      vscode.commands.executeCommand('code-for-ibmi.context.action.create', node.parent, node);
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.copy", async (node: ActionItem) => {
+      vscode.commands.executeCommand('code-for-ibmi.environment.action.create', node.parent, node);
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.action.delete", async (node: ActionItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.delete", async (node: ActionItem) => {
       if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
         await updateAction(node.action, node.workspace, { delete: true });
         contextView.actionsNode?.forceRefresh();
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.action.runOnEditor", (node: ActionItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.runOnEditor", (node: ActionItem) => {
       const uri = vscode.window.activeTextEditor?.document.uri;
       if (uri) {
-        const editAction = () => vscode.commands.executeCommand("code-for-ibmi.context.action.edit", node);
+        const editAction = () => vscode.commands.executeCommand("code-for-ibmi.environment.action.edit", node);
         const editActionLabel = l10n.t("Edit action");
         const action = node.action;
         if (action.type !== uri.scheme) {
@@ -142,9 +142,9 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand(`code-for-ibmi.runAction`, uri, undefined, action, undefined, workspace);
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.actions.focus", () => contextView.actionsNode?.reveal({ focus: true, expand: true })),
+    vscode.commands.registerCommand("code-for-ibmi.environment.actions.focus", () => contextView.actionsNode?.reveal({ focus: true, expand: true })),
 
-    vscode.commands.registerCommand("code-for-ibmi.context.variable.declare", async (variablesNode: CustomVariablesNode, from?: CustomVariable) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.variable.declare", async (variablesNode: CustomVariablesNode, from?: CustomVariable) => {
       const existingNames = CustomVariables.getAll().map(v => v.name);
       const name = (await vscode.window.showInputBox({
         title: l10n.t('Enter new Custom Variable name'),
@@ -158,11 +158,11 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         await CustomVariables.update(variable);
         contextView.refresh(variablesNode);
         if (!from) {
-          vscode.commands.executeCommand("code-for-ibmi.context.variable.edit", variable, variablesNode);
+          vscode.commands.executeCommand("code-for-ibmi.environment.variable.edit", variable, variablesNode);
         }
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.variable.edit", async (variable: CustomVariable, variablesNode?: CustomVariablesNode) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.variable.edit", async (variable: CustomVariable, variablesNode?: CustomVariablesNode) => {
       const value = await vscode.window.showInputBox({ title: l10n.t('Enter {0} value', variable.name), value: variable.value });
       if (value !== undefined) {
         variable.value = value;
@@ -170,7 +170,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         contextView.refresh(variablesNode);
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.variable.rename", async (variableItem: CustomVariableItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.variable.rename", async (variableItem: CustomVariableItem) => {
       const variable = variableItem.customVariable;
       const existingNames = CustomVariables.getAll().map(v => v.name).filter(name => name !== variable.name);
       const newName = (await vscode.window.showInputBox({
@@ -184,10 +184,10 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         contextView.refresh(variableItem.parent);
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.variable.copy", async (variableItem: CustomVariableItem) => {
-      vscode.commands.executeCommand("code-for-ibmi.context.variable.declare", variableItem.parent, variableItem.customVariable);
+    vscode.commands.registerCommand("code-for-ibmi.environment.variable.copy", async (variableItem: CustomVariableItem) => {
+      vscode.commands.executeCommand("code-for-ibmi.environment.variable.declare", variableItem.parent, variableItem.customVariable);
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.variable.delete", async (variableItem: CustomVariableItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.variable.delete", async (variableItem: CustomVariableItem) => {
       const variable = variableItem.customVariable;
       if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete Custom Variable '{0}' ?", variable.name), { modal: true }, l10n.t("Yes"))) {
         await CustomVariables.update(variable, { delete: true });
@@ -195,7 +195,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.create", async (node?: ProfilesNode, from?: ConnectionProfile) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.create", async (node?: ProfilesNode, from?: ConnectionProfile) => {
       const existingNames = getConnectionProfiles().map(profile => profile.name);
 
       const name = await vscode.window.showInputBox({
@@ -220,30 +220,30 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         await updateConnectionProfile(profile);
         contextView.refresh(contextView.profilesNode);
         if (!from) {
-          vscode.commands.executeCommand("code-for-ibmi.context.profile.edit", profile);
+          vscode.commands.executeCommand("code-for-ibmi.environment.profile.edit", profile);
         }
         else {
           vscode.window.showInformationMessage(l10n.t("Created connection Profile '{0}'.", profile.name), l10n.t("Activate profile {0}", profile.name))
             .then(doSwitch => {
               if (doSwitch) {
-                vscode.commands.executeCommand("code-for-ibmi.context.profile.activate", profile);
+                vscode.commands.executeCommand("code-for-ibmi.environment.profile.activate", profile);
               }
             })
         }
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.fromCurrent", async (profilesNode: ProfilesNode) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.fromCurrent", async (profilesNode: ProfilesNode) => {
       const config = instance.getConnection()?.getConfig();
 
       if (config) {
         const current = cloneProfile(config, "");
-        vscode.commands.executeCommand("code-for-ibmi.context.profile.create", undefined, current);
+        vscode.commands.executeCommand("code-for-ibmi.environment.profile.create", undefined, current);
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.edit", async (profile: ConnectionProfile) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.edit", async (profile: ConnectionProfile) => {
       editConnectionProfile(profile, async () => contextView.refresh(contextView.profilesNode))
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.rename", async (item: ProfileItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.rename", async (item: ProfileItem) => {
       const currentName = item.profile.name;
       const existingNames = getConnectionProfiles().map(profile => profile.name).filter(name => name !== currentName);
       const newName = await vscode.window.showInputBox({
@@ -263,16 +263,16 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         contextView.refresh(contextView.profilesNode);
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.copy", async (item: ProfileItem) => {
-      vscode.commands.executeCommand("code-for-ibmi.context.profile.create", undefined, item.profile);
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.copy", async (item: ProfileItem) => {
+      vscode.commands.executeCommand("code-for-ibmi.environment.profile.create", undefined, item.profile);
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.delete", async (item: ProfileItem) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.delete", async (item: ProfileItem) => {
       if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete profile '{0}' ?", item.profile.name), { modal: true }, l10n.t("Yes"))) {
         await updateConnectionProfile(item.profile, { delete: true });
         contextView.refresh(contextView.profilesNode);
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.activate", async (item: ProfileItem | ConnectionProfile) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.activate", async (item: ProfileItem | ConnectionProfile) => {
       const connection = instance.getConnection();
       const storage = instance.getStorage();
       if (connection && storage) {
@@ -295,7 +295,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         contextView.refresh();
 
         if (profile.name && profile.setLibraryListCommand) {
-          await vscode.commands.executeCommand("code-for-ibmi.context.profile.runLiblistCommand", profile);
+          await vscode.commands.executeCommand("code-for-ibmi.environment.profile.runLiblistCommand", profile);
         }
 
         await updateUIContext(profile.name);
@@ -303,7 +303,7 @@ export function initializeContextView(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.runLiblistCommand", async (profileItem?: ProfileItem | ConnectionProfile) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.runLiblistCommand", async (profileItem?: ProfileItem | ConnectionProfile) => {
       const connection = instance.getConnection();
       const storage = instance.getStorage();
       if (connection && storage) {
@@ -337,8 +337,8 @@ export function initializeContextView(context: vscode.ExtensionContext) {
         }
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.context.profile.unload", async () => {
-      vscode.commands.executeCommand("code-for-ibmi.context.profile.activate", getDefaultProfile());
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.unload", async () => {
+      vscode.commands.executeCommand("code-for-ibmi.environment.profile.activate", getDefaultProfile());
     })
   );
 

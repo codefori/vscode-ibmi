@@ -65,7 +65,7 @@ export class CustomVariableItem extends ContextItem {
 
     this.command = {
       title: "Change value",
-      command: "code-for-ibmi.context.variable.edit",
+      command: "code-for-ibmi.environment.variable.edit",
       arguments: [this.customVariable]
     }
   }

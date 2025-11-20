@@ -28,7 +28,7 @@ import { VscodeTools } from "./ui/Tools";
 import { registerActionTools } from "./ui/actions";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
 import { initializeLibraryListView } from "./ui/views/LibraryListView";
-import { initializeContextView } from "./ui/views/context/contextView";
+import { initializeContextView as initializeEnvironmentView } from "./ui/views/context/contextView";
 import { initializeDebugBrowser } from "./ui/views/debugView";
 import { HelpView } from "./ui/views/helpView";
 import { initializeIFSBrowser } from "./ui/views/ifsBrowser";
@@ -63,7 +63,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   initializeDebugBrowser(context);
   initializeSearchView(context);
   initializeLibraryListView(context);
-  initializeContextView(context);
+  initializeEnvironmentView(context);
 
   context.subscriptions.push(
     window.registerTreeDataProvider(
@@ -116,7 +116,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
       commands.executeCommand("code-for-ibmi.refreshLibraryListView");
       commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
-      commands.executeCommand("code-for-ibmi.context.refresh");
+      commands.executeCommand("code-for-ibmi.environment.refresh");
     });
 
   const customQsh = new CustomQSh();

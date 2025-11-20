@@ -1616,143 +1616,143 @@
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly"
 			},
 			{
-				"command": "code-for-ibmi.context.refresh",
+				"command": "code-for-ibmi.environment.refresh",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Refresh",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "code-for-ibmi.context.action.search",
+				"command": "code-for-ibmi.environment.action.search",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Search action",
 				"category": "IBM i",
 				"icon": "$(search)"
 			},
 			{
-				"command": "code-for-ibmi.context.action.search.next",
+				"command": "code-for-ibmi.environment.action.search.next",
 				"enablement": "code-for-ibmi:connected && code-for-ibmi:hasActionSearched",
 				"title": "Go to next search match",
 				"category": "IBM i",
 				"icon": "$(go-to-search)"
 			},
 			{
-				"command": "code-for-ibmi.context.action.search.clear",
+				"command": "code-for-ibmi.environment.action.search.clear",
 				"enablement": "code-for-ibmi:connected && code-for-ibmi:hasActionSearched",
 				"title": "Clear search",
 				"category": "IBM i",
 				"icon": "$(search-stop)"
 			},
 			{
-				"command": "code-for-ibmi.context.action.create",
+				"command": "code-for-ibmi.environment.action.create",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Create action",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
 			{
-				"command": "code-for-ibmi.context.action.rename",
+				"command": "code-for-ibmi.environment.action.rename",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Rename...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.action.copy",
+				"command": "code-for-ibmi.environment.action.copy",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Copy...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.action.delete",
+				"command": "code-for-ibmi.environment.action.delete",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Delete...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.action.runOnEditor",
+				"command": "code-for-ibmi.environment.action.runOnEditor",
 				"title": "Run on active editor",
 				"category": "IBM i",
 				"icon": "$(debug-start)"
 			},
 			{
-				"command": "code-for-ibmi.context.variable.declare",
+				"command": "code-for-ibmi.environment.variable.declare",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Declare custom variable",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
 			{
-				"command": "code-for-ibmi.context.variable.edit",
+				"command": "code-for-ibmi.environment.variable.edit",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change value...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.variable.rename",
+				"command": "code-for-ibmi.environment.variable.rename",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Rename...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.variable.copy",
+				"command": "code-for-ibmi.environment.variable.copy",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Copy...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.variable.delete",
+				"command": "code-for-ibmi.environment.variable.delete",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Delete...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.profile.create",
+				"command": "code-for-ibmi.environment.profile.create",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Create new profile",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
 			{
-				"command": "code-for-ibmi.context.profile.fromCurrent",
+				"command": "code-for-ibmi.environment.profile.fromCurrent",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Create new profile from current context",
 				"category": "IBM i",
 				"icon": "$(diff-added)"
 			},
 			{
-				"command": "code-for-ibmi.context.profile.rename",
+				"command": "code-for-ibmi.environment.profile.rename",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Rename...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.profile.copy",
+				"command": "code-for-ibmi.environment.profile.copy",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Copy...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.profile.delete",
+				"command": "code-for-ibmi.environment.profile.delete",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Delete...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.context.profile.activate",
+				"command": "code-for-ibmi.environment.profile.activate",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i",
 				"title": "Set as active profile",
 				"icon": "$(arrow-circle-right)"
 			},
 			{
-				"command": "code-for-ibmi.context.profile.runLiblistCommand",
+				"command": "code-for-ibmi.environment.profile.runLiblistCommand",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i",
 				"title": "Run Library List Command",
 				"icon": "$(play-circle)"
 			},
 			{
-				"command": "code-for-ibmi.context.profile.unload",
+				"command": "code-for-ibmi.environment.profile.unload",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i",
 				"title": "Unload active profile",
@@ -1876,9 +1876,9 @@
 					"when": "!code-for-ibmi:connecting && !code-for-ibmi:connected && !code-for-ibmi:connectionBrowserDisabled"
 				},
 				{
-					"id": "contextView",
-					"name": "Context",
-					"when": "code-for-ibmi:connected && !(code-for-ibmi:profilesViewDisabled || code-for-ibmi:contextViewDisabled)",
+					"id": "environmentView",
+					"name": "Environment",
+					"when": "code-for-ibmi:connected && !(code-for-ibmi:profilesViewDisabled || code-for-ibmi:environmentViewDisabled)",
 					"visibility": "collapsed"
 				},
 				{
@@ -2421,91 +2421,91 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.refresh",
+					"command": "code-for-ibmi.environment.refresh",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.action.search",
+					"command": "code-for-ibmi.environment.action.search",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.action.search.next",
+					"command": "code-for-ibmi.environment.action.search.next",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.action.search.clear",
+					"command": "code-for-ibmi.environment.action.search.clear",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.action.create",
+					"command": "code-for-ibmi.environment.action.create",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.action.rename",
+					"command": "code-for-ibmi.environment.action.rename",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.action.copy",
+					"command": "code-for-ibmi.environment.action.copy",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.action.delete",
+					"command": "code-for-ibmi.environment.action.delete",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.action.runOnEditor",
+					"command": "code-for-ibmi.environment.action.runOnEditor",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.variable.declare",
+					"command": "code-for-ibmi.environment.variable.declare",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.variable.edit",
+					"command": "code-for-ibmi.environment.variable.edit",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.variable.rename",
+					"command": "code-for-ibmi.environment.variable.rename",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.variable.copy",
+					"command": "code-for-ibmi.environment.variable.copy",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.variable.delete",
+					"command": "code-for-ibmi.environment.variable.delete",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.create",
+					"command": "code-for-ibmi.environment.profile.create",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.fromCurrent",
+					"command": "code-for-ibmi.environment.profile.fromCurrent",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.rename",
+					"command": "code-for-ibmi.environment.profile.rename",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.copy",
+					"command": "code-for-ibmi.environment.profile.copy",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.delete",
+					"command": "code-for-ibmi.environment.profile.delete",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.activate",
+					"command": "code-for-ibmi.environment.profile.activate",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.runLiblistCommand",
+					"command": "code-for-ibmi.environment.profile.runLiblistCommand",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.unload",
+					"command": "code-for-ibmi.environment.profile.unload",
 					"when": "never"
 				}
 			],
@@ -2631,8 +2631,8 @@
 					"when": "code-for-ibmi:term5250Halted"
 				},
 				{
-					"command": "code-for-ibmi.context.refresh",
-					"when": "view === contextView",
+					"command": "code-for-ibmi.environment.refresh",
+					"when": "view === environmentView",
 					"group": "navigation@99"
 				}
 			],
@@ -2716,27 +2716,27 @@
 				},
 				{
 					"command": "code-for-ibmi.launchActionsSetup",
-					"when": "view === contextView && viewItem =~ /^actionsNode/",
+					"when": "view === environmentView && viewItem =~ /^actionsNode/",
 					"group": "inline@02"
 				},
 				{
-					"command": "code-for-ibmi.context.action.search",
-					"when": "view === contextView && viewItem === actionsNode",
+					"command": "code-for-ibmi.environment.action.search",
+					"when": "view === environmentView && viewItem === actionsNode",
 					"group": "inline@10"
 				},
 				{
-					"command": "code-for-ibmi.context.action.search.next",
-					"when": "view === contextView && viewItem === actionsNode",
+					"command": "code-for-ibmi.environment.action.search.next",
+					"when": "view === environmentView && viewItem === actionsNode",
 					"group": "inline@11"
 				},
 				{
-					"command": "code-for-ibmi.context.action.search.clear",
-					"when": "view === contextView && viewItem === actionsNode",
+					"command": "code-for-ibmi.environment.action.search.clear",
+					"when": "view === environmentView && viewItem === actionsNode",
 					"group": "inline@12"
 				},
 				{
-					"command": "code-for-ibmi.context.action.create",
-					"when": "view === contextView && viewItem =~ /^(actionsNode|actionTypeNode)/",
+					"command": "code-for-ibmi.environment.action.create",
+					"when": "view === environmentView && viewItem =~ /^(actionsNode|actionTypeNode)/",
 					"group": "inline@01"
 				},
 				{
@@ -3095,83 +3095,83 @@
 					"group": "1_objActions@6"
 				},
 				{
-					"command": "code-for-ibmi.context.action.runOnEditor",
-					"when": "view === contextView && ((viewItem =~ /^actionItemRemote/ && code-for-ibmi:editorCanRunRemoteAction) || (viewItem =~ /^actionItemLocal/ && code-for-ibmi:editorCanRunLocalAction))",
+					"command": "code-for-ibmi.environment.action.runOnEditor",
+					"when": "view === environmentView && ((viewItem =~ /^actionItemRemote/ && code-for-ibmi:editorCanRunRemoteAction) || (viewItem =~ /^actionItemLocal/ && code-for-ibmi:editorCanRunLocalAction))",
 					"group": "inline@00"
 				},
 				{
-					"command": "code-for-ibmi.context.action.rename",
-					"when": "view === contextView && viewItem =~ /^actionItem/",
+					"command": "code-for-ibmi.environment.action.rename",
+					"when": "view === environmentView && viewItem =~ /^actionItem/",
 					"group": "00_actionItemAction01"
 				},
 				{
-					"command": "code-for-ibmi.context.action.copy",
-					"when": "view === contextView && viewItem =~ /^actionItem/",
+					"command": "code-for-ibmi.environment.action.copy",
+					"when": "view === environmentView && viewItem =~ /^actionItem/",
 					"group": "10_actionItemAction01"
 				},
 				{
-					"command": "code-for-ibmi.context.action.delete",
-					"when": "view === contextView && viewItem =~ /^actionItem/",
+					"command": "code-for-ibmi.environment.action.delete",
+					"when": "view === environmentView && viewItem =~ /^actionItem/",
 					"group": "20_actionItemAction01"
 				},
 				{
-					"command": "code-for-ibmi.context.variable.declare",
-					"when": "view === contextView && viewItem =~ /^customVariablesNode/",
+					"command": "code-for-ibmi.environment.variable.declare",
+					"when": "view === environmentView && viewItem =~ /^customVariablesNode/",
 					"group": "inline@01"
 				},
 				{
-					"command": "code-for-ibmi.context.variable.rename",
-					"when": "view === contextView && viewItem =~ /^customVariableItem/",
+					"command": "code-for-ibmi.environment.variable.rename",
+					"when": "view === environmentView && viewItem =~ /^customVariableItem/",
 					"group": "00_customVariableItemAction01"
 				},
 				{
-					"command": "code-for-ibmi.context.variable.copy",
-					"when": "view === contextView && viewItem =~ /^customVariableItem/",
+					"command": "code-for-ibmi.environment.variable.copy",
+					"when": "view === environmentView && viewItem =~ /^customVariableItem/",
 					"group": "10_customVariableItemAction01"
 				},
 				{
-					"command": "code-for-ibmi.context.variable.delete",
-					"when": "view === contextView && viewItem =~ /^customVariableItem/",
+					"command": "code-for-ibmi.environment.variable.delete",
+					"when": "view === environmentView && viewItem =~ /^customVariableItem/",
 					"group": "20_customVariableItemAction01"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.create",
-					"when": "view === contextView && viewItem =~ /^profilesNode/",
+					"command": "code-for-ibmi.environment.profile.create",
+					"when": "view === environmentView && viewItem =~ /^profilesNode/",
 					"group": "inline@01"
 				},				
 				{
-					"command": "code-for-ibmi.context.profile.fromCurrent",
-					"when": "view === contextView && viewItem =~ /^profilesNode/",
+					"command": "code-for-ibmi.environment.profile.fromCurrent",
+					"when": "view === environmentView && viewItem =~ /^profilesNode/",
 					"group": "inline@02"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.unload",
-					"when": "view === contextView && viewItem =~ /^profilesNode/ && code-for-ibmi:activeProfile",
+					"command": "code-for-ibmi.environment.profile.unload",
+					"when": "view === environmentView && viewItem =~ /^profilesNode/ && code-for-ibmi:activeProfile",
 					"group": "inline@03"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.activate",
-					"when": "view === contextView && viewItem =~ /^profileItem(?!_active)/",
+					"command": "code-for-ibmi.environment.profile.activate",
+					"when": "view === environmentView && viewItem =~ /^profileItem(?!_active)/",
 					"group": "inline@01"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.runLiblistCommand",
-					"when": "view === contextView && viewItem =~ /^profileItem_active_command/",
+					"command": "code-for-ibmi.environment.profile.runLiblistCommand",
+					"when": "view === environmentView && viewItem =~ /^profileItem_active_command/",
 					"group": "inline@01"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.rename",
-					"when": "view === contextView && viewItem =~ /^profileItem/",
+					"command": "code-for-ibmi.environment.profile.rename",
+					"when": "view === environmentView && viewItem =~ /^profileItem/",
 					"group": "00_profileItemAction01"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.copy",
-					"when": "view === contextView && viewItem =~ /^profileItem/",
+					"command": "code-for-ibmi.environment.profile.copy",
+					"when": "view === environmentView && viewItem =~ /^profileItem/",
 					"group": "10_profileItemAction01"
 				},
 				{
-					"command": "code-for-ibmi.context.profile.delete",
-					"when": "view === contextView && viewItem =~ /^profileItem(?!_active)/",
+					"command": "code-for-ibmi.environment.profile.delete",
+					"when": "view === environmentView && viewItem =~ /^profileItem(?!_active)/",
 					"group": "20_profileItemAction01"
 				}
 			],
