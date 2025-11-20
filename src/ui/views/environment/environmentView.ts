@@ -7,7 +7,7 @@ import IBMi from '../../../api/IBMi';
 import { editAction } from '../../../editors/actionEditor';
 import { editConnectionProfile } from '../../../editors/connectionProfileEditor';
 import { instance } from '../../../instantiate';
-import { ActionEnvironment, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions } from '../../../typings';
+import { Action, ActionEnvironment, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions } from '../../../typings';
 import { uriToActionTarget } from '../../actions';
 import { ActionItem, Actions, ActionsNode, ActionTypeNode } from './actions';
 import { ConnectionProfiles, ProfileItem, ProfilesNode } from './connectionProfiles';
@@ -76,7 +76,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         });
 
         if (name) {
-          const action = from ? { ...from.action, name } : {
+          const action : Action = from ? { ...from.action, name } : {
             name,
             type: typeNode.type,
             environment: "ile" as ActionEnvironment,

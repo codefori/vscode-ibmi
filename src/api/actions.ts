@@ -60,7 +60,7 @@ async function getLocalActions(currentWorkspace: vscode.WorkspaceFolder) {
               typeof action.name === `string` &&
               typeof action.command === `string` &&
               [`ile`, `pase`, `qsh`].includes(action.environment) &&
-              Array.isArray(action.extensions)
+              (!action.extensions || Array.isArray(action.extensions))
             ) {
               actions.push({
                 ...action,
