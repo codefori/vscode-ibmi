@@ -8,7 +8,7 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
   valid?: boolean;
   dirty = false;
 
-  constructor(target: string, private readonly onSave: (data: T) => Promise<void>) {
+  constructor(target: string, private readonly onSave: (data: T) => Promise<void>, private readonly onClosed?: () => void) {
     super();
     this.uri = vscode.Uri.from({ scheme: "code4i", path: `/${target}` });
   }
@@ -58,8 +58,8 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
     await this.onSave(this.data);
   }
 
-  dispose(): void {
-    //nothing to dispose of
+  dispose() {
+    this.onClosed?.();
   }
 }
 

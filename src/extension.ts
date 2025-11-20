@@ -137,7 +137,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   return {
     instance,
     customUI: () => new CustomUI(),
-    customEditor: (target, onSave) => new CustomEditor(target, onSave),
+    customEditor: (target, onSave, onClosed) => new CustomEditor(target, onSave, onClosed),
     deployTools: DeployTools,
     evfeventParser: parseErrors,
     tools: VscodeTools,
