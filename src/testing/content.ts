@@ -22,6 +22,45 @@ export const ContentSuite: TestSuite = {
     },
 
     {
+      name: `Test downloadMemberContentWithDates SRCDTA`, test: async () => {
+        // Note: This is a known failure.
+        const lines = [
+          `+123 C* Unaffected`,
+          `     C* Next line must be unaffected`,
+          `+123`,
+          `** DATA`,
+          `0123`,
+          `+123`,
+          `-123`
+        ].join(`\n`);
+        const connection = instance.getConnection()!;
+        const config = connection.getConfig();
+
+        assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
+
+        const testLib = config!.tempLibrary;
+        const testFile = `SRCDTATEST`;
+        const testMember = `MEMBER`;
+        const testExt = `RPGLE`;
+
+        await connection!.runCommand({ command: `DLTF FILE(${testLib}/${testFile})`, noLibList: true });
+        await connection!.runCommand({ command: `CRTSRCPF FILE(${testLib}/${testFile}) RCDLEN(112)`, noLibList: true });
+        await connection!.runCommand({ command: `ADDPFM FILE(${testLib}/${testFile}) MBR(${testMember}) SRCTYPE(${testExt})` });
+
+        const testMemberRui = getMemberUri({ library: testLib, file: testFile, name: testMember, extension: testExt });
+
+        await workspace.fs.writeFile(testMemberRui, Buffer.from(lines, `utf8`));
+
+        const memberContentBuf = await workspace.fs.readFile(testMemberRui);
+        await connection!.runCommand({ command: `DLTF FILE(${testLib}/${testFile})`, noLibList: true }); // Cleanup...!
+
+        const fileContent = new TextDecoder().decode(memberContentBuf)
+
+        assert.strictEqual(fileContent, lines);
+      }
+    },
+
+    {
       name: `Write tab to member using SQL`, test: async () => {
         // Note: This is a known failure.
         const lines = [
@@ -48,6 +87,8 @@ export const ContentSuite: TestSuite = {
         await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
 
         const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
+        await connection!.runCommand({ command: `DLTF FILE(${tempLib}/TABTEST)`, noLibList: true }); // Cleanup...!
+
         const fileContent = new TextDecoder().decode(memberContentBuf)
 
         assert.strictEqual(fileContent, lines);
