@@ -1742,7 +1742,7 @@
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i",
 				"title": "Set as active profile",
-				"icon": "$(arrow-circle-right)"
+				"icon": "$(arrow-swap)"
 			},
 			{
 				"command": "code-for-ibmi.environment.profile.runLiblistCommand",
@@ -1756,7 +1756,7 @@
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i",
 				"title": "Unload active profile",
-				"icon": "$(debug-restart)"
+				"icon": "$(sign-out)"
 			}
 		],
 		"customEditors": [
