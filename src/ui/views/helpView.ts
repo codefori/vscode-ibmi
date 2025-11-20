@@ -1,7 +1,7 @@
 
 import AdmZip from 'adm-zip';
 import path, { parse } from 'path';
-import vscode from 'vscode';
+import vscode, { l10n } from 'vscode';
 import { DebugConfiguration } from '../../api/configuration/DebugConfiguration';
 import IBMi from '../../api/IBMi';
 import { instance } from '../../instantiate';
@@ -90,11 +90,11 @@ class HelpLogItem extends HelpItem {
 async function openNewIssue() {
   const code4ibmi = vscode.extensions.getExtension("halcyontechltd.code-for-ibmi");
   const issue = [
-    `👉🏻 Issue text goes here.`,
+    `<!-- 👉🏻 Issue text goes here. -->`,
     ``,
     `<hr />`,
     ``,
-    `⚠️ **REMOVE THIS LINE AND ANY SENSITIVE INFORMATION BELOW!** ⚠️`,
+    `<!-- ⚠️ **REMOVE THIS LINE AND ANY SENSITIVE INFORMATION BELOW!** ⚠️ -->`,
     ``,
     '|Context|Version|',
     '|-|-|',
@@ -119,7 +119,16 @@ async function openNewIssue() {
     issueUrl = issueUrl.substring(0, 8130);
   }
 
-  vscode.commands.executeCommand(`vscode.open`, `https://github.com/codefori/vscode-ibmi/issues/new?body=${issueUrl}`);
+  const target = (await vscode.window.showQuickPick<vscode.QuickPickItem & { target: string }>([
+    { label: "Code for IBM i", target: 'vscode-ibmi' },
+    { label: "Db2 for IBM i", target: 'vscode-db2i' },
+    { label: "RPGLE language tools", target: 'vscode-rpgle' },
+    { label: "IBM i Debugger", target: 'vscode-ibmi-debug-issues' },
+  ], { title: l10n.t("Please pick the extension to report the issue on"), placeHolder: l10n.t("Report an issue on...") }))?.target;
+
+  if (target) {
+    vscode.commands.executeCommand(`vscode.open`, `https://github.com/codefori/${target}/issues/new?body=${issueUrl}`);
+  }
 }
 
 async function downloadLogs() {
@@ -132,7 +141,7 @@ async function downloadLogs() {
       location: vscode.ProgressLocation.Notification,
       title: vscode.l10n.t(`Gathering logs...`),
     }, async () => {
-      
+
       const codeForIBMiLog = instance.getOutputContent();
       if (codeForIBMiLog !== undefined) {
         logs.push({
@@ -261,7 +270,7 @@ async function getRemoteSection() {
   const connection = instance.getConnection();
   if (connection) {
     const config = connection.getConfig();
-    
+
     return await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: `Gathering issue details...`,
