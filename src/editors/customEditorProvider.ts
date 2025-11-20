@@ -6,6 +6,7 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
   readonly uri: vscode.Uri;
   private data: T = {} as T;
   valid?: boolean;
+  dirty = false;
 
   constructor(target: string, private readonly onSave: (data: T) => Promise<void>) {
     super();
@@ -47,6 +48,7 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
   }
 
   onDataChange(data: T & { valid?: boolean }) {
+    this.dirty = true;
     this.valid = data.valid;
     delete data.valid;
     this.data = data;
@@ -66,11 +68,14 @@ export class CustomEditorProvider implements vscode.CustomEditorProvider<CustomE
   readonly onDidChangeCustomDocument = this.eventEmitter.event;
 
   async saveCustomDocument(document: CustomEditor<any>, cancellation: vscode.CancellationToken) {
-    if (document.valid) {
-      await document.save();
-    }
-    else {
-      throw new Error("Can't save: some inputs are invalid");
+    if (document.dirty) {
+      if (document.valid) {
+        await document.save();
+        document.dirty = false;
+      }
+      else {
+        throw new Error("Can't save: some inputs are invalid");
+      }
     }
   }
 
