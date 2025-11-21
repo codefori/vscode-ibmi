@@ -1,10 +1,10 @@
 import vscode from 'vscode';
 import { ConnectionConfig, ConnectionData, Server } from '../../typings';
 
-import { instance } from '../../instantiate';
-import { Login } from '../../webviews/login';
 import IBMi from '../../api/IBMi';
 import { deleteStoredPassword, getStoredPassword, setStoredPassword } from '../../config/passwords';
+import { instance } from '../../instantiate';
+import { Login } from '../../webviews/login';
 
 type CopyOperationItem = {
   label: string
@@ -32,11 +32,13 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.connectToPrevious`, async () => {
       const lastConnection = IBMi.GlobalStorage.getLastConnections()?.[0];
       if (lastConnection) {
-        return await vscode.commands.executeCommand(`code-for-ibmi.connectTo`, lastConnection.name);
+        return await vscode.commands.executeCommand<boolean>(`code-for-ibmi.connectTo`, lastConnection.name);
       }
+      return false;
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.connectTo`, async (name?: string | Server, reloadServerSettings?: boolean) => {
+      let connected = false;
       if (!connectionBrowser.attemptingConnection) {
         connectionBrowser.attemptingConnection = true;
 
@@ -52,10 +54,10 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
 
         switch (typeof name) {
           case `string`: // Name of connection object
-            await Login.LoginToPrevious(name, context, reloadServerSettings);
+            connected = await Login.LoginToPrevious(name, context, reloadServerSettings);
             break;
           case `object`: // A Server object
-            await Login.LoginToPrevious(name.name, context, reloadServerSettings);
+            connected = await Login.LoginToPrevious(name.name, context, reloadServerSettings);
             break;
           default:
             vscode.window.showErrorMessage(vscode.l10n.t(`Use the Server Browser to select which system to connect to.`));
@@ -63,14 +65,16 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
         }
 
         connectionBrowser.attemptingConnection = false;
+        return connected;
       }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.connectToAndReload`, async (server: Server) => {
       if (!connectionBrowser.attemptingConnection && server) {
         const reloadServerSettings = true;
-        vscode.commands.executeCommand(`code-for-ibmi.connectTo`, server.name, reloadServerSettings);
+        return vscode.commands.executeCommand<boolean>(`code-for-ibmi.connectTo`, server.name, reloadServerSettings);
       }
+      return false;
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.refreshConnections`, () => {
