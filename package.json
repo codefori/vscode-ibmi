@@ -1599,7 +1599,7 @@
 			},
 			{
 				"command": "code-for-ibmi.openTerminalHere",
-        "enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Open Terminal Here",
 				"category": "IBM i"
 			},
