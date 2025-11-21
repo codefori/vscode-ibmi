@@ -4,7 +4,6 @@ import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 import { Variables } from '../api/variables';
-import { getLocalActions } from '../filesystems/local/actions';
 import { DeployTools } from '../filesystems/local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from '../filesystems/local/env';
 import { getGitBranch } from '../filesystems/local/git';
@@ -15,6 +14,7 @@ import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 import { VscodeTools } from './Tools';
 
+import { getActions } from '../api/actions';
 import { BrowserItem } from './types';
 
 type CommandObject = {
@@ -594,7 +594,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 export type AvailableAction = { label: string; action: Action; }
 
 export async function getAllAvailableActions(targets: ActionTarget[], scheme: string) {
-  const allActions = [...IBMi.connectionManager.get<Action[]>(`actions`) || []];
+  const allActions = [...await getActions()];
 
   // Then, if we're being called from a local file
   // we fetch the Actions defined from the workspace.
@@ -606,7 +606,7 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     const allTargetsInOne = targets.every(t => t.workspaceFolder?.index === workspaceId);
 
     if (allTargetsInOne) {
-      const localActions = await getLocalActions(firstWorkspace);
+      const localActions = await getActions(firstWorkspace);
       allActions.push(...localActions);
     }
   }

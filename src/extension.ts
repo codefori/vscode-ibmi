@@ -15,19 +15,21 @@ import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import * as Debug from './debug';
+import { CustomEditor, CustomEditorProvider } from "./editors/customEditorProvider";
 import { IFSFS } from "./filesystems/ifsFs";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
 import { instance, loadAllofExtension } from './instantiate';
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
+import { mergeCommandProfiles } from "./mergeProfiles";
 import { initialise } from "./testing";
 import { CodeForIBMi } from "./typings";
 import { VscodeTools } from "./ui/Tools";
 import { registerActionTools } from "./ui/actions";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
 import { initializeLibraryListView } from "./ui/views/LibraryListView";
-import { ProfilesView } from "./ui/views/ProfilesView";
 import { initializeDebugBrowser } from "./ui/views/debugView";
+import { initializeEnvironmentView } from "./ui/views/environment/environmentView";
 import { HelpView } from "./ui/views/helpView";
 import { initializeIFSBrowser } from "./ui/views/ifsBrowser";
 import { initializeObjectBrowser } from "./ui/views/objectBrowser";
@@ -61,15 +63,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   initializeDebugBrowser(context);
   initializeSearchView(context);
   initializeLibraryListView(context);
+  initializeEnvironmentView(context);
 
   context.subscriptions.push(
     window.registerTreeDataProvider(
       `helpView`,
       new HelpView(context)
-    ),
-    window.registerTreeDataProvider(
-      `profilesView`,
-      new ProfilesView(context)
     ),
 
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
@@ -85,7 +84,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     workspace.registerFileSystemProvider(`streamfile`, new IFSFS(), {
       isCaseSensitive: false
     }),
-    languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&")
+    languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&"),
+    window.registerCustomEditorProvider(`code-for-ibmi.editor`, new CustomEditorProvider(), {
+      webviewOptions: {
+        retainContextWhenHidden: true
+      }
+    })
   );
 
   registerActionTools(context);
@@ -112,7 +116,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
       commands.executeCommand("code-for-ibmi.refreshLibraryListView");
       commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
-      commands.executeCommand("code-for-ibmi.refreshProfileView");
+      commands.executeCommand("code-for-ibmi.environment.refresh");
     });
 
   const customQsh = new CustomQSh();
@@ -128,8 +132,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     openURIHandler
   );
 
+  await mergeCommandProfiles();
+
   return {
-    instance, customUI: () => new CustomUI(),
+    instance,
+    customUI: () => new CustomUI(),
+    customEditor: (target, onSave, onClosed) => new CustomEditor(target, onSave, onClosed),
     deployTools: DeployTools,
     evfeventParser: parseErrors,
     tools: VscodeTools,

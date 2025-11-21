@@ -14,7 +14,6 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     autoClearTempData: parameters.autoClearTempData || false,
     customVariables: parameters.customVariables || [],
     connectionProfiles: parameters.connectionProfiles || [],
-    commandProfiles: parameters.commandProfiles || [],
     ifsShortcuts: parameters.ifsShortcuts || [],
     /** Default auto sorting of shortcuts to off  */
     autoSortIFSShortcuts: parameters.autoSortIFSShortcuts || false,
@@ -87,7 +86,7 @@ export class ConnectionManager {
   }
 
   async storeNew(data: ConnectionData) {
-    const connections = await this.getAll();
+    const connections = this.getAll();
     const newId = connections.length;
     connections.push(data);
     await this.setAll(connections);

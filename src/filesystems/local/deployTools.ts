@@ -1,18 +1,19 @@
+import { existsSync } from 'fs';
 import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
-import vscode, { Uri, WorkspaceFolder } from 'vscode';
+import vscode, { l10n, Uri, WorkspaceFolder } from 'vscode';
+import { DeploymentMethod } from '../../api/types';
 import { instance } from '../../instantiate';
+import { BrowserItem, DeploymentParameters } from '../../typings';
+import { VscodeTools } from '../../ui/Tools';
 import { LocalLanguageActions } from './LocalLanguageActions';
 import { Deployment } from './deployment';
-import { VscodeTools } from '../../ui/Tools';
-import { DeploymentMethod } from '../../api/types';
-import { DeploymentParameters } from '../../typings';
 
 type ServerFileChanges = { uploads: Uri[], relativeRemoteDeletes: string[] };
 
 export namespace DeployTools {
-  export async function launchActionsSetup(workspaceFolder?: WorkspaceFolder) {
-    const chosenWorkspace = workspaceFolder || await Deployment.getWorkspaceFolder();
+  export async function launchActionsSetup(workspaceFolder?: WorkspaceFolder | BrowserItem) {
+    const chosenWorkspace = !workspaceFolder || workspaceFolder instanceof BrowserItem ? await Deployment.getWorkspaceFolder() : workspaceFolder;
 
     if (chosenWorkspace) {
       const types = Object.entries(LocalLanguageActions).map(([type, actions]) => ({ label: type, actions }));
@@ -25,16 +26,19 @@ export namespace DeployTools {
       if (chosenTypes) {
         const newActions = chosenTypes.flatMap(type => type.actions);
         const localActionsUri = vscode.Uri.file(path.join(chosenWorkspace.uri.fsPath, `.vscode`, `actions.json`));
-        try {
-          await vscode.workspace.fs.writeFile(
-            localActionsUri,
-            Buffer.from(JSON.stringify(newActions, null, 2), `utf-8`)
-          );
+        
+        if (!existsSync(localActionsUri.fsPath) || await vscode.window.showWarningMessage(l10n.t("Local actions are already defined for this workspace. Do you want to overwrite them?"), { modal: true }, l10n.t("Yes"))) {
+          try {
+            await vscode.workspace.fs.writeFile(
+              localActionsUri,
+              Buffer.from(JSON.stringify(newActions, null, 2), `utf-8`)
+            );
 
-          vscode.workspace.openTextDocument(localActionsUri).then(doc => vscode.window.showTextDocument(doc));
-        } catch (e) {
-          console.log(e);
-          vscode.window.showErrorMessage(`Unable to create actions.json file.`);
+            vscode.workspace.openTextDocument(localActionsUri).then(doc => vscode.window.showTextDocument(doc));
+          } catch (e) {
+            console.log(e);
+            vscode.window.showErrorMessage(`Unable to create actions.json file.`);
+          }
         }
       }
     }
