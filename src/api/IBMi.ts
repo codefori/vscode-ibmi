@@ -4,7 +4,6 @@ import * as node_ssh from "node-ssh";
 import os from "os";
 import path, { parse as parsePath } from 'path';
 import { EventEmitter } from 'stream';
-import { EditorPath } from '../typings';
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { Tools } from './Tools';
@@ -16,9 +15,9 @@ import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
-import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
 import { ConfigFile } from './configuration/serverFile';
+import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
+import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, WrapResult } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -28,8 +27,9 @@ export type ConnectionMessageType = 'info' | 'warning' | 'error';
 export type ConnectionErrorCode = `shell_config` | `home_directory_creation` | `QCPTOIMPF_exists` | `QCPFRMIMPF_exists` | `default_not_bash` | `invalid_bashrc` | `invalid_temp_lib` | `no_auto_conv_ebcdic` | `not_loaded_debug_config` | `no_sql_runner` | `ccsid_warning`;
 
 export interface ConnectionResult {
-  success: boolean,
-  errorCodes?: ConnectionErrorCode[],
+  success: boolean
+  error?: string
+  errorCodes?: ConnectionErrorCode[]
 }
 
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
@@ -39,7 +39,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   },
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
+    names: [`git`, `grep`, `tn5250`, `pfgrep`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -57,6 +57,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 type DisconnectCallback = (conn: IBMi) => Promise<void>;
+
 interface ConnectionCallbacks {
   onConnectedOperations?: Function[],
   timeoutCallback?: (conn: IBMi) => Promise<void>,
@@ -64,6 +65,13 @@ interface ConnectionCallbacks {
   progress: (detail: { message: string }) => void,
   message: (type: ConnectionMessageType, message: string) => void,
   cancelEmitter?: EventEmitter,
+}
+
+interface ConnectionOptions {
+  callbacks: ConnectionCallbacks,
+  reconnecting?: boolean,
+  reloadServerSettings?: boolean,
+  customClient?: node_ssh.NodeSSH
 }
 
 interface ConnectionConfigFiles {
@@ -115,7 +123,7 @@ export default class IBMi {
    * the root of the IFS, thus why we store it.
    */
   private iAspInfo: AspInfo[] = [];
-  private currentAsp: string|undefined;
+  private currentAsp: string | undefined;
   private libraryAsps = new Map<string, number>();
 
   /**
@@ -243,6 +251,7 @@ export default class IBMi {
     this.remoteFeatures = {
       git: undefined,
       grep: undefined,
+      pfgrep: undefined,
       tn5250: undefined,
       setccsid: undefined,
       md5sum: undefined,
@@ -271,12 +280,11 @@ export default class IBMi {
       local: `#@$`
     };
   }
-  
-  /**
-   * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
-   */
-  async connect(connectionObject: ConnectionData, callbacks: ConnectionCallbacks, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<ConnectionResult> {
+
+  async connect(connectionObject: ConnectionData, options: ConnectionOptions): Promise<ConnectionResult> {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
+    const callbacks = options.callbacks;
+
     try {
       connectionObject.keepaliveInterval = 35000;
 
@@ -288,10 +296,15 @@ export default class IBMi {
 
       const delayedOperations: Function[] = callbacks.onConnectedOperations ? [...callbacks.onConnectedOperations] : [];
 
-      this.client = new node_ssh.NodeSSH;
+      if (options.customClient) {
+        this.client = options.customClient;
+      } else {
+        this.client = new node_ssh.NodeSSH;
+      }
       await this.client.connect({
         ...connectionObject,
-        privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined
+        privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
+        debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
       } as node_ssh.Config);
 
       let wasCancelled = false;
@@ -322,7 +335,7 @@ export default class IBMi {
 
       // Reload server settings?
       const quickConnect = () => {
-        return (this.config!.quickConnect === true && reloadServerSettings === false);
+        return Boolean(this.config!.quickConnect && !options.reloadServerSettings);
       }
 
       // Check shell output for additional user text - this will confuse Code...
@@ -402,7 +415,7 @@ export default class IBMi {
             await callbacks.message(`warning`, `Your home directory (${actualHomeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator.`);
           }
         }
-        else if (reconnecting) {
+        else if (options.reconnecting) {
           callbacks.message(`warning`, `Your home directory (${actualHomeDir}) does not exist. Code for IBM i may not function correctly.`);
         }
         else {
@@ -437,7 +450,7 @@ export default class IBMi {
 
       // If the version has changed (by update for example), then fetch everything again
       if (cachedServerSettings?.lastCheckedOnVersion !== currentExtensionVersion) {
-        reloadServerSettings = true;
+        options.reloadServerSettings = true;
       }
 
       // Check for installed components?
@@ -501,6 +514,12 @@ export default class IBMi {
           javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`)
         ]);
       }
+
+      this.appendOutput(`\nIBM i components:\n`);
+      for (const [feature, state] of Object.entries(this.remoteFeatures)) {
+        this.appendOutput(`\t${feature}: ${state}\n`);
+      }
+      this.appendOutput(`\n`);
 
       if (this.remoteFeatures.uname) {
         callbacks.progress({
@@ -635,7 +654,7 @@ export default class IBMi {
           .catch(e => {
             // CPF2125: No objects deleted.
             // @ts-ignore We know the config exists.
-            callbacks.message(`errror`, `Temporary data not cleared from ${this.config.tempDir}.`);
+            callbacks.message(`error`, `Temporary data not cleared from ${this.config.tempDir}.`);
           });
       }
 
@@ -709,7 +728,7 @@ export default class IBMi {
                     break;
                   }
                 }
-                // If reason is still undefined, then we know the user has all the required paths. Then we don't 
+                // If reason is still undefined, then we know the user has all the required paths. Then we don't
                 // need to check for their existence before checking the order of the required paths.
                 if (!reason &&
                   (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin")
@@ -957,7 +976,7 @@ export default class IBMi {
           }
         }
 
-        // We always need to fetch the local variants because 
+        // We always need to fetch the local variants because
         // now we pickup CCSID changes faster due to cqsh
         callbacks.progress({
           message: `Fetching local encoding values.`
@@ -977,7 +996,7 @@ export default class IBMi {
         callbacks.message(`warning`, `The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
       }
 
-      if (!reconnecting) {
+      if (!options.reconnecting) {
         for (const operation of delayedOperations) {
           await operation();
         }
@@ -1008,16 +1027,22 @@ export default class IBMi {
 
       let error = e.message;
       if (e.code === "ENOTFOUND") {
-        error = `Host is unreachable. Check the connection's hostname/IP address.`;
+        error = `host is unreachable. Check the connection's hostname/IP address.`;
       }
       else if (e.code === "ECONNREFUSED") {
-        error = `Port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
+        error = `port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
       }
       else if (e.level === "client-authentication") {
-        error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
+        error = `check your credentials${e.message ? ` (${e.message})` : ''}.`;
+      }
+
+      this.appendOutput(`${JSON.stringify(e)}`);
+      if (typeof e.stack === "string") {
+        this.appendOutput(`\n\n${e.stack}`);
       }
 
       return {
+        error,
         success: false
       };
     }
@@ -1469,7 +1494,7 @@ export default class IBMi {
         if (returningAsCsv) {
           // Will throw an error if stdout contains an error
 
-          const csvContent = await this.content.downloadStreamfile(returningAsCsv.outStmf);
+          const csvContent = await this.content.downloadStreamfileRaw(returningAsCsv.outStmf);
           if (csvContent) {
             this.sendCommand({ command: `rm -rf "${returningAsCsv.outStmf}"` });
 
@@ -1478,7 +1503,7 @@ export default class IBMi {
               skip_empty_lines: true,
               onRecord(record) {
                 for (const key of Object.keys(record)) {
-                  record[key] = record[key] === ` ` ? `` : Tools.assumeType(record[key]);
+                  record[key] = record[key] === ` ` ? `` : Tools.assumeType(record[key], key);
                 }
                 return record;
               }
@@ -1527,7 +1552,7 @@ export default class IBMi {
     return this.remoteFeatures[`startDebugService.sh`] !== undefined;
   }
 
-  private async getUserProfileAsp(): Promise<string|undefined> {
+  private async getUserProfileAsp(): Promise<string | undefined> {
     const [currentRdb] = await this.runSQL(`values current_server`);
 
     if (currentRdb) {
@@ -1545,8 +1570,8 @@ export default class IBMi {
     return this.iAspInfo;
   }
 
-  getIAspDetail(by: string|number) {
-    let asp: AspInfo|undefined;
+  getIAspDetail(by: string | number) {
+    let asp: AspInfo | undefined;
     if (typeof by === 'string') {
       asp = this.iAspInfo.find(asp => asp.name === by);
     } else {
@@ -1558,19 +1583,19 @@ export default class IBMi {
     }
   }
 
-  getIAspName(by: string|number): string|undefined {
+  getIAspName(by: string | number): string | undefined {
     return this.getIAspDetail(by)?.name;
   }
 
   getCurrentIAspName() {
     return this.currentAsp;
   }
-  async lookupLibraryIAsp(library: string): Promise<string|undefined> {
+  async lookupLibraryIAsp(library: string): Promise<string | undefined> {
     library = this.upperCaseName(library);
     let foundNumber = this.libraryAsps.get(library);
 
     if (!foundNumber) {
-      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}'))`);
+      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}', DETAILED_INFO=>'NO'))`);
       const iaspNumber = Number(row?.IASP_NUMBER);
       if (iaspNumber >= 0) {
         this.libraryAsps.set(library, iaspNumber);

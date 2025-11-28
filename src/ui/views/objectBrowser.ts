@@ -1,7 +1,7 @@
 import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
-import vscode, { DataTransferItem, l10n } from "vscode";
+import vscode, { commands, DataTransferItem, l10n, Uri } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
@@ -445,6 +445,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     dragAndDropController: new ObjectBrowserMemberItemDragAndDrop()
   });
 
+  const getSelectedItems = <T>(node?: T | T[]) => node ? Array.isArray(node) ? node : [node] : objectTreeViewer.selection as T[];
+
   context.subscriptions.push(
     objectTreeViewer,
 
@@ -633,7 +635,18 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: ObjectBrowserMemberItem, fullPath?: string) => {
       const connection = getConnection();
+
+      const oldUri = node.resourceUri as Uri;
       const oldMember = node.member;
+
+      const oldMemberTabs = VscodeTools.findUriTabs(oldUri);
+      if (oldMemberTabs.find(tab => tab.isDirty)) {
+        const result = await vscode.window.showWarningMessage(vscode.l10n.t(`The member {0} has unsaved changes. The copied member will not include these changes. Do you want to continue?`, oldMember.name), { modal: true }, vscode.l10n.t("Yes"), vscode.l10n.t("No"));
+        if (result === vscode.l10n.t("No")) {
+          return;
+        }
+      }
+
       fullPath = await vscode.window.showInputBox({
         prompt: vscode.l10n.t(`New path for copy of source member`),
         value: node.path || fullPath,
@@ -735,7 +748,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         });
 
         if (changeResult.code === 0) {
+          //pre updating description to avoid old description when multiple updates are performed without refreshing 
           node.description = newText.toUpperCase() !== `*BLANK` ? newText : ``;
+          node.member.text = node.description;
           objectBrowser.refresh(node);
         } else {
           vscode.window.showErrorMessage(vscode.l10n.t(`Error changing member description! {0}`, changeResult.stderr));
@@ -743,7 +758,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       }
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: ObjectBrowserMemberItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: (ObjectBrowserMemberItem)) => {
       const connection = getConnection();
       const oldMember = connection.parserMemberPath(node.path);
       const oldUri = node.resourceUri as vscode.Uri;
@@ -1067,7 +1082,6 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       });
 
       if (newLibrary) {
-
         const filters = config.objectFilters;
 
         const createResult = await connection.runCommand({
@@ -1075,37 +1089,48 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           noLibList: true
         });
 
-        if (createResult.code !== 0) {
+
+        const isSuccess = createResult.code === 0;
+        if (isSuccess) {
+          const config = connection.getConfig();
+          const libl = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+          const existsInLibl = libl.includes(connection.upperCaseName(newLibrary));
+          if (existsInLibl) {
+            commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+          }
+
+          filters.push({
+            name: newLibrary,
+            filterType: 'simple',
+            library: newLibrary,
+            object: `*ALL`,
+            types: [`*ALL`],
+            member: `*`,
+            memberType: `*`,
+            protected: false
+          });
+
+          config.objectFilters = filters;
+          IBMi.connectionManager.update(config);
+          const autoRefresh = objectBrowser.autoRefresh();
+
+          if(!existsInLibl) {
+            // Add to library list ?
+            await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Yes`))
+              .then(async result => {
+                switch (result) {
+                  case vscode.l10n.t(`Yes`):
+                    await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, { library: newLibrary });
+                    if (autoRefresh) {
+                      vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+                    }
+                    break;
+                }
+              });
+          }
+        } else {
           vscode.window.showErrorMessage(vscode.l10n.t(`Cannot create library "{0}": {1}`, newLibrary, createResult.stderr));
         }
-
-        filters.push({
-          name: newLibrary,
-          filterType: 'simple',
-          library: newLibrary,
-          object: `*ALL`,
-          types: [`*ALL`],
-          member: `*`,
-          memberType: `*`,
-          protected: false
-        });
-
-        config.objectFilters = filters;
-        IBMi.connectionManager.update(config);
-        const autoRefresh = objectBrowser.autoRefresh();
-
-        // Add to library list ?
-        await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Yes`))
-          .then(async result => {
-            switch (result) {
-              case vscode.l10n.t(`Yes`):
-                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, { library: newLibrary });
-                if (autoRefresh) {
-                  vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
-                }
-                break;
-            }
-          });
       }
     }),
 
@@ -1193,10 +1218,17 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const connection = getConnection();
 
           newPathOK = true;
+
+          let command:string;
+
+          if(node.object.type.toLocaleLowerCase() === `*lib`){
+            command= `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})`;
+          } else {
+            command=`CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
+          }
+
           const commandRes = await connection.runCommand({
-            command: node.object.type.toLocaleLowerCase() === `*lib` ?
-              `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})` :
-              `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`,
+            command,
             noLibList: true
           });
 
@@ -1216,7 +1248,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       } while (newPath && !newPathOK)
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node: ObjectBrowserObjectItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
       let [, newObject] = node.path.split(`/`);
       let newObjectOK;
       do {
@@ -1349,7 +1381,17 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async () => {
       vscode.commands.executeCommand('objectBrowser.focus');
       vscode.commands.executeCommand('list.find');
-    })
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.renameQSYS`, async (node?: (ObjectBrowserMemberItem | ObjectBrowserObjectItem)) => {
+      node = getSelectedItems(node).at(0);
+      if (node instanceof ObjectBrowserObjectItem || node instanceof ObjectBrowserSourcePhysicalFileItem) {
+        vscode.commands.executeCommand(`code-for-ibmi.renameObject`, node);
+      }
+      else if (node instanceof ObjectBrowserMemberItem) {
+        vscode.commands.executeCommand(`code-for-ibmi.renameMember`, node);
+      }
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.objectBrowser.selection`, getSelectedItems)
   );
 }
 
@@ -1493,9 +1535,16 @@ async function deleteObject(object: IBMiObject) {
     noLibList: true
   });
 
-  if (deleteResult.code !== 0) {
+  const isSuccess = deleteResult.code === 0;
+  if (isSuccess) {
+    const config = connection.getConfig();
+    const libl = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+    if (libl.includes(connection.upperCaseName(object.name))) {
+      commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+    }
+  } else {
     vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting object! {0}`, deleteResult.stderr));
   }
 
-  return deleteResult.code === 0;
+  return isSuccess;
 }

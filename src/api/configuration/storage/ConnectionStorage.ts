@@ -1,5 +1,5 @@
 import { BaseStorage } from "./BaseStorage";
-import { PathContent, DeploymentPath, DebugCommands } from "./CodeForIStorage";
+import { DebugCommands, DeploymentPath, PathContent } from "./CodeForIStorage";
 
 const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
 const LAST_PROFILE_KEY = `currentProfile`;
@@ -19,7 +19,7 @@ type AuthorisedExtension = {
 }
 
 export class ConnectionStorage {
-  private connectionName: string = "";
+  private connectionName?: string;
   constructor(private internalStorage: BaseStorage) {
   }
 
@@ -34,7 +34,7 @@ export class ConnectionStorage {
 
   setConnectionName(connectionName: string) {
     this.connectionName = connectionName;
-    this.internalStorage.setUniqueKeyPrefix(`settings-${connectionName}`);
+    this.internalStorage.setUniqueKeyPrefix(connectionName ? `settings-${connectionName}` : '');
   }
 
   getSourceList() {
@@ -138,6 +138,13 @@ export class ConnectionStorage {
     if (!shownMessages.includes(messageId)) {
       shownMessages.push(messageId);
       await this.internalStorage.set(MESSAGE_SHOWN_KEY, shownMessages);
+    }
+  }
+
+  async unmarkMessageAsShown(messageId: string): Promise<void> {
+    const shownMessages = this.internalStorage.get<string[]>(MESSAGE_SHOWN_KEY) || [];
+    if (shownMessages.includes(messageId)) {
+      await this.internalStorage.set(MESSAGE_SHOWN_KEY, shownMessages.filter(message => message !== messageId));
     }
   }
 }

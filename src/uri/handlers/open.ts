@@ -31,11 +31,14 @@ export const openURIHandler: Code4iUriHandler = {
     try {
       const parameters = await loadParameters(querystring.parse(uri.query), connection);
       if (!parameters.cancel) {
+        let doOpen = true;
         if (parameters.connect && parameters.host) {
-          await vscode.commands.executeCommand(`code-for-ibmi.connectTo`, parameters.host.name)
+          doOpen = await vscode.commands.executeCommand<boolean>(`code-for-ibmi.connectTo`, parameters.host.name)
         }
 
-        vscode.commands.executeCommand("code-for-ibmi.openWithDefaultMode", parameters.path, parameters.readonly);
+        if (doOpen) {
+          vscode.commands.executeCommand("code-for-ibmi.openWithDefaultMode", parameters.path, parameters.readonly);
+        }
       }
     }
     catch (error: any) {

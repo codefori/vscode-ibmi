@@ -1,13 +1,10 @@
 import Crypto from "crypto";
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
-
-import IBMi from "../../api/IBMi";
 import { instance } from "../../instantiate";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);
-const highlightedColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 
 const annotationDecoration = vscode.window.createTextEditorDecorationType({
   before: {
@@ -41,8 +38,9 @@ const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Le
 
 export class SourceDateHandler {
   readonly baseDates: Map<string, string[]> = new Map;
-  readonly baseSource: Map<string, string> = new Map
-  readonly recordLengths: Map<string, number> = new Map
+  readonly baseSource: Map<string, string> = new Map;
+  readonly recordLengths: Map<string, number> = new Map;
+  readonly baseSequences: Map<string, number[]> = new Map;
 
   private enabled: boolean = false;
 
@@ -52,6 +50,7 @@ export class SourceDateHandler {
   private highlightSince?: number;
   private highlightBefore?: number;
   private lineEditedBefore?: number;
+  private sequenceNumbersShowing: boolean = false;
   private readonly sourceDateSearchBarItem: vscode.StatusBarItem;
 
   constructor(context: vscode.ExtensionContext) {
@@ -70,6 +69,7 @@ export class SourceDateHandler {
       vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, () => this.toggleSourceDateGutter()),
       vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => this.clearDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => this.newDateSearch()),
+      vscode.commands.registerCommand(`code-for-ibmi.toggleSequenceNumbers`, () => this.toggleSequenceNumbers()),
       this.sourceDateSearchBarItem
     );
   }
@@ -91,6 +91,7 @@ export class SourceDateHandler {
         this.baseDates.clear();
         this.baseSource.clear();
         this.recordLengths.clear();
+        this.baseSequences.clear();
       }
     }
   }
@@ -183,15 +184,48 @@ export class SourceDateHandler {
     const connection = instance.getConnection();
     if (connection && document.uri.scheme === `member`) {
       const config = connection.getConfig();
+      const alias = getAliasName(document.uri);
+
+      let lineGutters: vscode.DecorationOptions[] = [];
 
       if (config && config.sourceDateGutter) {
-        const alias = getAliasName(document.uri);
-
         const sourceDates = this.baseDates.get(alias);
-        if (sourceDates) {
+        const sequenceNumbers = this.baseSequences.get(alias);
+        const sequenceNumbersAvailable = !document.isDirty && sequenceNumbers && sequenceNumbers.length === document.lineCount;
+        const shouldShowSequences = this.sequenceNumbersShowing && sequenceNumbersAvailable;
+
+        if (shouldShowSequences) {
+          const markdownString = [
+            `[Show source dates](command:code-for-ibmi.toggleSequenceNumbers)`,
+          ].join(`\n\n---\n\n`);
+
+          const hoverMessage = new vscode.MarkdownString(markdownString);
+          hoverMessage.isTrusted = true;
+
+          for (let cLine = 0; cLine < sequenceNumbers.length && cLine < document.lineCount; cLine++) {
+            const sequenceNumber = sequenceNumbers[cLine].toFixed(2).padStart(7, `0`);
+            lineGutters.push({
+              range: new vscode.Range(
+                new vscode.Position(cLine, 0),
+                new vscode.Position(cLine, 0)
+              ),
+              hoverMessage,
+              renderOptions: {
+                before: {
+                  contentText: sequenceNumber,
+                },
+              },
+            });
+          }
+
+          const activeEditor = vscode.window.activeTextEditor;
+          if (activeEditor && activeEditor.document.uri.fsPath === document.uri.fsPath) {
+            activeEditor.setDecorations(annotationDecoration, lineGutters);
+          }
+
+        } else if (sourceDates) {
           const dates = document.isDirty ? this.calcNewSourceDates(alias, document.getText()) : sourceDates;
 
-          let lineGutters: vscode.DecorationOptions[] = [];
           let changedLined: vscode.DecorationOptions[] = [];
 
           const currentDate = currentStamp();
@@ -199,13 +233,13 @@ export class SourceDateHandler {
 
           const markdownString = [
             `[Show changes since last local save](command:workbench.files.action.compareWithSaved)`,
-            `---`,
-            `${this.highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`
-          ];
+            `${this.highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`,
+            sequenceNumbersAvailable ? `[Show sequence numbers](command:code-for-ibmi.toggleSequenceNumbers)` : undefined
+          ].filter(i => i !== undefined) as string[];
 
-          if (this.highlightSince) markdownString.push(`---`, `Changes from ${String(this.highlightSince) == currentDate ? `today` : this.highlightSince} highlighted`)
+          if (this.highlightSince) markdownString.push(`Changes from ${String(this.highlightSince) == currentDate ? `today` : this.highlightSince} highlighted`)
 
-          const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n`));
+          const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n---\n\n`));
           hoverMessage.isTrusted = true;
 
           // Due to the way source dates are stored, we're doing some magic.
@@ -323,6 +357,14 @@ export class SourceDateHandler {
       if (editor) {
         this._diffRefreshGutter(editor.document);
       }
+    }
+  }
+
+  private toggleSequenceNumbers() {
+    this.sequenceNumbersShowing = !this.sequenceNumbersShowing;
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      this._diffRefreshGutter(editor.document);
     }
   }
 

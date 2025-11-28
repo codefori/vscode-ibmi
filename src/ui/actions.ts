@@ -13,6 +13,7 @@ import Instance from '../Instance';
 import { Action, DeploymentMethod } from '../typings';
 import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
+import { VscodeTools } from './Tools';
 
 import { BrowserItem } from './types';
 
@@ -21,12 +22,12 @@ type CommandObject = {
   library?: string
 }
 
-type ActionTarget = {
+export type ActionTarget = {
   uri: vscode.Uri
   extension: string
   fragment: string
   protected: boolean
-  workspaceFolder: vscode.WorkspaceFolder
+  workspaceFolder?: vscode.WorkspaceFolder
   executionOK: boolean,
   hasRun: boolean,
   processed: boolean,
@@ -40,6 +41,20 @@ export function registerActionTools(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     ...registerDiagnostics()
   );
+}
+
+export function uriToActionTarget(uri: vscode.Uri, workspaceFolder?: WorkspaceFolder, ibmi?: IBMi): ActionTarget {
+  return {
+    uri,
+    extension: uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase(),
+    fragment: uri.fragment.toUpperCase(),
+    protected: parseFSOptions(uri).readonly || ibmi?.getConfig().readOnlyMode || ibmi?.getContent().isProtectedPath(uri.path) || false,
+    workspaceFolder: workspaceFolder || vscode.workspace.getWorkspaceFolder(uri),
+    executionOK: false,
+    hasRun: false,
+    processed: false,
+    output: []
+  };
 }
 
 export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Uri[], customAction?: Action, method?: DeploymentMethod, browserItems?: BrowserItem[], workspaceFolder?: WorkspaceFolder): Promise<boolean> {
@@ -56,17 +71,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
     const config = connection.getConfig();
     const content = connection.getContent();
 
-    const targets = uris.map(uri => ({
-      uri,
-      extension: uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase(),
-      fragment: uri.fragment.toUpperCase(),
-      protected: parseFSOptions(uri).readonly || config?.readOnlyMode,
-      workspaceFolder: workspaceFolder || vscode.workspace.getWorkspaceFolder(uri),
-      executionOK: false,
-      hasRun: false,
-      processed: false,
-      output: []
-    }) as ActionTarget);
+    const targets = uris.map(uri => uriToActionTarget(uri, workspaceFolder, connection));
 
     workspaceFolder = targets[0].workspaceFolder;
     if (!targets.every(target => target.workspaceFolder === workspaceFolder)) {
@@ -76,34 +81,10 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
     let remoteCwd = config?.homeDirectory || `.`;
 
-    let availableActions: { label: string; action: Action; }[] = [];
+    let availableActions: AvailableAction[] = [];
     if (!customAction) {
       // First we grab a copy the predefined Actions in the VS Code settings
-      const allActions = [...IBMi.connectionManager.get<Action[]>(`actions`) || []];
-
-      // Then, if we're being called from a local file
-      // we fetch the Actions defined from the workspace.
-      if (targets[0].workspaceFolder && scheme === `file`) {
-        const localActions = await getLocalActions(targets[0].workspaceFolder);
-        allActions.push(...localActions);
-      }
-
-      // We make sure all extensions are uppercase
-      allActions.forEach(action => {
-        if (action.extensions) {
-          action.extensions = action.extensions.map(ext => ext.toUpperCase());
-        };
-      });
-
-      // Then we get all the available Actions for the current context
-      availableActions = allActions.filter(action => action.type === scheme)
-        .filter(action => !action.extensions || action.extensions.every(e => !e) || targets.every(t => action.extensions!.includes(t.extension) || action.extensions!.includes(t.fragment)) || action.extensions.includes(`GLOBAL`))
-        .filter(action => action.runOnProtected || !targets.some(t => t.protected))
-        .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
-        .map(action => ({
-          label: action.name,
-          action
-        }));
+      availableActions = await getAllAvailableActions(targets, scheme);
     }
 
     if (customAction || availableActions.length) {
@@ -162,6 +143,9 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         //Prompt once now in case of multiple targets
         const promptOnce = targets.length > 1;
         const command = promptOnce ? await commandConfirm(chosenAction.command) : chosenAction.command;
+        if (!command) {
+          return false;
+        }
 
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Running action {0} on", chosenAction.name, targets.length) }, async (task, canceled) => {
           const increment = 100 / targets.length;
@@ -416,7 +400,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           else if (evfeventInfo.object && evfeventInfo.library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
                               writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
-                              refreshDiagnosticsFromServer(instance, evfeventInfo);
+                              await refreshDiagnosticsFromServer(instance, evfeventInfo);
                               problemsFetched = true;
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
                               writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
@@ -501,7 +485,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                                   // Process locally downloaded evfevent files:
                                   if (useLocalEvfevent) {
-                                    refreshDiagnosticsFromLocal(instance, evfeventInfo);
+                                    await refreshDiagnosticsFromLocal(instance, evfeventInfo);
                                     problemsFetched = true;
                                   }
                                 })
@@ -522,7 +506,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                       } catch (e) {
                         writeEmitter.fire(`${e}\n`);
-                        vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
+                        vscode.window.showErrorMessage(`Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
                         successful = false;
                       }
 
@@ -544,46 +528,56 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
           }
         });
 
-        const openOutputAction = l10n.t("Open output(s)");
-        let uiPromise;
-        if (cancelled) {
-          uiPromise = vscode.window.showWarningMessage(l10n.t(`Action {0} was cancelled; ({1} processed).`, chosenAction.name, targets.filter(target => target.processed).length), openOutputAction);
-        }
-        else if (targets.every(target => target.executionOK)) {
-          uiPromise = vscode.window.showInformationMessage(l10n.t(`Action {0} was successful.`, chosenAction.name), openOutputAction);
-        }
-        else {
-          uiPromise = vscode.window.showErrorMessage(l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length), openOutputAction);
-        }
-
-        uiPromise.then(openOutput => {
-          if (openOutput) {
-            const now = new Date();
-            const resultsPanel = new CustomUI();
-            if (targets.length === 1) {
-              resultsPanel.addParagraph(`<pre><code>${targets[0].output.join("")}</code></pre>`)
-                .setOptions({ fullPage: true });
-            }
-            else {
-              resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre><code>${target.output.join("")}</code></pre>` } as TreeListItem)))
-                .setOptions({
-                  fullPage: true,
-                  css: /* css */ `
-                  body{
-                    margin: 0;
-                    padding: 0;
-                    overflow: hidden;
-                  }
-
-                  pre {
-                    margin: 1em;
-                  }                  
-                `
-                });
-            }
-            resultsPanel.loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+        if (targets.some(target => target.hasRun)) {
+          const openOutputAction = l10n.t("Open output(s)");
+          let uiPromise;
+          if (cancelled) {
+            uiPromise = vscode.window.showWarningMessage(l10n.t(`Action {0} was cancelled; ({1} processed).`, chosenAction.name, targets.filter(target => target.processed).length), openOutputAction);
           }
-        })
+          else if (targets.every(target => target.executionOK)) {
+            uiPromise = vscode.window.showInformationMessage(l10n.t(`Action {0} was successful.`, chosenAction.name), openOutputAction);
+          }
+          else {
+            uiPromise = vscode.window.showErrorMessage(l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length), openOutputAction);
+          }
+
+          uiPromise.then(openOutput => {
+            if (openOutput) {
+              const now = new Date();
+              const resultsPanel = new CustomUI();
+              if (targets.length === 1) {
+                resultsPanel.addParagraph(`<pre>${VscodeTools.escapeHtml(targets[0].output.join(""))}</pre>`)
+                  .setOptions({
+                    fullPage: true,
+                    css: /* css */ `
+                      pre{
+                        background-color: transparent;
+                      }
+                    `
+                  });
+              }
+              else {
+                resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre>${VscodeTools.escapeHtml(target.output.join(""))}</pre>` } as TreeListItem)))
+                  .setOptions({
+                    fullPage: true,
+                    css: /* css */ `
+                      body{
+                        margin: 0;
+                        padding: 0;
+                        overflow: hidden;
+                      }
+
+                      pre {
+                        margin: 1em;
+                        background-color: transparent;
+                      }
+                    `
+                  });
+              }
+              resultsPanel.loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+            }
+          })
+        }
       }
       return targets.every(target => target.executionOK);
     }
@@ -597,6 +591,45 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
   }
 }
 
+export type AvailableAction = { label: string; action: Action; }
+
+export async function getAllAvailableActions(targets: ActionTarget[], scheme: string) {
+  const allActions = [...IBMi.connectionManager.get<Action[]>(`actions`) || []];
+
+  // Then, if we're being called from a local file
+  // we fetch the Actions defined from the workspace.
+  const firstWorkspace = targets[0].workspaceFolder;
+
+  // We need to make sure that all targets are from the same workspace
+  if (firstWorkspace && firstWorkspace.uri.scheme === `file`) {
+    const workspaceId = firstWorkspace.index;
+    const allTargetsInOne = targets.every(t => t.workspaceFolder?.index === workspaceId);
+
+    if (allTargetsInOne) {
+      const localActions = await getLocalActions(firstWorkspace);
+      allActions.push(...localActions);
+    }
+  }
+
+  // We make sure all extensions are uppercase
+  allActions.forEach(action => {
+    if (action.extensions) {
+      action.extensions = action.extensions.map(ext => ext.toUpperCase());
+    };
+  });
+
+  // Then we get all the available Actions for the current context
+  const availableActions: AvailableAction[] = allActions.filter(action => action.type === scheme)
+    .filter(action => !action.extensions || action.extensions.every(e => !e) || targets.every(t => action.extensions!.includes(t.extension) || action.extensions!.includes(t.fragment)) || action.extensions.includes(`GLOBAL`))
+    .filter(action => action.runOnProtected || !targets.some(t => t.protected))
+    .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
+    .map(action => ({
+      label: action.name,
+      action
+    }));
+
+  return availableActions;
+}
 
 function getObjectFromCommand(baseCommand?: string): CommandObject | undefined {
   if (baseCommand) {

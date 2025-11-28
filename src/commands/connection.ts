@@ -1,25 +1,26 @@
 import { commands, Disposable, ExtensionContext, window } from "vscode";
-import Instance from "../Instance";
-import { ConnectionData } from "../typings";
-import { safeDisconnect } from "../instantiate";
+import { ConnectionResult } from "../api/IBMi";
 import { setStoredPassword } from "../config/passwords";
+import Instance from "../Instance";
+import { safeDisconnect } from "../instantiate";
+import { ConnectionData } from "../typings";
 
 export function registerConnectionCommands(context: ExtensionContext, instance: Instance): Disposable[] {
 
   return [
     commands.registerCommand(`code-for-ibmi.connectDirect`,
-      async (connectionData: ConnectionData, reloadSettings = false, savePassword = false): Promise<boolean> => {
+      async (connectionData: ConnectionData, reloadSettings = false, savePassword = false): Promise<ConnectionResult | undefined> => {
         const existingConnection = instance.getConnection();
 
         if (existingConnection) {
-          return false;
+          return;
         }
 
         if (savePassword && connectionData.password) {
           await setStoredPassword(context, connectionData.name, connectionData.password);
         }
 
-        return (await instance.connect({data: connectionData, reloadServerSettings: reloadSettings})).success;
+        return (await instance.connect({ data: connectionData, reloadServerSettings: reloadSettings }));
       }
     ),
     commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?: boolean) => {

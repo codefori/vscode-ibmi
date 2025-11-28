@@ -4,13 +4,12 @@ import * as node_ssh from "node-ssh";
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import { EditorPath } from '../typings';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { ObjectTypes } from './import/Objects';
-import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, ModuleExport, ProgramExportImportInfo, QsysPath, SpecialAuthorities } from './types';
+import { AttrOperands, CommandResult, EditorPath, IBMiError, IBMiMember, IBMiObject, IFSFile, ModuleExport, ProgramExportImportInfo, QsysPath, SpecialAuthorities } from './types';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -138,21 +137,21 @@ export default class IBMiContent {
 
   /**
    * Download the content of a source member
-   * 
-   * @param library 
-   * @param sourceFile 
-   * @param member 
-   * @param localPath 
+   *
+   * @param library
+   * @param sourceFile
+   * @param member
+   * @param localPath
    */
   async downloadMemberContent(library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
   /**
    * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.downloadMemberContent()} without the `asp` parameter instead.
-   * 
-   * @param asp 
-   * @param library 
-   * @param sourceFile 
-   * @param member 
-   * @param localPath 
+   *
+   * @param asp
+   * @param library
+   * @param sourceFile
+   * @param member
+   * @param localPath
    */
   async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
   async downloadMemberContent(aspOrLibrary: string | undefined, libraryOrSourceFile: string, sourceFileOrMember: string, memberOrLocalPath?: string, localPath?: string): Promise<string> {
@@ -221,21 +220,21 @@ export default class IBMiContent {
 
   /**
    * Upload to a member
-   * 
-   * @param library 
-   * @param sourceFile 
-   * @param member 
-   * @param content 
+   *
+   * @param library
+   * @param sourceFile
+   * @param member
+   * @param content
    */
   async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
 
   /**
    * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.uploadMemberContent()} without the `asp` parameter instead.
-   * @param asp 
-   * @param library 
-   * @param sourceFile 
-   * @param member 
-   * @param content 
+   * @param asp
+   * @param library
+   * @param sourceFile
+   * @param member
+   * @param content
    */
   async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
   async uploadMemberContent(aspOrLibrary: string | undefined, libraryOrFile: string, sourceFileOrMember: string, memberOrContent: string | Uint8Array, content?: string | Uint8Array): Promise<boolean> {
@@ -1146,16 +1145,16 @@ export default class IBMiContent {
   }
 
   /**
-   * Copy one or more folders or files into a directory. Uses QSH's `cp` to keep all the attributes of the original file into its copy.
+   * Copy one or more folders or files into a directory or file. Uses ILE `CPY` to keep all the attributes of the original file into its copy.
    * @param paths one or more files/folders to copy
-   * @param toDirectory the directory where the files/folders will be copied into
-   * @returns the {@link CommandResult} of the `cp` command execution
+   * @param toPath the directory or file where the files/folders will be copied into
+   * @returns the {@link CommandResult} of the `CPY` command execution
    */
-  async copy(paths: string | string[], toDirectory: string): Promise<CommandResult> {
+  async copy(paths: string | string[], toPath: string): Promise<CommandResult> {
     paths = Array.isArray(paths) ? paths : [paths];
-    toDirectory = Tools.escapePath(toDirectory);
-    for (const path of paths.map(path => Tools.escapePath(path))) {
-      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') TODIR('${toDirectory}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
+    const toPathIsDir = await this.isDirectory(Tools.escapePath(toPath));
+    for (const path of paths) {
+      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ('}'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
       if (result.code !== 0) {
         return result;
       }

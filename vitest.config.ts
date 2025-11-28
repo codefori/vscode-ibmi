@@ -4,8 +4,8 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   test: { 
     // ... Specify options here.
-    root: './src/api',
-    globalSetup: [`tests/setup.ts`],
+    root: './src/api/tests',
+    globalSetup: [`setup.ts`],
     testTimeout: 120000,
   },
 })

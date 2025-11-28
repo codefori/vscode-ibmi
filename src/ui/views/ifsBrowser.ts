@@ -1,6 +1,6 @@
 import os from "os";
 import path, { dirname, extname } from "path";
-import vscode, { FileType, l10n, window } from "vscode";
+import vscode, { CancellationToken, Event, FileDecoration, FileDecorationProvider, FileType, l10n, ProviderResult, ThemeColor, Uri, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import IBMi from "../../api/IBMi";
@@ -187,6 +187,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon(protectedDir ? "lock-small" : "folder-library");
     this.tooltip = ``;
+    this.resourceUri = Uri.parse(`shortcut:${shortcut}`);
   }
 }
 
@@ -312,10 +313,17 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     canSelectMany: true,
     dragAndDropController: new IFSBrowserDragAndDrop()
   });
+  const shortcutDecorationProvider = new ShortcutDecorationProvider();
+
+  const getSelectedItems = <T>(node?: T | T[]) => node ? Array.isArray(node) ? node : [node] : ifsTreeViewer.selection as T[];
 
   context.subscriptions.push(
     ifsTreeViewer,
-    vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, () => ifsBrowser.refresh()),
+    window.registerFileDecorationProvider(shortcutDecorationProvider),
+    vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, () => {
+      ifsBrowser.refresh();
+      shortcutDecorationProvider.refresh();
+    }),
     vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowserItem`, (item?: BrowserItem) => ifsBrowser.refresh(item)),
 
     vscode.commands.registerCommand(`code-for-ibmi.revealInIFSBrowser`, async (item: BrowserItem, options?: FocusOptions) => {
@@ -381,25 +389,19 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node: IFSShortcutItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node: IFSShortcutItem, nodes?: IFSShortcutItem[]) => {
       const connection = instance.getConnection();
       if (connection) {
         const config = connection.getConfig();
         const shortcuts = config.ifsShortcuts;
-        const removeDir = (node.path || (await vscode.window.showQuickPick(shortcuts, {
-          placeHolder: l10n.t(`Select IFS shortcut to remove`),
-        })))?.trim();
+        const toBeRemoved = (nodes || [node]).map(n => n.path);
 
         try {
-          if (removeDir) {
-            const inx = shortcuts.indexOf(removeDir);
-            if (inx >= 0) {
-              shortcuts.splice(inx, 1);
-              config.ifsShortcuts = shortcuts;
-              await IBMi.connectionManager.update(config);
-              if (IBMi.connectionManager.get(`autoRefresh`)) {
-                ifsBrowser.refresh();
-              }
+          if (toBeRemoved.length) {
+            config.ifsShortcuts = shortcuts.filter(path => !toBeRemoved.includes(path));
+            await IBMi.connectionManager.update(config);
+            if (IBMi.connectionManager.get(`autoRefresh`)) {
+              ifsBrowser.refresh();
             }
           }
         } catch (e) {
@@ -447,6 +449,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
             if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
+              vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
             }
 
           } catch (e: any) {
@@ -549,11 +552,13 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
       const connection = instance.getConnection();
       if (connection) {
+        const config = connection.getConfig();
+        const shortcuts = config.ifsShortcuts;
         if (items || singleItem) {
           items = (items || [singleItem]).filter(reduceIFSPath);
         }
         else {
-          items = (ifsTreeViewer.selection.filter(selected => selected instanceof IFSItem) as IFSItem[]).filter(reduceIFSPath);
+          items = getSelectedItems(singleItem).filter(reduceIFSPath);
         }
 
         if (items && items.length) {
@@ -597,10 +602,21 @@ Please type "{0}" to confirm deletion.`, dirName);
                 if (removeResult.code !== 0) {
                   throw removeResult.stderr;
                 }
+
+                const deletedShortcuts = shortcuts.filter(path => toBeDeleted.includes(path));
+                if (deletedShortcuts.length) {
+                  const message = deletedShortcuts.length === 1 ? l10n.t(`Do you also want to remove the IFS shortcut to the folder {0}?`, deletedShortcuts[0]) : l10n.t("Do you also want to remove the IFS shortcuts to the folders {0}?", deletedShortcuts.length);
+                  const detail = deletedShortcuts.length === 1 ? undefined : deletedShortcuts.map(i => `- ${i}`).join("\n");
+                  if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
+                    config.ifsShortcuts = shortcuts.filter(path => !deletedShortcuts.includes(path));
+                  }
+                }
+
                 if (IBMi.connectionManager.get(`autoRefresh`)) {
                   items.map(item => item.parent)
                     .filter(Tools.distinct)
                     .forEach(async parent => parent?.refresh?.());
+                  vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
                 }
               } catch (e: any) {
                 vscode.window.showErrorMessage(l10n.t(`Error deleting streamfile! {0}`, e));
@@ -618,79 +634,93 @@ Please type "{0}" to confirm deletion.`, dirName);
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node: IFSItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node?: IFSItem) => {
       const oldFileTabs: vscode.Tab[] = [];
-      const typeLabel = node.file.type === "streamfile" ? l10n.t("streamfile") : l10n.t("directory");
-      if (node.file.type === "streamfile") {
-        // Ensure that the file has a defined uri
-        if (!node.resourceUri) {
-          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file path could not be parsed.")));
-          return;
+      node = getSelectedItems(node).at(0);
+      if (node) {
+        const typeLabel = node.file.type === "streamfile" ? l10n.t("streamfile") : l10n.t("directory");
+        if (node.file.type === "streamfile") {
+          // Ensure that the file has a defined uri
+          if (!node.resourceUri) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file path could not be parsed.")));
+            return;
+          }
+          // Check if the streamfile is currently open in an editor tab
+          oldFileTabs.push(...VscodeTools.findUriTabs(node.resourceUri));
+          if (oldFileTabs.find(tab => tab.isDirty)) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file has unsaved changes.")));
+            return;
+          }
+        } else {
+          // Check if there are streamfiles in the directory which are currently open in an editor tab
+          oldFileTabs.push(...VscodeTools.findUriTabs(node.file.path));
+          if (oldFileTabs.find(tab => tab.isDirty)) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The directory has file(s) with unsaved changes.")));
+            return;
+          }
         }
-        // Check if the streamfile is currently open in an editor tab
-        oldFileTabs.push(...VscodeTools.findUriTabs(node.resourceUri));
-        if (oldFileTabs.find(tab => tab.isDirty)) {
-          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file has unsaved changes.")));
-          return;
-        }
-      } else {
-        // Check if there are streamfiles in the directory which are currently open in an editor tab
-        oldFileTabs.push(...VscodeTools.findUriTabs(node.file.path));
-        if (oldFileTabs.find(tab => tab.isDirty)) {
-          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The directory has file(s) with unsaved changes.")));
-          return;
-        }
-      }
-      const connection = instance.getConnection();
-      if (connection) {
-        const config = connection.getConfig();
-        const homeDirectory = config.homeDirectory;
-        const target = await vscode.window.showInputBox({
-          prompt: l10n.t(`Name of new path`),
-          value: node.path,
-          valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
-        });
+        const connection = instance.getConnection();
+        if (connection) {
+          const config = connection.getConfig();
+          const homeDirectory = config.homeDirectory;
+          const target = await vscode.window.showInputBox({
+            prompt: l10n.t(`Name of new path`),
+            value: node.path,
+            valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
+          });
 
-        if (target) {
-          const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
-          try {
-            const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
-            if (moveResult.code !== 0) {
-              throw moveResult.stderr;
-            }
+          if (target) {
+            const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
+            try {
+              const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
+              if (moveResult.code !== 0) {
+                throw moveResult.stderr;
+              }
 
-            if (IBMi.connectionManager.get(`autoRefresh`)) {
-              ifsBrowser.refresh();
-            }
-            let label;
-            if (path.posix.dirname(node.path) === path.posix.dirname(targetPath)) {
-              label = l10n.t("{0} was renamed to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
-            }
-            else {
-              label = l10n.t("{0} was moved to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
-            }
+              if (IBMi.connectionManager.get(`autoRefresh`)) {
+                ifsBrowser.refresh();
+              }
+              let label;
+              if (path.posix.dirname(node.path) === path.posix.dirname(targetPath)) {
+                label = l10n.t("{0} was renamed to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
+              }
+              else {
+                label = l10n.t("{0} was moved to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
+              }
 
-            vscode.window.showInformationMessage(label);
-            // If the file was open in any editor tabs prior to the renaming/movement,
-            // refresh those tabs to reflect the new file path/name.
-            // (Directly modifying the label or uri of an open tab is apparently not
-            // possible with the current VS Code API, so refresh the tab by closing
-            // it and then opening a new one at the new uri.)
-            oldFileTabs.forEach((tab) => {
-              vscode.window.tabGroups.close(tab).then(() => {
-                const newTargetPath = (tab.input as vscode.TabInputText).uri.path.replace(node.file.path, targetPath);
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newTargetPath);
+              vscode.window.showInformationMessage(label);
+              // If the file was open in any editor tabs prior to the renaming/movement,
+              // refresh those tabs to reflect the new file path/name.
+              // (Directly modifying the label or uri of an open tab is apparently not
+              // possible with the current VS Code API, so refresh the tab by closing
+              // it and then opening a new one at the new uri.)
+              oldFileTabs.forEach((tab) => {
+                vscode.window.tabGroups.close(tab).then(() => {
+                  const newTargetPath = (tab.input as vscode.TabInputText).uri.path.replace(node.file.path, targetPath);
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newTargetPath);
+                })
               })
-            })
 
-          } catch (e: any) {
-            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, e));
+            } catch (e: any) {
+              vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, e));
+            }
           }
         }
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.copyIFS`, async (node: IFSItem) => {
       const connection = instance.getConnection();
+
+      const oldFile = node.file;
+      const oldUri = node.resourceUri as Uri;
+
+      const oldIfsTabs = VscodeTools.findUriTabs(oldUri);
+      if (oldIfsTabs.find(tab => tab.isDirty)) {
+        const result = await vscode.window.showWarningMessage(vscode.l10n.t(`The stream file {0} has unsaved changes. The copied stream file will not include these changes. Do you want to continue?`, oldFile.name), { modal: true }, vscode.l10n.t("Yes"), vscode.l10n.t("No"));
+        if (result === vscode.l10n.t("No")) {
+          return;
+        }
+      }
 
       if (connection) {
         const config = connection.getConfig();
@@ -937,7 +967,8 @@ Do you want to replace it?`, target))) {
     vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async () => {
       vscode.commands.executeCommand('ifsBrowser.focus');
       vscode.commands.executeCommand('list.find');
-    })
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.ifsBrowser.selection`, getSelectedItems)
   )
 }
 
@@ -1065,4 +1096,27 @@ async function showOpenDialog() {
  */
 function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {
   return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(`${folder.file.path}/`));
+}
+export class ShortcutDecorationProvider implements FileDecorationProvider {
+  private readonly _onDidChangeFileDecorations = new vscode.EventEmitter<vscode.Uri | vscode.Uri[] | undefined>();
+  readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
+
+  provideFileDecoration(uri: Uri, token: CancellationToken): ProviderResult<FileDecoration> {
+    if (uri.scheme === 'shortcut') {
+      return instance.getConnection()?.getContent().isDirectory(uri.path).then(isFound => {
+        if (!isFound) {
+          return {
+            badge: '⚠',
+            color: new ThemeColor('errorForeground'),
+            tooltip: l10n.t(`Directory does not exist.`)
+          };
+        }
+        return undefined;
+      });
+    }
+  }
+  
+  refresh(uri?: vscode.Uri | vscode.Uri[]) {
+    this._onDidChangeFileDecorations.fire(uri);
+  }
 }

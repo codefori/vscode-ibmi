@@ -1,10 +1,10 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
-import { CustomUI, Section } from "../CustomUI";
+import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
+import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
 import { instance, safeDisconnect } from "../../instantiate";
 import { ConnectionData } from '../../typings';
-import IBMi from "../../api/IBMi";
-import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
+import { CustomUI, Section } from "../CustomUI";
 
 type NewLoginSettings = ConnectionData & {
   savePassword: boolean
@@ -34,10 +34,10 @@ export class Login {
       .addParagraph(l10n.t(`Only provide either the password or a private key - not both.`))
       .addPassword(`password`, l10n.t(`Password`))
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
-      .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716, or PPK formats are supported.`))
+      .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716 and PPK formats are supported.`))
       .addHorizontalRule()
-      .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" });
-
+      .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" })
+      .addCheckbox(`sshDebug`, l10n.t(`Turn on SSH debug output`), l10n.t(`Enable this to output debug traces in the Code for i and help diagnose SSH connection issues.`));
     const tempTab = new Section()
       .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: `ILEDITOR`, minlength: 1, maxlength: 10 })
       .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: '/tmp', minlength: 1 });
@@ -120,7 +120,7 @@ export class Login {
                     }
 
                   } else {
-                    vscode.window.showErrorMessage(`Not connected to ${data.host}!`);
+                    vscode.window.showErrorMessage(`Not connected to ${data.host}${connected.error ? `: ${connected.error}` : '!'}`);
                   }
                 } catch (e) {
                   vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e}`);
@@ -154,7 +154,7 @@ export class Login {
       }
     }
 
-    const connection = await IBMi.connectionManager.getByName(name);
+    const connection = IBMi.connectionManager.getByName(name);
     if (connection) {
       const toDoOnConnected: Function[] = [];
       const connectionConfig = connection.data;
@@ -171,7 +171,7 @@ export class Login {
         }
 
         if (!connectionConfig.password) {
-          return;
+          return false;
         }
       }
 
@@ -179,11 +179,10 @@ export class Login {
         const connected = await instance.connect({ data: connectionConfig, onConnectedOperations: toDoOnConnected, reloadServerSettings });
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
+          return true;
         } else {
-          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}!`);
+          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}${connected.error ? `: ${connected.error}` : '!'}`);
         }
-
-        return true;
       } catch (e) {
         vscode.window.showErrorMessage(`Error connecting to ${connectionConfig.host}! ${e}`);
       }

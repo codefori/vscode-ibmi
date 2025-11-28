@@ -1,8 +1,7 @@
 
 import os from "os";
 import path from "path";
-import { IBMiMessage, IBMiMessages, QsysPath } from './types';
-import { EditorPath } from "../typings";
+import { EditorPath, IBMiMessage, IBMiMessages, QsysPath } from './types';
 
 export namespace Tools {
   export class SqlError extends Error {
@@ -224,7 +223,7 @@ export namespace Tools {
     if (alreadyQuoted) {
       return Path.replace(/"|\$|\\/g, matched => `\\`.concat(matched));
     } else {
-      return Path.replace(/'|"|\$|\\| /g, matched => `\\`.concat(matched));
+      return Path.replace(/'|"|\$|&|\\| /g, matched => `\\`.concat(matched));
     }
   }
 
@@ -318,8 +317,11 @@ export namespace Tools {
     }
   }
 
-  export function assumeType(str: string) {
+  export function assumeType(str: string, col?: string) {
     if (str.trim().length === 0) return ``;
+
+    // If column is SRCDTA, always return as string.
+    if (col === `SRCDTA`) return str;
 
     // The number is already generated on the server.
     // So, we assume that if the string starts with a 0, it is a string.

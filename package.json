@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.16.3-dev.0",
+	"version": "2.18.1-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -236,7 +236,7 @@
 							},
 							"enableSourceDates": {
 								"type": "boolean",
-								"default": false,
+								"default": true,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
 							"sourceDateGutter": {
@@ -368,6 +368,11 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Tells the debug service to send more data to the client. Only useful for debugging issues in the service."
+							},
+							"readOnlyMode": {
+								"type": "boolean",
+								"default": false,
+								"description": "Always open source members and IFS files in read-only mode."
 							}
 						}
 					}
@@ -1023,13 +1028,13 @@
 			},
 			{
 				"command": "code-for-ibmi.launchTerminalPicker",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Launch Terminal Picker",
 				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.goToFile",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Go to File...",
 				"category": "IBM i",
 				"icon": "$(go-to-file)"
@@ -1157,7 +1162,7 @@
 			},
 			{
 				"command": "code-for-ibmi.runAction",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Run Action...",
 				"category": "IBM i",
 				"icon": "$(file-binary)"
@@ -1254,28 +1259,28 @@
 			},
 			{
 				"command": "code-for-ibmi.createMember",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "New Member...",
 				"category": "IBM i",
 				"icon": "$(new-file)"
 			},
 			{
 				"command": "code-for-ibmi.copyMember",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Copy...",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
 			{
 				"command": "code-for-ibmi.updateMemberText",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Change Description...",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
 			{
-				"command": "code-for-ibmi.renameMember",
-				"enablement": "code-for-ibmi:connected",
+				"command": "code-for-ibmi.renameQSYS",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Rename...",
 				"category": "IBM i",
 				"icon": "$(files)"
@@ -1288,7 +1293,7 @@
 			},
 			{
 				"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Upload and Replace...",
 				"category": "IBM i"
 			},
@@ -1320,7 +1325,7 @@
 			},
 			{
 				"command": "code-for-ibmi.deleteIFS",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Delete...",
 				"category": "IBM i"
 			},
@@ -1332,14 +1337,14 @@
 			},
 			{
 				"command": "code-for-ibmi.moveIFS",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Rename/Move...",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
 			{
 				"command": "code-for-ibmi.copyIFS",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Copy...",
 				"category": "IBM i",
 				"icon": "$(files)"
@@ -1353,21 +1358,21 @@
 			},
 			{
 				"command": "code-for-ibmi.createDirectory",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "New Directory...",
 				"category": "IBM i",
 				"icon": "$(new-folder)"
 			},
 			{
 				"command": "code-for-ibmi.createStreamfile",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "New File...",
 				"category": "IBM i",
 				"icon": "$(new-file)"
 			},
 			{
 				"command": "code-for-ibmi.uploadStreamfile",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Upload...",
 				"category": "IBM i",
 				"icon": "$(cloud-upload)"
@@ -1377,11 +1382,11 @@
 				"title": "Deploy Workspace",
 				"category": "IBM i",
 				"icon": "$(cloud-upload)",
-				"enablement": "code-for-ibmi:connected && workspaceFolderCount >= 1"
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly && workspaceFolderCount >= 1"
 			},
 			{
 				"command": "code-for-ibmi.setDeployLocation",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Set Deploy Workspace Location",
 				"category": "IBM i",
 				"icon": "$(cloud-upload)"
@@ -1471,7 +1476,7 @@
 			},
 			{
 				"command": "code-for-ibmi.objectBrowser.delete",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Delete...",
 				"category": "IBM i",
 				"icon": "$(remove)"
@@ -1532,42 +1537,35 @@
 			},
 			{
 				"command": "code-for-ibmi.createSourceFile",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "New Source File...",
 				"category": "IBM i",
 				"icon": "$(new-file)"
 			},
 			{
 				"command": "code-for-ibmi.createLibrary",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "New Library...",
 				"category": "IBM i",
 				"icon": "$(file-directory-create)"
 			},
 			{
 				"command": "code-for-ibmi.changeObjectDesc",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Change Description...",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
 			{
 				"command": "code-for-ibmi.copyObject",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Copy...",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
 			{
-				"command": "code-for-ibmi.renameObject",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Rename...",
-				"category": "IBM i",
-				"icon": "$(symbol-file)"
-			},
-			{
 				"command": "code-for-ibmi.moveObject",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Move...",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
@@ -1601,6 +1599,7 @@
 			},
 			{
 				"command": "code-for-ibmi.openTerminalHere",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Open Terminal Here",
 				"category": "IBM i"
 			},
@@ -1618,7 +1617,7 @@
 			{
 				"command": "code-for-ibmi.edit",
 				"title": "Edit",
-				"enablement": "code-for-ibmi:connected",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"category": "IBM i"
 			},
 			{
@@ -1694,7 +1693,7 @@
 				"title": "Reset keyboard",
 				"category": "IBM i",
 				"icon": "$(keyboard)",
-				"enablement": "code-for-ibmi:connected"
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly"
 			},
 			{
 				"command": "code-for-ibmi.testing.connectWithFixture",
@@ -1708,20 +1707,36 @@
 				"title": "Generate binder source",
 				"category": "IBM i",
 				"icon": "$(plus)",
-				"enablement": "code-for-ibmi:connected"
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly"
 			}
 		],
 		"keybindings": [
 			{
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
-				"mac": "cmd+e"
+				"mac": "cmd+e",
+				"when": "editorFocus",
+				"args": "editor"
+			},
+			{
+				"command": "code-for-ibmi.runAction",
+				"key": "ctrl+e",
+				"mac": "cmd+e",
+				"when": "focusedView == objectBrowser && listHasSelectionOrFocus",
+				"args": "objectBrowser"
+			},
+			{
+				"command": "code-for-ibmi.runAction",
+				"key": "ctrl+e",
+				"mac": "cmd+e",
+				"when": "focusedView === ifsBrowser && listHasSelectionOrFocus",
+				"args": "ifsBrowser"
 			},
 			{
 				"command": "code-for-ibmi.launchDeploy",
 				"key": "ctrl+shift+e",
 				"mac": "cmd+shift+e",
-				"when": "workspaceFolderCount >= 1 && code-for-ibmi:connected"
+				"when": "workspaceFolderCount >= 1 && code-for-ibmi:connected && !code-for-ibmi:isReadonly"
 			},
 			{
 				"command": "code-for-ibmi.goToFile",
@@ -1762,6 +1777,16 @@
 				"command": "code-for-ibmi.objectBrowser.delete",
 				"key": "delete",
 				"when": "focusedView === objectBrowser && listHasSelectionOrFocus"
+			},
+			{
+				"command": "code-for-ibmi.moveIFS",
+				"key": "f2",
+				"when": "focusedView === ifsBrowser && listHasSelectionOrFocus && !listMultiSelection && !(viewItem =~ /^.*_protected$/)"
+			},
+			{
+				"command": "code-for-ibmi.renameQSYS",
+				"key": "f2",
+				"when": "focusedView === objectBrowser && listHasSelectionOrFocus && !listMultiSelection"
 			}
 		],
 		"viewsContainers": {
@@ -2140,7 +2165,7 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.renameMember",
+					"command": "code-for-ibmi.renameQSYS",
 					"when": "never"
 				},
 				{
@@ -2161,10 +2186,6 @@
 				},
 				{
 					"command": "code-for-ibmi.copyObject",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.renameObject",
 					"when": "never"
 				},
 				{
@@ -2734,8 +2755,8 @@
 					"group": "2_memberStuff@4"
 				},
 				{
-					"command": "code-for-ibmi.renameMember",
-					"when": "view == objectBrowser && !listMultiSelection && viewItem == member",
+					"command": "code-for-ibmi.renameQSYS",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /(member|object)/  && !(viewItem =~ /^.*_readonly$/)",
 					"group": "2_memberStuff@3"
 				},
 				{
@@ -2840,7 +2861,7 @@
 				},
 				{
 					"command": "code-for-ibmi.removeIFSShortcut",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
 					"group": "3_ifsStuff@2"
 				},
 				{
@@ -2912,11 +2933,6 @@
 					"command": "code-for-ibmi.objectBrowser.delete",
 					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@5"
-				},
-				{
-					"command": "code-for-ibmi.renameObject",
-					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object/",
-					"group": "1_objActions@3"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",

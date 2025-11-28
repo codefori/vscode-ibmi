@@ -1,6 +1,5 @@
 
 import path from "path";
-import { RelativePattern, workspace, WorkspaceFolder } from "vscode";
 import IBMi from "../IBMi";
 
 const WORKSPACE_ROOT = `.vscode`;
