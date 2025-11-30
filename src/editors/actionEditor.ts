@@ -1,8 +1,8 @@
 import vscode from "vscode";
 import { updateAction } from "../api/actions";
 import { Tools } from "../api/Tools";
-import { instance } from "../instantiate";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../typings";
+import { CustomVariables } from "../ui/views/environment/customVariables";
 import { Tab } from "../webviews/CustomUI";
 import { CustomEditor } from "./customEditorProvider";
 
@@ -36,7 +36,7 @@ export function isActionEdited(action: Action) {
 }
 
 export function editAction(targetAction: Action, doAfterSave?: () => Thenable<void>, workspace?: vscode.WorkspaceFolder) {
-  const customVariables = instance.getConnection()?.getConfig().customVariables.map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
+  const customVariables = CustomVariables.getAll().map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
   new CustomEditor<ActionData>(`${targetAction.name}.action`, (actionData) => save(targetAction, actionData, workspace).then(doAfterSave), () => editedActions.delete(targetAction.name))
     .addInput(
       `command`,
