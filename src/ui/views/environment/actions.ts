@@ -21,7 +21,7 @@ export class ActionsNode extends EnvironmentItem {
   private readonly children: ActionTypeNode[] = [];
 
   constructor() {
-    super(l10n.t("Actions"), { state: vscode.TreeItemCollapsibleState.Collapsed });
+    super(l10n.t("Actions"), { icon: "code-oss", state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = "actionsNode";
   }
 
@@ -37,10 +37,10 @@ export class ActionsNode extends EnvironmentItem {
       }
 
       this.children.push(
-        new ActionTypeNode(this, l10n.t("Member"), 'member', actions),
-        new ActionTypeNode(this, l10n.t("Object"), 'object', actions),
-        new ActionTypeNode(this, l10n.t("Streamfile"), 'streamfile', actions),
-        ...Array.from(localActions).map((([workspace, localActions]) => new ActionTypeNode(this, workspace.name, 'file', localActions, workspace)))
+        new ActionTypeNode(this, l10n.t("Member"), 'file-code', 'member', actions),
+        new ActionTypeNode(this, l10n.t("Object"), 'database', 'object', actions),
+        new ActionTypeNode(this, l10n.t("Streamfile"), 'file-text', 'streamfile', actions),
+        ...Array.from(localActions).map((([workspace, localActions]) => new ActionTypeNode(this, workspace.name, 'folder', 'file', localActions, workspace)))
       );
     }
     return this.children;
@@ -86,10 +86,9 @@ export class ActionsNode extends EnvironmentItem {
 
 export class ActionTypeNode extends EnvironmentItem {
   readonly actionItems: ActionItem[];
-  constructor(parent: EnvironmentItem, label: string, readonly type: ActionType, actions: Action[], readonly workspace?: vscode.WorkspaceFolder) {
-    super(label, { parent, state: vscode.TreeItemCollapsibleState.Collapsed });
+  constructor(parent: EnvironmentItem, label: string, icon: string, readonly type: ActionType, actions: Action[], readonly workspace?: vscode.WorkspaceFolder) {
+    super(label, { parent, icon, state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = `actionTypeNode_${type}`;
-    this.description = workspace ? l10n.t("workspace actions") : undefined;
     this.actionItems = actions.filter(action => action.type === type).map(action => new ActionItem(this, action, workspace));
   }
 

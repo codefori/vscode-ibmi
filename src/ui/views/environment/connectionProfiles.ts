@@ -18,7 +18,7 @@ export namespace ConnectionProfiles {
 
 export class ProfilesNode extends EnvironmentItem {
   constructor() {
-    super(l10n.t("Profiles"), { state: vscode.TreeItemCollapsibleState.Collapsed });
+    super(l10n.t("Profiles"), { icon: "account", state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = "profilesNode";
   }
 

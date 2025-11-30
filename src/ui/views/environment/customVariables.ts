@@ -48,7 +48,7 @@ export namespace CustomVariables {
 
 export class CustomVariablesNode extends EnvironmentItem {
   constructor() {
-    super(l10n.t("Custom Variables"), { state: vscode.TreeItemCollapsibleState.Collapsed });
+    super(l10n.t("Custom Variables"), { icon: "variable-group", state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = `customVariablesNode`;
   }
 
