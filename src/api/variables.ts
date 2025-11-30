@@ -22,7 +22,7 @@ export class Variables extends Map<string, string> {
         .set(`&WORKDIR`, config.homeDirectory);
 
       for (const variable of config.customVariables) {
-        this.set(`&${variable.name.toUpperCase()}`, variable.value);
+        this.set(`&${variable.name.toUpperCase()}`, variable.value || '');
       }
     }
   }
