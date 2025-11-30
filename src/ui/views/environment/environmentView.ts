@@ -1,4 +1,5 @@
 
+import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem } from 'vscode';
 import { getActions, updateAction } from '../../../api/actions';
 import { GetNewLibl } from '../../../api/components/getNewLibl';
@@ -29,29 +30,23 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     environmentTreeViewer,
-    vscode.window.onDidChangeActiveTextEditor(async editor => {
-      let editorCanRunAction = false;
-      let editorCanRunLocalAction = false;
-      if (editor) {
-        const connection = instance.getConnection();
-        if (connection) {
-          const uri = editor.document.uri;
-          if (uri) {
-            editorCanRunAction = ['streamfile', 'member', 'object'].includes(uri.scheme);
-            editorCanRunLocalAction = uri.scheme === 'file';
-          }
-        }
-      }
-      vscode.commands.executeCommand(`setContext`, "code-for-ibmi:editorCanRunRemoteAction", editorCanRunAction);
-      vscode.commands.executeCommand(`setContext`, "code-for-ibmi:editorCanRunLocalAction", editorCanRunLocalAction);
-    }),
+    vscode.window.onDidChangeActiveTextEditor(async editor => environmentView.actionsNode?.activeEditorChanged(editor)),
     vscode.window.registerFileDecorationProvider({
       provideFileDecoration(uri: vscode.Uri, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FileDecoration> {
         if (uri.scheme.startsWith(ProfileItem.contextValue) && uri.query === "active") {
           return { color: new vscode.ThemeColor(ProfileItem.activeColor) };
         }
-        else if (uri.scheme === ActionItem.contextValue && uri.query === "matched") {
-          return { color: new vscode.ThemeColor(ActionItem.matchedColor) };
+        else if (uri.scheme === ActionItem.context) {
+          const query = parseQuery(uri.query);
+          if (query.matched && query.canRun) {
+            return { color: new vscode.ThemeColor(ActionItem.matchedCanRunColor) };
+          }
+          if (query.matched) {
+            return { color: new vscode.ThemeColor(ActionItem.matchedColor) };
+          }
+          if (query.canRun) {
+            return { color: new vscode.ThemeColor(ActionItem.canRunColor) };
+          }
         }
       }
     }),

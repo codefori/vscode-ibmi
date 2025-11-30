@@ -3096,7 +3096,7 @@
 				},
 				{
 					"command": "code-for-ibmi.environment.action.runOnEditor",
-					"when": "view === environmentView && ((viewItem =~ /^actionItemRemote/ && code-for-ibmi:editorCanRunRemoteAction) || (viewItem =~ /^actionItemLocal/ && code-for-ibmi:editorCanRunLocalAction))",
+					"when": "view === environmentView && viewItem =~ /^actionItem_canrun/",
 					"group": "inline@00"
 				},
 				{
