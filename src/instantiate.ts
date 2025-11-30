@@ -103,8 +103,8 @@ async function updateConnectedBar() {
     const config = connection.getConfig();
 
     const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
-    const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
-    let serverConfig: RemoteConfigFile | undefined;
+    const serverConfigOk = remoteConnectionConfig.getState() === `ok`;
+    let serverConfig: RemoteConfigFile|undefined;
     if (serverConfigOk) {
       serverConfig = await remoteConnectionConfig.get();
     }

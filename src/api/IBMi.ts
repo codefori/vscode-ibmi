@@ -76,6 +76,7 @@ interface ConnectionOptions {
 
 interface ConnectionConfigFiles {
   settings: ConfigFile<RemoteConfigFile>;
+  [key: string]: ConfigFile<any>;
 }
 
 export default class IBMi {
@@ -165,8 +166,37 @@ export default class IBMi {
     this.disconnectedCallback = callback;
   }
 
+  /**
+   * getConfigFile can return pre-defined configuration files,
+   * but can lazy load new configuration files as well.
+   * 
+   * This does not load the configuration file from the server,
+   * it only returns a ConfigFile instance. You should check the
+   * state of the ConfigFile instance to see if it has been loaded,
+   * and if not, call `loadFromServer()` on it.
+   */
   getConfigFile<T>(id: keyof ConnectionConfigFiles) {
-    return this.configFiles[id] as ConfigFile<T>;
+    if (!this.configFiles[id]) {
+      this.configFiles[id] = new ConfigFile<T>(this, id as string, {} as T);
+    }
+
+    const configFile = this.configFiles[id] as ConfigFile<T>;
+
+    return configFile;
+  }
+
+  async loadRemoteConfigs() {
+    for (const configFile in this.configFiles) {
+      const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
+      
+      currentConfig.reset();
+
+      try {
+        await currentConfig.loadFromServer();
+      } catch (e) { }
+
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+    }
   }
 
   get canUseCqsh() {
@@ -526,7 +556,7 @@ export default class IBMi {
       await this.loadRemoteConfigs();
 
       const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
-      if (remoteConnectionConfig.getState().server === `ok`) {
+      if (remoteConnectionConfig.getState() === `ok`) {
         const remoteConfig = await remoteConnectionConfig.get();
 
         if (remoteConfig.codefori) {
@@ -1100,20 +1130,6 @@ export default class IBMi {
     return this.shell === IBMi.bashShellPath;
   }
 
-  async loadRemoteConfigs() {
-    for (const configFile in this.configFiles) {
-      const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
-
-      this.configFiles[configFile as keyof ConnectionConfigFiles].reset();
-
-      try {
-        await this.configFiles[configFile as keyof ConnectionConfigFiles].loadFromServer();
-      } catch (e) { }
-
-      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
-    }
-  }
-
   /**
    * - Send PASE/QSH/ILE commands simply
    * - Commands sent here end in the 'IBM i Output' channel
@@ -1487,7 +1503,7 @@ export default class IBMi {
               skip_empty_lines: true,
               onRecord(record) {
                 for (const key of Object.keys(record)) {
-                  record[key] = record[key] === ` ` ? `` : Tools.assumeType(record[key]);
+                  record[key] = record[key] === ` ` ? `` : Tools.assumeType(record[key], key);
                 }
                 return record;
               }
