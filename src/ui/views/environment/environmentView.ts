@@ -163,9 +163,10 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
       if (name) {
         const variable = { name, value: from?.value } as CustomVariable;
-        await CustomVariables.update(variable);
-        environmentView.refresh(variablesNode);
-        if (!from) {
+        if (from) {
+          await CustomVariables.update(variable);
+          environmentView.refresh(variablesNode);
+        } else {
           vscode.commands.executeCommand("code-for-ibmi.environment.variable.edit", variable, variablesNode);
         }
       }
