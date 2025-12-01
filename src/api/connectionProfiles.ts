@@ -20,6 +20,11 @@ export async function updateConnectionProfile(profile: ConnectionProfile, option
       profiles[index < 0 ? profiles.length : index] = profile;
     }
 
+    if (isActiveProfile(profile)) {
+      //Only update the setLibraryListCommand in the current config since the editor is the only place it can be changed
+      config.setLibraryListCommand = profile.setLibraryListCommand;
+    }
+
     await IBMi.connectionManager.update(config);
   }
 }
@@ -79,4 +84,8 @@ export function assignProfile(fromProfile: ConnectionProfile, toProfile: Connect
 
 export function cloneProfile(fromProfile: ConnectionProfile, newName: string): ConnectionProfile {
   return assignProfile(fromProfile, { name: newName } as ConnectionProfile);
+}
+
+export function isActiveProfile(profile: ConnectionProfile) {
+  return instance.getConnection()?.getConfig().currentProfile === profile.name;
 }

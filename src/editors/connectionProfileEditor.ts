@@ -1,5 +1,5 @@
 import vscode, { l10n } from "vscode";
-import { updateConnectionProfile } from "../api/connectionProfiles";
+import { isActiveProfile, updateConnectionProfile } from "../api/connectionProfiles";
 import { instance } from "../instantiate";
 import { ConnectionProfile } from "../typings";
 import { CustomEditor } from "./customEditorProvider";
@@ -11,16 +11,16 @@ type ConnectionProfileData = {
   setLibraryListCommand: string
 }
 
-const editedProfiles : Set<string> = new Set;
+const editedProfiles: Set<string> = new Set;
 
-export function isProfileEdited(profile: ConnectionProfile){
+export function isProfileEdited(profile: ConnectionProfile) {
   return editedProfiles.has(profile.name);
 }
 
 export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: () => Thenable<void>) {
-  const activeProfile = instance.getConnection()?.getConfig().currentProfile === profile.name;
+  const activeProfile = isActiveProfile(profile);
   new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave), () => editedProfiles.delete(profile.name))
-    .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory, readonly: activeProfile})
+    .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory, readonly: activeProfile })
     .addInput("currentLibrary", l10n.t("Current Library"), '', { minlength: 1, maxlength: 10, default: profile.currentLibrary, readonly: activeProfile })
     .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries."), { default: profile.libraryList.join(","), readonly: activeProfile })
     .addInput("setLibraryListCommand", l10n.t("Library List Command"), l10n.t("Library List Command can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.<br/>Commands should be as explicit as possible.<br/>When refering to commands and objects, both should be qualified with a library.<br/>Put <code>?</code> in front of the command to prompt it before execution."), { default: profile.setLibraryListCommand })
@@ -35,7 +35,7 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
     .addParagraph(profile.customVariables.length ? `<ul>${profile.customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join('')}</ul>` : l10n.t("None"))
     .open();
 
-    editedProfiles.add(profile.name);
+  editedProfiles.add(profile.name);
 }
 
 async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
