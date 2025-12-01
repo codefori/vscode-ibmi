@@ -2,6 +2,7 @@ import { existsSync } from 'fs';
 import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
 import vscode, { l10n, Uri, WorkspaceFolder } from 'vscode';
+import { getActions } from '../../api/actions';
 import { DeploymentMethod } from '../../api/types';
 import { instance } from '../../instantiate';
 import { BrowserItem, DeploymentParameters } from '../../typings';
@@ -26,14 +27,39 @@ export namespace DeployTools {
       if (chosenTypes) {
         const newActions = chosenTypes.flatMap(type => type.actions);
         const localActionsUri = vscode.Uri.file(path.join(chosenWorkspace.uri.fsPath, `.vscode`, `actions.json`));
-        
-        if (!existsSync(localActionsUri.fsPath) || await vscode.window.showWarningMessage(l10n.t("Local actions are already defined for this workspace. Do you want to overwrite them?"), { modal: true }, l10n.t("Yes"))) {
+        const overwrite = l10n.t("Overwrite");
+        const append = l10n.t("Append");
+        const exists = existsSync(localActionsUri.fsPath);
+        let action;
+        if (!exists || (action = await vscode.window.showWarningMessage(l10n.t("Local actions are already defined for this workspace."), { modal: true }, overwrite, append))) {
           try {
+            const actions = [];
+            if (!exists || action === overwrite) {
+              actions.push(...newActions);
+            }
+            else if (action === append) {
+              const existingActions = await getActions(chosenWorkspace);
+              const existingActionNames = existingActions.map(action => action.name);
+              //Change names of new actions
+              let toRename = [];
+              while ((toRename = newActions.filter(action => existingActionNames.includes(action.name))).length) {
+                toRename.forEach(action => {
+                  const index = / \((\d+)\)$/.exec(action.name)?.[1];
+                  if (index) {
+                    action.name = action.name.substring(0, action.name.lastIndexOf(' ') + 1) + `(${Number(index) + 1})`;
+                  }
+                  else {
+                    action.name += " (1)";
+                  }
+                });
+              }
+
+              actions.push(...existingActions, ...newActions);
+            }
             await vscode.workspace.fs.writeFile(
               localActionsUri,
-              Buffer.from(JSON.stringify(newActions, null, 2), `utf-8`)
+              Buffer.from(JSON.stringify(actions, null, 2), `utf-8`)
             );
-
             vscode.workspace.openTextDocument(localActionsUri).then(doc => vscode.window.showTextDocument(doc));
           } catch (e) {
             console.log(e);
