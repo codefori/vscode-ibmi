@@ -28,8 +28,14 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand("code-for-ibmi.updateConnectedBar");
   };
 
+  const localActionsWatcher = vscode.workspace.createFileSystemWatcher(`**/.vscode/actions.json`);
+  localActionsWatcher.onDidCreate(() =>  environmentView.actionsNode?.forceRefresh());
+  localActionsWatcher.onDidChange(() =>  environmentView.actionsNode?.forceRefresh());
+  localActionsWatcher.onDidDelete(() =>  environmentView.actionsNode?.forceRefresh());
+
   context.subscriptions.push(
     environmentTreeViewer,
+    localActionsWatcher,
     vscode.window.onDidChangeActiveTextEditor(async editor => environmentView.actionsNode?.activeEditorChanged(editor)),
     vscode.window.registerFileDecorationProvider({
       provideFileDecoration(uri: vscode.Uri, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FileDecoration> {
