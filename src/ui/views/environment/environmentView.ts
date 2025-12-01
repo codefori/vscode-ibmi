@@ -290,8 +290,17 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       if (connection && storage) {
         const profile = "profile" in item ? item.profile : item;
         const config = connection.getConfig();
-
         const profileToBackup = config.currentProfile ? getConnectionProfile(config.currentProfile) : getDefaultProfile();
+
+        if (isProfileEdited(profile)) {
+          vscode.window.showWarningMessage(l10n.t("Profile {0} is being edited. Please close its editor before activating it.", profile.name));
+          return;
+        }
+        else if (profileToBackup && isProfileEdited(profileToBackup)) {
+          vscode.window.showWarningMessage(l10n.t("Profile {0} is being edited. Please close its editor before unloading it.", profileToBackup.name));
+          return;
+        }
+
         if (profileToBackup) {
           assignProfile(config, profileToBackup);
         }
