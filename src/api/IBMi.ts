@@ -1389,31 +1389,32 @@ export default class IBMi {
                 }
               }
             }
+          }
 
-            let query;
-            let error: Tools.SqlError|undefined;
-            try {
-              query = this.sqlJob.query(statement);
-              const rs = await query.execute(99999);
-              lastResultSet = rs.data;
-            } catch (e: any) {
-              error = new Tools.SqlError(e.message);
-              error.cause = statement
-              
-              const parts: string[] = e.message.split(`,`);
-              if (parts.length > 3) {
-                error.sqlstate = parts[parts.length-2].trim();
-              }
-            } finally {
-              query?.close();
+          let query;
+          let error: Tools.SqlError|undefined;
+          try {
+            query = this.sqlJob.query(statement);
+            const rs = await query.execute(99999);
+            lastResultSet = rs.data;
+          } catch (e: any) {
+            error = new Tools.SqlError(e.message);
+            error.cause = statement
+            
+            const parts: string[] = e.message.split(`,`);
+            if (parts.length > 3) {
+              error.sqlstate = parts[parts.length-2].trim();
             }
+          } finally {
+            query?.close();
+          }
 
-            if (error) {
-              throw error;
-            }
+          if (error) {
+            throw error;
           }
         }
       }
+      
 
       return lastResultSet;
     }
