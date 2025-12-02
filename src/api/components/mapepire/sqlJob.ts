@@ -16,6 +16,10 @@ export class sshSqlJob extends SQLJob {
     this.currentSchemaStore = undefined;
   }
 
+  // Explicitly declare inherited methods from SQLJob for TypeScript
+  declare query: <T>(sql: string, opts?: any) => any;
+  declare execute: <T>(sql: string, opts?: any) => Promise<QueryResult<T>>;
+
   async getSshChannel(mapepire: Mapepire, connection: IBMi, javaPath?: string): Promise<ClientChannel> {
     let useExec = await Mapepire.useExec(connection);
 

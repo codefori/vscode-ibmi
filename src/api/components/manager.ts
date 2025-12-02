@@ -142,8 +142,10 @@ export class ComponentManager {
 
     const installedBefore = lastInstalled.find(i => i.id.name === component.getIdentification().name);
     const sameVersion = installedBefore && (installedBefore.id.version === component.getIdentification().version);
+    const isUserManaged = component.getIdentification().userManaged;
 
-    if ((!installedBefore || !sameVersion || installedBefore.state === `NotChecked`)) {
+    // Always check non-user-managed components to ensure they're actually installed
+    if ((!installedBefore || !sameVersion || installedBefore.state === `NotChecked` || !isUserManaged)) {
       await newComponent.startupCheck();
     } else if (installedBefore) {
       await newComponent.overrideState(installedBefore.state);

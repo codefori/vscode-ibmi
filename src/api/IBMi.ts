@@ -169,6 +169,21 @@ export default class IBMi {
   getConfigFile<T>(id: keyof ConnectionConfigFiles) {
     return this.configFiles[id] as ConfigFile<T>;
   }
+  
+  async loadRemoteConfigs() {
+    for (const configFile in this.configFiles) {
+      const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
+      
+      currentConfig.reset();
+
+      try {
+        await currentConfig.loadFromServer();
+      } catch (e) { }
+
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+    }
+  }
+
 
   /**
    * Primarily used for running SQL statements.
@@ -497,13 +512,29 @@ export default class IBMi {
       // We always start up Mapepire first
       await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
 
+      // Check Mapepire state after startup
+      const mapepireStates = this.componentManager.getComponentStates();
+      const mapepireState = mapepireStates.find(s => s.id.name === Mapepire.ID);
+      this.appendOutput(`Mapepire state after startup: ${mapepireState?.state || 'not found'}\n`);
+
       const mapepire = this.getComponent<Mapepire>(Mapepire.ID);
       if (mapepire) {
         const useJavaVersion = (this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
         if (useJavaVersion) {
           const javaPath = path.posix.join(useJavaVersion, `bin`, `java`);
-          this.sqlJob = await mapepire.newJob(this, javaPath);
+          try {
+            this.sqlJob = await mapepire.newJob(this, javaPath);
+          } catch (e: any) {
+            callbacks.message(`error`, `Failed to start Mapepire SQL job: ${e.message || e}`);
+            this.appendOutput(`Mapepire error: ${e.message || e}\n`);
+          }
+        } else {
+          callbacks.message(`warning`, `No Java installation found. SQL operations will not be available. Please install Java 8, 11, or 17.`);
+          this.appendOutput(`Warning: No Java found for Mapepire\n`);
         }
+      } else {
+        callbacks.message(`warning`, `Mapepire component failed to start. SQL operations will not be available.`);
+        this.appendOutput(`Warning: Mapepire component not available\n`);
       }
 
       // Then check the remaining components
