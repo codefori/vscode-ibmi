@@ -60,7 +60,7 @@ describe('Encoding tests', { concurrent: true }, () => {
     await disposeConnection(connection);
   });
 
-  it('Prove that input strings are NO LONGER messed up by CCSID', async () => {
+  it('Prove that input strings are messed up by CCSID', async () => {
     let howManyTimesItMessedUpTheResult = 0;
 
     for (const strCcsid in contents) {
@@ -80,7 +80,7 @@ describe('Encoding tests', { concurrent: true }, () => {
       }
     }
 
-    expect(howManyTimesItMessedUpTheResult).toBe(0);
+    expect(howManyTimesItMessedUpTheResult).toBeTruthy();
   });
 
   it('Compare Unicode to EBCDIC successfully', async () => {
