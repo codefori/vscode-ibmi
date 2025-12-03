@@ -635,8 +635,36 @@ describe('Content Tests', { concurrent: true }, () => {
         expect(members?.length).toBe(1);
       }
       finally {
-        // TODO: this is hanging. Possibly locks from this job?
-        await connection.runCommand({ command: `RUNSQL 'drop schema "${longName}"' commit(*none)`, noLibList: true });
+        // The job goes into MSGW (message waiting) status with message CPA7025 "Receiver QSQJRN0001 in <name> never fully saved. (I C)"
+        // We need to add a reply list entry and change the job to use the system reply list
+        
+        // Add reply list entry to automatically reply to CPA7025 with 'I'
+        await connection.runCommand({
+          command: `ADDRPYLE SEQNBR(9999) MSGID(CPA7025) RPY('I')`,
+        });
+        
+        // Change job to use system reply list
+        await connection.runCommand({
+          command: `CHGJOB INQMSGRPY(*SYSRPYL)`,
+        });
+        
+        try {
+          // Now drop the schema - it will automatically reply to CPA7025
+          await connection.runCommand({
+            command: `RUNSQL 'drop schema "${longName}"' commit(*none)`,
+            noLibList: true
+          });
+        } finally {
+          // Restore job to default inquiry message reply
+          await connection.runCommand({
+            command: `CHGJOB INQMSGRPY(*RQD)`,
+          });
+          
+          // Clean up the reply list entry
+          await connection.runCommand({
+            command: `RMVRPYLE SEQNBR(9999)`,
+          });
+        }
       }
     } else {
       throw new Error(`Failed to create schema "${longName}"`);
