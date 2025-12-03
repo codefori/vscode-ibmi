@@ -213,6 +213,10 @@ export namespace VscodeTools {
     return tooltip;
   }
 
+  export function includesCaseInsensitive(haystack: string[], needle: string) {
+    return haystack.map(s => s.toLocaleUpperCase()).includes(needle.toLocaleUpperCase());
+  }
+
   function safeIsoValue(date: Date | undefined) {
     try {
       return date ? date.toISOString().slice(0, 19).replace(`T`, ` `) : ``;

@@ -5,6 +5,7 @@ import { getActions } from "../../../api/actions";
 import { parseFSOptions } from "../../../filesystems/qsys/QSysFs";
 import { instance } from "../../../instantiate";
 import { Action, ActionType } from "../../../typings";
+import { VscodeTools } from "../../Tools";
 import { EnvironmentItem } from "./environmentItem";
 
 type ActionContext = {
@@ -17,7 +18,7 @@ export namespace Actions {
     if (!name) {
       return l10n.t('Name cannot be empty');
     }
-    else if (names.includes(name.toLocaleUpperCase())) {
+    else if (VscodeTools.includesCaseInsensitive(names, name)) {
       return l10n.t("This name is already used by another action");
     }
   }

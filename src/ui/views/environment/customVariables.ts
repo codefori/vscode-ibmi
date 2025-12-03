@@ -2,6 +2,7 @@ import vscode, { l10n } from "vscode";
 import IBMi from "../../../api/IBMi";
 import { instance } from "../../../instantiate";
 import { CustomVariable } from "../../../typings";
+import { VscodeTools } from "../../Tools";
 import { EnvironmentItem } from "./environmentItem";
 
 export namespace CustomVariables {
@@ -14,7 +15,7 @@ export namespace CustomVariables {
     if (!name) {
       return l10n.t('Name cannot be empty');
     }
-    else if (names.includes(name.toLocaleUpperCase())) {
+    else if (VscodeTools.includesCaseInsensitive(names, name)) {
       return l10n.t("Custom variable {0} already exists", name);
     }
   }

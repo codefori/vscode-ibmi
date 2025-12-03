@@ -10,7 +10,7 @@ export namespace ConnectionProfiles {
     if (!name) {
       return l10n.t('Name cannot be empty');
     }
-    else if (names.includes(name.toLocaleUpperCase())) {
+    else if (VscodeTools.includesCaseInsensitive(names, name)) {
       return l10n.t("Profile {0} already exists", name);
     }
   }
