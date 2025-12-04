@@ -1878,29 +1878,29 @@
 				{
 					"id": "environmentView",
 					"name": "Environment",
-					"when": "code-for-ibmi:connected && !(code-for-ibmi:profilesViewDisabled || code-for-ibmi:environmentViewDisabled)",
+					"when": "code-for-ibmi:connected && !code-for-ibmi:environmentViewDisabled",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "libraryListView",
 					"name": "User Library List",
-					"when": "code-for-ibmi:connected && code-for-ibmi:libraryListDisabled !== true"
+					"when": "code-for-ibmi:connected && !code-for-ibmi:libraryListDisabled"
 				},
 				{
 					"id": "libraryListViewDisabled",
 					"name": "User Library List",
-					"when": "code-for-ibmi:connected && code-for-ibmi:libraryListDisabled == true",
+					"when": "code-for-ibmi:connected && code-for-ibmi:libraryListDisabled",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
-					"when": "code-for-ibmi:connected && code-for-ibmi:objectBrowserDisabled !== true"
+					"when": "code-for-ibmi:connected && !code-for-ibmi:objectBrowserDisabled"
 				},
 				{
 					"id": "ifsBrowser",
 					"name": "IFS Browser",
-					"when": "code-for-ibmi:connected && code-for-ibmi:ifsBrowserDisabled !== true"
+					"when": "code-for-ibmi:connected && !code-for-ibmi:ifsBrowserDisabled"
 				},
 				{
 					"id": "testingView",
