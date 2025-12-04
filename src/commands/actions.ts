@@ -7,6 +7,7 @@ import { Action, DeploymentMethod } from "../typings";
 import { runAction } from "../ui/actions";
 import { refreshDiagnosticsFromServer } from "../ui/diagnostics";
 import { BrowserItem } from "../ui/types";
+import { error } from "console";
 
 type CommandOrigin = "editor" | "objectBrowser" | "ifsBrowser";
 
@@ -57,8 +58,9 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const scheme = uris[0]?.scheme;
         if (scheme) {
           if (!uris.every(uri => uri.scheme === scheme)) {
-            window.showWarningMessage(l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", ")));
-            return { success: false, result: []};
+            const errorMsg=l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", "));
+            window.showWarningMessage(errorMsg);
+            return { success: false, output: [], error: errorMsg  };
           }
 
           const config = connection.getConfig();
@@ -98,7 +100,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         window.showErrorMessage('Please connect to an IBM i first');
       }
 
-      return { success: false, result: []};
+      return { success: false, output: [],error:""}; //returning empty error to satisfy return type
     }),
 
     commands.registerCommand(`code-for-ibmi.openErrors`, async (options: { qualifiedObject?: string, workspace?: WorkspaceFolder, keepDiagnostics?: boolean }) => {
