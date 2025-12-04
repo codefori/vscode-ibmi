@@ -7,7 +7,6 @@ import { Action, DeploymentMethod } from "../typings";
 import { runAction } from "../ui/actions";
 import { refreshDiagnosticsFromServer } from "../ui/diagnostics";
 import { BrowserItem } from "../ui/types";
-import { error } from "console";
 
 type CommandOrigin = "editor" | "objectBrowser" | "ifsBrowser";
 
