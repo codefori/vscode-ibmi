@@ -71,7 +71,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
         const name = await vscode.window.showInputBox({
           title: from ? l10n.t("Copy action '{0}'", from.action.name) : l10n.t("New action"),
-          placeHolder: l10n.t("action name..."),
+          placeHolder: l10n.t("Action name..."),
           value: from?.action.name,
           validateInput: name => Actions.validateName(name, existingNames)
         });
@@ -99,7 +99,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
         const newName = await vscode.window.showInputBox({
           title: l10n.t("Rename action"),
-          placeHolder: l10n.t("action name..."),
+          placeHolder: l10n.t("Action name..."),
           value: action.name,
           validateInput: newName => Actions.validateName(newName, existingNames)
         });
@@ -158,7 +158,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       const name = (await vscode.window.showInputBox({
         title: l10n.t('Enter new Custom Variable name'),
         prompt: l10n.t("The name will automatically be uppercased"),
-        placeHolder: l10n.t('new custom variable name...'),
+        placeHolder: l10n.t('New custom variable name...'),
         validateInput: name => CustomVariables.validateName(name, existingNames)
       }));
 
@@ -210,7 +210,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
       const name = await vscode.window.showInputBox({
         title: l10n.t("Enter new profile name"),
-        placeHolder: l10n.t("profile name..."),
+        placeHolder: l10n.t("Profile name..."),
         value: from?.name,
         validateInput: name => Actions.validateName(name, existingNames)
       });
@@ -262,7 +262,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         const existingNames = getConnectionProfiles().map(profile => profile.name).filter(name => name !== currentName);
         const newName = await vscode.window.showInputBox({
           title: l10n.t('Enter Profile {0} new name', item.profile.name),
-          placeHolder: l10n.t("profile name..."),
+          placeHolder: l10n.t("Profile name..."),
           validateInput: name => ConnectionProfiles.validateName(name, existingNames)
         });
 
@@ -369,7 +369,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     })
   );
 
-  instance.subscribe(context, 'connected', 'Update context view description', async () => {
+  instance.subscribe(context, 'connected', 'Update environment view description', async () => {
     const config = instance.getConnection()?.getConfig();
     const storage = instance.getStorage();
     if (config && storage) {

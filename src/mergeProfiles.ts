@@ -23,7 +23,7 @@ export async function mergeCommandProfiles() {
   if (updateSettings) {
     window.showInformationMessage(
       l10n.t("Your Command Profiles have been turned into Profiles since these two concepts have been merged with this new version of the Code for IBM i extension."),
-      { modal: true, detail: l10n.t("Open the Context view once connected to find your profile(s) and run your library list command(s).") });
+      { modal: true, detail: l10n.t("Open the Environment view once connected to find your profile(s) and run your library list command(s).") });
     await IBMi.connectionManager.updateAll(connectionSettings);
   }
 }

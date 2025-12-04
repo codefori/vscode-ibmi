@@ -66,7 +66,7 @@ export class ActionsNode extends EnvironmentItem {
   }
 
   async searchActions() {
-    const nameOrCommand = (await vscode.window.showInputBox({ title: l10n.t("Search action"), placeHolder: l10n.t("name or command...") }))?.toLocaleLowerCase();
+    const nameOrCommand = (await vscode.window.showInputBox({ title: l10n.t("Search action"), placeHolder: l10n.t("Name or command...") }))?.toLocaleLowerCase();
     if (nameOrCommand) {
       await this.clearSearch();
       const found = this.foundActions.push(...(await this.getAllActionItems()).filter(action => [action.action.name, action.action.command].some(text => text.toLocaleLowerCase().includes(nameOrCommand)))) > 0;
