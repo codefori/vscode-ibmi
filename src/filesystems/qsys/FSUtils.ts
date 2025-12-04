@@ -1,8 +1,8 @@
 import path from "path";
 import vscode, { l10n } from "vscode";
-import { VscodeTools } from "../../ui/Tools";
 import IBMi from "../../api/IBMi";
 import { ReconnectMode } from "../../typings";
+import { VscodeTools } from "../../ui/Tools";
 
 /**
  * Called when a member/streamfile is left open when VS Code is closed and re-opened to reconnect (or not) to the previous IBM i, based on the `autoReconnect` global configuration value.
@@ -32,8 +32,7 @@ export async function reconnectFS(uri: vscode.Uri) {
   }
 
   if (doReconnect) {
-    await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);
-    return true;
+    return await vscode.commands.executeCommand<boolean>(`code-for-ibmi.connectToPrevious`);
   }
   else {
     for (const tab of VscodeTools.findUriTabs(uri)) {

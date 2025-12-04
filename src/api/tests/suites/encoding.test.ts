@@ -16,40 +16,6 @@ const contents = {
 
 const SHELL_CHARS = [`$`, `#`];
 
-async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid: number) {
-  const testPgmSrcFile = connection.upperCaseName(Tools.makeid(6));
-  const config = connection.getConfig();
-
-  const tempLib = config.tempLibrary;
-  const name = `T${commands.length}${ccsid}${Tools.makeid(2)}`.padEnd(10).substring(0, 10).trim();
-  const testPgmName = connection.upperCaseName(name);
-
-  await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testPgmSrcFile}) OBJTYPE(*FILE)`, noLibList: true });
-  await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testPgmName}) OBJTYPE(*PGM)`, noLibList: true });
-
-  const sourceFileCreated = await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
-
-  try {
-    await connection.getContent().uploadMemberContent(tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
-
-    const compileCommand = `CRTBNDCL PGM(${tempLib}/${testPgmName}) SRCFILE(${tempLib}/${testPgmSrcFile}) SRCMBR(${testPgmName}) REPLACE(*YES)`;
-    const compileResult = await connection.runCommand({ command: compileCommand, noLibList: true });
-
-    if (compileResult.code !== 0) {
-      return compileResult;
-    }
-
-    const callCommand = `CALL ${tempLib}/${testPgmName}`;
-    const result = await connection.runCommand({ command: callCommand, noLibList: true });
-
-    return result;
-  }
-  finally {
-    await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testPgmSrcFile}) OBJTYPE(*FILE)`, noLibList: true });
-    await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testPgmName}) OBJTYPE(*PGM)`, noLibList: true });
-  }
-}
-
 describe('Encoding tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
@@ -60,7 +26,7 @@ describe('Encoding tests', { concurrent: true }, () => {
     await disposeConnection(connection);
   });
 
-  it('Prove that input strings are messed up by CCSID', async () => {
+  it('Prove that input strings are NOT messed up by CCSID', async () => {
     let howManyTimesItMessedUpTheResult = 0;
 
     for (const strCcsid in contents) {
@@ -80,7 +46,7 @@ describe('Encoding tests', { concurrent: true }, () => {
       }
     }
 
-    expect(howManyTimesItMessedUpTheResult).toBeTruthy();
+    expect(howManyTimesItMessedUpTheResult).toBe(0);
   });
 
   it('Compare Unicode to EBCDIC successfully', async () => {
@@ -195,7 +161,6 @@ describe('Encoding tests', { concurrent: true }, () => {
     const content = connection.getContent();
     if (connection && content) {
       const tempLib = connection.getConfig().tempLibrary;
-      const ccsid = connection.getCcsid();
 
       let library = `TESTLIB${connection.variantChars.local}`;
       let skipLibrary = false;
@@ -215,16 +180,15 @@ describe('Encoding tests', { concurrent: true }, () => {
           skipLibrary = true;
         }
 
-        let commands: string[] = [];
+        let result = await connection.runCommand({command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112)`});
+        expect(result.code).toBe(0);
 
-        commands.push(`CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`);
         for (const member of members) {
-          commands.push(`ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT) TEXT('Test ${member}')`);
+          result = await connection.runCommand({command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT) TEXT('Test ${member}')`});
+          expect(result.code).toBe(0);
         }
 
-        commands.push(`CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`);
-
-        const result = await runCommandsWithCCSID(connection, commands, ccsid);
+        result = await connection.runCommand({command: `CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`});
         expect(result.code).toBe(0);
 
         if (!skipLibrary) {
@@ -287,7 +251,6 @@ describe('Encoding tests', { concurrent: true }, () => {
     const library = `TEST${connection.variantChars.local}LIB`;
     const sourceFile = `TEST${connection.variantChars.local}FIL`;
     const member = `TEST${connection.variantChars.local}MBR`;
-    const ccsid = connection.getCcsid();
 
     if (library.includes(`$`)) {
       await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true });
@@ -298,7 +261,7 @@ describe('Encoding tests', { concurrent: true }, () => {
       }
 
       try {
-        const createSourceFileCommand = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
+        const createSourceFileCommand = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112)`, noLibList: true });
         expect(createSourceFileCommand.code).toBe(0);
 
         const addPf = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
@@ -320,7 +283,6 @@ describe('Encoding tests', { concurrent: true }, () => {
 
   it('Variant character in source names and commands', async () => {
     const config = connection.getConfig();
-    const ccsidData = connection.getCcsids()!;
     const tempLib = config.tempLibrary;
 
     async function testSingleVariant(varChar: string) {
@@ -330,22 +292,14 @@ describe('Encoding tests', { concurrent: true }, () => {
 
       await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
 
-      const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.runtimeCcsid})`], ccsidData.runtimeCcsid);
+      const createResult = await connection.runCommand({command: `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112)`});
       expect(createResult.code).toBe(0);
       try {
         const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
         expect(addPf.code).toBe(0);
 
-        const attributes = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
-        expect(attributes).toBeTruthy();
-        expect(attributes![`CCSID`]).toBe(String(ccsidData.runtimeCcsid));
-
         const addPfB = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
         expect(addPfB.code).toBe(0);
-
-        const attributesB = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
-        expect(attributesB).toBeTruthy();
-        expect(attributesB![`CCSID`]).toBe(String(ccsidData.runtimeCcsid));
 
         const objects = await connection.getContent().getObjectList({ library: tempLib, types: [`*SRCPF`] });
         expect(objects.length).toBeTruthy();

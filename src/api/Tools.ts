@@ -290,8 +290,11 @@ export namespace Tools {
     }
   }
 
-  export function assumeType(str: string) {
+  export function assumeType(str: string, col?: string) {
     if (str.trim().length === 0) return ``;
+
+    // If column is SRCDTA, always return as string.
+    if (col === `SRCDTA`) return str;
 
     // The number is already generated on the server.
     // So, we assume that if the string starts with a 0, it is a string.

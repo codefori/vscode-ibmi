@@ -68,6 +68,7 @@ interface ConnectionOptions {
 
 interface ConnectionConfigFiles {
   settings: ConfigFile<RemoteConfigFile>;
+  [key: string]: ConfigFile<any>;
 }
 
 export default class IBMi {
@@ -156,9 +157,33 @@ export default class IBMi {
     this.disconnectedCallback = callback;
   }
 
+  /**
+   * getConfigFile can return pre-defined configuration files,
+   * but can lazy load new configuration files as well.
+   * 
+   * This does not load the configuration file from the server,
+   * it only returns a ConfigFile instance. You should check the
+   * state of the ConfigFile instance to see if it has been loaded,
+   * and if not, call `loadFromServer()` on it.
+   */
   getConfigFile<T>(id: keyof ConnectionConfigFiles) {
     return this.configFiles[id] as ConfigFile<T>;
   }
+  
+  async loadRemoteConfigs() {
+    for (const configFile in this.configFiles) {
+      const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
+      
+      currentConfig.reset();
+
+      try {
+        await currentConfig.loadFromServer();
+      } catch (e) { }
+
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+    }
+  }
+
 
   /**
    * Primarily used for running SQL statements.
@@ -458,6 +483,12 @@ export default class IBMi {
         ]);
       }
 
+      this.appendOutput(`\nIBM i components:\n`);
+      for (const [feature, state] of Object.entries(this.remoteFeatures)) {
+        this.appendOutput(`\t${feature}: ${state}\n`);
+      }
+      this.appendOutput(`\n`);
+
       if (this.remoteFeatures.uname) {
         callbacks.progress({
           message: `Checking OS version.`
@@ -481,13 +512,29 @@ export default class IBMi {
       // We always start up Mapepire first
       await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
 
+      // Check Mapepire state after startup
+      const mapepireStates = this.componentManager.getComponentStates();
+      const mapepireState = mapepireStates.find(s => s.id.name === Mapepire.ID);
+      this.appendOutput(`Mapepire state after startup: ${mapepireState?.state || 'not found'}\n`);
+
       const mapepire = this.getComponent<Mapepire>(Mapepire.ID);
       if (mapepire) {
         const useJavaVersion = (this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
         if (useJavaVersion) {
           const javaPath = path.posix.join(useJavaVersion, `bin`, `java`);
-          this.sqlJob = await mapepire.newJob(this, javaPath);
+          try {
+            this.sqlJob = await mapepire.newJob(this, javaPath);
+          } catch (e: any) {
+            callbacks.message(`error`, `Failed to start Mapepire SQL job: ${e.message || e}`);
+            this.appendOutput(`Mapepire error: ${e.message || e}\n`);
+          }
+        } else {
+          callbacks.message(`warning`, `No Java installation found. SQL operations will not be available. Please install Java 8, 11, or 17.`);
+          this.appendOutput(`Warning: No Java found for Mapepire\n`);
         }
+      } else {
+        callbacks.message(`warning`, `Mapepire component failed to start. SQL operations will not be available.`);
+        this.appendOutput(`Warning: Mapepire component not available\n`);
       }
 
       // Then check the remaining components
@@ -508,7 +555,7 @@ export default class IBMi {
       await this.loadRemoteConfigs();
 
       const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
-      if (remoteConnectionConfig.getState().server === `ok`) {
+      if (remoteConnectionConfig.getState() === `ok`) {
         const remoteConfig = await remoteConnectionConfig.get();
 
         if (remoteConfig.codefori) {
@@ -1023,20 +1070,6 @@ export default class IBMi {
     return this.shell === IBMi.bashShellPath;
   }
 
-  async loadRemoteConfigs() {
-    for (const configFile in this.configFiles) {
-      const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
-
-      this.configFiles[configFile as keyof ConnectionConfigFiles].reset();
-
-      try {
-        await this.configFiles[configFile as keyof ConnectionConfigFiles].loadFromServer();
-      } catch (e) { }
-
-      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
-    }
-  }
-
   /**
    * - Send PASE/QSH/ILE commands simply
    * - Commands sent here end in the 'IBM i Output' channel
@@ -1356,31 +1389,32 @@ export default class IBMi {
                 }
               }
             }
+          }
 
-            let query;
-            let error: Tools.SqlError|undefined;
-            try {
-              query = this.sqlJob.query(statement);
-              const rs = await query.execute(99999);
-              lastResultSet = rs.data;
-            } catch (e: any) {
-              error = new Tools.SqlError(e.message);
-              error.cause = statement
-              
-              const parts: string[] = e.message.split(`,`);
-              if (parts.length > 3) {
-                error.sqlstate = parts[parts.length-2].trim();
-              }
-            } finally {
-              query?.close();
+          let query;
+          let error: Tools.SqlError|undefined;
+          try {
+            query = this.sqlJob.query(statement);
+            const rs = await query.execute(99999);
+            lastResultSet = rs.data;
+          } catch (e: any) {
+            error = new Tools.SqlError(e.message);
+            error.cause = statement
+            
+            const parts: string[] = e.message.split(`,`);
+            if (parts.length > 3) {
+              error.sqlstate = parts[parts.length-2].trim();
             }
+          } finally {
+            query?.close();
+          }
 
-            if (error) {
-              throw error;
-            }
+          if (error) {
+            throw error;
           }
         }
       }
+      
 
       return lastResultSet;
     }
