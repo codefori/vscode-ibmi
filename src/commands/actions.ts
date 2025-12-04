@@ -58,7 +58,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         if (scheme) {
           if (!uris.every(uri => uri.scheme === scheme)) {
             window.showWarningMessage(l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", ")));
-            return false;
+            return { success: false, result: []};
           }
 
           const config = connection.getConfig();
@@ -98,7 +98,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         window.showErrorMessage('Please connect to an IBM i first');
       }
 
-      return false;
+      return { success: false, result: []};
     }),
 
     commands.registerCommand(`code-for-ibmi.openErrors`, async (options: { qualifiedObject?: string, workspace?: WorkspaceFolder, keepDiagnostics?: boolean }) => {
