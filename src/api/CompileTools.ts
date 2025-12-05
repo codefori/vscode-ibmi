@@ -1,5 +1,6 @@
 
 import IBMi from './IBMi';
+import { SimpleQueue } from './queue';
 import { Tools } from './Tools';
 import { CommandResult, RemoteCommand, StandardIO } from './types';
 import { Variables } from './variables';
@@ -12,6 +13,11 @@ export interface ILELibrarySettings {
 export namespace CompileTools {
   export const NEWLINE = `\r\n`;
   export const DID_NOT_RUN = -123;
+  const HIDE_MESSAGE_IDS = [`CPF3485`, `SQL0462`];
+
+  const ileQueue = new SimpleQueue();
+
+  let jobLogOrdinal = 0;
 
   interface RunCommandEvents {
     writeEvent?: (content: string) => void;
@@ -66,7 +72,7 @@ export namespace CompileTools {
           }
         } : {};
 
-        let commandResult;
+        let commandResult: CommandResult;
         switch (options.environment) {
           case `pase`:
             commandResult = await connection.sendCommand({
@@ -90,17 +96,75 @@ export namespace CompileTools {
 
           case `ile`:
           default:
-            // escape $ and # in commands
-            commandResult = await connection.sendQsh({
-              command: [
-                ...options.noLibList ? [] : buildLiblistCommands(connection, ileSetup),
-                ...commands.map(command =>
-                  `${`system "${IBMi.escapeForShell(command)}"`}`,
-                )
-              ].join(` && `),
-              directory: cwd,
-              ...callbacks
+            // TODO: fetch job log
+            // TODO: exit code?
+            commandResult = {
+              code: 0, // TODO: exit code based on job log?
+              stderr: ``,
+              stdout: ``, // TODO: job log?
+              command: commands.join(`, `),
+            };
+
+            if (options.skipDetail) {
+              options.noLibList = true;
+            }
+
+            await ileQueue.next(async () => {
+              try {
+                await connection.runSQL([
+                  ...(cwd ? [`@CHGCURDIR DIR('${cwd}')`] : []),
+                  ...(options.noLibList ? [] : [`@CHGLIBL CURLIB(${ileSetup.currentLibrary}) LIBL(${ileSetup.libraryList.join(` `)})`]),
+                  ...commands.map(c => `@${c}`)
+                ]);
+              } catch (e: any) {
+                commandResult.stdout = e.message;
+                commandResult.code = 1;
+              }
+
+              // Do we really care about the job log and spool output when this is used?
+
+              // Then fetch the job log
+
+              if (options.skipDetail) {
+                // We still need to skip all the messages for the next time the commands are run
+                const lastMessage = await connection.runSQL(`select max(ORDINAL_POSITION) as O from table(qsys2.joblog_info('*'))`);
+                if (lastMessage && lastMessage.length === 1) {
+                  jobLogOrdinal = Number(lastMessage[0].O);
+                }
+
+              } else {
+                try {
+                  // We only care about messages since the last run :)
+                  const lastJobLog = await connection.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) where ordinal_position > ?`, { fakeBindings: [jobLogOrdinal] });
+                  if (lastJobLog && lastJobLog.length > 0) {
+                    commandResult.stderr = lastJobLog
+                      .filter(r => !HIDE_MESSAGE_IDS.includes(r.MESSAGE_ID as string))
+                      .map(r => `${r.MESSAGE_ID}: ${r.MESSAGE_TEXT}`).join(`\n`);
+                    callbacks.onStderr?.(Buffer.from(commandResult.stderr));
+                    jobLogOrdinal = Number(lastJobLog[lastJobLog.length - 1].ORDINAL_POSITION);
+                  } else {
+                    jobLogOrdinal = 0; // Reset if no job log
+                  }
+                } catch (e) {
+                  commandResult.code = 3;
+                }
+
+                // Then fetch the spool file
+                try {
+                  const lastSpool = await connection.runSQL(LAST_SPOOL_STATEMENT);
+
+                  if (lastSpool && lastSpool.length > 0) {
+                    commandResult.stdout = lastSpool.map(r => (r.SPOOLED_DATA as string).trimEnd()).join(`\n`);
+                    callbacks.onStdout?.(Buffer.from(commandResult.stdout));
+                  }
+                } catch (e) {
+                  commandResult.code = 2;
+                  console.log(`Failed to get spool output: `, e);
+                }
+              }
+
             });
+
             break;
         }
 
@@ -134,3 +198,30 @@ export namespace CompileTools {
     ];
   }
 }
+
+const LAST_SPOOL_STATEMENT = [
+  `WITH my_spooled_files (`,
+  `    job,`,
+  `    FILE,`,
+  `    file_number,`,
+  `    user_data,`,
+  `    create_timestamp`,
+  ` )`,
+  `    AS (SELECT job_name,`,
+  `               spooled_file_name,`,
+  `               file_number,`,
+  `               user_data,`,
+  `               create_timestamp`,
+  `          FROM qsys2.output_queue_entries_basic`,
+  `          WHERE user_name = USER`,
+  `          ORDER BY create_timestamp DESC`,
+  `          LIMIT 1)`,
+  ` SELECT `,
+  `        spooled_data`,
+  `    FROM my_spooled_files,`,
+  `         TABLE (`,
+  `            systools.spooled_file_data(`,
+  `               job_name => job, spooled_file_name => FILE,`,
+  `               spooled_file_number => file_number)`,
+  `         )`,
+].join(` `);
