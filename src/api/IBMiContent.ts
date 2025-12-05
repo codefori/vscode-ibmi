@@ -475,7 +475,7 @@ export default class IBMiContent {
       lines.forEach(line => {
         const isNotFound = line.includes(`CPF2110`);
         if (isNotFound) {
-          const libraryReference = sanitized.find(lib => line.includes(lib));
+          const libraryReference = sanitized.find(library => line.includes(` ${library} `));
 
           // If there is an error about the library, remove it
           if (libraryReference) {
