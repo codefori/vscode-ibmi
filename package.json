@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.18.1-dev.0",
+	"version": "2.18.2-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -3138,7 +3138,7 @@
 					"command": "code-for-ibmi.environment.profile.create",
 					"when": "view === environmentView && viewItem =~ /^profilesNode/",
 					"group": "inline@01"
-				},				
+				},
 				{
 					"command": "code-for-ibmi.environment.profile.fromCurrent",
 					"when": "view === environmentView && viewItem =~ /^profilesNode/",
