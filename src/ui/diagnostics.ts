@@ -56,20 +56,22 @@ export function clearDiagnostic(uri: vscode.Uri, changeRange: vscode.Range) {
   }
 }
 
-export async function refreshDiagnosticsFromServer(instance: Instance, evfeventInfo: EvfEventInfo, keepDiagnostics?: boolean) {
+export async function refreshDiagnosticsFromServer(instance: Instance, evfeventInfo: EvfEventInfo[], keepDiagnostics?: boolean) {
   const connection = instance.getConnection();
 
   if (connection) {
     const content = connection.getContent();
-    const tableData = await content.getTable(evfeventInfo.library, `EVFEVENT`, evfeventInfo.object);
-    const lines = tableData.map(row => String(row.EVFEVENT));
 
     if (IBMi.connectionManager.get(`clearErrorsBeforeBuild`) && !keepDiagnostics) {
       // Clear all errors if the user has this setting enabled
       clearDiagnostics();
     }
 
-    handleEvfeventLines(lines, instance, evfeventInfo);
+    evfeventInfo.forEach(async e => {
+      const tableData = await content.getTable(e.library, `EVFEVENT`, e.object);
+      const lines = tableData.map(row => String(row.EVFEVENT));
+      handleEvfeventLines(lines, instance, e);
+    });
   } else {
     throw new Error('Please connect to an IBM i');
   }

@@ -35,7 +35,7 @@ export type ActionTarget = {
 }
 
 const actionUsed: Map<string, number> = new Map;
-const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE)\((?<object>.+?)\)/;
+const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE|FILE|MENU)\((?<object>.+?)\)/;
 
 export function registerActionTools(context: vscode.ExtensionContext) {
   context.subscriptions.push(
@@ -171,6 +171,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
               extension: target.extension,
               workspace: fromWorkspace
             };
+            const evfeventInfos: EvfEventInfo[] = [];
 
             let processedPath = "";
             switch (chosenAction.type) {
@@ -383,12 +384,26 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             fromWorkspace && chosenAction.postDownload &&
                             (chosenAction.postDownload.includes(`.evfevent`) || chosenAction.postDownload.includes(`.evfevent/`));
 
-                          const possibleObject = getObjectFromCommand(commandResult.command);
-                          if (isIleCommand && possibleObject) {
-                            Object.assign(evfeventInfo, possibleObject);
+                          const possibleObjects = getObjectsFromJoblog(commandResult.stderr) || getObjectFromCommand(commandResult.command);
+                          if (isIleCommand && possibleObjects) {
+                            evfeventInfos.length = 0;
+                            if (Array.isArray(possibleObjects)) {
+                              for(const o of possibleObjects) {
+                                evfeventInfos.push({
+                                  library: o.library || evfeventInfo.library,
+                                  object: o.object,
+                                  extension: evfeventInfo.extension,
+                                  asp: evfeventInfo.asp
+                                })
+                              };
+                            } else {
+                              evfeventInfo.library = possibleObjects.library ? possibleObjects.library : evfeventInfo.library;
+                              evfeventInfo.object = possibleObjects.object;
+                              evfeventInfos.push(evfeventInfo);
+                            }
                           }
 
-                          actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
+                          actionName = (isIleCommand && possibleObjects ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
                           successful = (commandResult.code === 0 || commandResult.code === null);
 
                           writeEmitter.fire(CompileTools.NEWLINE);
@@ -399,8 +414,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           }
                           else if (evfeventInfo.object && evfeventInfo.library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
-                              writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
-                              await refreshDiagnosticsFromServer(instance, evfeventInfo);
+                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfo.library}/${evfeventInfo.object}.`) + CompileTools.NEWLINE);
+                              await refreshDiagnosticsFromServer(instance, evfeventInfos);
                               problemsFetched = true;
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
                               writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
@@ -629,6 +644,34 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     }));
 
   return availableActions;
+}
+
+function getObjectsFromJoblog(stderr: string): CommandObject[] | undefined {
+  const objects: CommandObject[] = [];
+
+  // Filter lines with EVFEVENT info from server.
+  const joblogLines = stderr.split(`\n`).filter(line => line.match(/:  EVFEVENT:/i));
+
+  for(const joblogLine of joblogLines) {
+    const evfevent = joblogLine.match(/:  EVFEVENT:(.*)/i) || '';
+    if (evfevent.length) {
+      const object = evfevent[1].trim().split(/[,\|/]/);
+      if (object) {
+        if (object.length >= 2) {
+          objects.push({
+            library: object[0].trim(),
+            object: object[1].trim()
+          });
+        } else {
+          objects.push({
+            object: object[0].trim()
+          });
+        }
+      }
+    }
+  }
+
+  return objects.length > 0 ? objects : undefined;
 }
 
 function getObjectFromCommand(baseCommand?: string): CommandObject | undefined {
