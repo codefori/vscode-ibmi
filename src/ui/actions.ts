@@ -34,7 +34,7 @@ export type ActionTarget = {
 }
 
 const actionUsed: Map<string, number> = new Map;
-const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE|FILE)\((?<object>.+?)\)/;
+const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE|FILE|MENU)\((?<object>.+?)\)/;
 
 export function registerActionTools(context: vscode.ExtensionContext) {
   context.subscriptions.push(
