@@ -4,7 +4,6 @@ import { Config } from "../configuration/config/VirtualConfig";
 import { BaseStorage } from "../configuration/storage/BaseStorage";
 
 class JSONMap extends Map<string, any> {
-
   constructor(private readonly filePath: string) {
     if (existsSync(filePath)) {
       const data = JSON.parse(readFileSync(filePath).toString("utf-8"));
@@ -21,7 +20,8 @@ class JSONMap extends Map<string, any> {
 }
 
 export class JSONConfig extends Config {
-  private readonly config: JSONMap = new JSONMap(path.join(__dirname, `.config.json`));
+  public static readonly NAME = `.config.json`;
+  private readonly config: JSONMap = new JSONMap(path.join(__dirname, JSONConfig.NAME));
 
   public save() {
     this.config.save();
@@ -37,10 +37,11 @@ export class JSONConfig extends Config {
 }
 
 export class JsonStorage extends BaseStorage {
+  public static readonly NAME = `.storage.json`;
   private readonly config: JSONMap;
 
   constructor() {
-    const jsonMap = new JSONMap(path.join(__dirname, `.storage.json`));
+    const jsonMap = new JSONMap(path.join(__dirname, JsonStorage.NAME));
     super(jsonMap);
     this.config = jsonMap;
   }

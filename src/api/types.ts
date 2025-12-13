@@ -26,7 +26,8 @@ export interface RemoteCommand {
   environment?: ActionEnvironment;
   cwd?: string;
   env?: Record<string, string> | Variables;
-  noLibList?: boolean
+  noLibList?: boolean,
+  skipDetail?: boolean
 }
 
 export interface CommandData extends StandardIO {

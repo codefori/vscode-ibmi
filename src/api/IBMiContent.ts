@@ -264,7 +264,7 @@ export default class IBMiContent {
         try {
           await this.ibmi.runSQL([
             `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE)`,
             `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
           ].join("\n"));
         } catch (error: any) {
@@ -274,7 +274,7 @@ export default class IBMiContent {
       }
       else {
         copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE)`,
           noLibList: true
         });
       }
@@ -300,7 +300,7 @@ export default class IBMiContent {
    * @returns result set
    */
   runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
-    return this.ibmi.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
+    return this.ibmi.runSQL(statements);
   }
 
   /**
@@ -535,8 +535,8 @@ export default class IBMiContent {
       createOBJLIST = [
         `with SRCFILES as (`,
         `  select `,
-        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10) for bit data)) as LIBRARY,`,
-        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10) for bit data)) as NAME,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,`,
         `    '*FILE'             as TYPE,`,
         `    'PF'                as ATTRIBUTE,`,
         `    t.TABLE_TEXT        as TEXT,`,
@@ -572,8 +572,8 @@ export default class IBMiContent {
       createOBJLIST = [
         `with SRCFILES as (`,
         `  select `,
-        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10) for bit data)) as LIBRARY,`,
-        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10) for bit data)) as NAME,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,`,
         `    '*FILE'             as TYPE,`,
         `    'PF'                as ATTRIBUTE,`,
         `    t.TABLE_TEXT        as TEXT,`,
@@ -723,12 +723,12 @@ export default class IBMiContent {
     const statement =
       `with MEMBERS as (
         select
-          rtrim(cast(a.SYSTEM_TABLE_SCHEMA as char(10) for bit data)) as LIBRARY,
+          rtrim(cast(a.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,
           b.AVGROWSIZE as RECORD_LENGTH,
           a.IASP_NUMBER as ASP,
-          rtrim(cast(a.SYSTEM_TABLE_NAME as char(10) for bit data)) AS SOURCE_FILE,
-          rtrim(cast(b.SYSTEM_TABLE_MEMBER as char(10) for bit data)) as NAME,
-          coalesce(rtrim(cast(b.SOURCE_TYPE as varchar(10) for bit data)), '') as TYPE,
+          rtrim(cast(a.SYSTEM_TABLE_NAME as char(10))) AS SOURCE_FILE,
+          rtrim(cast(b.SYSTEM_TABLE_MEMBER as char(10))) as NAME,
+          coalesce(rtrim(cast(b.SOURCE_TYPE as varchar(10))), '') as TYPE,
           coalesce(rtrim(varchar(b.PARTITION_TEXT)), '') as TEXT,
           b.NUMBER_ROWS as LINES,
           extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
