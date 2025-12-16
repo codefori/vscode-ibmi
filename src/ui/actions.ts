@@ -207,14 +207,14 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 const parent = path.parse(pathData.dir).base;
                 let name = pathData.name;
 
-                // Logic to handle second extension, caused by bob.
-                const bobTypes = [`.PGM`, `.SRVPGM`];
+                // Logic to handle second extension, caused by TOBi.
+                const tobiTypes = [`.PGM`, `.SRVPGM`];
                 const secondName = path.parse(name);
-                if (secondName.ext && bobTypes.includes(secondName.ext.toUpperCase())) {
+                if (secondName.ext && tobiTypes.includes(secondName.ext.toUpperCase())) {
                   name = secondName.name;
                 }
 
-                // Remove bob text convention
+                // Remove TOBi text convention
                 if (name.includes(`-`)) {
                   name = name.substring(0, name.indexOf(`-`));
                 }

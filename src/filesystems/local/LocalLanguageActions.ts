@@ -165,7 +165,7 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       "extensions": [
         `GLOBAL`
       ],
-      "name": `Build all`,
+      "name": `Build all with gmake`,
       "command": `/QOpenSys/pkgs/bin/gmake BUILDLIB=&CURLIB ERR=*EVENTF`,
       environment: `pase`,
       deployFirst: true,
@@ -174,18 +174,18 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       "extensions": [
         `GLOBAL`
       ],
-      "name": `Build current`,
+      "name": `Build current with gmake`,
       "command": `/QOpenSys/pkgs/bin/gmake &BASENAME BUILDLIB=&CURLIB ERR=*EVENTF`,
       environment: `pase`,
       deployFirst: true,
     }
   ],
-  "ibmi-bob": [
+  "The Object Builder for i (TOBi)": [
     {
       "extensions": [
         `GLOBAL`
       ],
-      "name": `Build all`,
+      "name": `Build all with TOBi`,
       "command": `OPT=*EVENTF BUILDLIB=&CURLIB /QOpenSys/pkgs/bin/makei build`,
       environment: `pase`,
       deployFirst: true,
@@ -198,7 +198,7 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       "extensions": [
         `GLOBAL`
       ],
-      "name": `Build current`,
+      "name": `Build current with TOBi`,
       "command": `OPT=*EVENTF BUILDLIB=&CURLIB /QOpenSys/pkgs/bin/makei compile -f &BASENAME`,
       environment: `pase`,
       deployFirst: true,
