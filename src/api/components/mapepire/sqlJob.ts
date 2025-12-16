@@ -1,14 +1,13 @@
-import { SQLJob } from "@ibm/mapepire-js";
 import type { ConnectionResult, JDBCOptions, QueryResult, ServerRequest, ServerResponse } from "@ibm/mapepire-js";
-import {ClientChannel} from "ssh2";
-import IBMi from "../../IBMi";
+import { SQLJob } from "@ibm/mapepire-js";
+import { ClientChannel } from "ssh2";
 import { Mapepire } from ".";
+import IBMi from "../../IBMi";
 import { JobStatus } from "./types";
 
-const DB2I_VERSION = (process.env[`DB2I_VERSION`] || `<version unknown>`) + ((process.env.DEV) ? ``:`-dev`);
-
 export class sshSqlJob extends SQLJob {
-  private channel: ClientChannel|undefined;
+  static application = "<unknown>";
+  private channel: ClientChannel | undefined;
 
   private currentSchemaStore: string | undefined;
 
@@ -47,7 +46,7 @@ export class sshSqlJob extends SQLJob {
           if (outString.endsWith(`\n`)) {
             for (const thisMsg of outString.split(`\n`)) {
               if (thisMsg === ``) continue;
-              
+
               outString = ``;
               // if (this.isTracingChannelData) ServerComponent.writeOutput(thisMsg);
               try {
@@ -107,7 +106,7 @@ export class sshSqlJob extends SQLJob {
     })
 
     const props = (Object
-      .keys(this.options) as {[key: string]: any})
+      .keys(this.options) as { [key: string]: any })
       .filter((prop: keyof JDBCOptions) => this.options[prop] !== `` && this.options[prop] !== null && this.options[prop] !== undefined) // 0 is valid
       .map((prop: keyof JDBCOptions) => {
         if (Array.isArray(this.options[prop])) {
@@ -123,7 +122,7 @@ export class sshSqlJob extends SQLJob {
       type: `connect`,
       //technique: (getInstance().getConnection().qccsid === 65535 || this.options["database name"]) ? `tcp` : `cli`, //TODO: investigate why QCCSID 65535 breaks CLI and if there is any workaround
       technique: `tcp`, // TODO: DOVE does not work in cli mode
-      application: `vscode-db2i ${DB2I_VERSION}`,
+      application: sshSqlJob.application,
       props: props.length > 0 ? props : undefined
     }
 
@@ -162,7 +161,7 @@ export class sshSqlJob extends SQLJob {
     this.end();
   }
 
- private end() {
+  private end() {
     this.channel?.close();
     this.channel = undefined;
     this.status = JobStatus.ENDED;

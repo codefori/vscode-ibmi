@@ -9,6 +9,8 @@ import IBMi from "./api/IBMi";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
+import { Mapepire } from "./api/components/mapepire";
+import { sshSqlJob } from "./api/components/mapepire/sqlJob";
 import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
@@ -35,12 +37,13 @@ import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
-import { Mapepire } from "./api/components/mapepire";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
+
+  sshSqlJob.application = `${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`;
 
   await loadAllofExtension(context);
 
