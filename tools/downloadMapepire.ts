@@ -1,9 +1,9 @@
 import path from "path";
 
+import { Octokit } from "@octokit/rest";
 import { existsSync, mkdirSync, statSync } from "fs";
 import { writeFile } from "fs/promises";
-import { Octokit } from "@octokit/rest";
-import { SERVER_VERSION_FILE, SERVER_VERSION_TAG } from "./api/components/mapepire/version";
+import { SERVER_VERSION_FILE, SERVER_VERSION_TAG } from "../src/api/components/mapepire/version";
 
 async function work() {
   const distDirectory = path.join(`.`, `dist`);

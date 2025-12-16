@@ -10,8 +10,10 @@ vsc-extension-quickstart.md
 **/tsconfig.json
 src/**
 !src/schemas/**
+tools/**
 types/**
 docs/**
 .github/**
 node_modules
 media
+*.config.*
