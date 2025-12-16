@@ -1,5 +1,5 @@
 import { FilterType } from "../../Filter";
-import { DeploymentMethod, ConnectionData } from "../../types";
+import { ConnectionData, DeploymentMethod } from "../../types";
 
 export type DefaultOpenMode = "browse" | "edit";
 export type ReconnectMode = "always" | "never" | "ask";
@@ -33,6 +33,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   protectedPaths: string[];
   showHiddenFiles: boolean;
   lastDownloadLocation: string;
+  secureSQL: boolean;
   [name: string]: any;
 }
 

@@ -110,6 +110,11 @@
           "type": "string",
           "default": "8008",
           "description": "Port to connect to IBM i Debug Service for SEP."
+        },
+        "secureSQL": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Use TLS when connecting Mapepire to Db2 for i"
         }
       }
     },

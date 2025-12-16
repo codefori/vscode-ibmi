@@ -373,6 +373,11 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Always open source members and IFS files in read-only mode."
+							},
+							"secureSQL": {
+								"type": "boolean",
+								"default": false,
+								"description": "Use TLS when connecting Mapepire to Db2 for i"
 							}
 						}
 					}
