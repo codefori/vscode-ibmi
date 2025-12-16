@@ -3,14 +3,14 @@ import { stat } from "fs/promises";
 import path from "path";
 import IBMi from "../../IBMi";
 import { ComponentState, IBMiComponent } from "../component";
-import { SERVER_VERSION_FILE, VERSION_NUMBER } from "./version";
 import { sshSqlJob } from "./sqlJob";
+import { SERVER_VERSION_FILE, VERSION_NUMBER } from "./version";
 
 const DEFAULT_JAVA_EIGHT = `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit/bin/java`;
 
 export class Mapepire implements IBMiComponent {
   static ID = "mapepire";
-  private localAssetPath: string|undefined;
+  private localAssetPath: string | undefined;
 
   setLocalAssetPath(newPath: string) {
     this.localAssetPath = newPath;
@@ -52,6 +52,7 @@ export class Mapepire implements IBMiComponent {
       return `Error`;
     }
 
+    await connection.sendCommand({ command: `rm ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*` });
     await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
 
     await connection.sendCommand({
@@ -88,14 +89,10 @@ export class Mapepire implements IBMiComponent {
 
   public async newJob(connection: IBMi, javaPath?: string) {
     const sqlJob = new sshSqlJob();
-    
     const stream = await sqlJob.getSshChannel(this, connection, javaPath);
-    
     await sqlJob.connectSsh(stream);
-
     // sqlJob.setTraceConfig(`IN_MEM`, `ON`);
     // sqlJob.enableLocalTrace();
-
     return sqlJob;
   }
 }
