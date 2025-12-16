@@ -37,7 +37,7 @@ export interface CommandData extends StandardIO {
 
 export interface CommandResult {
   code: number;
-  signal?: string|null;
+  signal?: string | null;
   stdout: string;
   stderr: string;
   command?: string;
@@ -54,6 +54,18 @@ export interface Action {
   refresh?: ActionRefresh
   runOnProtected?: boolean
   outputToFile?: string
+}
+
+export interface ActionResult {
+  success: boolean,
+  output: {
+    path: string,
+    processed: boolean,
+    hasRun: boolean,
+    executionOK: boolean,
+    output: string[]
+  }[],
+  message?: string
 }
 
 export interface ConnectionData {

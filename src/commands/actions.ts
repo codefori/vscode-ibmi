@@ -3,7 +3,7 @@ import { commands, Disposable, l10n, TreeItem, Uri, window, WorkspaceFolder } fr
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import Instance from "../Instance";
-import { Action, DeploymentMethod } from "../typings";
+import { Action, ActionResult, DeploymentMethod } from "../typings";
 import { runAction } from "../ui/actions";
 import { refreshDiagnosticsFromServer } from "../ui/diagnostics";
 import { BrowserItem } from "../ui/types";
@@ -13,6 +13,7 @@ type CommandOrigin = "editor" | "objectBrowser" | "ifsBrowser";
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [
     commands.registerCommand(`code-for-ibmi.runAction`, async (item: (CommandOrigin | TreeItem | BrowserItem | Uri), items?: (TreeItem | BrowserItem | Uri)[], action?: Action, method?: DeploymentMethod, workspaceFolder?: WorkspaceFolder) => {
+      let actionMessage: string;
       const connection = instance.getConnection()!;
       if (connection) {
         const editor = window.activeTextEditor;
@@ -57,9 +58,9 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const scheme = uris[0]?.scheme;
         if (scheme) {
           if (!uris.every(uri => uri.scheme === scheme)) {
-            const errorMsg=l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", "));
-            window.showWarningMessage(errorMsg);
-            return { success: false, output: [], error: errorMsg  };
+            actionMessage = l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", "));
+            window.showWarningMessage(actionMessage);
+            return { success: false, output: [], error: actionMessage };
           }
 
           const config = connection.getConfig();
@@ -70,7 +71,8 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
               if (config.autoSaveBeforeAction) {
                 await openedEditor.document.save();
               } else {
-                const result = await window.showWarningMessage(`File ${path} must be saved to run Actions.`, `Save`, `Save automatically`, `Cancel`);
+                actionMessage = l10n.t(`File {0} must be saved to run Actions.`, path);
+                const result = await window.showWarningMessage(actionMessage, `Save`, `Save automatically`, `Cancel`);
                 switch (result) {
                   case `Save`:
                     await openedEditor.document.save();
@@ -83,7 +85,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
                     break;
 
                   default:
-                    return;
+                    return { success: false, output: [], error: actionMessage }
                 }
               }
             }
@@ -92,14 +94,19 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
           if ([`member`, `streamfile`, `file`, 'object'].includes(scheme)) {
             return await runAction(instance, uris, action, method, browserItems, workspaceFolder);
           }
+
+          actionMessage = l10n.t("Unsupported file scheme: {0}. Must be 'member', 'streamfile', 'file', or 'object'", scheme);
+          return { success: false, output: [], error: actionMessage };
         }
 
+        actionMessage = l10n.t("Failed to retrieve file scheme");
+        return { success: false, output: [], error: actionMessage };
       }
       else {
-        window.showErrorMessage('Please connect to an IBM i first');
+        actionMessage = l10n.t("Please connect to an IBM i first");
+        window.showErrorMessage(actionMessage);
+        return { success: false, output: [], error: actionMessage };
       }
-
-      return { success: false, output: [],error:""}; //returning empty error to satisfy return type
     }),
 
     commands.registerCommand(`code-for-ibmi.openErrors`, async (options: { qualifiedObject?: string, workspace?: WorkspaceFolder, keepDiagnostics?: boolean }) => {
