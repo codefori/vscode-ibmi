@@ -393,6 +393,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   const port = config?.debugPort;
   const updateProductionFiles = config?.debugUpdateProductionFiles;
   const enableDebugTracing = config?.debugEnableDebugTracing;
+  const debugIgnoreCertificateErrors= config?.debugIgnoreCertificateErrors;
 
   let secure = true;
 
@@ -444,7 +445,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
         "host": connection!.currentHost,
         "port": port,
         "secure": secure,  // Enforce secure mode
-        "ignoreCertificateErrors": !secure,
+        "ignoreCertificateErrors": debugIgnoreCertificateErrors,
         "subType": "batch",
         "library": options.library.toUpperCase(),
         "program": options.object.toUpperCase(),
