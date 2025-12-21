@@ -1,5 +1,4 @@
-import { parse } from 'csv-parse/sync';
-import { existsSync, stat } from "fs";
+import { existsSync } from "fs";
 import * as node_ssh from "node-ssh";
 import os from "os";
 import path, { parse as parsePath } from 'path';
@@ -9,15 +8,15 @@ import IBMiContent from "./IBMiContent";
 import { Tools } from './Tools';
 import { IBMiComponent } from "./components/component";
 import { ComponentManager, ComponentSearchProps } from "./components/manager";
+import { Mapepire } from './components/mapepire';
+import { sshSqlJob } from './components/mapepire/sqlJob';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/serverFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, WrapResult } from './types';
-import { Mapepire } from './components/mapepire';
-import { sshSqlJob } from './components/mapepire/sqlJob';
+import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -106,7 +105,8 @@ export default class IBMi {
   private tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
 
-  private sqlJob: sshSqlJob|undefined;
+  private sqlJob: sshSqlJob | undefined;
+  splfUserData: string | undefined;
 
   /**
    * Used to store ASP numbers and their names
@@ -169,11 +169,11 @@ export default class IBMi {
   getConfigFile<T>(id: keyof ConnectionConfigFiles) {
     return this.configFiles[id] as ConfigFile<T>;
   }
-  
+
   async loadRemoteConfigs() {
     for (const configFile in this.configFiles) {
       const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
-      
+
       currentConfig.reset();
 
       try {
@@ -524,6 +524,10 @@ export default class IBMi {
           const javaPath = path.posix.join(useJavaVersion, `bin`, `java`);
           try {
             this.sqlJob = await mapepire.newJob(this, javaPath);
+            if (this.sqlJob.id) {
+              this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
+              await this.sqlJob.execute(`CALL QSYS2.QCMDEXC('OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)')`);
+            }
           } catch (e: any) {
             callbacks.message(`error`, `Failed to start Mapepire SQL job: ${e.message || e}`);
             this.appendOutput(`Mapepire error: ${e.message || e}\n`);
@@ -665,7 +669,7 @@ export default class IBMi {
 
         const QCPTOIMPF = await this.runCommand({
           command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-          skipDetail: true
+          noLibList: true
         });
 
         if (QCPTOIMPF?.code === 0) {
@@ -674,7 +678,7 @@ export default class IBMi {
 
         const QCPFRMIMPF = await this.runCommand({
           command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-          skipDetail: true
+          noLibList: true
         })
 
         if (QCPFRMIMPF?.code === 0) {
@@ -1013,7 +1017,7 @@ export default class IBMi {
       else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
         const tempLibExists = await this.runCommand({
           command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-          skipDetail: true
+          noLibList: true
         });
 
         if (tempLibExists.code === 0) {
@@ -1146,6 +1150,7 @@ export default class IBMi {
     if (this.sqlJob) {
       this.sqlJob.close();
       this.sqlJob = undefined;
+      this.splfUserData = undefined;
     }
 
     if (this.client) {
@@ -1352,7 +1357,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string|string[], options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string | string[], options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
     if (this.sqlJob) {
       let list = Array.isArray(statements) ? statements : statements.split(`;`).filter(x => x.trim().length > 0);
 
@@ -1360,10 +1365,10 @@ export default class IBMi {
 
       for (let i = 0; i < list.length; i++) {
         let statement = list[i];
-        let isLast = i === (list.length-1);
+        let isLast = i === (list.length - 1);
 
         if (statement.startsWith(`@`)) {
-          await this.sqlJob.execute(statement.substring(1), {isClCommand: true});
+          await this.sqlJob.execute(statement.substring(1), { isClCommand: true });
         } else {
           if (isLast) {
             // There is a bug with Mapepire handling of binding parameters.
@@ -1392,7 +1397,7 @@ export default class IBMi {
           }
 
           let query;
-          let error: Tools.SqlError|undefined;
+          let error: Tools.SqlError | undefined;
           try {
             query = this.sqlJob.query(statement);
             const rs = await query.execute(99999);
@@ -1400,10 +1405,10 @@ export default class IBMi {
           } catch (e: any) {
             error = new Tools.SqlError(e.message);
             error.cause = statement
-            
+
             const parts: string[] = e.message.split(`,`);
             if (parts.length > 3) {
-              error.sqlstate = parts[parts.length-2].trim();
+              error.sqlstate = parts[parts.length - 2].trim();
             }
           } finally {
             query?.close();
@@ -1414,7 +1419,7 @@ export default class IBMi {
           }
         }
       }
-      
+
 
       return lastResultSet;
     }

@@ -45,6 +45,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
     lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir()),
     secureSQL: (parameters.secureSQL === true),
+    keepActionSpooledFiles: (parameters.keepActionSpooledFiles === true),
   }
 }
 

@@ -27,7 +27,7 @@ export interface RemoteCommand {
   cwd?: string;
   env?: Record<string, string> | Variables;
   noLibList?: boolean,
-  skipDetail?: boolean
+  getSpooledFiles?: boolean
 }
 
 export interface CommandData extends StandardIO {

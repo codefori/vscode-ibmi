@@ -34,6 +34,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   showHiddenFiles: boolean;
   lastDownloadLocation: string;
   secureSQL: boolean;
+  keepActionSpooledFiles: boolean;
   [name: string]: any;
 }
 

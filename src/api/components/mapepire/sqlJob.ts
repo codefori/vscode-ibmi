@@ -1,4 +1,4 @@
-import type { ConnectionResult, JDBCOptions, QueryResult, ServerRequest, ServerResponse } from "@ibm/mapepire-js";
+import type { ConnectionResult, JDBCOptions, ServerRequest, ServerResponse } from "@ibm/mapepire-js";
 import { SQLJob } from "@ibm/mapepire-js";
 import { ClientChannel } from "ssh2";
 import { Mapepire } from ".";
@@ -9,26 +9,16 @@ export class sshSqlJob extends SQLJob {
   static application = "<unknown>";
   private channel: ClientChannel | undefined;
 
-  private currentSchemaStore: string | undefined;
-
-  resetCurrentSchemaCache() {
-    this.currentSchemaStore = undefined;
-  }
-
-  // Explicitly declare inherited methods from SQLJob for TypeScript
-  declare query: <T>(sql: string, opts?: any) => any;
-  declare execute: <T>(sql: string, opts?: any) => Promise<QueryResult<T>>;
-
   async getSshChannel(mapepire: Mapepire, connection: IBMi, javaPath?: string): Promise<ClientChannel> {
     const useExec = await Mapepire.useExec(connection);
-    
+
     return new Promise((resolve, reject) => {
       // Setting QIBM_JAVA_STDIO_CONVERT and QIBM_PASE_DESCRIPTOR_STDIO to make sure all PASE and Java converters are off
       const startingCommand = `QIBM_JAVA_STDIO_CONVERT=N QIBM_PASE_DESCRIPTOR_STDIO=B QIBM_USE_DESCRIPTOR_STDIO=Y QIBM_MULTI_THREADED=Y ${useExec ? `exec ` : ``}` + mapepire.getInitCommand(javaPath);
 
       // ServerComponent.writeOutput(startingCommand);
 
-      const a = connection.client?.connection?.exec(startingCommand, {}, (err, stream) => {
+      connection.client?.connection?.exec(startingCommand, {}, (err, stream) => {
         if (err) {
           reject(err);
           // ServerComponent.writeOutput(err);

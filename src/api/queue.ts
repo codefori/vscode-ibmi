@@ -20,8 +20,8 @@ export class SimpleQueue {
 		return new Promise<T>((resolve, reject) => {
 			this.queue.push(async () => {
 				if (this.delay) {
-					// We intentially do the cancel check twice.
-					if (cancelCheck && cancelCheck()) {
+					// We intentionally do the cancel check twice.
+					if (cancelCheck?.()) {
 						return undefined;
 					}
 
@@ -29,7 +29,7 @@ export class SimpleQueue {
 				}
 				
 				try {
-					if (cancelCheck && cancelCheck()) {
+					if (cancelCheck?.()) {
 						return undefined;
 					}
 
