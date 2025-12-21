@@ -38,7 +38,7 @@ export interface CommandData extends StandardIO {
 
 export interface CommandResult {
   code: number;
-  signal?: string|null;
+  signal?: string | null;
   stdout: string;
   stderr: string;
   command?: string;
@@ -71,10 +71,6 @@ export interface ConnectionData {
 
 export interface Server {
   name: string
-}
-
-export interface Profile {
-  profile: string
 }
 
 export interface QsysPath {

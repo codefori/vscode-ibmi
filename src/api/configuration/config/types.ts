@@ -8,7 +8,6 @@ export interface ConnectionConfig extends ConnectionProfile {
   host: string;
   autoClearTempData: boolean;
   connectionProfiles: ConnectionProfile[];
-  commandProfiles: CommandProfile[];
   autoSortIFSShortcuts: boolean;
   tempLibrary: string;
   tempDir: string;
@@ -35,6 +34,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   lastDownloadLocation: string;
   secureSQL: boolean;
   keepActionSpooledFiles: boolean;
+  currentProfile?: string
   [name: string]: any;
 }
 
@@ -66,11 +66,7 @@ export interface ConnectionProfile {
   objectFilters: ObjectFilters[]
   ifsShortcuts: string[]
   customVariables: CustomVariable[]
-}
-
-export interface CommandProfile {
-  name: string;
-  command: string;
+  setLibraryListCommand?: string
 }
 
 export interface StoredConnection {

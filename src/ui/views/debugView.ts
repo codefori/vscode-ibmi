@@ -1,7 +1,7 @@
 import vscode from "vscode";
+import { DebugConfiguration, getDebugServiceDetails, SERVICE_CERTIFICATE } from "../../api/configuration/DebugConfiguration";
 import { Tools } from "../../api/Tools";
 import { checkClientCertificate, remoteCertificatesExists } from "../../debug/certificates";
-import { DebugConfiguration, getDebugServiceDetails, SERVICE_CERTIFICATE } from "../../api/configuration/DebugConfiguration";
 import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../../debug/server";
 import { instance } from "../../instantiate";
 import { VscodeTools } from "../Tools";
@@ -140,7 +140,7 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
 }
 
 class DebugItem extends BrowserItem {
-  refresh() {
+  async refresh() {
     vscode.commands.executeCommand("code-for-ibmi.debug.refresh.item", this);
   }
 }
