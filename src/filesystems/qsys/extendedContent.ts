@@ -2,7 +2,6 @@ import fs from "fs";
 import tmp from "tmp";
 import util from "util";
 import vscode from "vscode";
-import IBMi from "../../api/IBMi";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
 
@@ -148,7 +147,7 @@ export class ExtendedIBMiContent {
         //We assume the alias still exists....
         const tempTable = `QTEMP.NEWMEMBER`;
         const query: string[] = [
-          `CREATE TABLE ${tempTable} LIKE "${library}"."${file}";`,
+          `CREATE OR REPLACE TABLE ${tempTable} LIKE "${library}"."${file}" ON REPLACE DELETE ROWS;`,
         ];
 
         // Row length is the length of the SQL string used to insert each row
