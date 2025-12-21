@@ -1402,8 +1402,8 @@ export default class IBMi {
           try {
             query = this.sqlJob.query<Tools.DB2Row>(statement);
             const rs = await query.execute(99999);
-            lastResultSet.push(...rs.data);
             if (rs.has_results) {
+              lastResultSet.push(...rs.data);
               this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'}\n\n`);
             }
             else {
@@ -1428,7 +1428,6 @@ export default class IBMi {
           }
         }
       }
-
 
       return lastResultSet;
     }
