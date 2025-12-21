@@ -1361,11 +1361,11 @@ export default class IBMi {
     if (this.sqlJob) {
       let list = Array.isArray(statements) ? statements : statements.split(`;`).filter(x => x.trim().length > 0);
 
-      let lastResultSet: any;
+      const lastResultSet: Tools.DB2Row[] = [];
 
       for (let i = 0; i < list.length; i++) {
         let statement = list[i];
-        let isLast = i === (list.length - 1);
+        const isLast = i === (list.length - 1);
 
         if (statement.startsWith(`@`)) {
           await this.sqlJob.execute(statement.substring(1), { isClCommand: true });
@@ -1398,10 +1398,17 @@ export default class IBMi {
 
           let query;
           let error: Tools.SqlError | undefined;
+          const log = `Running SQL query: ${statement}\n`;
           try {
-            query = this.sqlJob.query(statement);
+            query = this.sqlJob.query<Tools.DB2Row>(statement);
             const rs = await query.execute(99999);
-            lastResultSet = rs.data;
+            lastResultSet.push(...rs.data);
+            if (rs.has_results) {
+              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'}\n\n`);
+            }
+            else {
+              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted\n\n`);
+            }
           } catch (e: any) {
             error = new Tools.SqlError(e.message);
             error.cause = statement
@@ -1410,6 +1417,8 @@ export default class IBMi {
             if (parts.length > 3) {
               error.sqlstate = parts[parts.length - 2].trim();
             }
+
+            this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}\n\n`);
           } finally {
             query?.close();
           }
