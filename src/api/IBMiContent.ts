@@ -512,6 +512,7 @@ export default class IBMiContent {
       }
     }
 
+    const usLocalLibrary = this.ibmi.sysNameInAmerican(localLibrary);
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
     const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
@@ -525,7 +526,7 @@ export default class IBMiContent {
     // SYSTABLES takes the name in the local format (with the local variant characters)
     // OBJECT_STATISTICS takes the name in the system format
 
-    const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${objectFilter.replace('*', '%')}'` : '';
+    const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
 
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
@@ -547,7 +548,7 @@ export default class IBMiContent {
         `  where t.FILE_TYPE = 'S'`,
         `)`,
         `SELECT * FROM SRCFILES as f`,
-        `where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}`,
+        `where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
       ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
@@ -564,7 +565,7 @@ export default class IBMiContent {
         `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `  OBJOWNER         as OWNER,`,
         `  OBJDEFINER       as CREATED_BY`,
-        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${usLocalLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
       ];
     }
     else {
@@ -584,7 +585,7 @@ export default class IBMiContent {
         `  where t.FILE_TYPE = 'S'`,
         `), SRCPF as (`,
         `  SELECT * FROM SRCFILES as f`,
-        `  where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}`,
+        `  where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
@@ -598,7 +599,7 @@ export default class IBMiContent {
         `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `    OBJOWNER          as OWNER,`,
         `    OBJDEFINER        as CREATED_BY`,
-        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${usLocalLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
         `  )`,
         `select`,
         `  o.NAME,`,
@@ -738,9 +739,9 @@ export default class IBMiContent {
             on ( b.SYSTEM_TABLE_SCHEMA, b.SYSTEM_TABLE_NAME ) = ( a.SYSTEM_TABLE_SCHEMA, a.SYSTEM_TABLE_NAME )
       )
       select * from MEMBERS
-      where LIBRARY = '${library}'
-        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${sourceFile}'` : ``}
-        ${singleMember ? `and NAME like '${singleMember}'` : ''}
+      where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
+        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
+        ${singleMember ? `and NAME like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
         ${singleMemberExtension ? `and TYPE like '${singleMemberExtension}'` : ''}
       order by ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
