@@ -175,9 +175,9 @@ export default class IBMiContent {
         copyResult = { code: 0, stdout: '', stderr: '' };
         try {
           await this.ibmi.runSQL([
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
-          ].join("\n"));
+            `Drop table if exists QTEMP.QTEMPSRC`,
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`]);
         } catch (error: any) {
           copyResult.code = -1;
           copyResult.stderr = String(error);
@@ -256,6 +256,11 @@ export default class IBMiContent {
       await writeFileAsync(tmpobj, content || memberOrContent, `utf8`);
       const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       const tempRmt = this.getTempRemote(path);
+
+      const touchUnicode = await this.ibmi.sendCommand({ command: `touch ${tempRmt} && attr ${tempRmt} CCSID=1208` });
+      if (touchUnicode.code !== 0) {
+        throw new Error(`Could not create UTF-8 file: ${touchUnicode.stderr}`)
+      }
       await client.putFile(tmpobj, tempRmt);
 
       let copyResult: CommandResult;
@@ -263,10 +268,11 @@ export default class IBMiContent {
         copyResult = { code: 0, stdout: '', stderr: '' };
         try {
           await this.ibmi.runSQL([
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE)`,
-            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
-          ].join("\n"));
+            `Drop table if exists QTEMP.QTEMPSRC`,
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`
+          ]);
         } catch (error: any) {
           copyResult.code = -1;
           copyResult.stderr = String(error);
@@ -523,16 +529,19 @@ export default class IBMiContent {
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     // Here's the downlow on CCSIDs here.
-    // SYSTABLES takes the name in the local format (with the local variant characters)
-    // OBJECT_STATISTICS takes the name in the system format
+    // SYSTABLES takes the name in CCSID 37 format
+    // OBJECT_STATISTICS takes the name in the connection CCSID format
 
     const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
 
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
     let createOBJLIST: string[];
+    const usVariants = this.ibmi.variantChars.american;
+    const localVariants = this.ibmi.variantChars.local;
+    let translateName = false;
     if (sourceFilesOnly) {
-      //DSPFD only
+      //DSPFD only      
       createOBJLIST = [
         `with SRCFILES as (`,
         `  select `,
@@ -550,6 +559,7 @@ export default class IBMiContent {
         `SELECT * FROM SRCFILES as f`,
         `where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
       ];
+      translateName = true;
     } else if (!withSourceFiles) {
       //DSPOBJD only
       createOBJLIST = [
@@ -565,7 +575,7 @@ export default class IBMiContent {
         `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `  OBJOWNER         as OWNER,`,
         `  OBJDEFINER       as CREATED_BY`,
-        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${usLocalLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
       ];
     }
     else {
@@ -575,16 +585,12 @@ export default class IBMiContent {
         `  select `,
         `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,`,
         `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,`,
-        `    '*FILE'             as TYPE,`,
-        `    'PF'                as ATTRIBUTE,`,
-        `    t.TABLE_TEXT        as TEXT,`,
         `    1                   as IS_SOURCE,`,
-        `    t.ROW_LENGTH        as SOURCE_LENGTH,`,
-        `    t.IASP_NUMBER       as IASP_NUMBER`,
+        `    t.ROW_LENGTH        as SOURCE_LENGTH`,
         `  from QSYS2.SYSTABLES as t`,
         `  where t.FILE_TYPE = 'S'`,
         `), SRCPF as (`,
-        `  SELECT * FROM SRCFILES as f`,
+        `SELECT replace(replace(replace(NAME, '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}') NAME, IS_SOURCE, SOURCE_LENGTH FROM SRCFILES as f`,
         `  where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
@@ -599,7 +605,7 @@ export default class IBMiContent {
         `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `    OBJOWNER          as OWNER,`,
         `    OBJDEFINER        as CREATED_BY`,
-        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${usLocalLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
         `  )`,
         `select`,
         `  o.NAME,`,
@@ -622,7 +628,7 @@ export default class IBMiContent {
 
     return objects.map(object => ({
       library: localLibrary,
-      name: Boolean(object.IS_SOURCE) ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
+      name: translateName ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
       text: String(object.TEXT || ""),
