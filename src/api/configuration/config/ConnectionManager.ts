@@ -37,6 +37,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     debugSepPort: (parameters.debugSepPort || "8008"),
     debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
     debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
+    debugIgnoreCertificateErrors:(parameters.debugIgnoreCertificateErrors === false),
     readOnlyMode: (parameters.readOnlyMode === true),
     quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
     defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
