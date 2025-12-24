@@ -29,9 +29,9 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   };
 
   const localActionsWatcher = vscode.workspace.createFileSystemWatcher(`**/.vscode/actions.json`);
-  localActionsWatcher.onDidCreate(() =>  environmentView.actionsNode?.forceRefresh());
-  localActionsWatcher.onDidChange(() =>  environmentView.actionsNode?.forceRefresh());
-  localActionsWatcher.onDidDelete(() =>  environmentView.actionsNode?.forceRefresh());
+  localActionsWatcher.onDidCreate(() => environmentView.actionsNode?.forceRefresh());
+  localActionsWatcher.onDidChange(() => environmentView.actionsNode?.forceRefresh());
+  localActionsWatcher.onDidDelete(() => environmentView.actionsNode?.forceRefresh());
 
   context.subscriptions.push(
     environmentTreeViewer,
@@ -390,8 +390,8 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 class EnvironmentView implements vscode.TreeDataProvider<BrowserItem> {
   private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
   readonly onDidChangeTreeData = this.emitter.event;
-  actionsNode?: ActionsNode
-  profilesNode?: ProfilesNode
+  readonly actionsNode = new ActionsNode();
+  readonly profilesNode = new ProfilesNode();
 
   refresh(target?: BrowserItem) {
     this.emitter.fire(target);
@@ -410,8 +410,6 @@ class EnvironmentView implements vscode.TreeDataProvider<BrowserItem> {
       return item.getChildren?.();
     }
     else {
-      this.actionsNode = new ActionsNode();
-      this.profilesNode = new ProfilesNode();
       return [
         this.actionsNode,
         new CustomVariablesNode(),

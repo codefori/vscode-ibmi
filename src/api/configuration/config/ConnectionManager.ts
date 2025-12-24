@@ -72,7 +72,7 @@ export class ConnectionManager {
   }
 
   async sort() {
-    const connections = await this.getAll();
+    const connections = this.getAll();
     connections.sort((a, b) => a.name.localeCompare(b.name));
     return this.configMethod.set(`connections`, connections);
   }
