@@ -122,20 +122,36 @@ export class ComponentManager {
   public async startup(lastInstalled: ComponentInstallState[] = []) {
     const components = this.getAllAvailableComponents();
     for (const component of components) {
-      await component.reset?.();
-      const newComponent = new IBMiComponentRuntime(this.connection, component);
-
-      const installedBefore = lastInstalled.find(i => i.id.name === component.getIdentification().name);
-      const sameVersion = installedBefore && (installedBefore.id.version === component.getIdentification().version);
-
-      if ((!installedBefore || !sameVersion || installedBefore.state === `NotChecked`)) {
-        await newComponent.startupCheck();
-      } else if (installedBefore) {
-        await newComponent.overrideState(installedBefore.state);
-      }
-
-      this.registered.push(newComponent);
+      await this.startupComponent(component.getIdentification().name, lastInstalled);
     }
+  }
+
+  public async startupComponent(key: string, lastInstalled: ComponentInstallState[] = []) {
+    const component = this.getAllAvailableComponents().find(c => c.getIdentification().name === key);
+
+    if (!component) {
+      throw new Error(`Component ${key} not found.`);
+    }
+
+    if (this.registered.find(c => c.component.getIdentification().name === component.getIdentification().name)) {
+      return;
+    }
+
+    await component.reset?.();
+    const newComponent = new IBMiComponentRuntime(this.connection, component);
+
+    const installedBefore = lastInstalled.find(i => i.id.name === component.getIdentification().name);
+    const sameVersion = installedBefore && (installedBefore.id.version === component.getIdentification().version);
+    const isUserManaged = component.getIdentification().userManaged;
+
+    // Always check non-user-managed components to ensure they're actually installed
+    if ((!installedBefore || !sameVersion || installedBefore.state === `NotChecked` || !isUserManaged)) {
+      await newComponent.startupCheck();
+    } else if (installedBefore) {
+      await newComponent.overrideState(installedBefore.state);
+    }
+
+    this.registered.push(newComponent);
   }
 
   /**

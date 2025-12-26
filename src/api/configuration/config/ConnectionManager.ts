@@ -42,7 +42,9 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
     protectedPaths: (parameters.protectedPaths || []),
     showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
-    lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir())
+    lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir()),
+    secureSQL: (parameters.secureSQL === true),
+    keepActionSpooledFiles: (parameters.keepActionSpooledFiles === true),
   }
 }
 

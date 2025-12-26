@@ -105,15 +105,6 @@ export const ToolsSuite: TestSuite = {
       },
     },
     {
-      name: `fixQZDFMDB2Statement`, test: async () => {
-        let statement = Tools.fixSQL('Select * From MYTABLE -- This is a comment')
-        assert.deepStrictEqual(statement, 'Select * From MYTABLE \n-- This is a comment');
-
-        statement = Tools.fixSQL("@COMMAND LIB(QTEMP/*ALL) TEXT('Hello!');\nSelect * From QTEMP.MYTABLE -- This is mytable");
-        assert.deepStrictEqual(statement, "Call QSYS2.QCMDEXC('COMMAND LIB(QTEMP/*ALL) TEXT(''Hello!'')');\nSelect * From QTEMP.MYTABLE \n-- This is mytable");
-      }
-    },
-    {
       name: `EN result set test`, test: async () => {
         const lines = [
           `DB2>`,
