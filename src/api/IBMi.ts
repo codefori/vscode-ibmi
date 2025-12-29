@@ -1377,6 +1377,7 @@ export default class IBMi {
           catch (e: any) {
             const error = new Tools.SqlError(e.message);
             this.appendOutput(`${log}-> Failed: ${error.message}`);
+            throw e;
           }
         } else {
           if (isLast) {
