@@ -149,7 +149,7 @@ export namespace CompileTools {
                   callbacks.onStdout?.(Buffer.from(commandResult.stdout));
                 } catch (e) {
                   commandResult.code = 2;
-                  console.log(`Failed to get spool output: `, e);
+                  callbacks.onStderr?.(Buffer.from(`Failed to get spool output: ${JSON.stringify(e, undefined, 2)}`));
                 }
                 finally {
                   if (!connection.getConfig().keepActionSpooledFiles) {
