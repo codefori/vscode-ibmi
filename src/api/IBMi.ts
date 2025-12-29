@@ -1368,7 +1368,16 @@ export default class IBMi {
         const isLast = i === (list.length - 1);
 
         if (statement.startsWith(`@`)) {
-          await this.sqlJob.execute(statement.substring(1), { isClCommand: true });
+          const command = statement.substring(1);
+          const log = `Running CL through SQL: ${command}\n`;
+          try {
+            const result = await this.sqlJob.execute<{ MESSAGE_ID: string, MESSAGE_TEXT: string }>(command, { isClCommand: true });
+            this.appendOutput(`${log}-> OK${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}`);
+          }
+          catch (e: any) {
+            const error = new Tools.SqlError(e.message);
+            this.appendOutput(`${log}-> Failed: ${error.message}`);
+          }
         } else {
           if (isLast) {
             // There is a bug with Mapepire handling of binding parameters.
@@ -1404,10 +1413,10 @@ export default class IBMi {
             const rs = await query.execute(99999);
             if (rs.has_results) {
               lastResultSet.push(...rs.data);
-              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'}\n\n`);
+              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'}`);
             }
             else {
-              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted\n\n`);
+              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted`);
             }
           } catch (e: any) {
             error = new Tools.SqlError(e.message);
@@ -1418,7 +1427,7 @@ export default class IBMi {
               error.sqlstate = parts[parts.length - 2].trim();
             }
 
-            this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}\n\n`);
+            this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}`);
           } finally {
             query?.close();
           }
@@ -1427,6 +1436,7 @@ export default class IBMi {
             throw error;
           }
         }
+        this.appendOutput("\n\n");
       }
 
       return lastResultSet;
