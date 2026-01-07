@@ -29,15 +29,15 @@ type ActionData = {
   outputToFile: string
 }
 
-const editedActions: Set<string> = new Set;
+const editedActions: Set<{ name: string, type?: ActionType }> = new Set;
 
 export function isActionEdited(action: Action) {
-  return editedActions.has(action.name);
+  return editedActions.has({ name: action.name, type: action.type });
 }
 
 export function editAction(targetAction: Action, doAfterSave?: () => Thenable<void>, workspace?: vscode.WorkspaceFolder) {
   const customVariables = CustomVariables.getAll().map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
-  new CustomEditor<ActionData>(`${targetAction.name}.action`, (actionData) => save(targetAction, actionData, workspace).then(doAfterSave), () => editedActions.delete(targetAction.name))
+  new CustomEditor<ActionData>(`${targetAction.name}.action`, (actionData) => save(targetAction, actionData, workspace).then(doAfterSave), () => editedActions.delete({ name: targetAction.name, type: targetAction.type }))
     .addInput(
       `command`,
       vscode.l10n.t(`Command(s) to run`),
@@ -132,7 +132,7 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
     .addInput(`outputToFile`, vscode.l10n.t(`Copy output to file`), vscode.l10n.t(`Copy the action output to a file. Variables can be used to define the file's path; use <code>&i</code> to compute file index.<br/>Example: <code>~/outputs/&CURLIB_&OPENMBR&i.txt</code>.`), { default: targetAction.outputToFile })
     .open();
 
-  editedActions.add(targetAction.name);
+  editedActions.add({ name: targetAction.name, type: targetAction.type });
 }
 
 async function save(targetAction: Action, actionData: ActionData, workspace?: vscode.WorkspaceFolder) {

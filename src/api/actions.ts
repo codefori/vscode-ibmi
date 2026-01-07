@@ -8,7 +8,7 @@ export async function getActions(workspace?: vscode.WorkspaceFolder) {
 
 export async function updateAction(action: Action, workspace?: vscode.WorkspaceFolder, options?: { newName?: string, delete?: boolean }) {
   const actions = await getActions(workspace);
-  const currentIndex = actions.findIndex(a => action.name === a.name);
+  const currentIndex = actions.findIndex(a => action.name === a.name && action.type === a.type);
 
   action.name = options?.newName || action.name;
 
