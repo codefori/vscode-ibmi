@@ -1,5 +1,5 @@
-import vscode from "vscode";
-import { updateAction } from "../api/actions";
+import vscode, { l10n } from "vscode";
+import { getActions, updateAction } from "../api/actions";
 import { Tools } from "../api/Tools";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../typings";
 import { CustomVariables } from "../ui/views/environment/customVariables";
@@ -29,15 +29,15 @@ type ActionData = {
   outputToFile: string
 }
 
-const editedActions: Set<string> = new Set;
+const editedActions: Set<{ name: string, type?: ActionType }> = new Set;
 
 export function isActionEdited(action: Action) {
-  return editedActions.has(action.name);
+  return editedActions.has({ name: action.name, type: action.type });
 }
 
 export function editAction(targetAction: Action, doAfterSave?: () => Thenable<void>, workspace?: vscode.WorkspaceFolder) {
   const customVariables = CustomVariables.getAll().map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
-  new CustomEditor<ActionData>(`${targetAction.name}.action`, (actionData) => save(targetAction, actionData, workspace).then(doAfterSave), () => editedActions.delete(targetAction.name))
+  new CustomEditor<ActionData>(`${targetAction.type}/${targetAction.name}.action`, (actionData) => save(targetAction, actionData, workspace).then(doAfterSave), () => editedActions.delete({ name: targetAction.name, type: targetAction.type }))
     .addInput(
       `command`,
       vscode.l10n.t(`Command(s) to run`),
@@ -132,15 +132,24 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
     .addInput(`outputToFile`, vscode.l10n.t(`Copy output to file`), vscode.l10n.t(`Copy the action output to a file. Variables can be used to define the file's path; use <code>&i</code> to compute file index.<br/>Example: <code>~/outputs/&CURLIB_&OPENMBR&i.txt</code>.`), { default: targetAction.outputToFile })
     .open();
 
-  editedActions.add(targetAction.name);
+  editedActions.add({ name: targetAction.name, type: targetAction.type });
 }
 
 async function save(targetAction: Action, actionData: ActionData, workspace?: vscode.WorkspaceFolder) {
+  const oldType = targetAction.type;
   Object.assign(targetAction, actionData);
+  const typeChanged = (oldType !== targetAction.type);
+  if (typeChanged && (await getActions(workspace)).some(a => a.name === targetAction.name && a.type === targetAction.type)) {
+    throw new Error(l10n.t("The action '{0}' already exists for the '{1}' type", targetAction.name, targetAction.type!))
+  }
   // We don't want \r (Windows line endings)
   targetAction.command = targetAction.command.replace(new RegExp(`\\\r`, `g`), ``);
   targetAction.extensions = actionData.extensions.split(`,`).map(item => item.trim().toUpperCase())
-  await updateAction(targetAction, workspace);
+  await updateAction(targetAction, workspace, { oldType });
+  if (typeChanged) {
+    editedActions.delete({ name: targetAction.name, type: oldType });
+    editedActions.add({ name: targetAction.name, type: targetAction.type });
+  }
 }
 
 const generic: () => VariableInfo[] = () => [

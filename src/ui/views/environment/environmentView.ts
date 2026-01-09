@@ -67,7 +67,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.environment.action.create", async (node: ActionsNode | ActionTypeNode, from?: ActionItem) => {
       const typeNode = "type" in node ? node : (await vscode.window.showQuickPick<QuickPickItem & { typeNode: ActionTypeNode }>((await node.getChildren()).map(typeNode => ({ label: typeNode.label as string, description: typeNode.description ? typeNode.description as string : undefined, typeNode })), { title: l10n.t("Select an action type") }))?.typeNode;
       if (typeNode) {
-        const existingNames = (await getActions(typeNode.workspace)).map(act => act.name);
+        const existingNames = (await getActions(typeNode.workspace)).filter(act => act.type === typeNode.type).map(act => act.name);
 
         const name = await vscode.window.showInputBox({
           title: from ? l10n.t("Copy action '{0}'", from.action.name) : l10n.t("New action"),
@@ -95,7 +95,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         vscode.window.showWarningMessage(l10n.t("Action '{0}' is being edited. Please close its editor first.", action.name));
       }
       else {
-        const existingNames = (await getActions(node.workspace)).filter(act => act.name === action.name).map(act => act.name);
+        const existingNames = (await getActions(node.workspace)).filter(act => act.name !== action.name && act.type === action.type).map(act => act.name);
 
         const newName = await vscode.window.showInputBox({
           title: l10n.t("Rename action"),
@@ -212,7 +212,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         title: l10n.t("Enter new profile name"),
         placeHolder: l10n.t("Profile name..."),
         value: from?.name,
-        validateInput: name => Actions.validateName(name, existingNames)
+        validateInput: name => ConnectionProfiles.validateName(name, existingNames)
       });
 
       if (name) {
