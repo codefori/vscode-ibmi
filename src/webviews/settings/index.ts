@@ -1214,6 +1214,7 @@ const CCSID_Options:SelectItem[] = [
     }
 ];
 
+
 type LoginSettings = ConnectionData & {
   buttons?: 'submitButton'
 }
@@ -1297,8 +1298,21 @@ export class SettingsUI {
         setFieldsReadOnly(tempDataTab);  
 
         const nonUtfEncodings = new Set<string>(ENCODINGS);
-        const sourceCcsidOptions = CCSID_Options.filter(option => nonUtfEncodings.has(option.value));
-        const targetCcsidOptions = CCSID_Options.filter(option => !nonUtfEncodings.has(option.value));
+
+        const sourceCcsidOptions = CCSID_Options.filter(option => nonUtfEncodings.has(option.value)).map((i) => { return {...i}});
+        const targetCcsidOptions = CCSID_Options.filter(option => !nonUtfEncodings.has(option.value)).map((i) => { return {...i}});
+        
+        sourceCcsidOptions.unshift({
+            value: "0",
+            description: "Select CCSID",
+            text: ""
+        });
+
+        targetCcsidOptions.unshift({
+            value: "0",
+            description: "Select CCSID",
+            text: ""
+        });
 
         const selectedSourceCcsid = sourceCcsidOptions.find(option => option.value === config.cssConvertFrom);
         const selectedTargetCcsid = targetCcsidOptions.find(option => option.value === config.cssConvertTo);
@@ -1310,7 +1324,7 @@ export class SettingsUI {
           selectedTargetCcsid.selected = true;
         }
 
-        const sourceTab = new Section();
+        const sourceTab =  new Section();
         sourceTab
           .addInput(`sourceASP`, `Source ASP`, `Current ASP is based on the user profile job description and cannot be changed here.`, { default: connection?.getCurrentIAspName() || `*SYSBAS`, readonly: true })
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
