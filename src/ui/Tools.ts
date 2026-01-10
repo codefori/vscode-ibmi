@@ -2,10 +2,10 @@
 import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import vscode, { MarkdownString } from "vscode";
-import { API, GitExtension } from "../filesystems/local/gitApi";
-import { IBMiObject, IBMiMember, IFSFile } from '../typings';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
+import { API, GitExtension } from "../filesystems/local/gitApi";
+import { ConnectionProfile, IBMiMember, IBMiObject, IFSFile } from '../typings';
 
 let gitLookedUp: boolean;
 let gitAPI: API | undefined;
@@ -102,12 +102,22 @@ export namespace VscodeTools {
   }
 
 
+  export function escapeHtml(html: string) {
+    return html
+      .replaceAll("&", '&amp;')
+      .replaceAll("<", '&lt;')
+      .replaceAll(">", '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+
   const activeContexts: Map<string, number> = new Map;
   /**
    * Runs a function while a context value is set to true.
-   * 
+   *
    * If multiple callers call this function with the same context, only the last one returning will unset the context value.
-   * 
+   *
    * @param context the context value that will be set to `true` during `task` execution
    * @param task the function to run while the context value is `true`
    */
@@ -189,7 +199,23 @@ export namespace VscodeTools {
     return tooltip;
   }
 
+  export function profileToToolTip(profile: ConnectionProfile) {
+    const tooltip = new MarkdownString(generateTooltipHtmlTable('', {
+      "Home Directory": profile.homeDirectory,
+      "Current Library": profile.currentLibrary,
+      "Library List": profile.libraryList,
+      "Library List Command": profile.setLibraryListCommand,
+      "Object Filters": profile.objectFilters.length,
+      "IFS Shortcuts": profile.ifsShortcuts.length,
+      "Custom Variables": profile.customVariables.length,
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
 
+  export function includesCaseInsensitive(haystack: string[], needle: string) {
+    return haystack.map(s => s.toLocaleUpperCase()).includes(needle.toLocaleUpperCase());
+  }
 
   function safeIsoValue(date: Date | undefined) {
     try {

@@ -1,5 +1,6 @@
 
 import * as vscode from "vscode";
+import { RemoteConfigFile } from './api/configuration/config/types';
 import { getDebugServiceDetails } from './api/configuration/DebugConfiguration';
 import { registerActionsCommands } from './commands/actions';
 import { registerCompareCommands } from './commands/compare';
@@ -12,9 +13,6 @@ import { setupGitEventHandler } from './filesystems/local/git';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
 import Instance from "./Instance";
 import { Terminal } from './ui/Terminal';
-import { ActionsUI } from './webviews/actions';
-import { VariablesUI } from "./webviews/variables";
-import { RemoteConfigFile } from './api/configuration/config/types';
 
 export let instance: Instance;
 
@@ -84,8 +82,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
   );
 
-  ActionsUI.initialize(context);
-  VariablesUI.initialize(context);
   instance.subscribe(context, 'connected', 'Load status bars', onConnected);
   instance.subscribe(context, 'disconnected', 'Unload status bars', onDisconnected);
 
@@ -107,22 +103,22 @@ async function updateConnectedBar() {
     const config = connection.getConfig();
 
     const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
-    const serverConfigOk = remoteConnectionConfig.getState().server === `ok`;
+    const serverConfigOk = remoteConnectionConfig.getState() === `ok`;
     let serverConfig: RemoteConfigFile|undefined;
     if (serverConfigOk) {
       serverConfig = await remoteConnectionConfig.get();
     }
 
     const systemReadOnly = serverConfig?.codefori?.readOnlyMode || false;
-    connectedBarItem.text = `$(${systemReadOnly ? "shield" : (config.readOnlyMode ? "lock" : "settings-gear")}) ${config.name}`;
+    connectedBarItem.text = `$(${systemReadOnly ? "shield" : (config.readOnlyMode ? "lock" : "settings-gear")}) ${config.name}${config.currentProfile ? ` (${config.currentProfile})` : ''}`;
     const terminalMenuItem = systemReadOnly ? `` : `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`;
-    const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`;
+    const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.environment.actions.focus)`;
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
     connectedBarItemTooltips.push(
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
-      actionsMenuItem,
       terminalMenuItem,
+      actionsMenuItem,
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
         :
@@ -137,16 +133,12 @@ async function updateConnectedBar() {
 }
 
 async function onConnected() {
-  const config = instance.getConnection()?.getConfig();
   [
     connectedBarItem,
     disconnectBarItem,
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-
-  // Enable the profile view if profiles exist.
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
 }
 
 async function onDisconnected() {

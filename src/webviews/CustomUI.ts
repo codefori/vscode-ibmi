@@ -110,9 +110,10 @@ export class Section {
     return this;
   }
 
-  addSelect(id: string, label: string, items: SelectItem[], description?: string) {
+  addSelect(id: string, label: string, items: SelectItem[], description?: string, readonly?: boolean) {
     const select = new Field('select', id, label, description);
     select.items = items;
+    select.readonly = readonly;
     this.addField(select);
     return this;
   }
@@ -152,90 +153,19 @@ export class Section {
 
 const openedWebviews: Map<string, vscode.WebviewPanel> = new Map;
 
-export class CustomUI extends Section {
+export class CustomHTML extends Section {
   private options?: PanelOptions;
-  /**
-   * If no callback is provided, a Promise will be returned.
-   * If the page is already opened, it grabs the focus and return no Promise (as it's alreay handled by the first call).
-   * 
-   * @param title 
-   * @param callback
-   * @returns a Promise<Page<T>> if no callback is provided
-   */
-  loadPage<T>(title: string): Promise<Page<T>> | undefined {
-    const webview = openedWebviews.get(title);
-    if (webview) {
-      webview.reveal();
-    }
-    else {
-      return this.createPage(title);
-    }
-  }
 
   setOptions(options: PanelOptions) {
     this.options = options;
     return this;
   }
 
-  private createPage<T>(title: string): Promise<Page<T>> | undefined {
-    const panel = vscode.window.createWebviewPanel(
-      `custom`,
-      title,
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        retainContextWhenHidden: true,
-        enableFindWidget: true
-      }
-    );
-
-    panel.webview.html = this.getHTML(panel, title);
-
-    let didSubmit = false;
-
-    openedWebviews.set(title, panel);
-
-    const page = new Promise<Page<T>>((resolve) => {
-      panel.webview.onDidReceiveMessage(
-        (message: WebviewMessageRequest) => {
-          if (message.type && message.data) {
-            switch (message.type) {
-              case `submit`:
-                didSubmit = true;
-                resolve({ panel, data: message.data });
-                break;
-
-              case `file`:
-                const resultField = message.data.field;
-                if (resultField) {
-                  vscode.window.showOpenDialog({
-                    canSelectFiles: true,
-                    canSelectMany: false,
-                    canSelectFolders: false,
-                  }).then(result => {
-                    if (result) {
-                      panel.webview.postMessage({ type: `update`, field: resultField, value: result[0].fsPath });
-                    }
-                  });
-                }
-                break;
-            }
-          }
-        }
-      );
-
-      panel.onDidDispose(() => {
-        openedWebviews.delete(title);
-        if (!didSubmit) {
-          resolve({ panel });
-        }
-      });
-    });
-
-    return page;
+  protected getSpecificScript() {
+    return "";
   }
 
-  private getHTML(panel: vscode.WebviewPanel, title: string) {
+  protected getHTML(panel: vscode.WebviewPanel, title: string) {
     const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`, 'browser'] as FieldType[];
     const trees = this.fields.filter(field => [`tree`, 'browser'].includes(field.type));
 
@@ -342,7 +272,7 @@ export class CustomUI extends Section {
                     }
                   }
                   validateInputs(response.field);
-                }
+                }              
               }
             });
 
@@ -398,27 +328,7 @@ export class CustomUI extends Section {
               }
 
               return isValid;
-            }
-
-    
-            const doDone = (event, buttonId) => {
-                console.log('submit now!!', buttonId)
-                if (event)
-                    event.preventDefault();
-                    
-                var data = document.querySelector('#laforma').data;
-
-                if (buttonId) {
-                  data['buttons'] = buttonId;
-                }
-
-                // Convert the weird array value of checkboxes to boolean
-                for (const checkbox of checkboxes) {
-                  data[checkbox] = (data[checkbox] && data[checkbox].length >= 1);
-                }
-
-                vscode.postMessage({ type: 'submit', data });
-            };
+            }            
 
             const treeItemClick = (treeId, type, value) => {
               if(type === "browse"){
@@ -440,50 +350,8 @@ export class CustomUI extends Section {
             // Setup the input fields for validation
             for (const field of inputFields) {
               const fieldElement = document.getElementById(field.id);
-              fieldElement.addEventListener("change", (e) => {validateInputs()});              
-            }
-
-            // Now many buttons can be pressed to submit
-            for (const fieldData of groupButtons) {
-              const field = fieldData.id;
-              
-              console.log('group button', fieldData, document.getElementById(field));
-              var button = document.getElementById(field);
-
-              const submitButtonAction = (event) => {
-                const isValid = fieldData.requiresValidation ? validateInputs() : true;
-                console.log({requiresValidation: fieldData.requiresValidation, isValid});
-                if (isValid) doDone(event, field);
-              }
-
-              button.onclick = submitButtonAction;
-              button.onKeyDown = submitButtonAction;
-            }
-
-            for (const field of submitfields) {
-                const currentElement = document.getElementById(field);
-                if (currentElement.hasAttribute('rows')) {
-                  currentElement
-                    .addEventListener('keyup', function(event) {
-                        event.preventDefault();
-                        if (event.keyCode === 13 && event.altKey) {
-                          if (validateInputs()) {
-                            doDone();
-                          }
-                        }
-                    });
-                } else {
-                  currentElement
-                    .addEventListener('keyup', function(event) {
-                        event.preventDefault();
-                        if (event.keyCode === 13) {
-                          if (validateInputs()) {
-                            doDone();
-                          }
-                        }
-                    });
-                }
-            }
+              fieldElement.addEventListener("change", (e) => validateInputs());
+            }            
 
             // This is used to read the file in order to get the real path.
             for (const field of filefields) {
@@ -507,11 +375,154 @@ export class CustomUI extends Section {
                 });`
       )}
             });
-
+            ${this.getSpecificScript()}
         }())
     </script>
     
     </html>`;
+  }
+}
+
+export class CustomUI extends CustomHTML {
+  /**
+   * If no callback is provided, a Promise will be returned.
+   * If the page is already opened, it grabs the focus and return no Promise (as it's alreay handled by the first call).
+   * 
+   * @param title 
+   * @param callback
+   * @returns a Promise<Page<T>> if no callback is provided
+   */
+  loadPage<T>(title: string): Promise<Page<T>> | undefined {
+    const webview = openedWebviews.get(title);
+    if (webview) {
+      webview.reveal();
+    }
+    else {
+      return this.createPage(title);
+    }
+  }
+
+  private createPage<T>(title: string): Promise<Page<T>> | undefined {
+    const panel = vscode.window.createWebviewPanel(
+      `custom`,
+      title,
+      vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        enableFindWidget: true
+      }
+    );
+
+    panel.webview.html = this.getHTML(panel, title);
+
+    let didSubmit = false;
+
+    openedWebviews.set(title, panel);
+
+    const page = new Promise<Page<T>>((resolve) => {
+      panel.webview.onDidReceiveMessage(
+        (message: WebviewMessageRequest) => {
+          if (message.type && message.data) {
+            switch (message.type) {
+              case `submit`:
+                didSubmit = true;
+                resolve({ panel, data: message.data });
+                break;
+
+              case `file`:
+                const resultField = message.data.field;
+                if (resultField) {
+                  vscode.window.showOpenDialog({
+                    canSelectFiles: true,
+                    canSelectMany: false,
+                    canSelectFolders: false,
+                  }).then(result => {
+                    if (result) {
+                      panel.webview.postMessage({ type: `update`, field: resultField, value: result[0].fsPath });
+                    }
+                  });
+                }
+                break;
+            }
+          }
+        }
+      );
+
+      panel.onDidDispose(() => {
+        openedWebviews.delete(title);
+        if (!didSubmit) {
+          resolve({ panel });
+        }
+      });
+    });
+
+    return page;
+  }
+
+  protected getSpecificScript() {
+    return /* javascript */ `
+      const doDone = (event, buttonId) => {
+        console.log('submit now!!', buttonId)
+        if (event)
+            event.preventDefault();
+            
+        var data = document.querySelector('#laforma').data;
+
+        if (buttonId) {
+          data['buttons'] = buttonId;
+        }
+
+        // Convert the weird array value of checkboxes to boolean
+        for (const checkbox of checkboxes) {
+          data[checkbox] = (data[checkbox] && data[checkbox].length >= 1);
+        }
+
+        vscode.postMessage({ type: 'submit', data });
+      };
+
+      // Now many buttons can be pressed to submit
+      for (const fieldData of groupButtons) {
+        const field = fieldData.id;
+        
+        console.log('group button', fieldData, document.getElementById(field));
+        var button = document.getElementById(field);
+
+        const submitButtonAction = (event) => {
+          const isValid = fieldData.requiresValidation ? validateInputs() : true;
+          console.log({requiresValidation: fieldData.requiresValidation, isValid});
+          if (isValid) doDone(event, field);
+        }
+
+        button.onclick = submitButtonAction;
+        button.onKeyDown = submitButtonAction;
+      }
+
+      for (const field of submitfields) {
+          const currentElement = document.getElementById(field);
+          if (currentElement.hasAttribute('rows')) {
+            currentElement
+              .addEventListener('keyup', function(event) {
+                  event.preventDefault();
+                  if (event.keyCode === 13 && event.altKey) {
+                    if (validateInputs()) {
+                      doDone();
+                    }
+                  }
+              });
+          } else {
+            currentElement
+              .addEventListener('keyup', function(event) {
+                  event.preventDefault();
+                  if (event.keyCode === 13) {
+                    if (validateInputs()) {
+                      doDone();
+                    }
+                  }
+              });
+          }
+      }
+    `;
   }
 }
 
@@ -669,7 +680,7 @@ export class Field {
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-single-select id="${this.id}" name="${this.id}" ${this.readonly ? `readonly` : ``}>
+              <vscode-single-select id="${this.id}" name="${this.id}" ${this.readonly ? `disabled` : ``}>
                   ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
               </vscode-single-select>
           </vscode-form-group>`;

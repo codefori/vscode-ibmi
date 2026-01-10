@@ -1,6 +1,6 @@
 import os from "os";
 import path, { dirname, extname } from "path";
-import vscode, { FileType, l10n, Uri, window } from "vscode";
+import vscode, { CancellationToken, Event, FileDecoration, FileDecorationProvider, FileType, l10n, ProviderResult, ThemeColor, Uri, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import IBMi from "../../api/IBMi";
@@ -8,7 +8,7 @@ import { SortOptions } from "../../api/IBMiContent";
 import { Search } from "../../api/Search";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
-import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithPath } from "../../typings";
+import { FocusOptions, IFS_BROWSER_MIMETYPE, IFSFile, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithPath } from "../../typings";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
@@ -116,7 +116,7 @@ class IFSItem extends BrowserItem implements WithPath {
     this.refresh();
   }
 
-  refresh(): void {
+  async refresh() {
     vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowserItem`, this);
   }
 
@@ -187,6 +187,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon(protectedDir ? "lock-small" : "folder-library");
     this.tooltip = ``;
+    this.resourceUri = Uri.parse(`shortcut:${shortcut}`);
   }
 }
 
@@ -312,12 +313,17 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     canSelectMany: true,
     dragAndDropController: new IFSBrowserDragAndDrop()
   });
+  const shortcutDecorationProvider = new ShortcutDecorationProvider();
 
   const getSelectedItems = <T>(node?: T | T[]) => node ? Array.isArray(node) ? node : [node] : ifsTreeViewer.selection as T[];
 
   context.subscriptions.push(
     ifsTreeViewer,
-    vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, () => ifsBrowser.refresh()),
+    window.registerFileDecorationProvider(shortcutDecorationProvider),
+    vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, () => {
+      ifsBrowser.refresh();
+      shortcutDecorationProvider.refresh();
+    }),
     vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowserItem`, (item?: BrowserItem) => ifsBrowser.refresh(item)),
 
     vscode.commands.registerCommand(`code-for-ibmi.revealInIFSBrowser`, async (item: BrowserItem, options?: FocusOptions) => {
@@ -443,6 +449,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
             if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
+              vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
             }
 
           } catch (e: any) {
@@ -545,6 +552,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
       const connection = instance.getConnection();
       if (connection) {
+        const config = connection.getConfig();
+        const shortcuts = config.ifsShortcuts;
         if (items || singleItem) {
           items = (items || [singleItem]).filter(reduceIFSPath);
         }
@@ -593,10 +602,21 @@ Please type "{0}" to confirm deletion.`, dirName);
                 if (removeResult.code !== 0) {
                   throw removeResult.stderr;
                 }
+
+                const deletedShortcuts = shortcuts.filter(path => toBeDeleted.includes(path));
+                if (deletedShortcuts.length) {
+                  const message = deletedShortcuts.length === 1 ? l10n.t(`Do you also want to remove the IFS shortcut to the folder {0}?`, deletedShortcuts[0]) : l10n.t("Do you also want to remove the IFS shortcuts to the folders {0}?", deletedShortcuts.length);
+                  const detail = deletedShortcuts.length === 1 ? undefined : deletedShortcuts.map(i => `- ${i}`).join("\n");
+                  if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
+                    config.ifsShortcuts = shortcuts.filter(path => !deletedShortcuts.includes(path));
+                  }
+                }
+
                 if (IBMi.connectionManager.get(`autoRefresh`)) {
                   items.map(item => item.parent)
                     .filter(Tools.distinct)
                     .forEach(async parent => parent?.refresh?.());
+                  vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
                 }
               } catch (e: any) {
                 vscode.window.showErrorMessage(l10n.t(`Error deleting streamfile! {0}`, e));
@@ -1076,4 +1096,27 @@ async function showOpenDialog() {
  */
 function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {
   return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(`${folder.file.path}/`));
+}
+export class ShortcutDecorationProvider implements FileDecorationProvider {
+  private readonly _onDidChangeFileDecorations = new vscode.EventEmitter<vscode.Uri | vscode.Uri[] | undefined>();
+  readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
+
+  provideFileDecoration(uri: Uri, token: CancellationToken): ProviderResult<FileDecoration> {
+    if (uri.scheme === 'shortcut') {
+      return instance.getConnection()?.getContent().isDirectory(uri.path).then(isFound => {
+        if (!isFound) {
+          return {
+            badge: '⚠',
+            color: new ThemeColor('errorForeground'),
+            tooltip: l10n.t(`Directory does not exist.`)
+          };
+        }
+        return undefined;
+      });
+    }
+  }
+  
+  refresh(uri?: vscode.Uri | vscode.Uri[]) {
+    this._onDidChangeFileDecorations.fire(uri);
+  }
 }

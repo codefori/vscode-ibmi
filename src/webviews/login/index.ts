@@ -154,7 +154,7 @@ export class Login {
       }
     }
 
-    const connection = await IBMi.connectionManager.getByName(name);
+    const connection = IBMi.connectionManager.getByName(name);
     if (connection) {
       const toDoOnConnected: Function[] = [];
       const connectionConfig = connection.data;
@@ -171,7 +171,7 @@ export class Login {
         }
 
         if (!connectionConfig.password) {
-          return;
+          return false;
         }
       }
 
@@ -179,11 +179,10 @@ export class Login {
         const connected = await instance.connect({ data: connectionConfig, onConnectedOperations: toDoOnConnected, reloadServerSettings });
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
+          return true;
         } else {
           vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}${connected.error ? `: ${connected.error}` : '!'}`);
         }
-
-        return true;
       } catch (e) {
         vscode.window.showErrorMessage(`Error connecting to ${connectionConfig.host}! ${e}`);
       }

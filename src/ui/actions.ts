@@ -4,7 +4,6 @@ import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 import { Variables } from '../api/variables';
-import { getLocalActions } from '../filesystems/local/actions';
 import { DeployTools } from '../filesystems/local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from '../filesystems/local/env';
 import { getGitBranch } from '../filesystems/local/git';
@@ -13,7 +12,9 @@ import Instance from '../Instance';
 import { Action, DeploymentMethod } from '../typings';
 import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
+import { VscodeTools } from './Tools';
 
+import { getActions } from '../api/actions';
 import { BrowserItem } from './types';
 
 type CommandObject = {
@@ -34,7 +35,7 @@ export type ActionTarget = {
 }
 
 const actionUsed: Map<string, number> = new Map;
-const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE)\((?<object>.+?)\)/;
+const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE|FILE|MENU)\((?<object>.+?)\)/;
 
 export function registerActionTools(context: vscode.ExtensionContext) {
   context.subscriptions.push(
@@ -142,6 +143,9 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         //Prompt once now in case of multiple targets
         const promptOnce = targets.length > 1;
         const command = promptOnce ? await commandConfirm(chosenAction.command) : chosenAction.command;
+        if (!command) {
+          return false;
+        }
 
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Running action {0} on", chosenAction.name, targets.length) }, async (task, canceled) => {
           const increment = 100 / targets.length;
@@ -167,6 +171,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
               extension: target.extension,
               workspace: fromWorkspace
             };
+            const evfeventInfos: EvfEventInfo[] = [];
 
             let processedPath = "";
             switch (chosenAction.type) {
@@ -202,14 +207,14 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 const parent = path.parse(pathData.dir).base;
                 let name = pathData.name;
 
-                // Logic to handle second extension, caused by bob.
-                const bobTypes = [`.PGM`, `.SRVPGM`];
+                // Logic to handle second extension, caused by TOBi.
+                const tobiTypes = [`.PGM`, `.SRVPGM`];
                 const secondName = path.parse(name);
-                if (secondName.ext && bobTypes.includes(secondName.ext.toUpperCase())) {
+                if (secondName.ext && tobiTypes.includes(secondName.ext.toUpperCase())) {
                   name = secondName.name;
                 }
 
-                // Remove bob text convention
+                // Remove TOBi text convention
                 if (name.includes(`-`)) {
                   name = name.substring(0, name.indexOf(`-`));
                 }
@@ -379,12 +384,26 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             fromWorkspace && chosenAction.postDownload &&
                             (chosenAction.postDownload.includes(`.evfevent`) || chosenAction.postDownload.includes(`.evfevent/`));
 
-                          const possibleObject = getObjectFromCommand(commandResult.command);
-                          if (isIleCommand && possibleObject) {
-                            Object.assign(evfeventInfo, possibleObject);
+                          const possibleObjects = getObjectsFromJoblog(commandResult.stderr) || getObjectFromCommand(commandResult.command);
+                          if (isIleCommand && possibleObjects) {
+                            evfeventInfos.length = 0;
+                            if (Array.isArray(possibleObjects)) {
+                              for(const o of possibleObjects) {
+                                evfeventInfos.push({
+                                  library: o.library || evfeventInfo.library,
+                                  object: o.object,
+                                  extension: evfeventInfo.extension,
+                                  asp: evfeventInfo.asp
+                                })
+                              };
+                            } else {
+                              evfeventInfo.library = possibleObjects.library ? possibleObjects.library : evfeventInfo.library;
+                              evfeventInfo.object = possibleObjects.object;
+                              evfeventInfos.push(evfeventInfo);
+                            }
                           }
 
-                          actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
+                          actionName = (isIleCommand && possibleObjects ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
                           successful = (commandResult.code === 0 || commandResult.code === null);
 
                           writeEmitter.fire(CompileTools.NEWLINE);
@@ -395,8 +414,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           }
                           else if (evfeventInfo.object && evfeventInfo.library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
-                              writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
-                              await refreshDiagnosticsFromServer(instance, evfeventInfo);
+                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfo.library}/${evfeventInfo.object}.`) + CompileTools.NEWLINE);
+                              await refreshDiagnosticsFromServer(instance, evfeventInfos);
                               problemsFetched = true;
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
                               writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
@@ -502,7 +521,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                       } catch (e) {
                         writeEmitter.fire(`${e}\n`);
-                        vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
+                        vscode.window.showErrorMessage(`Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
                         successful = false;
                       }
 
@@ -524,53 +543,56 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
           }
         });
 
-        const openOutputAction = l10n.t("Open output(s)");
-        let uiPromise;
-        if (cancelled) {
-          uiPromise = vscode.window.showWarningMessage(l10n.t(`Action {0} was cancelled; ({1} processed).`, chosenAction.name, targets.filter(target => target.processed).length), openOutputAction);
-        }
-        else if (targets.every(target => target.executionOK)) {
-          uiPromise = vscode.window.showInformationMessage(l10n.t(`Action {0} was successful.`, chosenAction.name), openOutputAction);
-        }
-        else {
-          uiPromise = vscode.window.showErrorMessage(l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length), openOutputAction);
-        }
-
-        uiPromise.then(openOutput => {
-          if (openOutput) {
-            const now = new Date();
-            const resultsPanel = new CustomUI();
-            if (targets.length === 1) {
-              resultsPanel.addParagraph(`<pre>${targets[0].output.join("")}</pre>`)
-                .setOptions({ fullPage: true ,
-                  css: /* css */ `
-                  pre{              
-                    background-color: transparent;
-                  }
-                `
-                });
-            }
-            else {
-              resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre>${target.output.join("")}</pre>` } as TreeListItem)))
-                .setOptions({
-                  fullPage: true,
-                  css: /* css */ `
-                  body{
-                    margin: 0;
-                    padding: 0;
-                    overflow: hidden;
-                  }
-
-                  pre {
-                    margin: 1em;
-                    background-color: transparent;
-                  }                  
-                `
-                });
-            }
-            resultsPanel.loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+        if (targets.some(target => target.hasRun)) {
+          const openOutputAction = l10n.t("Open output(s)");
+          let uiPromise;
+          if (cancelled) {
+            uiPromise = vscode.window.showWarningMessage(l10n.t(`Action {0} was cancelled; ({1} processed).`, chosenAction.name, targets.filter(target => target.processed).length), openOutputAction);
           }
-        })
+          else if (targets.every(target => target.executionOK)) {
+            uiPromise = vscode.window.showInformationMessage(l10n.t(`Action {0} was successful.`, chosenAction.name), openOutputAction);
+          }
+          else {
+            uiPromise = vscode.window.showErrorMessage(l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length), openOutputAction);
+          }
+
+          uiPromise.then(openOutput => {
+            if (openOutput) {
+              const now = new Date();
+              const resultsPanel = new CustomUI();
+              if (targets.length === 1) {
+                resultsPanel.addParagraph(`<pre>${VscodeTools.escapeHtml(targets[0].output.join(""))}</pre>`)
+                  .setOptions({
+                    fullPage: true,
+                    css: /* css */ `
+                      pre{
+                        background-color: transparent;
+                      }
+                    `
+                  });
+              }
+              else {
+                resultsPanel.addBrowser("results", targets.filter(target => target.processed).map(target => ({ label: `${getTargetResultIcon(target)} ${path.basename(target.uri.path)}`, value: `<pre>${VscodeTools.escapeHtml(target.output.join(""))}</pre>` } as TreeListItem)))
+                  .setOptions({
+                    fullPage: true,
+                    css: /* css */ `
+                      body{
+                        margin: 0;
+                        padding: 0;
+                        overflow: hidden;
+                      }
+
+                      pre {
+                        margin: 1em;
+                        background-color: transparent;
+                      }
+                    `
+                  });
+              }
+              resultsPanel.loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+            }
+          })
+        }
       }
       return targets.every(target => target.executionOK);
     }
@@ -587,7 +609,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 export type AvailableAction = { label: string; action: Action; }
 
 export async function getAllAvailableActions(targets: ActionTarget[], scheme: string) {
-  const allActions = [...IBMi.connectionManager.get<Action[]>(`actions`) || []];
+  const allActions = [...await getActions()];
 
   // Then, if we're being called from a local file
   // we fetch the Actions defined from the workspace.
@@ -599,7 +621,7 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     const allTargetsInOne = targets.every(t => t.workspaceFolder?.index === workspaceId);
 
     if (allTargetsInOne) {
-      const localActions = await getLocalActions(firstWorkspace);
+      const localActions = await getActions(firstWorkspace);
       allActions.push(...localActions);
     }
   }
@@ -622,6 +644,34 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     }));
 
   return availableActions;
+}
+
+function getObjectsFromJoblog(stderr: string): CommandObject[] | undefined {
+  const objects: CommandObject[] = [];
+
+  // Filter lines with EVFEVENT info from server.
+  const joblogLines = stderr.split(`\n`).filter(line => line.match(/:  EVFEVENT:/i));
+
+  for(const joblogLine of joblogLines) {
+    const evfevent = joblogLine.match(/:  EVFEVENT:(.*)/i) || '';
+    if (evfevent.length) {
+      const object = evfevent[1].trim().split(/[,\|/]/);
+      if (object) {
+        if (object.length >= 2) {
+          objects.push({
+            library: object[0].trim(),
+            object: object[1].trim()
+          });
+        } else {
+          objects.push({
+            object: object[0].trim()
+          });
+        }
+      }
+    }
+  }
+
+  return objects.length > 0 ? objects : undefined;
 }
 
 function getObjectFromCommand(baseCommand?: string): CommandObject | undefined {
