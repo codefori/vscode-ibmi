@@ -14,8 +14,9 @@ export namespace CompileTools {
   export const DID_NOT_RUN = -123;
 
   interface RunCommandEvents {
-    writeEvent?: (content: string) => void;
-    commandConfirm?: (command: string) => Promise<string>;
+    writeEvent?: (content: string) => void
+    commandConfirm?: (command: string) => Promise<string>
+    updateProgress?: (message: string) => void
   }
 
   /**
@@ -40,7 +41,9 @@ export namespace CompileTools {
       let commandString = variables.expand(options.command);
 
       if (events.commandConfirm) {
+        events.updateProgress?.(" - Prompting...");
         commandString = await events.commandConfirm(commandString);
+        events.updateProgress?.("");
       }
 
       if (commandString) {
