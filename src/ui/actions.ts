@@ -294,7 +294,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 break;
             }
 
-            task.report({ message: `${processedPath} (${done++}/${targets.length})`, increment })
+            task.report({ message: `${processedPath}${targets.length > 1 ? ` (${done++}/${targets.length})` : ''}`, increment })
 
             const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
             let actionName = chosenAction.name;
@@ -373,7 +373,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             env: variables,
                           }, {
                           writeEvent: (content) => writeEmitter.fire(content),
-                          commandConfirm: promptOnce ? undefined : commandConfirm
+                          commandConfirm: promptOnce ? undefined : commandConfirm,
+                          updateProgress: message => task.report({ message: `${processedPath}${message}` })
                         }
                         );
 
@@ -389,7 +390,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           if (isIleCommand && possibleObjects) {
                             evfeventInfos.length = 0;
                             if (Array.isArray(possibleObjects)) {
-                              for(const o of possibleObjects) {
+                              for (const o of possibleObjects) {
                                 evfeventInfos.push({
                                   library: o.library || evfeventInfo.library,
                                   object: o.object,
@@ -653,7 +654,7 @@ function getObjectsFromJoblog(stderr: string): CommandObject[] | undefined {
   // Filter lines with EVFEVENT info from server.
   const joblogLines = stderr.split(`\n`).filter(line => line.match(/:  EVFEVENT:/i));
 
-  for(const joblogLine of joblogLines) {
+  for (const joblogLine of joblogLines) {
     const evfevent = joblogLine.match(/:  EVFEVENT:(.*)/i) || '';
     if (evfevent.length) {
       const object = evfevent[1].trim().split(/[,\|/]/);

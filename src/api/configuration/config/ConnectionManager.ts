@@ -37,6 +37,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     debugSepPort: (parameters.debugSepPort || "8008"),
     debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
     debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
+    debugIgnoreCertificateErrors:(parameters.debugIgnoreCertificateErrors === true),
     readOnlyMode: (parameters.readOnlyMode === true),
     quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
     defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
@@ -74,7 +75,7 @@ export class ConnectionManager {
   }
 
   async sort() {
-    const connections = await this.getAll();
+    const connections = this.getAll();
     connections.sort((a, b) => a.name.localeCompare(b.name));
     return this.configMethod.set(`connections`, connections);
   }

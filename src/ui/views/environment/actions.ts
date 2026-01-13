@@ -92,7 +92,7 @@ export class ActionsNode extends EnvironmentItem {
       };
     }
 
-    const canRunOnEditor = (actionItem: ActionItem) => activeEditorContext &&
+    const canRunOnEditor = (actionItem: ActionItem) => activeEditorContext !== undefined &&
       activeEditorContext.scheme === actionItem.action.type &&
       activeEditorContext.workspace === actionItem.workspace &&
       (actionItem.action.runOnProtected || !activeEditorContext.protected) &&

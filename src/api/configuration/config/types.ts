@@ -26,6 +26,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   debugSepPort: string;
   debugUpdateProductionFiles: boolean;
   debugEnableDebugTracing: boolean;
+  debugIgnoreCertificateErrors:boolean;
   readOnlyMode: boolean;
   quickConnect: boolean;
   defaultDeploymentMethod: DeploymentMethod | '';
