@@ -61,11 +61,16 @@ export class CopyToImport implements IBMiComponent {
       newStatements.push(`CREATE TABLE ${library}.${table} AS (${statement}) WITH DATA`);
     }
 
+    const isBidi = connection.getConfig()?.bidi;
+    const bidiCcsid = connection.getConfig()?.bidiCcsid;
+
+    const stmfCcsid = (isBidi && Number(bidiCcsid)) ? bidiCcsid : 1208;
+
     newStatements.push(`Call QSYS2.QCMDEXC('` + connection.getContent().toCl(`CPYTOIMPF`, {
       FROMFILE: `${library!}/${table!} *FIRST`,
       TOSTMF: outStmf,
       MBROPT: `*REPLACE`,
-      STMFCCSID: 1208,
+      STMFCCSID: stmfCcsid,
       RCDDLM: `*CRLF`,
       DTAFMT: `*DLM`,
       RMVBLANK: `*TRAILING`,
@@ -75,6 +80,10 @@ export class CopyToImport implements IBMiComponent {
       STRDLM: `*DBLQUOTE`,
       STRESCCHR: `*STRDLM`
     }).replaceAll(`'`, `''`) + `')`);
+
+    if (isBidi && stmfCcsid !== 1208) {
+      newStatements.push(`Call QSYS2.QCMDEXC('QSYS/CPY OBJ(''${outStmf}'') TOOBJ(''${outStmf}'') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)')`)
+    }
 
     return {
       newStatements,
