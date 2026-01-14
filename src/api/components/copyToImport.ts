@@ -66,6 +66,7 @@ export class CopyToImport implements IBMiComponent {
       TOSTMF: outStmf,
       MBROPT: `*REPLACE`,
       STMFCCSID: 1208,
+      STMFCODPAG: '*STMF',
       RCDDLM: `*CRLF`,
       DTAFMT: `*DLM`,
       RMVBLANK: `*TRAILING`,
