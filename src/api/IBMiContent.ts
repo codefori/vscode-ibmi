@@ -332,7 +332,7 @@ export default class IBMiContent {
     const copyResult = await this.ibmi.runCommand({
       command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
         `TOSTMF('${tempRmt}') ` +
-        `MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
+        `MBROPT(*REPLACE) STMFCCSID(1208) STMFCODPAG(*STMF) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
       noLibList: true
     });
 
