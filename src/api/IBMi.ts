@@ -807,8 +807,8 @@ export default class IBMi {
           try {
             const debugServiceConfig = await new DebugConfiguration(this).load();
             delete this.config.debugCertDirectory;
-            this.config.debugPort = debugServiceConfig.getOrDefault("DBGSRV_SECURED_PORT", "8005");
-            this.config.debugSepPort = debugServiceConfig.getOrDefault("DBGSRV_SEP_DAEMON_PORT", "8008");
+            this.config.debugPort = debugServiceConfig.getRemoteServiceSecuredPort();
+            this.config.debugSepPort = debugServiceConfig.getRemoteServiceSepDaemonPort();
             debugConfigLoaded = true;
           }
           catch (error) {

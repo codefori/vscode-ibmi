@@ -50,7 +50,20 @@ export async function startService(connection: IBMi) {
         await checkAuthority();
       }
 
-      const debugConfig = await new DebugConfiguration(connection).load();
+      let debugConfig: DebugConfiguration;
+      let debugConfigLoaded = false;
+      try {
+        debugConfig = await new DebugConfiguration(connection).load();
+        const config = connection.getConfig();
+        config.debugPort = debugConfig.getRemoteServiceSecuredPort();
+        config.debugSepPort = debugConfig.getRemoteServiceSepDaemonPort();
+        IBMi.connectionManager.update(config);
+        debugConfigLoaded = true;
+      } catch (error) {
+        throw new Error(`Could not load debug service configuration: ${error}`);
+      } finally {
+        IBMi.GlobalStorage.setServerSettingsCacheSpecific(connection.currentConnectionName, { debugConfigLoaded });
+      }
 
       // Attempt to make log directory
       await connection.sendCommand({ command: `mkdir -p ${debugConfig.getRemoteServiceWorkspace()}` });
