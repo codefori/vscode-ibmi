@@ -34,6 +34,7 @@ export class Login {
       .addParagraph(l10n.t(`Only provide either the password or a private key - not both.`))
       .addPassword(`password`, l10n.t(`Password`))
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
+      .addCheckbox(`enableMfa`, l10n.t(`Enable Multi-Factor Authentication (MFA)`), l10n.t(`Enable this to be prompted for your one-time password when connecting.`))
       .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716 and PPK formats are supported.`))
       .addHorizontalRule()
       .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" })
@@ -72,7 +73,8 @@ export class Login {
             host: data.host,
             port: data.port,
             username: data.username,
-            privateKeyPath: data.privateKeyPath
+            privateKeyPath: data.privateKeyPath,
+            enableMfa: data.enableMfa
           };
 
           if (data.savePassword && data.password) {

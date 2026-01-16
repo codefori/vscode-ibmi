@@ -64,6 +64,7 @@ interface ConnectionCallbacks {
   uiErrorHandler: (connection: IBMi, error: ConnectionErrorCode, data?: any) => Promise<boolean>,
   progress: (detail: { message: string }) => void,
   message: (type: ConnectionMessageType, message: string) => void,
+  inputBox: (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => Promise<string | undefined>,
   cancelEmitter?: EventEmitter,
 }
 
@@ -188,7 +189,7 @@ export default class IBMi {
   async loadRemoteConfigs() {
     for (const configFile in this.configFiles) {
       const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
-      
+
       currentConfig.reset();
 
       try {
@@ -285,6 +286,8 @@ export default class IBMi {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
     const callbacks = options.callbacks;
 
+    let wasCancelled = false;
+
     try {
       connectionObject.keepaliveInterval = 35000;
 
@@ -294,27 +297,38 @@ export default class IBMi {
         message: `Connecting via SSH.`
       });
 
-      const delayedOperations: Function[] = callbacks.onConnectedOperations ? [...callbacks.onConnectedOperations] : [];
-
-      if (options.customClient) {
-        this.client = options.customClient;
-      } else {
-        this.client = new node_ssh.NodeSSH;
-      }
-      await this.client.connect({
-        ...connectionObject,
-        privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
-        debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
-      } as node_ssh.Config);
-
-      let wasCancelled = false;
-
       if (callbacks.cancelEmitter) {
         callbacks.cancelEmitter.once('cancel', () => {
           wasCancelled = true;
           this.dispose();
         });
       }
+
+      if (options.customClient) {
+        this.client = options.customClient;
+      } else {
+        this.client = new node_ssh.NodeSSH;
+      }
+
+      if (connectionObject.enableMfa) {
+        delete connectionObject.enableMfa;
+
+        if (connectionObject.password) {
+          callbacks.progress({
+            message: `Prompting for one-time password.`
+          });
+          const oneTimePassword = await options.callbacks.inputBox(`Enter your one-time password or press "Enter" if within your TOTP interval`, `One-Time Password`, true);
+          if (oneTimePassword) {
+            connectionObject.password = `${connectionObject.password}:${oneTimePassword}`;
+          }
+        }
+      }
+
+      await this.client.connect({
+        ...connectionObject,
+        privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
+        debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
+      } as node_ssh.Config);
 
       this.currentConnectionName = connectionObject.name;
       this.currentHost = connectionObject.host;
@@ -997,6 +1011,7 @@ export default class IBMi {
       }
 
       if (!options.reconnecting) {
+        const delayedOperations: Function[] = callbacks.onConnectedOperations ? [...callbacks.onConnectedOperations] : [];
         for (const operation of delayedOperations) {
           await operation();
         }
@@ -1026,14 +1041,17 @@ export default class IBMi {
       this.disconnect(true);
 
       let error = e.message;
-      if (e.code === "ENOTFOUND") {
-        error = `host is unreachable. Check the connection's hostname/IP address.`;
+      if(wasCancelled) {
+        error = `Connection attempt cancelled.`;
+      }
+      else if (e.code === "ENOTFOUND") {
+        error = `Host is unreachable. Check the connection's hostname/IP address.`;
       }
       else if (e.code === "ECONNREFUSED") {
-        error = `port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
+        error = `Port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
       }
       else if (e.level === "client-authentication") {
-        error = `check your credentials${e.message ? ` (${e.message})` : ''}.`;
+        error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
       }
 
       this.appendOutput(`${JSON.stringify(e)}`);
