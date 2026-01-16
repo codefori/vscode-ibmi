@@ -1369,15 +1369,30 @@ export default class IBMi {
 
         if (statement.startsWith(`@`)) {
           const command = statement.substring(1);
-          const log = `Running CL through SQL: ${command}\n`;
+          const log = `Running CL through SQL: ${command}\n\t`;
           try {
             const result = await this.sqlJob.execute<{ MESSAGE_ID: string, MESSAGE_TEXT: string }>(command, { isClCommand: true });
             this.appendOutput(`${log}-> OK${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}`);
           }
           catch (e: any) {
+            // If the CL command errors in the job, then let's run another
+            // SQL statement to fetch the job log for the error.
             const error = new Tools.SqlError(e.message);
             this.appendOutput(`${log}-> Failed: ${error.message}`);
-            throw e;
+            
+            const jobLog = await this.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) order by ORDINAL_POSITION desc limit 5`);
+            let logs = `${log}Job log:\n`
+            for (const row of jobLog) {
+              logs += `\t\t${row.MESSAGE_ID}: ${row.MESSAGE_TEXT}\n`
+            }
+            this.appendOutput(logs);
+
+            error.cause = {
+              command,
+              jobLog
+            }
+
+            throw error;
           }
         } else {
           if (isLast) {

@@ -526,12 +526,22 @@ describe('Content Tests', { concurrent: true }, () => {
   });
 
   it('Test @clCommand + select statement', async () => {
-    const content = connection.getContent();
-
     const [resultA] = await connection.runSQL(`@CRTSAVF FILE(QTEMP/UNITTESTA) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
 
     expect(resultA.OBJNAME).toBe('UNITTESTA');
     expect(resultA.OBJTEXT).toBe('Code for i test');
+  });
+
+  it('Test @clCommand with error', async () => {
+    try {
+      const [resultA] = await connection.runSQL(`@CRTBNDRPG BOOP('hello world');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+      expect(resultA).toBeDefined(); // Never reaches here
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(Tools.SqlError);
+      expect(e.cause).toBeDefined();
+      expect(e.cause.command).toBe(`CRTBNDRPG BOOP('hello world')`);
+      expect(e.cause.jobLog).toBeDefined();
+    }
   });
 
   it('should get attributes', async () => {
