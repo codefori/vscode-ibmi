@@ -2,22 +2,17 @@
 import path from "path";
 import IBMi from "../IBMi";
 
-const WORKSPACE_ROOT = `.vscode`;
 const SERVER_ROOT = path.posix.join(`/`, `etc`, `vscode`);
 
-type ConfigResult = `not_loaded`|`no_exist`|`failed_to_parse`|`invalid`|`ok`;
-
-interface LoadResult {
-  server: ConfigResult;
-}
+type ConfigResult = `not_loaded` | `no_exist` | `failed_to_parse` | `invalid` | `ok`;
 
 export class ConfigFile<T> {
   private state: ConfigResult = `not_loaded`;
   private basename: string;
   private serverFile: string;
-  private serverData: T|undefined;
+  private serverData: T | undefined;
 
-  public validateData: ((loadedConfig: any) => T)|undefined;
+  public validateData: ((loadedConfig: any) => T) | undefined;
 
   constructor(private connection: IBMi, configId: string, readonly fallback: T) {
     this.basename = configId + `.json`;
@@ -31,7 +26,7 @@ export class ConfigFile<T> {
   }
 
   async loadFromServer() {
-    let serverConfig: any|undefined;
+    let serverConfig: any | undefined;
 
     this.state = `no_exist`;
 
