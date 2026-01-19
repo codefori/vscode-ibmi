@@ -1,7 +1,7 @@
 {
   "type": "array",
   "title": "Actions",
-  "description": "List of Actions that apply to this Workspace. Actions may be used to run commands on the remote system.",
+  "description": "List of Code for IBM i Actions which may be used to run commands on the remote system.",
   "items": {
     "$ref": "#/$defs/code4iAction"
   },

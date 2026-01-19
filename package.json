@@ -47,9 +47,16 @@
 		"jsonValidation": [
 			{
 				"fileMatch": [
-					".vscode/actions.json"
+					".vscode/actions.json",
+					"/etc/vscode/actions.json"
 				],
 				"url": "./schemas/actions.json"
+			},
+			{
+				"fileMatch": [
+					"/etc/vscode/profiles.json"
+				],
+				"url": "./schemas/profiles.json"
 			},
 			{
 				"fileMatch": [
@@ -91,7 +98,7 @@
 									"properties": {
 										"name": {
 											"type": "string",
-											"description": "Connection name"
+											"description": "Filter name"
 										},
 										"library": {
 											"type": "string",
@@ -129,7 +136,7 @@
 									}
 								},
 								"default": [],
-								"description": "List of filters for Object List"
+								"description": "List of filters shown in the Object Browser"
 							},
 							"libraryList": {
 								"type": "array",
@@ -154,7 +161,7 @@
 									"additionalProperties": true
 								},
 								"default": [],
-								"description": "A collection of connection settings to easily switch between them on this system."
+								"description": "A collection of library lists, filters, and custom variables to easily switch between on this system."
 							},
 							"ifsShortcuts": {
 								"type": "array",
@@ -163,7 +170,7 @@
 									"title": "Path to directory"
 								},
 								"default": [],
-								"description": "List of directories shown in IFS Browser"
+								"description": "List of directories shown in the IFS Browser"
 							},
 							"autoSortIFSShortcuts": {
 								"type": "boolean",
