@@ -81,6 +81,14 @@ export class DebugConfiguration {
   getNavigatorLogFile() {
     return `${this.getRemoteServiceWorkspace()}/startDebugServiceNavigator.log`;
   }
+
+  getRemoteServiceSecuredPort() {
+    return this.getOrDefault("DBGSRV_SECURED_PORT", "8005");
+  }
+
+  getRemoteServiceSepDaemonPort() {
+    return this.getOrDefault("DBGSRV_SEP_DAEMON_PORT", "8008");
+  }
 }
 
 interface DebugServiceDetails {
