@@ -1,4 +1,4 @@
-import { commands, env, Uri, window } from "vscode";
+import { CancellationToken, commands, env, Uri, window } from "vscode";
 import IBMi, { ConnectionErrorCode, ConnectionMessageType } from "../api/IBMi";
 
 export function messageCallback(type: ConnectionMessageType, message: string) {
@@ -13,6 +13,14 @@ export function messageCallback(type: ConnectionMessageType, message: string) {
       window.showErrorMessage(message);
       break;
   }
+}
+
+export async function inputBoxCallback(prompt: string, placeHolder: string, ignoreFocusOut: boolean, token: CancellationToken) {
+  return await window.showInputBox({
+    prompt: prompt,
+    placeHolder: placeHolder,
+    ignoreFocusOut: ignoreFocusOut
+  }, token);
 }
 
 export async function handleConnectionResults(connection: IBMi, error: ConnectionErrorCode, data: any) {
@@ -176,13 +184,13 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
 
     case `invalid_temp_lib`:
       window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
-      .then(result => {
-        switch (result) {
-          case `Open Settings`:
-            commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
-            break;
-        }
-      });
+        .then(result => {
+          switch (result) {
+            case `Open Settings`:
+              commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+              break;
+          }
+        });
       break;
 
     case `ccsid_warning`:

@@ -66,6 +66,7 @@ export interface ConnectionData {
   keepaliveInterval?: number;
   readyTimeout?: number;
   sshDebug?: boolean;
+  enableMfa?: boolean;
 }
 
 export interface Server {

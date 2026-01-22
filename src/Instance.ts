@@ -9,7 +9,7 @@ import { VsCodeConfig } from "./config/Configuration";
 import { getEnvConfig } from "./filesystems/local/env";
 import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
 import { VscodeTools } from "./ui/Tools";
-import { handleConnectionResults, messageCallback } from "./ui/connection";
+import { handleConnectionResults, inputBoxCallback, messageCallback } from "./ui/connection";
 
 
 type IBMiEventSubscription = {
@@ -124,6 +124,9 @@ export default class Instance {
                   uiErrorHandler: handleConnectionResults,
                   progress: (message) => { p.report(message) },
                   message: messageCallback,
+                  inputBox: async (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => {
+                    return await inputBoxCallback(prompt, placeHolder, ignoreFocusOut, cancelToken)
+                  },
                   cancelEmitter
                 },
                 reconnecting: options.reconnecting,

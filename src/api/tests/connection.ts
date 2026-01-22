@@ -77,6 +77,12 @@ export async function newConnection(reloadSettings?: boolean) {
         message: (type: string, message: string) => {
           // console.log(`${type.padEnd(10)} ${message}`);
         },
+        inputBox: async (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => {
+          // console.log(`PROMPT: ${prompt}`);
+          // console.log(`PLACEHOLDER: ${placeHolder}`);
+          // console.log(`IGNORE FOCUS OUT: ${ignoreFocusOut}`);
+          return undefined;
+        },
         progress: ({ message }) => {
           // console.log(`PROGRESS: ${message}`);
         },
