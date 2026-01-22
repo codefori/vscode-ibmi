@@ -1,6 +1,6 @@
 import os from "os";
 import path, { dirname, extname } from "path";
-import vscode, { CancellationToken, Event, FileDecoration, FileDecorationProvider, FileType, l10n, ProviderResult, ThemeColor, Uri, window } from "vscode";
+import vscode, { CancellationToken, FileDecoration, FileDecorationProvider, FileType, l10n, ProviderResult, ThemeColor, Uri, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import IBMi from "../../api/IBMi";
@@ -111,7 +111,7 @@ class IFSItem extends BrowserItem implements WithPath {
     else {
       this.sort.ascending = !this.sort.ascending
     }
-    this.description = `(sort: ${sort.order} ${sort.ascending ? `🔼` : `🔽`})`;
+    this.description = `(sort: ${this.sort.order} ${this.sort.ascending ? `🔼` : `🔽`})`;
     this.reveal({ expand: true });
     this.refresh();
   }
