@@ -368,6 +368,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             title: chosenAction.name,
                             environment,
                             command,
+                            getSpooledFiles: true,
                             cwd: remoteCwd,
                             env: variables,
                           }, {
