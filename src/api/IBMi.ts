@@ -706,7 +706,7 @@ export default class IBMi {
                 message: `Checking /QOpenSys/pkgs/bin in $PATH.`
               });
 
-              if ((!quickConnect || !cachedServerSettings?.pathChecked)) {
+              if ((!quickConnect() || !cachedServerSettings?.pathChecked)) {
                 const currentPaths = (await this.sendCommand({ command: "echo $PATH" })).stdout.split(":");
                 const bashrcFile = `${defaultHomeDir}/.bashrc`;
                 let bashrcExists = (await this.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0;
@@ -796,13 +796,13 @@ export default class IBMi {
       }
 
       let debugConfigLoaded = false
-      if ((!quickConnect || !cachedServerSettings?.debugConfigLoaded)) {
+      if ((!quickConnect() || !cachedServerSettings?.debugConfigLoaded)) {
         if (this.debugPTFInstalled()) {
           try {
             const debugServiceConfig = await new DebugConfiguration(this).load();
             delete this.config.debugCertDirectory;
-            this.config.debugPort = debugServiceConfig.getOrDefault("DBGSRV_SECURED_PORT", "8005");
-            this.config.debugSepPort = debugServiceConfig.getOrDefault("DBGSRV_SEP_DAEMON_PORT", "8008");
+            this.config.debugPort = debugServiceConfig.getRemoteServiceSecuredPort();
+            this.config.debugSepPort = debugServiceConfig.getRemoteServiceSepDaemonPort();
             debugConfigLoaded = true;
           }
           catch (error) {
@@ -811,7 +811,7 @@ export default class IBMi {
         }
       }
 
-      if ((!quickConnect || !cachedServerSettings?.maximumArgsLength)) {
+      if ((!quickConnect() || !cachedServerSettings?.maximumArgsLength)) {
         //Compute the maximum admited length of a command's arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
         this.maximumArgsLength = Number((await this.sendCommand({ command: "/QOpenSys/usr/bin/expr `/QOpenSys/usr/bin/getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
       }
