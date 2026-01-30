@@ -1,7 +1,6 @@
 
 import { stat } from "fs/promises";
 import path from "path";
-import { l10n } from "vscode";
 import { SemanticVersion } from "../../../typings";
 import { getJavaHome } from "../../configuration/DebugConfiguration";
 import IBMi from "../../IBMi";
@@ -59,24 +58,24 @@ export class Mapepire implements IBMiComponent {
   async update(connection: IBMi): Promise<ComponentState> {
     try {
       if (!this.localAssetPath) {
-        throw l10n.t("Local Mapepire asset not set!");
+        throw "Local Mapepire asset not set!";
       }
 
       const assetExistsLocally = await exists(this.localAssetPath);
       if (!assetExistsLocally) {
-        throw l10n.t("Local Mapepire asset not found at {0}!", this.localAssetPath);
+        throw `Local Mapepire asset not found at ${this.localAssetPath}!`;
       }
 
       let result = await connection.sendCommand({ command: `rm ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*.jar` });
       if (result.code !== 0) {
-        throw l10n.t("Failed to clear previous Mapepire installation: {0}", result.stderr);
+        throw `Failed to clear previous Mapepire installation: ${result.stderr}`;
       }
 
       await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
 
       result = await connection.sendCommand({ command: `chmod +x ${this.installPath}` });
       if (result.code !== 0) {
-        throw l10n.t("Failed to make Mapepire jar file executable: {0}", result.stderr);
+        throw `Failed to make Mapepire jar file executable: ${result.stderr}`;
       }
     }
     catch (error: any) {
