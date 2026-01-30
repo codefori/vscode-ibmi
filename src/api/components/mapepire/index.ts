@@ -40,7 +40,7 @@ export class Mapepire implements IBMiComponent {
     const remoteVersions = (await connection.sendCommand({ command: `stat --printf="%n\n" ${SERVER_FILE_PREFIX}*`, directory: installDirectory }))
       .stdout.split("\n")
       .map(line => line.trim())
-      .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\.(\\d+)\.(\\d+)\\.jar$`).exec(line))
+      .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\\.(\\d+)\\.(\\d+)\\.jar$`).exec(line))
       .filter(Boolean)
       .map(version => ({ major: Number(version![1]), minor: Number(version![2]), patch: Number(version![3]) } as SemanticVersion));
     if (!remoteVersions) {
