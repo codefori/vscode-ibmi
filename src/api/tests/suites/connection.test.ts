@@ -313,6 +313,11 @@ describe(`connection tests`, { concurrent: true }, () => {
       expect(jdk17).toBe(connection.remoteFeatures.jdk17);
     }
 
+    if (connection.remoteFeatures.jdk21) {
+      const jdk21 = getJavaHome(connection, '21');
+      expect(jdk21).toBe(connection.remoteFeatures.jdk21);
+    }
+
     expect(getJavaHome(connection, '666')).toBeUndefined();
   });
 

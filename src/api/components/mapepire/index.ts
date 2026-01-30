@@ -3,12 +3,13 @@ import { stat } from "fs/promises";
 import path from "path";
 import { l10n } from "vscode";
 import { SemanticVersion } from "../../../typings";
+import { getJavaHome } from "../../configuration/DebugConfiguration";
 import IBMi from "../../IBMi";
 import { ComponentState, IBMiComponent } from "../component";
 import { sshSqlJob } from "./sqlJob";
 import { SERVER_FILE_PREFIX, SERVER_VERSION_FILE, VERSION } from "./version";
 
-const DEFAULT_JAVA_EIGHT = `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit/bin/java`;
+const DEFAULT_JAVA_EIGHT = `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`;
 
 export class Mapepire implements IBMiComponent {
   static readonly ID = "mapepire";
@@ -86,9 +87,9 @@ export class Mapepire implements IBMiComponent {
     return `Installed`;
   }
 
-  getInitCommand(javaVersion = DEFAULT_JAVA_EIGHT): string | undefined {
+  getInitCommand(javaHome: string): string | undefined {
     if (this.installPath) {
-      return `${javaVersion} -Dos400.stdio.convert=N -jar ${this.installPath} --single`
+      return `${path.posix.join(javaHome, `bin`, `java`)} -Dos400.stdio.convert=N -jar ${this.installPath} --single`
     }
   }
 
@@ -114,6 +115,7 @@ export class Mapepire implements IBMiComponent {
   public async newJob(connection: IBMi, javaPath?: string) {
     const sqlJob = new sshSqlJob();
     sqlJob.options.secure = connection.getConfig().secureSQL;
+    javaPath = javaPath || getJavaHome(connection, connection.getConfig().mapepireJavaVersion || "8") || DEFAULT_JAVA_EIGHT;
     const stream = await sqlJob.getSshChannel(this, connection, javaPath);
     await sqlJob.connectSsh(stream);
     // sqlJob.setTraceConfig(`IN_MEM`, `ON`);

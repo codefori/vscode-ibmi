@@ -239,6 +239,7 @@ export default class IBMi {
       jdk80: undefined,
       jdk11: undefined,
       jdk17: undefined,
+      jdk21: undefined,
       openjdk11: undefined,
       uname: undefined,
     };
@@ -474,12 +475,14 @@ export default class IBMi {
           this.remoteFeatures.jdk80,
           this.remoteFeatures.jdk11,
           this.remoteFeatures.openjdk11,
-          this.remoteFeatures.jdk17
+          this.remoteFeatures.jdk17,
+          this.remoteFeatures.jdk21
         ] = await Promise.all([
           javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`),
           javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`),
           javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`),
-          javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`)
+          javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`),
+          javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk21/64bit`)
         ]);
       }
 
@@ -519,11 +522,10 @@ export default class IBMi {
 
       const mapepire = this.getComponent<Mapepire>(Mapepire.ID);
       if (mapepire) {
-        const useJavaVersion = (this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
-        if (useJavaVersion) {
-          const javaPath = path.posix.join(useJavaVersion, `bin`, `java`);
+        const hasJavaInstalled = (this.remoteFeatures.jdk21 || this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
+        if (hasJavaInstalled) {
           try {
-            this.sqlJob = await mapepire.newJob(this, javaPath);
+            this.sqlJob = await mapepire.newJob(this);
             if (this.sqlJob.id) {
               this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
               await this.sqlJob.execute(`CALL QSYS2.QCMDEXC('OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)')`);
@@ -1379,7 +1381,7 @@ export default class IBMi {
             // SQL statement to fetch the job log for the error.
             const error = new Tools.SqlError(e.message);
             this.appendOutput(`${log}-> Failed: ${error.message}`);
-            
+
             const jobLog = await this.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) order by ORDINAL_POSITION desc limit 5`);
             let logs = `${log}Job log:\n`
             for (const row of jobLog) {

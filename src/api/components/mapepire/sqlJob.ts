@@ -9,7 +9,7 @@ export class sshSqlJob extends SQLJob {
   static application = "<unknown>";
   private channel: ClientChannel | undefined;
 
-  async getSshChannel(mapepire: Mapepire, connection: IBMi, javaPath?: string): Promise<ClientChannel> {
+  async getSshChannel(mapepire: Mapepire, connection: IBMi, javaPath: string): Promise<ClientChannel> {
     const useExec = await Mapepire.useExec(connection);
 
     return new Promise((resolve, reject) => {
@@ -28,11 +28,11 @@ export class sshSqlJob extends SQLJob {
 
         // TODO: on is undefined?
         stream.stderr.on(`data`, (data: Buffer) => {
-          console.log(data);
+          console.log(data.toString("utf-8"));
         })
 
         stream.stdout.on(`data`, (data: Buffer) => {
-          outString += String(data);
+          outString += data.toString("utf-8");
           if (outString.endsWith(`\n`)) {
             for (const thisMsg of outString.split(`\n`)) {
               if (thisMsg === ``) continue;

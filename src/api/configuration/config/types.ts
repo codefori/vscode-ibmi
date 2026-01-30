@@ -35,6 +35,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   lastDownloadLocation: string;
   secureSQL: boolean;
   keepActionSpooledFiles: boolean;
+  mapepireJavaVersion: string
   currentProfile?: string
   [name: string]: any;
 }
