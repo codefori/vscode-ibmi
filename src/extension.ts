@@ -121,9 +121,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.environment.refresh");
     });
 
-  const mapepire = new Mapepire();
-  mapepire.setLocalAssetPath(path.join(context.extensionPath, `dist`, mapepire.getFileName()));
-
+  const mapepire = new Mapepire(path.join(context.extensionPath, `dist`));
   extensionComponentRegistry.registerComponent(context, mapepire);
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());

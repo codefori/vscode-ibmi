@@ -1,63 +1,87 @@
 
 import { stat } from "fs/promises";
 import path from "path";
+import { l10n } from "vscode";
+import { SemanticVersion } from "../../../typings";
 import IBMi from "../../IBMi";
 import { ComponentState, IBMiComponent } from "../component";
 import { sshSqlJob } from "./sqlJob";
-import { SERVER_VERSION_FILE, VERSION_NUMBER } from "./version";
+import { SERVER_FILE_PREFIX, SERVER_VERSION_FILE, VERSION } from "./version";
 
 const DEFAULT_JAVA_EIGHT = `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit/bin/java`;
 
 export class Mapepire implements IBMiComponent {
-  static ID = "mapepire";
-  private localAssetPath: string | undefined;
+  static readonly ID = "mapepire";
+  private readonly localAssetPath: string;
+  private installPath = "";
+  private readonly version: SemanticVersion;
 
-  setLocalAssetPath(newPath: string) {
-    this.localAssetPath = newPath;
+  constructor(localAssetRoot: string) {
+    this.localAssetPath = path.join(localAssetRoot, SERVER_VERSION_FILE);
+    const rawVersion = /-(\d+)\.(\d+)\.(\d+)\.jar$/.exec(SERVER_VERSION_FILE);
+    if (rawVersion) {
+      this.version = { major: Number(rawVersion[1]), minor: Number(rawVersion[2]), patch: Number(rawVersion[3]) };
+    }
+    else {
+      this.version = { major: 0, minor: 0, patch: 0 };
+    }
   }
-
-  installPath = "";
 
   getIdentification() {
-    return { name: Mapepire.ID, version: VERSION_NUMBER };
-  }
-
-  getFileName() {
-    return SERVER_VERSION_FILE;
+    return { name: Mapepire.ID, version: VERSION };
   }
 
   async setInstallDirectory(installDirectory: string): Promise<void> {
-    this.installPath = path.posix.join(installDirectory, this.getFileName());
+    this.installPath = path.posix.join(installDirectory, path.basename(this.localAssetPath));
   }
 
   async getRemoteState(connection: IBMi, installDirectory: string): Promise<ComponentState> {
-    this.installPath = path.posix.join(installDirectory, this.getFileName());
-    const result = await connection.getContent().testStreamFile(this.installPath, "x");
-
-    if (!result) {
+    this.setInstallDirectory(installDirectory);
+    const remoteVersions = (await connection.sendCommand({ command: `stat --printf="%n\n" ${SERVER_FILE_PREFIX}*`, directory: installDirectory }))
+      .stdout.split("\n")
+      .map(line => line.trim())
+      .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\.(\\d+)\.(\\d+)\\.jar$`).exec(line))
+      .filter(Boolean)
+      .map(version => ({ major: Number(version![1]), minor: Number(version![2]), patch: Number(version![3]) } as SemanticVersion));
+    if (!remoteVersions) {
       return `NotInstalled`;
     }
-
-    return `Installed`;
+    else if (remoteVersions.every(remoteVersion => remoteVersion.major < this.version.major || (remoteVersion.major === this.version.major && remoteVersion.minor < this.version.minor) || (remoteVersion.major === this.version.major && remoteVersion.minor === this.version.minor && remoteVersion.patch < this.version.patch))) {
+      return "NeedsUpdate";
+    }
+    else {
+      return "Installed";
+    }
   }
 
+
   async update(connection: IBMi): Promise<ComponentState> {
-    if (!this.localAssetPath) {
-      return `Error`;
+    try {
+      if (!this.localAssetPath) {
+        throw l10n.t("Local Mapepire asset not set!");
+      }
+
+      const assetExistsLocally = await exists(this.localAssetPath);
+      if (!assetExistsLocally) {
+        throw l10n.t("Local Mapepire asset not found at {0}!", this.localAssetPath);
+      }
+
+      let result = await connection.sendCommand({ command: `rm ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*.jar` });
+      if (result.code !== 0) {
+        throw l10n.t("Failed to clear previous Mapepire installation: {0}", result.stderr);
+      }
+
+      await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
+
+      result = await connection.sendCommand({ command: `chmod +x ${this.installPath}` });
+      if (result.code !== 0) {
+        throw l10n.t("Failed to make Mapepire jar file executable: {0}", result.stderr);
+      }
     }
-
-    const assetExistsLocally = await exists(this.localAssetPath);
-
-    if (!assetExistsLocally) {
-      return `Error`;
+    catch (error: any) {
+      connection.appendOutput(String(error));
+      return "Error";
     }
-
-    await connection.sendCommand({ command: `rm ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*` });
-    await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
-
-    await connection.sendCommand({
-      command: `chmod +x ${this.installPath}`,
-    });
 
     return `Installed`;
   }

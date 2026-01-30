@@ -3,12 +3,11 @@ import IBMi from "../IBMi";
 import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { extensionComponentRegistry } from "../components/manager";
+import { Mapepire } from "../components/mapepire";
 import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
 import { ConnectionData } from "../types";
 import { CustomCLI } from "./components/customCli";
 import { JSONConfig, JsonStorage } from "./testConfigSetup";
-import { Mapepire } from "../components/mapepire";
-import { SERVER_VERSION_FILE } from "../components/mapepire/version";
 
 export const testStorage = new JsonStorage();
 const testConfig = new JSONConfig();
@@ -50,9 +49,7 @@ export async function newConnection(reloadSettings?: boolean) {
 
   const conn = new IBMi();
 
-  const mapepire = new Mapepire();
-  const mapepireAssetPath = path.join(__dirname, `..`, `..`, `..`, `dist`, SERVER_VERSION_FILE);
-  mapepire.setLocalAssetPath(mapepireAssetPath);
+  const mapepire = new Mapepire(path.join(__dirname, `..`, `..`, `..`, `dist`));
 
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);
