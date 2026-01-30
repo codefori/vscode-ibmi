@@ -46,7 +46,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir()),
     secureSQL: (parameters.secureSQL === true),
     keepActionSpooledFiles: (parameters.keepActionSpooledFiles === true),
-    mapepireJavaVersion: (parameters.mapepireJavaVersion || "8"),
+    mapepireJavaVersion: (parameters.mapepireJavaVersion || "default"),
   }
 }
 

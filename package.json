@@ -366,8 +366,9 @@
 							},
 							"mapepireJavaVersion": {
 								"type": "string",
-								"default": "8",
+								"default": "default",
 								"enum": [
+									"default",
 									"8",
 									"11",
 									"17",
