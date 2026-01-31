@@ -315,11 +315,11 @@ export default class IBMi {
 
         if (connectionObject.password) {
           callbacks.progress({
-            message: `Prompting for one-time password.`
+            message: `Prompting for additional factor.`
           });
-          const oneTimePassword = await options.callbacks.inputBox(`Enter your one-time password or press "Enter" if within your TOTP interval`, `One-Time Password`, true);
-          if (oneTimePassword) {
-            connectionObject.password = `${connectionObject.password}:${oneTimePassword}`;
+          const additionalFactor = await options.callbacks.inputBox(`Enter your additional factor or press "Enter" if within your TOTP interval`, `Additional Factor`, true);
+          if (additionalFactor) {
+            connectionObject.password = `${connectionObject.password}:${additionalFactor}`;
           }
         }
       }
@@ -1041,7 +1041,7 @@ export default class IBMi {
       this.disconnect(true);
 
       let error = e.message;
-      if(wasCancelled) {
+      if (wasCancelled) {
         error = `Connection attempt cancelled.`;
       }
       else if (e.code === "ENOTFOUND") {
