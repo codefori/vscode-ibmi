@@ -1503,7 +1503,7 @@ export default class IBMi {
               skip_empty_lines: true,
               onRecord(record) {
                 for (const key of Object.keys(record)) {
-                  record[key] = record[key] === ` ` ? `` : Tools.assumeType(record[key], key);
+                  record[key] = record[key] === ` ` ? `` : Tools.assumeType(String(record[key]), key);
                 }
                 return record;
               }
