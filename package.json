@@ -2644,17 +2644,17 @@
 				},
 				{
 					"command": "code-for-ibmi.debug.endDebug",
-					"when": "code-for-ibmi:connected && debugState == initializing",
+					"when": "code-for-ibmi:connected && debugState == initializing && (resourceScheme == file || resourceScheme == streamfile || resourceScheme == member)",
 					"group": "navigation@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "code-for-ibmi:connected",
+					"when": "code-for-ibmi:connected && (resourceScheme == file || resourceScheme == streamfile || resourceScheme == member)",
 					"group": "navigation@2"
 				},
 				{
 					"command": "code-for-ibmi.clearDiagnostics",
-					"when": "code-for-ibmi:connected",
+					"when": "code-for-ibmi:connected && (resourceScheme == file || resourceScheme == streamfile || resourceScheme == member)",
 					"group": "navigation@3"
 				},
 				{
