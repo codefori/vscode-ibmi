@@ -27,7 +27,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
         }
 
         if (expiration.daysLeft <= 14) { //Warn at least two weeks before expiration
-          window.showInformationMessage(l10n.t("Your password will expire in {0} day(s); do you want to change it now?", expiration.daysLeft), { modal: true }, l10n.t("Change password"))
+          window.showInformationMessage(l10n.t("Your IBM i password will expire in {0} day(s); do you want to change it now?", expiration.daysLeft), { modal: true }, l10n.t("Change password"))
             .then(change => {
               if (change) {
                 commands.executeCommand("code-for-ibmi.changePassword");
