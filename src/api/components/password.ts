@@ -46,7 +46,7 @@ export class PasswordManager implements IBMiComponent {
         public class ChangePassword {
           public static void main(String[] args) throws Exception {
             try (final ${as400Class} ibmi = new ${as400Class}()){
-              ibmi.changePassword(args[0].toCharArray(), args[1].toCharArray()${additionalAuthenticationFactor ? ", args[2].toCharArray()" : ""});
+              ibmi.changePassword("${oldPassword}".toCharArray(), "${newPassword}".toCharArray()${additionalAuthenticationFactor ? `, "${additionalAuthenticationFactor}".toCharArray()` : ""});
             }
             catch(Exception e){
               System.err.println(e.getMessage());
@@ -58,12 +58,14 @@ export class PasswordManager implements IBMiComponent {
       const change = await connection.sendCommand({
         command: [
           `javac -cp /QIBM/ProdData/OS400/jt400/lib/jt400.jar ChangePassword.java`,
-          `java -cp /QIBM/ProdData/OS400/jt400/lib/jt400.jar:. ChangePassword ${oldPassword} ${newPassword} ${additionalAuthenticationFactor || ""}`.trimEnd()
+          `rm -f ChangePassword.java`,
+          `java -cp /QIBM/ProdData/OS400/jt400/lib/jt400.jar:. ChangePassword`
         ].join(" && "),
         directory
       });
       if (change.code !== 0) {
-        throw Error(`Password change failed: ${change.stderr || change.stdout}`);
+        //Cleanup: AS400SecurityException usually ends with ":<user>" - we remove it
+        throw Error((change.stderr || change.stdout).replaceAll(`:${connection.currentUser}`, ""));
       }
     });
   }
