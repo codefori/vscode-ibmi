@@ -11,6 +11,7 @@ import { CustomQSh } from "./api/components/cqsh";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
+import { PasswordManager } from "./api/components/password";
 import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
@@ -126,6 +127,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(context, new CopyToImport());
+  extensionComponentRegistry.registerComponent(context, new PasswordManager());
 
   registerURIHandler(context,
     sandboxURIHandler,
