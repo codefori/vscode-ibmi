@@ -142,6 +142,9 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
             if (!currentPassword || !newPassword || !data.newPasswordConfirm) {
               error = l10n.t("Every password field must be filled.")
             }
+            else if (data.currentPassword === data.newPassword) {
+              error = l10n.t("New password must be different from the current one.")
+            }
             else if (data.newPassword !== data.newPasswordConfirm) {
               error = l10n.t("New password field and confirmation field don't match.")
             }
