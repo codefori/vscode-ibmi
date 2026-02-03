@@ -3232,7 +3232,7 @@
 		"postinstall": "npx tsx tools/downloadMapepire"
 	},
 	"devDependencies": {
-		"@octokit/rest": "^21.1.1",
+		"@octokit/rest": "22.0.1",
 		"@types/adm-zip": "0.5.7",
 		"@types/glob": "^7.1.3",
 		"@types/node": "22.19.7",
