@@ -1,5 +1,6 @@
 import { posix } from "path";
 import IBMi from "../IBMi";
+import { Tools } from "../Tools";
 import { ComponentIdentification, ComponentState, IBMiComponent } from "./component";
 
 export class PasswordManager implements IBMiComponent {
@@ -14,12 +15,12 @@ export class PasswordManager implements IBMiComponent {
   }
 
   getRemoteState(_connection: IBMi, _installDirectory: string): ComponentState {
-    //Virtual component, always installed
+    //Volatile component - procedure is created and removed when invoked
     return "Installed";
   }
 
   update(_connection: IBMi, _installDirectory: string): ComponentState {
-    //Virtual component, always installed
+    //Volatile component - procedure is created and removed when invoked
     return "Installed";
   }
 
@@ -37,35 +38,41 @@ export class PasswordManager implements IBMiComponent {
     }
   }
 
-  async changePassword(connection: IBMi, oldPassword: string, newPassword: string, additionalAuthenticationFactor?: string) {
+  async changePassword(connection: IBMi, oldPassword: string, newPassword: string) {
     return await connection.withTempDirectory(async directory => {
-      const source = posix.join(directory, "ChangePassword.java");
-      const as400Class = connection.getConfig().secureSQL ? "SecureAS400" : "AS400"; //If Mapepire can/must use TLS, then this too.
-      await connection.getContent().writeStreamfileRaw(source, `
-        import com.ibm.as400.access.${as400Class};
-        public class ChangePassword {
-          public static void main(String[] args) throws Exception {
-            try (final ${as400Class} ibmi = new ${as400Class}()){
-              ibmi.changePassword("${oldPassword}".toCharArray(), "${newPassword}".toCharArray()${additionalAuthenticationFactor ? `, "${additionalAuthenticationFactor}".toCharArray()` : ""});
-            }
-            catch(Exception e){
-              System.err.println(e.getMessage());
-              System.exit(1);
-            }
-          }
-        }
+      const source = posix.join(directory, "CHGPWD.sql");
+      const procedure = `${connection.getConfig().tempLibrary}.${Tools.makeid(8)}`;
+      await connection.getContent().writeStreamfileRaw(source,`
+        create or replace procedure ${procedure} ()
+        language sql
+        not deterministic
+        begin atomic
+          call QSYS.QSYCHGPW(
+            '*CURRENT  ', '${oldPassword}', '${newPassword}',
+            X'00000000',
+            ${oldPassword.length}, 0, ${newPassword.length}, 0        
+          );
+        end;
         `);
-      const change = await connection.sendCommand({
-        command: [
-          `javac -cp /QIBM/ProdData/OS400/jt400/lib/jt400.jar ChangePassword.java`,
-          `rm -f ChangePassword.java`,
-          `java -cp /QIBM/ProdData/OS400/jt400/lib/jt400.jar:. ChangePassword`
-        ].join(" && "),
-        directory
+      const compile = await connection.runCommand({
+        command: `RUNSQLSTM SRCSTMF('${source}') COMMIT(*NONE) NAMING(*SQL) OPTION(*NOSRC)`,
+        noLibList: true
       });
-      if (change.code !== 0) {
-        //Cleanup: AS400SecurityException usually ends with ":<user>" - we remove it
-        throw Error((change.stderr || change.stdout).replaceAll(`:${connection.currentUser}`, ""));
+      if (compile.code !== 0) {
+        throw Error(compile.stderr || compile.stdout);
+      }
+
+      try {
+        await connection.runSQL(`call ${procedure};`)
+      }
+      catch (error: any) {
+        if(error instanceof Error){
+          throw error
+        }
+        throw Error(String(error));
+      }
+      finally {
+        await connection.runSQL(`drop procedure if exists ${procedure}`);
       }
     });
   }
