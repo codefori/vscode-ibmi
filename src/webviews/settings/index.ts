@@ -399,6 +399,7 @@ export class SettingsUI {
               .addHorizontalRule()
               .addParagraph(vscode.l10n.t(`Only provide either the password or a private key - not both.`))
               .addPassword(`password`, `${vscode.l10n.t(`Password`)}${storedPassword ? ` (${vscode.l10n.t(`stored`)})` : ``}`, vscode.l10n.t("Only provide a password if you want to update an existing one or set a new one."))
+              .addCheckbox(`enableMfa`, vscode.l10n.t(`Enable Multi-Factor Authentication (MFA)`), vscode.l10n.t(`Enable this to be prompted for your additional factor when connecting.`), stored.enableMfa)
               .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${privateKeyPath})` : ``}`, privateKeyWarning + vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
               .addHorizontalRule()
               .addInput(`readyTimeout`, vscode.l10n.t(`Connection Timeout (in milliseconds)`), vscode.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })
