@@ -194,8 +194,7 @@ export function endJobs(jobIds: string[], connection: IBMi) {
 }
 
 export async function isDebugEngineRunning() {
-  //return (await Promise.all([getDebugServerJob(), getDebugServiceJob()])).every(Boolean);
-  return false;
+  return (await Promise.all([getDebugServerJob(), getDebugServiceJob()])).every(Boolean);
 }
 
 export async function startServer() {
