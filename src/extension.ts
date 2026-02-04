@@ -19,6 +19,7 @@ import { CustomEditor, CustomEditorProvider } from "./editors/customEditorProvid
 import { IFSFS } from "./filesystems/ifsFs";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
+import { initializeFSUtils } from "./filesystems/qsys/FSUtils";
 import { instance, loadAllofExtension } from './instantiate';
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import { mergeCommandProfiles } from "./mergeProfiles";
@@ -96,6 +97,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   Debug.initialize(context);
   Deployment.initialize(context);
   updateLastConnectionAndServerCache();
+  initializeFSUtils(context);
 
   initializeSandbox();
 

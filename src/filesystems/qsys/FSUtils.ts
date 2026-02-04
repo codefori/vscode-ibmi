@@ -1,8 +1,16 @@
 import path from "path";
 import vscode, { l10n } from "vscode";
 import IBMi from "../../api/IBMi";
+import { instance } from "../../instantiate";
 import { ReconnectMode } from "../../typings";
 import { VscodeTools } from "../../ui/Tools";
+
+let createOnConnectPromise: (connection: string) => Promise<boolean>;
+export function initializeFSUtils(context: vscode.ExtensionContext) {
+  createOnConnectPromise = (connection) => {
+    return new Promise<boolean>((resolve) => instance.subscribe(context, "connected", "Restore previously opened editor", () => resolve(instance.getConnection()?.currentConnectionName === connection), true));
+  }
+}
 
 /**
  * Called when a member/streamfile is left open when VS Code is closed and re-opened to reconnect (or not) to the previous IBM i, based on the `autoReconnect` global configuration value.
@@ -22,8 +30,17 @@ export async function reconnectFS(uri: vscode.Uri) {
     case "ask":
       const lastConnection = IBMi.GlobalStorage.getLastConnections()?.at(0)?.name;
       if (lastConnection) {
-        if (await vscode.window.showInformationMessage(l10n.t("Do you want to reconnect to {0} and open {1}?", lastConnection, path.basename(uri.path)), l10n.t("Reconnect"))) {
-          doReconnect = true;
+        const answer = await Promise.race([
+          vscode.window.showInformationMessage(l10n.t("Do you want to reconnect to {0} and open {1}?", lastConnection, path.basename(uri.path)), l10n.t("Reconnect")),
+          createOnConnectPromise(lastConnection)
+        ]);
+        if (answer === true) {
+          //createOnConnectPromise resolved first
+          return true;
+        }
+        else if (typeof answer === "string") {
+          //Dialog was answered
+          doReconnect = true
         }
       }
       break;
