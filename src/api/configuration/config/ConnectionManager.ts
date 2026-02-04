@@ -1,5 +1,4 @@
 
-import os from "os";
 import { ConnectionData } from "../../types";
 import { ConnectionConfig } from "./types";
 import { Config, VirtualConfig } from "./VirtualConfig";
@@ -42,8 +41,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
     defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
     protectedPaths: (parameters.protectedPaths || []),
-    showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
-    lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir())
+    showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined)
   }
 }
 
