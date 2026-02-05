@@ -1,10 +1,15 @@
+import { existsSync } from "fs";
+import os from "os";
 import { ComponentInstallState } from "../../components/component";
+import { Tools } from "../../Tools";
 import { AspInfo, ConnectionData } from "../../types";
 import { BaseStorage } from "./BaseStorage";
+
 const SERVER_SETTINGS_CACHE_PREFIX = `serverSettingsCache_`;
 const SERVER_SETTINGS_CACHE_KEY = (name: string) => SERVER_SETTINGS_CACHE_PREFIX + name;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
 const PREVIOUS_FIND_TERMS_KEY = `prevFindTerms`;
+const PREVIOUS_DOWNLOAD_LOCATION = `previousDownloadLocation`;
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
@@ -31,7 +36,7 @@ export type CachedServerSettings = {
 } | undefined;
 
 export class CodeForIStorage {
-  constructor(private internalStorage: BaseStorage) {}
+  constructor(private internalStorage: BaseStorage) { }
 
   getLastConnections() {
     return this.internalStorage.get<LastConnection[]>("lastConnections");
@@ -54,7 +59,7 @@ export class CodeForIStorage {
   }
 
   getServerSettingsCache(name: string) {
-    return this.internalStorage.get<CachedServerSettings|undefined>(SERVER_SETTINGS_CACHE_KEY(name));
+    return this.internalStorage.get<CachedServerSettings | undefined>(SERVER_SETTINGS_CACHE_KEY(name));
   }
 
   async setServerSettingsCache(name: string, serverSettings: CachedServerSettings) {
@@ -77,7 +82,7 @@ export class CodeForIStorage {
 
     const componentCache = existingSettings.installedComponents;
     const stateId = componentCache.findIndex(c => c.id.name === component.id.name);
-    
+
     if (stateId >= 0) {
       if (component.state === `Installed`) {
         componentCache[stateId] = component;
@@ -95,7 +100,7 @@ export class CodeForIStorage {
       installedComponents: componentCache
     });
   }
- 
+
   async deleteServerSettingsCache(name: string) {
     await this.internalStorage.set(SERVER_SETTINGS_CACHE_KEY(name), undefined);
   }
@@ -113,11 +118,11 @@ export class CodeForIStorage {
     return this.internalStorage.get<string[]>(PREVIOUS_SEARCH_TERMS_KEY) || [];
   }
 
-  async addPreviousSearchTerm(term: string) {    
+  async addPreviousSearchTerm(term: string) {
     await this.internalStorage.set(PREVIOUS_SEARCH_TERMS_KEY, [term].concat(this.getPreviousSearchTerms().filter(t => t !== term)));
   }
 
-  async clearPreviousSearchTerms(){
+  async clearPreviousSearchTerms() {
     await this.internalStorage.set(PREVIOUS_SEARCH_TERMS_KEY, undefined);
   }
 
@@ -129,7 +134,19 @@ export class CodeForIStorage {
     await this.internalStorage.set(PREVIOUS_FIND_TERMS_KEY, [term].concat(this.getPreviousFindTerms().filter(t => t !== term)));
   }
 
-  async clearPreviousFindTerms(){
+  async clearPreviousFindTerms() {
     await this.internalStorage.set(PREVIOUS_FIND_TERMS_KEY, undefined);
+  }
+
+  getLastDownloadLocation() {
+    const lastLocation = this.internalStorage.get<string>(PREVIOUS_DOWNLOAD_LOCATION);
+    return lastLocation && existsSync(Tools.fixWindowsPath(lastLocation)) ? lastLocation : os.homedir();
+  }
+
+  async setLastDownloadLocation(location: string) {
+    const lastLocation = this.internalStorage.get<string>(PREVIOUS_DOWNLOAD_LOCATION);
+    if (location && location !== lastLocation) {
+      await this.internalStorage.set(PREVIOUS_DOWNLOAD_LOCATION, location);
+    }
   }
 }

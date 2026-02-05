@@ -1,5 +1,3 @@
-
-import os from "os";
 import { ConnectionData } from "../../types";
 import { ConnectionConfig } from "./types";
 import { Config, VirtualConfig } from "./VirtualConfig";
@@ -43,7 +41,6 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
     protectedPaths: (parameters.protectedPaths || []),
     showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
-    lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir()),
     secureSQL: (parameters.secureSQL === true),
     keepActionSpooledFiles: (parameters.keepActionSpooledFiles === true),
     mapepireJavaVersion: (parameters.mapepireJavaVersion || "default"),

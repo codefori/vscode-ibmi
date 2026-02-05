@@ -1,6 +1,4 @@
-import { existsSync } from "fs";
 import * as node_ssh from "node-ssh";
-import os from "os";
 import path, { parse as parsePath } from 'path';
 import { EventEmitter } from 'stream';
 import { CompileTools } from "./CompileTools";
@@ -1299,22 +1297,6 @@ export default class IBMi {
     };
 
     return result
-  }
-
-  getLastDownloadLocation() {
-    if (this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))) {
-      return this.config.lastDownloadLocation;
-    }
-    else {
-      return os.homedir();
-    }
-  }
-
-  async setLastDownloadLocation(location: string) {
-    if (this.config && location && location !== this.config.lastDownloadLocation) {
-      this.config.lastDownloadLocation = location;
-      await IBMi.connectionManager.update(this.config);
-    }
   }
 
   /**
