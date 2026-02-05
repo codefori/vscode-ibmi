@@ -13,13 +13,6 @@ export namespace Tools {
 
   export interface DB2Row extends Record<string, string | number | null> { }
 
-  export function bufferToUx(input: string) {
-    const hexString = Array.from(input)
-      .map(char => char.charCodeAt(0).toString(16).padStart(4, '0').toUpperCase())
-      .join('');
-    return `UX'${hexString}'`;
-  }
-
   export function makeid(length: number = 8) {
     let text = `O_`;
     const possible =
