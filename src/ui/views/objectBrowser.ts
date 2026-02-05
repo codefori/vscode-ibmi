@@ -894,12 +894,12 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           canSelectMany: false,
           canSelectFiles: false,
           canSelectFolders: true,
-          defaultUri: vscode.Uri.file(connection.getLastDownloadLocation())
+          defaultUri: vscode.Uri.file(IBMi.GlobalStorage.getLastDownloadLocation())
         }))?.[0];
       }
       else {
         downloadLocationURI = (await vscode.window.showSaveDialog({
-          defaultUri: vscode.Uri.file(path.join(connection.getLastDownloadLocation(), members[0].name)),
+          defaultUri: vscode.Uri.file(path.join(IBMi.GlobalStorage.getLastDownloadLocation(), members[0].name)),
           filters: { 'Source member': [members[0].extension || '*'] }
         }));
       }
@@ -916,7 +916,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         }
 
         const downloadLocation = saveIntoDirectory ? downloadLocationURI.path : dirname(downloadLocationURI.path);
-        await connection.setLastDownloadLocation(downloadLocation);
+        await IBMi.GlobalStorage.setLastDownloadLocation(downloadLocation);
 
         //Ask what do to with existing files in the target directory
         if (saveIntoDirectory) {

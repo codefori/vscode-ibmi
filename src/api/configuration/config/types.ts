@@ -32,7 +32,6 @@ export interface ConnectionConfig extends ConnectionProfile {
   defaultDeploymentMethod: DeploymentMethod | '';
   protectedPaths: string[];
   showHiddenFiles: boolean;
-  lastDownloadLocation: string;
   currentProfile?: string
   [name: string]: any;
 }
