@@ -4,7 +4,8 @@ import { Tools } from "../Tools";
 import { ComponentIdentification, ComponentState, IBMiComponent } from "./component";
 
 export class PasswordManager implements IBMiComponent {
-  static ID = "IBM i Password Manager";
+  static readonly ID = "CHGPWD";
+  static readonly VERSION = 1;
 
   getIdentification(): ComponentIdentification {
     return { name: PasswordManager.ID, version: 1 };
@@ -14,14 +15,57 @@ export class PasswordManager implements IBMiComponent {
     //Not used
   }
 
-  getRemoteState(_connection: IBMi, _installDirectory: string): ComponentState {
-    //Volatile component - procedure is created and removed when invoked
-    return "Installed";
+  async getRemoteState(connection: IBMi, _installDirectory: string) {
+    let version = 0;
+    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysprocs where routine_schema = '${connection.getConfig().tempLibrary.toUpperCase()}' and routine_name = '${PasswordManager.ID}'`);
+    if (result?.LONG_COMMENT) {
+      const comment = result.LONG_COMMENT as string;
+      const dash = comment.indexOf('-');
+      if (dash > -1) {
+        version = Number(comment.substring(0, dash).trim());
+      }
+    }
+    if (version < PasswordManager.VERSION) {
+      return `NeedsUpdate`;
+    }
+
+    return `Installed`;
   }
 
-  update(_connection: IBMi, _installDirectory: string): ComponentState {
-    //Volatile component - procedure is created and removed when invoked
-    return "Installed";
+  async update(connection: IBMi, _installDirectory: string): Promise<ComponentState> {
+    try {
+      await connection.withTempDirectory(async directory => {
+        const source = posix.join(directory, `${PasswordManager.ID}.sql`);
+        const procedure = `${connection.getConfig().tempLibrary}.${PasswordManager.ID}`;
+        await connection.getContent().writeStreamfileRaw(source, /* sql */`
+          create or replace procedure ${procedure}(oldPassword varchar(128), newPassword varchar(128))
+          language sql
+          not deterministic
+          begin
+            call QSYS.QSYCHGPW(
+              '*CURRENT  ', oldPassword, newPassword,
+              X'00000000',
+              LENGTH(oldPassword), 0, LENGTH(newPassword), 0        
+            );
+          end;
+
+          comment on procedure ${procedure} is '${PasswordManager.VERSION} - Change password';
+          call QSYS2.QCMDEXC('grtobjaut ${connection.getConfig().tempLibrary}/${PasswordManager.ID} *PGM *PUBLIC *ALL');
+        `);
+        const compile = await connection.runCommand({
+          command: `RUNSQLSTM SRCSTMF('${source}') COMMIT(*NONE) NAMING(*SQL) OPTION(*NOSRC)`,
+          noLibList: true
+        });
+        if (compile.code !== 0) {
+          throw Error(compile.stderr || compile.stdout);
+        }
+      });
+      return "Installed";
+    }
+    catch (error: any) {
+      connection.appendOutput(`Failed to install ${PasswordManager.ID} procedure:\n${typeof error === "string" ? error : JSON.stringify(error)}`);
+      return "Error";
+    }
   }
 
   async getPasswordExpiration(connection: IBMi) {
@@ -39,41 +83,20 @@ export class PasswordManager implements IBMiComponent {
   }
 
   async changePassword(connection: IBMi, oldPassword: string, newPassword: string) {
-    return await connection.withTempDirectory(async directory => {
-      const source = posix.join(directory, "CHGPWD.sql");
-      const procedure = `${connection.getConfig().tempLibrary}.${Tools.makeid(8)}`;
-      await connection.getContent().writeStreamfileRaw(source,`
-        create or replace procedure ${procedure} ()
-        language sql
-        not deterministic
-        begin atomic
-          call QSYS.QSYCHGPW(
-            '*CURRENT  ', '${oldPassword}', '${newPassword}',
-            X'00000000',
-            ${oldPassword.length}, 0, ${newPassword.length}, 0        
-          );
-        end;
-        `);
-      const compile = await connection.runCommand({
-        command: `RUNSQLSTM SRCSTMF('${source}') COMMIT(*NONE) NAMING(*SQL) OPTION(*NOSRC)`,
-        noLibList: true
-      });
-      if (compile.code !== 0) {
-        throw Error(compile.stderr || compile.stdout);
+    try {
+      await connection.runSQL(`call ${connection.getConfig().tempLibrary}.${PasswordManager.ID}(?, ?)`, { bindings: [oldPassword, newPassword] });
+    }
+    catch (error: any) {
+      if (error instanceof Tools.SqlError) {
+        const message = /(\[.*\] )?(.*), \d+/.exec(error.message)?.[2]; //try to keep only the relevent part of the error
+        throw new Error(message || error.message);
+      }
+      else if (error instanceof Error) {
+        throw error
       }
 
-      try {
-        await connection.runSQL(`call ${procedure};`)
-      }
-      catch (error: any) {
-        if(error instanceof Error){
-          throw error
-        }
-        throw Error(String(error));
-      }
-      finally {
-        await connection.runSQL(`drop procedure if exists ${procedure}`);
-      }
-    });
+      throw Error(String(error));
+    }
+
   }
 }
