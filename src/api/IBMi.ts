@@ -1360,7 +1360,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string | string[], options: { bindings?: BindingValue[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string | string[], options: { bindings?: BindingValue[] } = {}): Promise<Tools.DB2Row[]> {
     if (this.sqlJob) {
       let list = Array.isArray(statements) ? statements : statements.split(`;`).filter(x => x.trim().length > 0);
 
