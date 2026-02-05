@@ -1,4 +1,3 @@
-
 import { ConnectionData } from "../../types";
 import { ConnectionConfig } from "./types";
 import { Config, VirtualConfig } from "./VirtualConfig";
@@ -36,12 +35,15 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     debugSepPort: (parameters.debugSepPort || "8008"),
     debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
     debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
-    debugIgnoreCertificateErrors:(parameters.debugIgnoreCertificateErrors === true),
+    debugIgnoreCertificateErrors: (parameters.debugIgnoreCertificateErrors === true),
     readOnlyMode: (parameters.readOnlyMode === true),
     quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
     defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
     protectedPaths: (parameters.protectedPaths || []),
-    showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined)
+    showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
+    secureSQL: (parameters.secureSQL === true),
+    keepActionSpooledFiles: (parameters.keepActionSpooledFiles === true),
+    mapepireJavaVersion: (parameters.mapepireJavaVersion || "default"),
   }
 }
 

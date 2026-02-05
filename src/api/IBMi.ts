@@ -1,4 +1,3 @@
-import { parse } from 'csv-parse/sync';
 import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
 import { EventEmitter } from 'stream';
@@ -6,16 +5,16 @@ import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { Tools } from './Tools';
 import { IBMiComponent } from "./components/component";
-import { CopyToImport } from "./components/copyToImport";
-import { CustomQSh } from './components/cqsh';
 import { ComponentManager, ComponentSearchProps } from "./components/manager";
+import { Mapepire } from './components/mapepire';
+import { sshSqlJob } from './components/mapepire/sqlJob';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/serverFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, WrapResult } from './types';
+import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -38,14 +37,6 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   {
     path: `/QOpenSys/pkgs/bin/`,
     names: [`git`, `grep`, `tn5250`, `pfgrep`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
-  },
-  {
-    path: `/QSYS.LIB/`,
-    // In the future, we may use a generic specific.
-    // Right now we only need one program
-    // specific: `*.PGM`,
-    specific: `QZDFMDB2.PGM`,
-    names: [`QZDFMDB2.PGM`]
   },
   {
     path: `/QIBM/ProdData/IBMiDebugService/bin/`,
@@ -89,9 +80,6 @@ export default class IBMi {
   private systemVersion: number = 0;
   private qccsid: number = IBMi.CCSID_NOCONVERSION;
   private userJobCcsid: number = IBMi.CCSID_SYSVAL;
-  /** User default CCSID is job default CCSID */
-  private userDefaultCCSID: number = 0;
-  private sshdCcsid: number | undefined;
 
   private componentManager = new ComponentManager(this);
 
@@ -115,6 +103,9 @@ export default class IBMi {
   currentConnectionName: string = ``;
   private tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
+
+  private sqlJob: sshSqlJob | undefined;
+  splfUserData: string | undefined;
 
   /**
    * Used to store ASP numbers and their names
@@ -175,13 +166,7 @@ export default class IBMi {
    * and if not, call `loadFromServer()` on it.
    */
   getConfigFile<T>(id: keyof ConnectionConfigFiles) {
-    if (!this.configFiles[id]) {
-      this.configFiles[id] = new ConfigFile<T>(this, id as string, {} as T);
-    }
-
-    const configFile = this.configFiles[id] as ConfigFile<T>;
-
-    return configFile;
+    return this.configFiles[id] as ConfigFile<T>;
   }
 
   async loadRemoteConfigs() {
@@ -198,28 +183,12 @@ export default class IBMi {
     }
   }
 
-  get canUseCqsh() {
-    return this.getComponent(CustomQSh.ID) !== undefined;
-  }
 
   /**
    * Primarily used for running SQL statements.
    */
   get userCcsidInvalid() {
     return this.userJobCcsid === IBMi.CCSID_NOCONVERSION;
-  }
-
-  /**
-   * Determines if the client should do variant translation.
-   * False when cqsh should be used.
-   * True when cqsh is not available and the job CCSID is not the same as the SSHD CCSID.
-   */
-  get requiresTranslation() {
-    if (this.canUseCqsh) {
-      return false;
-    } else {
-      return this.getCcsid() !== this.sshdCcsid;
-    }
   }
 
   get dangerousVariants() {
@@ -260,7 +229,6 @@ export default class IBMi {
       sort: undefined,
       'GETNEWLIBL.PGM': undefined,
       'GETMBRINFO.SQL': undefined,
-      'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined,
       attr: undefined,
       iconv: undefined,
@@ -270,6 +238,7 @@ export default class IBMi {
       jdk80: undefined,
       jdk11: undefined,
       jdk17: undefined,
+      jdk21: undefined,
       openjdk11: undefined,
       uname: undefined,
     };
@@ -513,17 +482,19 @@ export default class IBMi {
         callbacks.progress({
           message: `Checking installed components on host IBM i: Java`
         });
-        const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
+        const javaCheck = async (root: string) => await this.getContent().testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
         [
           this.remoteFeatures.jdk80,
           this.remoteFeatures.jdk11,
           this.remoteFeatures.openjdk11,
-          this.remoteFeatures.jdk17
+          this.remoteFeatures.jdk17,
+          this.remoteFeatures.jdk21
         ] = await Promise.all([
           javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`),
           javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`),
           javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`),
-          javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`)
+          javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`),
+          javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk21/64bit`)
         ]);
       }
 
@@ -553,6 +524,39 @@ export default class IBMi {
 
       callbacks.progress({ message: `Checking Code for IBM i components.` });
 
+      // We always start up Mapepire first
+      await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
+
+      // Check Mapepire state after startup
+      const mapepireStates = this.componentManager.getComponentStates();
+      const mapepireState = mapepireStates.find(s => s.id.name === Mapepire.ID);
+      this.appendOutput(`Mapepire state after startup: ${mapepireState?.state || 'not found'}\n`);
+
+      const mapepire = this.getComponent<Mapepire>(Mapepire.ID);
+      if (mapepire) {
+        const hasJavaInstalled = (this.remoteFeatures.jdk21 || this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
+        if (hasJavaInstalled) {
+          try {
+            this.sqlJob = await mapepire.newJob(this);
+            if (this.sqlJob.id) {
+              this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
+              await this.sqlJob.execute(`CALL QSYS2.QCMDEXC('OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)')`);
+            }
+          } catch (e: any) {
+            callbacks.message(`error`, `Failed to start Mapepire SQL job: ${e.message || e}`);
+            this.appendOutput(`Mapepire error: ${e.message || e}\n`);
+          }
+        } else {
+          callbacks.message(`warning`, `No Java installation found. SQL operations will not be available. Please install Java 8, 11, or 17.`);
+          this.appendOutput(`Warning: No Java found for Mapepire\n`);
+        }
+      } else {
+        callbacks.message(`warning`, `Mapepire component failed to start. SQL operations will not be available.`);
+        this.appendOutput(`Warning: Mapepire component not available\n`);
+      }
+
+      // Then check the remaining components
+
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
       const componentStates = this.componentManager.getComponentStates();
@@ -560,6 +564,7 @@ export default class IBMi {
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
       }
+
       this.appendOutput(`\n`);
 
       // Load the remote connection configuration and apply it to the connection
@@ -584,43 +589,32 @@ export default class IBMi {
         message: `Checking library list configuration.`
       });
 
+      // TODO: RIP OUT LIBLIST WITH LIBRARY_LIST_INFO
+
       //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
       //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
       let currentLibrary = `QGPL`;
       this.defaultUserLibraries = [];
 
-      const liblResult = await this.sendQsh({
-        command: `liblist`
-      });
-      if (liblResult.code === 0) {
-        const libraryListString = liblResult.stdout;
-        if (libraryListString !== ``) {
-          const libraryList = libraryListString.split(`\n`);
+      const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME, IASP_NUMBER FROM QSYS2.LIBRARY_LIST_INFO`);
 
-          let lib, type;
-          for (const line of libraryList) {
-            lib = line.substring(0, 10).trim();
-            type = line.substring(12);
-
-            switch (type) {
-              case `USR`:
-                this.defaultUserLibraries.push(lib);
-                break;
-
-              case `CUR`:
-                currentLibrary = lib;
-                break;
-            }
-          }
-
-          //If this is the first time the config is made, then these arrays will be empty
-          if (this.config.currentLibrary.length === 0) {
-            this.config.currentLibrary = currentLibrary;
-          }
-          if (this.config.libraryList.length === 0) {
-            this.config.libraryList = this.defaultUserLibraries;
-          }
+      for (const row of liblRows) {
+        switch (row.TYPE) {
+          case `USER`:
+            this.defaultUserLibraries.push(row.SYSTEM_SCHEMA_NAME as string);
+            break;
+          case `CURRENT`:
+            currentLibrary = (row.SYSTEM_SCHEMA_NAME as string);
+            break;
         }
+      }
+
+      //If this is the first time the config is made, then these arrays will be empty
+      if (this.config.currentLibrary.length === 0) {
+        this.config.currentLibrary = currentLibrary;
+      }
+      if (this.config.libraryList.length === 0) {
+        this.config.libraryList = this.defaultUserLibraries;
       }
 
       callbacks.progress({
@@ -686,20 +680,20 @@ export default class IBMi {
           message: `Checking for bad data areas.`
         });
 
-        const [QCPTOIMPF, QCPFRMIMPF] = await Promise.all([
-          this.runCommand({
-            command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-            noLibList: true
-          }),
-          this.runCommand({
-            command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-            noLibList: true
-          })
-        ]);
+
+        const QCPTOIMPF = await this.runCommand({
+          command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+          noLibList: true
+        });
 
         if (QCPTOIMPF?.code === 0) {
           callbacks.uiErrorHandler(this, `QCPTOIMPF_exists`);
         }
+
+        const QCPFRMIMPF = await this.runCommand({
+          command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+          noLibList: true
+        })
 
         if (QCPFRMIMPF?.code === 0) {
           callbacks.uiErrorHandler(this, `QCPFRMIMPF_exists`);
@@ -786,6 +780,8 @@ export default class IBMi {
           });
           let validLibs: string[] = [];
           let badLibs: string[] = [];
+
+          // TODO: swap liblist with object_statistics?
 
           const result = await this.sendQsh({
             command: [
@@ -875,11 +871,12 @@ export default class IBMi {
 
         this.currentAsp = await this.getUserProfileAsp();
 
+        // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
+
         // Fetch conversion values?
-        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.qccsid) {
           this.qccsid = cachedServerSettings.qccsid;
           this.userJobCcsid = cachedServerSettings.jobCcsid;
-          this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
         } else {
           callbacks.progress({
             message: `Fetching conversion values.`
@@ -906,69 +903,19 @@ export default class IBMi {
               this.userJobCcsid = this.qccsid;
             }
 
-            // Let's also get the user's default CCSID
-            try {
-              const [activeJob] = await this.runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
-              this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
-            }
-            catch (error) {
-              const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
-                .stdout
-                .split("\n")
-                .filter(line => line.includes("DFTCCSID"));
-
-              const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
-              if (defaultCCSCID && !isNaN(defaultCCSCID)) {
-                this.userDefaultCCSID = defaultCCSCID;
-              }
-            }
-
           } catch (e) {
             // Oh well!
             console.log(e);
           }
         }
 
-        let userCcsidNeedsFixing = false;
-        let sshdCcsidMismatch = false;
-
         const showCcsidWarning = (message: string) => {
           callbacks.uiErrorHandler(this, `ccsid_warning`, message);
-        }
-
-        if (this.canUseCqsh) {
-          // If cqsh is available, but the user profile CCSID is bad, then cqsh won't work
-          if (this.getCcsid() === IBMi.CCSID_NOCONVERSION) {
-            userCcsidNeedsFixing = true;
-          }
-        }
-
-        else {
-          // If cqsh is not available, then we need to check the SSHD CCSID
-          this.sshdCcsid = await this.content.getSshCcsid();
-          if (this.sshdCcsid === this.getCcsid()) {
-            // If the SSHD CCSID matches the job CCSID (not the user profile!), then we're good.
-            // This means we can use regular qsh without worrying about translation because the SSHD and job CCSID match.
-            userCcsidNeedsFixing = false;
-          } else {
-            // If the SSHD CCSID does not match the job CCSID, then we need to warn the user
-            sshdCcsidMismatch = true;
-          }
-        }
-
-        if (userCcsidNeedsFixing) {
-          showCcsidWarning(`The job CCSID is set to ${IBMi.CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`);
-        } else if (sshdCcsidMismatch) {
-          showCcsidWarning(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${this.getCcsid()}). This may cause issues with objects with variant characters.`);
         }
 
         this.appendOutput(`\nCCSID information:\n`);
         this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
         this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
-        this.appendOutput(`\tUser Default CCSID: ${this.userDefaultCCSID}\n`);
-        if (this.sshdCcsid) {
-          this.appendOutput(`\tSSHD CCSID: ${this.sshdCcsid}\n`);
-        }
 
         // We only do this check if we're on 7.3 or below.
         if (this.systemVersion && this.systemVersion <= 7.3) {
@@ -1026,7 +973,6 @@ export default class IBMi {
         badDataAreasChecked: true,
         libraryListValidated: true,
         pathChecked: true,
-        userDefaultCCSID: this.userDefaultCCSID,
         debugConfigLoaded,
         maximumArgsLength: this.maximumArgsLength
       });
@@ -1167,15 +1113,6 @@ export default class IBMi {
 
     let qshExecutable = `/QOpenSys/usr/bin/qsh`;
 
-    if (this.canUseCqsh) {
-      qshExecutable = this.getComponent<CustomQSh>(CustomQSh.ID)!.installPath;
-    }
-
-    if (this.requiresTranslation) {
-      options.stdin = this.sysNameInAmerican(options.stdin);
-      options.directory = options.directory ? this.sysNameInAmerican(options.directory) : undefined;
-    }
-
     return this.sendCommand({
       ...options,
       command: `${IBMi.locale} ${qshExecutable}`
@@ -1228,6 +1165,12 @@ export default class IBMi {
   }
 
   private disconnect(failedToConnect = false) {
+    if (this.sqlJob) {
+      this.sqlJob.close();
+      this.sqlJob = undefined;
+      this.splfUserData = undefined;
+    }
+
     if (this.client) {
       this.client = undefined;
 
@@ -1250,7 +1193,7 @@ export default class IBMi {
   }
 
   public sqlRunnerAvailable() {
-    return this.remoteFeatures[`QZDFMDB2.PGM`] !== undefined;
+    return this.sqlJob !== undefined;
   }
 
   /**
@@ -1416,105 +1359,105 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
-    const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
-    const possibleChangeCommand = (this.userCcsidInvalid ? `@CHGJOB CCSID(${this.getCcsid()});\n` : '');
+  async runSQL(statements: string | string[], options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
+    if (this.sqlJob) {
+      let list = Array.isArray(statements) ? statements : statements.split(`;`).filter(x => x.trim().length > 0);
 
-    if (QZDFMDB2) {
-      // CHGJOB not required here. It will use the job CCSID, or the runtime CCSID.
-      let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
-      let returningAsCsv: WrapResult | undefined;
-      let command = `${IBMi.locale} system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
-      let useCsv = options.forceSafe;
+      const lastResultSet: Tools.DB2Row[] = [];
 
-      // Use custom QSH if available
-      if (this.canUseCqsh) {
-        const customQsh = this.getComponent<CustomQSh>(CustomQSh.ID)!;
-        command = `${IBMi.locale} ${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
-      }
+      for (let i = 0; i < list.length; i++) {
+        let statement = list[i];
+        const isLast = i === (list.length - 1);
 
-      if (this.requiresTranslation) {
-        // If we can't fix the input, then we can attempt to convert ourselves and then use the CSV.
-        input = this.sysNameInAmerican(input);
-        useCsv = true;
-      }
+        if (statement.startsWith(`@`)) {
+          const command = statement.substring(1);
+          const log = `Running CL through SQL: ${command}\n\t`;
+          try {
+            const result = await this.sqlJob.execute<{ MESSAGE_ID: string, MESSAGE_TEXT: string }>(command, { isClCommand: true });
+            this.appendOutput(`${log}-> OK${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}`);
+          }
+          catch (e: any) {
+            // If the CL command errors in the job, then let's run another
+            // SQL statement to fetch the job log for the error.
+            const error = new Tools.SqlError(e.message);
+            this.appendOutput(`${log}-> Failed: ${error.message}`);
 
-      // Fix up the parameters
-      let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
-      let lastStmt = list.pop()?.trim();
-      const asUpper = lastStmt?.toUpperCase();
+            const jobLog = await this.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) order by ORDINAL_POSITION desc limit 5`);
+            let logs = `${log}Job log:\n`
+            for (const row of jobLog) {
+              logs += `\t\t${row.MESSAGE_ID}: ${row.MESSAGE_TEXT}\n`
+            }
+            this.appendOutput(logs);
 
-      // We always need to use the CSV to get the values back correctly from the database.
-      if (lastStmt) {
-        const fakeBindings = options.fakeBindings;
-        if (lastStmt.includes(`?`) && fakeBindings && fakeBindings.length > 0) {
-          const parts = lastStmt.split(`?`);
+            error.cause = {
+              command,
+              jobLog
+            }
 
-          lastStmt = ``;
-          for (let partsIndex = 0; partsIndex < parts.length; partsIndex++) {
-            lastStmt += parts[partsIndex];
-            if (fakeBindings[partsIndex] !== undefined) {
-              switch (typeof fakeBindings[partsIndex]) {
-                case `number`:
-                  lastStmt += fakeBindings[partsIndex];
-                  break;
+            throw error;
+          }
+        } else {
+          if (isLast) {
+            // There is a bug with Mapepire handling of binding parameters.
+            // We work around it by using these fake parameters and passing
+            // in UTF8 encoding strings/numbers.
+            const fakeBindings = options.fakeBindings;
+            if (statement.includes(`?`) && fakeBindings && fakeBindings.length > 0) {
+              const parts = statement.split(`?`);
 
-                case `string`:
-                  lastStmt += Tools.bufferToUx(fakeBindings[partsIndex] as string);
-                  break;
+              statement = ``;
+              for (let partsIndex = 0; partsIndex < parts.length; partsIndex++) {
+                statement += parts[partsIndex];
+                if (fakeBindings[partsIndex] !== undefined) {
+                  switch (typeof fakeBindings[partsIndex]) {
+                    case `number`:
+                      statement += fakeBindings[partsIndex];
+                      break;
+
+                    case `string`:
+                      statement += Tools.bufferToUx(fakeBindings[partsIndex] as string);
+                      break;
+                  }
+                }
               }
             }
           }
-        }
 
-        // Return as CSV when needed
-        if (useCsv && (asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
-          const copyToImport = this.getComponent<CopyToImport>(CopyToImport.ID);
-          if (copyToImport) {
-            returningAsCsv = copyToImport.wrap(this, lastStmt);
-            list.push(...returningAsCsv.newStatements);
-          }
-        }
+          let query;
+          let error: Tools.SqlError | undefined;
+          const log = `Running SQL query: ${statement}\n`;
+          try {
+            query = this.sqlJob.query<Tools.DB2Row>(statement);
+            const rs = await query.execute(99999);
+            if (rs.has_results) {
+              lastResultSet.push(...rs.data);
+              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'}`);
+            }
+            else {
+              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted`);
+            }
+          } catch (e: any) {
+            error = new Tools.SqlError(e.message);
+            error.cause = statement
 
-        if (!returningAsCsv) {
-          list.push(lastStmt);
-        }
+            const parts: string[] = e.message.split(`,`);
+            if (parts.length > 3) {
+              error.sqlstate = parts[parts.length - 2].trim();
+            }
 
-        input = list.join(`;\n`);
-      }
-
-      const output = await this.sendCommand({
-        command,
-        stdin: input
-      })
-
-      if (output.stdout) {
-        const fromStdout = Tools.db2Parse(output.stdout, input);
-
-        if (returningAsCsv) {
-          // Will throw an error if stdout contains an error
-
-          const csvContent = await this.content.downloadStreamfileRaw(returningAsCsv.outStmf);
-          if (csvContent) {
-            this.sendCommand({ command: `rm -rf "${returningAsCsv.outStmf}"` });
-
-            return parse(csvContent, {
-              columns: true,
-              skip_empty_lines: true,
-              onRecord(record) {
-                for (const key of Object.keys(record)) {
-                  record[key] = record[key] === ` ` ? `` : Tools.assumeType(String(record[key]), key);
-                }
-                return record;
-              }
-            }) as Tools.DB2Row[];
+            this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}`);
+          } finally {
+            query?.close();
           }
 
-          throw new Error(`There was an error fetching the SQL result set.`)
-        } else {
-          return fromStdout;
+          if (error) {
+            throw error;
+          }
         }
+        this.appendOutput("\n\n");
       }
+
+      return lastResultSet;
     }
 
     throw new Error(`There is no way to run SQL on this system.`);
@@ -1534,17 +1477,13 @@ export default class IBMi {
   }
 
   getCcsid() {
-    const fallbackToDefault = ((this.userJobCcsid < 1 || this.userJobCcsid === IBMi.CCSID_NOCONVERSION) && this.userDefaultCCSID > 0);
-    const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.userJobCcsid;
-    return ccsid;
+    return this.userJobCcsid;
   }
 
   getCcsids() {
     return {
       qccsid: this.qccsid,
       runtimeCcsid: this.userJobCcsid,
-      userDefaultCCSID: this.userDefaultCCSID,
-      sshdCcsid: this.sshdCcsid
     };
   }
 

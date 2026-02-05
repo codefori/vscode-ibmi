@@ -31,7 +31,6 @@ export type CachedServerSettings = {
   badDataAreasChecked: boolean | null
   libraryListValidated: boolean | null
   pathChecked?: boolean
-  userDefaultCCSID: number | null
   debugConfigLoaded: boolean
   maximumArgsLength: number
 } | undefined;

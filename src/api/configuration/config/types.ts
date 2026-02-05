@@ -32,6 +32,9 @@ export interface ConnectionConfig extends ConnectionProfile {
   defaultDeploymentMethod: DeploymentMethod | '';
   protectedPaths: string[];
   showHiddenFiles: boolean;
+  secureSQL: boolean;
+  keepActionSpooledFiles: boolean;
+  mapepireJavaVersion: string
   currentProfile?: string
   [name: string]: any;
 }
