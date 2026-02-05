@@ -43,7 +43,7 @@ export class ExtendedIBMiContent {
       let rows = await connection.runSQL(
         `select case when locate('40',hex(srcdat)) > 0 then 0 else srcdat end as srcdat, srcseq, srcdta from ${aliasPath}`,
         {forceSafe: true}
-      );
+      ) as {SRCDAT: number, SRCDTA: string, SRCSEQ: number}[];
 
       if (rows.length === 0) {
         rows.push({
@@ -55,7 +55,7 @@ export class ExtendedIBMiContent {
 
       const sourceDates = rows.map(row => String(row.SRCDAT).padStart(6, `0`));
       const body = rows
-        .map(row => row.SRCDTA)
+        .map(row => row.SRCDTA.includes(`\\\t`) ? row.SRCDTA.replaceAll(`\\\t`, `\t`) : row.SRCDTA)
         .join(`\n`);
       const sequences = rows.map(row => Number(row.SRCSEQ));
 

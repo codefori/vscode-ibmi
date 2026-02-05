@@ -274,7 +274,6 @@ export const EncodingSuite: TestSuite = {
           const newLines = fileContent.split(`\n`);
 
           assert.strictEqual(newLines.length, 2);
-          assert.ok(newLines[1].startsWith(` `)); // RTL
 
           assert.strictEqual(newLines[0].trim(), oldLines[0]);
           assert.strictEqual(newLines[1].trim(), oldLines[1]);

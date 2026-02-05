@@ -143,27 +143,10 @@ export default class IBMiContent {
    * @param member
    * @param localPath
    */
-  async downloadMemberContent(library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
-  /**
-   * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.downloadMemberContent()} without the `asp` parameter instead.
-   *
-   * @param asp
-   * @param library
-   * @param sourceFile
-   * @param member
-   * @param localPath
-   */
-  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
-  async downloadMemberContent(aspOrLibrary: string | undefined, libraryOrSourceFile: string, sourceFileOrMember: string, memberOrLocalPath?: string, localPath?: string): Promise<string> {
-    const smallSignature = Boolean(aspOrLibrary && libraryOrSourceFile && sourceFileOrMember && ((memberOrLocalPath && !localPath) || !memberOrLocalPath));
-
-    if (!smallSignature) {
-      console.warn(`[Code for IBM i] downloadMemberContent with 5 parameters is deprecated and will be removed by 3.0.0. Use downloadMemberContent with 4 parameters instead (no ASP).`);
-    }
-
-    const library = this.ibmi.upperCaseName(smallSignature ? String(aspOrLibrary) : libraryOrSourceFile);
-    const sourceFile = this.ibmi.upperCaseName(smallSignature ? libraryOrSourceFile : sourceFileOrMember);
-    const member = this.ibmi.upperCaseName(smallSignature ? sourceFileOrMember : String(memberOrLocalPath));
+  async downloadMemberContent(library: string, sourceFile: string, member: string, localPath?: string): Promise<string> {
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
 
     const asp = await this.ibmi.lookupLibraryIAsp(library);
     const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
@@ -226,34 +209,17 @@ export default class IBMiContent {
    * @param member
    * @param content
    */
-  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
-
-  /**
-   * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.uploadMemberContent()} without the `asp` parameter instead.
-   * @param asp
-   * @param library
-   * @param sourceFile
-   * @param member
-   * @param content
-   */
-  async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
-  async uploadMemberContent(aspOrLibrary: string | undefined, libraryOrFile: string, sourceFileOrMember: string, memberOrContent: string | Uint8Array, content?: string | Uint8Array): Promise<boolean> {
-    const fullSignature = Boolean(content);
-
-    if (fullSignature) {
-      console.warn(`[Code for IBM i] uploadMemberContent with 5 parameters is deprecated and will be removed by 3.0.0. Use uploadMemberContent with 4 parameters instead (no ASP).`);
-    }
-
-    const library = this.ibmi.upperCaseName(fullSignature ? libraryOrFile : String(aspOrLibrary));
-    const sourceFile = this.ibmi.upperCaseName(fullSignature ? sourceFileOrMember : libraryOrFile);
-    const member = this.ibmi.upperCaseName(fullSignature ? String(memberOrContent) : sourceFileOrMember);
+  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean> {
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
     const asp = await this.ibmi.lookupLibraryIAsp(library);
 
     const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
 
     try {
-      await writeFileAsync(tmpobj, content || memberOrContent, `utf8`);
+      await writeFileAsync(tmpobj, content, `utf8`);
       const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       const tempRmt = this.getTempRemote(path);
 
