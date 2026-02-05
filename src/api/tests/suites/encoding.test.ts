@@ -27,32 +27,21 @@ describe('Encoding tests', { concurrent: true }, () => {
   });
 
   it('Prove that input strings are NOT messed up by CCSID', async () => {
-    let howManyTimesItMessedUpTheResult = 0;
-
     for (const strCcsid in contents) {
       const data = contents[strCcsid as keyof typeof contents].join(``);
 
-      const sqlA = `select ? as THEDATA from sysibm.sysdummy1`;
-      const resultA = await connection?.runSQL(sqlA, { fakeBindings: [data], forceSafe: true });
-      expect(resultA?.length).toBeTruthy();
-
-      const sqlB = `select '${data}' as THEDATA from sysibm.sysdummy1`;
-      const resultB = await connection?.runSQL(sqlB, { forceSafe: true });
-      expect(resultB?.length).toBeTruthy();
-
-      expect(resultA![0].THEDATA).toBe(data);
-      if (resultB![0].THEDATA !== data) {
-        howManyTimesItMessedUpTheResult++;
-      }
+      const sql = `select '${data}' as THEDATA from sysibm.sysdummy1`;
+      const result = await connection?.runSQL(sql);
+      
+      expect(result.length).toBeTruthy();
+      expect(result[0].THEDATA).toBe(data);
     }
-
-    expect(howManyTimesItMessedUpTheResult).toBe(0);
   });
 
   it('Compare Unicode to EBCDIC successfully', async () => {
 
     const sql = `select table_name, table_owner from qsys2.systables where table_schema = ? and table_name = ?`;
-    const result = await connection?.runSQL(sql, { fakeBindings: [`QSYS2`, `SYSCOLUMNS`] });
+    const result = await connection?.runSQL(sql, { bindings: [`QSYS2`, `SYSCOLUMNS`] });
     expect(result?.length).toBeTruthy();
   });
 
@@ -180,15 +169,15 @@ describe('Encoding tests', { concurrent: true }, () => {
           skipLibrary = true;
         }
 
-        let result = await connection.runCommand({command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112)`});
+        let result = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112)` });
         expect(result.code).toBe(0);
 
         for (const member of members) {
-          result = await connection.runCommand({command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT) TEXT('Test ${member}')`});
+          result = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT) TEXT('Test ${member}')` });
           expect(result.code).toBe(0);
         }
 
-        result = await connection.runCommand({command: `CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`});
+        result = await connection.runCommand({ command: `CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')` });
         expect(result.code).toBe(0);
 
         if (!skipLibrary) {
@@ -292,7 +281,7 @@ describe('Encoding tests', { concurrent: true }, () => {
 
       await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
 
-      const createResult = await connection.runCommand({command: `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112)`});
+      const createResult = await connection.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112)` });
       expect(createResult.code).toBe(0);
       try {
         const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
