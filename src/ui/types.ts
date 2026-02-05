@@ -35,3 +35,9 @@ export class BrowserItem extends TreeItem {
   reveal?(options?: FocusOptions): Thenable<void>;
   getToolTip?(): Promise<MarkdownString | undefined>;
 }
+
+export type SemanticVersion = {
+  major: number
+  minor: number
+  patch: number
+}

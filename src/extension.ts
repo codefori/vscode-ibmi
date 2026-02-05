@@ -6,12 +6,12 @@ import { commands, ExtensionContext, languages, window, workspace } from "vscode
 
 import path from "path";
 import IBMi from "./api/IBMi";
-import { CopyToImport } from "./api/components/copyToImport";
-import { CustomQSh } from "./api/components/cqsh";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
 import { PasswordManager } from "./api/components/password";
+import { Mapepire } from "./api/components/mapepire";
+import { sshSqlJob } from "./api/components/mapepire/sqlJob";
 import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
@@ -20,6 +20,7 @@ import { CustomEditor, CustomEditorProvider } from "./editors/customEditorProvid
 import { IFSFS } from "./filesystems/ifsFs";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
+import { handleEditorsLeftOpened } from "./filesystems/qsys/FSUtils";
 import { instance, loadAllofExtension } from './instantiate';
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import { mergeCommandProfiles } from "./mergeProfiles";
@@ -45,6 +46,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
+
+  sshSqlJob.application = `${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`;
 
   await loadAllofExtension(context);
 
@@ -97,7 +100,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   Debug.initialize(context);
   Deployment.initialize(context);
   updateLastConnectionAndServerCache();
-
   initializeSandbox();
 
   console.log(`Developer environment: ${process.env.DEV}`);
@@ -120,13 +122,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.environment.refresh");
     });
 
-  const customQsh = new CustomQSh();
-  customQsh.setLocalAssetPath(path.join(context.extensionPath, `dist`, customQsh.getFileName()));
-
-  extensionComponentRegistry.registerComponent(context, customQsh);
+  const mapepire = new Mapepire(path.join(context.extensionPath, `dist`));
+  extensionComponentRegistry.registerComponent(context, mapepire);
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
-  extensionComponentRegistry.registerComponent(context, new CopyToImport());
   extensionComponentRegistry.registerComponent(context, new PasswordManager());
 
   registerURIHandler(context,
@@ -135,6 +134,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   );
 
   await mergeCommandProfiles();
+
+  handleEditorsLeftOpened(context);
 
   return {
     instance,

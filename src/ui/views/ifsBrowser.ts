@@ -901,11 +901,11 @@ Please type "{0}" to confirm deletion.`, dirName);
             canSelectMany: false,
             canSelectFiles: false,
             canSelectFolders: true,
-            defaultUri: vscode.Uri.file(ibmi.getLastDownloadLocation())
+            defaultUri: vscode.Uri.file(IBMi.GlobalStorage.getLastDownloadLocation())
           }))?.[0];
         }
         else {
-          const remoteFilepath = path.join(ibmi.getLastDownloadLocation(), path.basename(node.path));
+          const remoteFilepath = path.join(IBMi.GlobalStorage.getLastDownloadLocation(), path.basename(node.path));
           downloadLocationURI = (await vscode.window.showSaveDialog({
             defaultUri: vscode.Uri.file(remoteFilepath),
             filters: { 'Streamfile': [extname(node.path).substring(1) || '*'] }
@@ -914,7 +914,7 @@ Please type "{0}" to confirm deletion.`, dirName);
 
         if (downloadLocationURI) {
           const downloadLocation = downloadLocationURI.path;
-          await ibmi.setLastDownloadLocation(saveIntoDirectory ? downloadLocation : dirname(downloadLocation));
+          await IBMi.GlobalStorage.setLastDownloadLocation(saveIntoDirectory ? downloadLocation : dirname(downloadLocation));
           const increment = 100 / items.length;
           window.withProgress({ title: l10n.t(`Downloading`), location: vscode.ProgressLocation.Notification }, async (task) => {
             try {
