@@ -1090,23 +1090,6 @@ export default class IBMiContent {
     return { valid: !Boolean(missing.length), missing };
   }
 
-  async getSshCcsid() {
-    const sql = `
-    with SSH_DETAIL (id, iid) as (
-      select substring(job_name, locate('/', job_name, locate('/', job_name) + 1) + 1, 10) as id, internal_job_id as iid from qsys2.netstat_job_info j where local_address = '0.0.0.0' and local_port = ${this.ibmi.currentPort}
-    )
-    select DEFAULT_CCSID, CCSID from table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => (select id from SSH_DETAIL), DETAILED_INFO => 'ALL')) where INTERNAL_JOB_ID = (select iid from SSH_DETAIL)
-    `;
-
-    const [result] = await this.ibmi.runSQL(sql);
-
-    if (!result) {
-      return this.ibmi.getCcsids().qccsid;
-    }
-
-    return Number(result.CCSID === IBMi.CCSID_NOCONVERSION ? result.DEFAULT_CCSID : result.CCSID);
-  }
-
   async getSysEnvVars() {
     const systemEnvVars = await this.ibmi.runSQL([
       `select ENVIRONMENT_VARIABLE_NAME, ENVIRONMENT_VARIABLE_VALUE`,
