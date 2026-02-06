@@ -5,9 +5,9 @@ import { Tools } from "../api/Tools";
 import { DebugConfiguration, getDebugServiceDetails, getJavaHome } from "../api/configuration/DebugConfiguration";
 import { instance } from "../instantiate";
 import { CustomUI } from "../webviews/CustomUI";
-export type DebugJob = {
-  name: string
-  ports: number[]
+export type DebugJobs = {
+  server?: string
+  service?: string
 }
 
 export const MIN_DEBUG_VERSION = 3;
@@ -86,9 +86,9 @@ export async function startService(connection: IBMi) {
             let tries = 0;
             const checkJob = async (done: (started: boolean) => void) => {
               if (tries++ < 30) {
-                const jobDetail = await readActiveJob(connection, { name: job, ports: [] });
+                const jobDetail = await readActiveJob(connection, job);
                 if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
-                  if (await getDebugServiceJob()) {
+                  if ((await getDebugEngineJobs()).service) {
                     window.showInformationMessage(l10n.t(`Debug service started.`));
                     refreshDebugSensitiveItems();
                     done(true);
@@ -145,30 +145,22 @@ export async function stopService(connection: IBMi) {
   }
 }
 
-export async function getDebugServiceJob() {
-  const connection = instance.getConnection();
-  if (connection) {
-    const rows = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.getConfig().debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only) and remote_address = '0.0.0.0'`);
-    if (rows && rows.length) {
-      return {
-        name: String(rows[0].JOB_NAME),
-        ports: rows.map(row => Number(row.LOCAL_PORT)).sort()
-      } as DebugJob;
-    }
+export async function getDebugEngineJobs(): Promise<DebugJobs> {
+  const rows = await instance.getConnection()?.runSQL([
+    "select 'SERVER' as TYPE, JOB_NAME from table(qsys2.job_info(job_status_filter => '*ACTIVE', job_type_filter => '*BATCH', job_name_filter => 'QB5ROUTER'))",
+    "Union",
+    "select 'SERVICE' as TYPE, JOB_NAME from table(qsys2.job_info(job_status_filter => '*ACTIVE', job_type_filter => '*BATCH', job_name_filter => 'QDBGSRV'))"
+  ].join(" "));
+
+  return {
+    server: rows?.find(row => row.TYPE === 'SERVER')?.JOB_NAME as string,
+    service: rows?.find(row => row.TYPE === 'SERVICE')?.JOB_NAME as string
   }
 }
 
-export async function getDebugServerJob() {
-  const connection = instance.getConnection();
-  if (connection) {
-    const [row] = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info where cast(local_port_name as VarChar(14) CCSID 37) = 'is-debug-ile' fetch first row only`);
-    if (row) {
-      return {
-        name: String(row.JOB_NAME),
-        ports: [Number(row.LOCAL_PORT)]
-      } as DebugJob;
-    }
-  }
+export async function isDebugEngineRunning() {
+  const debugJobs = await getDebugEngineJobs();
+  return Boolean(debugJobs.server) && Boolean(debugJobs.service);
 }
 
 /**
@@ -191,10 +183,6 @@ export function endJobs(jobIds: string[], connection: IBMi) {
   }));
 
   return Promise.all(promises);
-}
-
-export async function isDebugEngineRunning() {
-  return (await Promise.all([getDebugServerJob(), getDebugServiceJob()])).every(Boolean);
 }
 
 export async function startServer() {
@@ -232,22 +220,22 @@ export function refreshDebugSensitiveItems() {
   commands.executeCommand("code-for-ibmi.debug.refresh");
 }
 
-export async function readActiveJob(connection: IBMi, job: DebugJob) {
+export async function readActiveJob(connection: IBMi, job: string) {
   try {
     return (await connection.runSQL(
-      `select job_name_short "Job name", job_user "Job user", job_number "Job number", subsystem_library_name concat '/' concat subsystem as "Subsystem",  authorization_name "Current user", job_status "Job status", memory_pool "Memory pool" from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
+      `select job_name_short "Job name", job_user "Job user", job_number "Job number", subsystem_library_name concat '/' concat subsystem as "Subsystem",  authorization_name "Current user", job_status "Job status", memory_pool "Memory pool" from table(qsys2.active_job_info(job_name_filter => '${job.substring(job.lastIndexOf('/') + 1)}')) where job_name = '${job}' fetch first row only`
     )).at(0);
   } catch (error) {
     return String(error);
   }
 }
 
-export async function readJVMInfo(connection: IBMi, job: DebugJob) {
+export async function readJVMInfo(connection: IBMi, job: string) {
   try {
     return (await connection.runSQL(`
       select START_TIME "Start time", JAVA_HOME "Java Home", USER_DIRECTORY "User directory", CURRENT_HEAP_SIZE "Current memory", MAX_HEAP_SIZE "Maximum allowed memory"
       from QSYS2.JVM_INFO
-      where job_name = '${job.name}'
+      where job_name = '${job}'
       fetch first row only`)).at(0);
   } catch (error) {
     return String(error);
