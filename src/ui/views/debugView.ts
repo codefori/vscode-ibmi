@@ -2,7 +2,7 @@ import vscode from "vscode";
 import { DebugConfiguration, getDebugServiceDetails, SERVICE_CERTIFICATE } from "../../api/configuration/DebugConfiguration";
 import { Tools } from "../../api/Tools";
 import { checkClientCertificate, remoteCertificatesExists } from "../../debug/certificates";
-import { getDebugEngineJobs, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, stopServer } from "../../debug/server";
+import { getDebugEngineJobs, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../../debug/server";
 import { instance } from "../../instantiate";
 import { VscodeTools } from "../Tools";
 import { BrowserItem } from "../types";
@@ -102,6 +102,8 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
           }),
         new DebugJobItem("service",
           vscode.l10n.t(`Debug Service`), {
+            startFunction: () => startService(connection),
+            stopFunction: () => stopService(connection),
           debugJob: debugJobs.service,
           debugConfig,
           certificates
@@ -145,8 +147,8 @@ class DebugJobItem extends DebugItem {
   private problem: undefined | DebugServiceIssue;
 
   constructor(readonly type: "server" | "service", label: string, readonly parameters: {
-    startFunction?: () => Promise<boolean>,
-    stopFunction?: () => Promise<boolean>,
+    startFunction: () => Promise<boolean>,
+    stopFunction: () => Promise<boolean>,
     debugJob?: string,
     certificates?: Certificates,
     debugConfig?: DebugConfiguration
@@ -196,12 +198,12 @@ class DebugJobItem extends DebugItem {
 
   async start() {
     const title = this.type === "server" ? vscode.l10n.t("Starting debug server...") : vscode.l10n.t("Starting debug service...");
-    return vscode.window.withProgress({ title, location: vscode.ProgressLocation.Window }, async () => await this.parameters.startFunction?.());
+    return vscode.window.withProgress({ title, location: vscode.ProgressLocation.Window }, this.parameters.startFunction);
   }
 
   async stop() {
     const title = this.type === "server" ? vscode.l10n.t("Stopping debug server...") : vscode.l10n.t("Stopping debug service...");
-    return vscode.window.withProgress({ title, location: vscode.ProgressLocation.Window }, async () => await this.parameters.stopFunction?.());
+    return vscode.window.withProgress({ title, location: vscode.ProgressLocation.Window }, this.parameters.stopFunction);
   }
 }
 

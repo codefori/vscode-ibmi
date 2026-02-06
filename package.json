@@ -3066,17 +3066,17 @@
 				},
 				{
 					"command": "code-for-ibmi.debug.job.start",
-					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_server.*_off$/",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_off$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.debug.job.restart",
-					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_server.*_on$/",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.debug.job.stop",
-					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_server.*_on$/",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
 					"group": "inline"
 				},
 				{

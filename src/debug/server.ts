@@ -1,7 +1,10 @@
+import path from "path";
 import { commands, l10n, window } from "vscode";
 import IBMi from "../api/IBMi";
-import { getDebugServiceDetails } from "../api/configuration/DebugConfiguration";
+import { Tools } from "../api/Tools";
+import { DebugConfiguration, getDebugServiceDetails, getJavaHome } from "../api/configuration/DebugConfiguration";
 import { instance } from "../instantiate";
+import { CustomUI } from "../webviews/CustomUI";
 export type DebugJobs = {
   server?: string
   service?: string
@@ -15,6 +18,131 @@ export function debugPTFInstalled(connection: IBMi) {
 
 export async function isDebugSupported(connection: IBMi) {
   return debugPTFInstalled(connection) && (await getDebugServiceDetails(connection)).semanticVersion().major >= MIN_DEBUG_VERSION;
+}
+
+export async function startService(connection: IBMi) {
+  const checkAuthority = async (user?: string) => {
+    if (user && !await connection.getContent().checkObject({ library: "QSYS", name: user, type: "*USRPRF" }, ["*USE"])) {
+      throw new Error(`You don't have *USE authority on user profile ${user}`);
+    }
+    if (user !== "QDBGSRV" && !(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ", "*SECADM"], user)).valid) {
+      throw new Error(`User ${user || connection.currentUser} doesn't have *ALLOBJ special authority`);
+    }
+  };
+
+  try {
+    const debugServiceJavaVersion = (await getDebugServiceDetails(connection)).java;
+    // const debugConfig = await new DebugConfiguration(connection).load();
+    const javaHome = getJavaHome(connection, debugServiceJavaVersion)
+
+    const submitOptions = await window.showInputBox({
+      title: l10n.t(`Debug Service submit options`),
+      prompt: l10n.t(`Valid parameters for SBMJOB`),
+      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) OUTQ(QUSRSYS/QDBGSRV) USER(QDBGSRV)`
+    });
+
+    if (submitOptions) {
+      const submitUser = /USER\(([^)]+)\)/.exec(submitOptions)?.[1]?.toLocaleUpperCase();
+      if (submitUser && submitUser !== "*CURRENT") {
+        await checkAuthority(submitUser);
+      }
+      else {
+        await checkAuthority();
+      }
+
+      let debugConfig: DebugConfiguration;
+      let debugConfigLoaded = false;
+      try {
+        debugConfig = await new DebugConfiguration(connection).load();
+        const config = connection.getConfig();
+        config.debugPort = debugConfig.getRemoteServiceSecuredPort();
+        config.debugSepPort = debugConfig.getRemoteServiceSepDaemonPort();
+        IBMi.connectionManager.update(config);
+        debugConfigLoaded = true;
+      } catch (error) {
+        throw new Error(`Could not load debug service configuration: ${error}`);
+      } finally {
+        IBMi.GlobalStorage.setServerSettingsCacheSpecific(connection.currentConnectionName, { debugConfigLoaded });
+      }
+
+      // Attempt to make log directory
+      await connection.sendCommand({ command: `mkdir -p ${debugConfig.getRemoteServiceWorkspace()}` });
+
+      // Change owner to QDBGSRV
+      if (submitUser && submitUser !== "QDBGSRV") {
+        await connection.sendCommand({ command: `chown ${submitUser} ${debugConfig.getRemoteServiceWorkspace()}` });
+      }
+
+      // Change the permissions to 777
+      await connection.sendCommand({ command: `chmod 777 ${debugConfig.getRemoteServiceWorkspace()}` });
+
+      const command = `QSYS/SBMJOB JOB(QDBGSRV) SYSLIBL(*SYSVAL) CURLIB(*USRPRF) INLLIBL(*JOBD) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${debugConfig.getRemoteServiceBin()}/startDebugService.sh > ${debugConfig.getNavigatorLogFile()} 2>&1'))`
+      const submitResult = await connection.runCommand({ command, noLibList: true });
+      if (submitResult.code === 0) {
+        const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
+        if (submitMessage) {
+          const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
+          if (job) {
+            let tries = 0;
+            const checkJob = async (done: (started: boolean) => void) => {
+              if (tries++ < 30) {
+                const jobDetail = await readActiveJob(connection, job);
+                if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
+                  if ((await getDebugEngineJobs()).service) {
+                    window.showInformationMessage(l10n.t(`Debug service started.`));
+                    refreshDebugSensitiveItems();
+                    done(true);
+                  }
+                  else {
+                    setTimeout(() => checkJob(done), 1000);
+                  }
+                } else {
+                  let reason;
+                  if (typeof jobDetail === "object") {
+                    reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
+                  }
+                  else if (jobDetail) {
+                    reason = jobDetail;
+                  }
+                  else {
+                    reason = "job has ended";
+                  }
+                  window.showErrorMessage(`Debug Service job ${job} failed: ${reason}.`, 'Open output').then(() => openQPRINT(connection, job));
+                  done(false);
+                }
+              }
+              else {
+                done(false);
+              }
+            };
+
+            return await new Promise<boolean>(checkJob);
+          }
+        }
+      }
+      throw new Error(`Failed to submit Debug Service job: ${submitResult.stderr || submitResult.stdout}`)
+    }
+  }
+  catch (error) {
+    window.showErrorMessage(String(error));
+  }
+  return false;
+}
+
+export async function stopService(connection: IBMi) {
+  const debugConfig = await new DebugConfiguration(connection).load();
+  const endResult = await connection.sendCommand({
+    command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `stopDebugService.sh`)}`
+  });
+
+  if (!endResult.code) {
+    window.showInformationMessage(l10n.t(`Debug service stopped.`));
+    refreshDebugSensitiveItems();
+    return true;
+  } else {
+    window.showErrorMessage(l10n.t(`Failed to stop debug service: {0}`, endResult.stdout || endResult.stderr));
+    return false;
+  }
 }
 
 export async function getDebugEngineJobs(): Promise<DebugJobs> {
@@ -111,5 +239,20 @@ export async function readJVMInfo(connection: IBMi, job: string) {
       fetch first row only`)).at(0);
   } catch (error) {
     return String(error);
+  }
+}
+
+async function openQPRINT(connection: IBMi, job: string) {
+  const lines = (await connection.runSQL(`select SPOOLED_DATA from table (systools.spooled_file_data(job_name => '${job}', spooled_file_name => 'QPRINT')) order by ORDINAL_POSITION`))
+    .map(row => String(row.SPOOLED_DATA));
+
+  if (lines.length) {
+    new CustomUI()
+      .addParagraph(`<pre><code>${lines.join("<br/>")}</code></pre>`)
+      .setOptions({ fullWidth: true })
+      .loadPage(`${job} QPRINT`);
+  }
+  else {
+    window.showWarningMessage(`No QPRINT spooled file found for job ${job}!`);
   }
 }
