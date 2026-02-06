@@ -74,6 +74,40 @@ async function convertToUTF8WithCCSID(connection: IBMi, text: string, baseCcsid:
   return memberContent;
 }
 
+async function uploadWithoutBidiDownloadWithBidi(connection: IBMi, text: string, baseCcsid: string, bidiCcsid: string): Promise<string> {
+  const content = connection.getContent();
+  const config = connection.getConfig();
+
+  const tempLib = config.tempLibrary;
+  const tempSPF = Tools.makeid(8);
+  const tempMbr = Tools.makeid(4);
+
+  // Create source file with correct CCSID
+  await connection!.runCommand({
+    command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr}) CCSID(${baseCcsid})`,
+    environment: `ile`,
+  });
+
+  try {
+    // Upload WITHOUT bidi support (so content uploads correctly)
+    config.bidi = false;
+    const uploadResult = await content.uploadMemberContent(tempLib, tempSPF, tempMbr, text);
+    expect(uploadResult).toBeTruthy();
+
+    // Download WITH bidi support enabled
+    config.bidi = true;
+    config.bidiCcsid = bidiCcsid;
+    const memberContent = await content.downloadMemberContent(tempLib, tempSPF, tempMbr);
+    
+    return memberContent;
+  } finally {
+    // Cleanup
+    await connection.runCommand({ command: `DLTF ${tempLib}/${tempSPF}`, noLibList: true });
+    // Reset config
+    config.bidi = false;
+  }
+}
+
 describe('Encoding tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
@@ -454,6 +488,38 @@ describe('BiDi encoding tests', () => {
       const baseContent = bidiContent.text.join("\r\n") + "\r\n";
       const converted = await convertToUTF8WithCCSID(connection, baseContent, baseCcsid, bidiContent.incompatCcsid);
       expect(converted).not.toBe(baseContent);
+    });
+  });
+
+  // Test that non-BiDi source files are not corrupted when BiDi support is enabled
+  const nonBidiTests = [
+    {
+      ccsid: "37",
+      bidiCcsid: "8612",
+      text: ["Hello world", "This is a test", "DSPLY 'Test message';"],
+    },
+    {
+      ccsid: "273",
+      bidiCcsid: "8612",
+      text: [
+        "Hello world",
+        "This is a test message.Das ist ein Test mit Umlauten wie ä ö ü und dem Wort Straße",
+        "German sentence with special chars",
+      ],
+    },
+    {
+      ccsid: "37",
+      bidiCcsid: "62211",
+      text: ["Hello world", "Simple ASCII text", "No special chars"],
+    },
+  ];
+
+  nonBidiTests.forEach(({ ccsid, bidiCcsid, text }) => {
+    it(`Non-BiDi CCSID ${ccsid} should not be corrupted when downloading with BiDi CCSID ${bidiCcsid}`, async () => {
+      const baseContent = text.join("\r\n") + "\r\n";
+      // Upload without bidi, download with bidi enabled
+      const converted = await uploadWithoutBidiDownloadWithBidi(connection, baseContent, ccsid, bidiCcsid);
+      expect(converted).toBe(baseContent);
     });
   });
 });

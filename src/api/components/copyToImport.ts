@@ -70,7 +70,7 @@ export class CopyToImport implements IBMiComponent {
       FROMFILE: `${library!}/${table!} *FIRST`,
       TOSTMF: outStmf,
       MBROPT: `*REPLACE`,
-      STMFCCSID: 1208,
+      STMFCCSID: stmfCcsid,
       STMFCODPAG: '*STMF',
       RCDDLM: `*CRLF`,
       DTAFMT: `*DLM`,
