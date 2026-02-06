@@ -1314,8 +1314,8 @@ export class SettingsUI {
             text: ""
         });
 
-        const selectedSourceCcsid = sourceCcsidOptions.find(option => option.value === config.cssConvertFrom);
-        const selectedTargetCcsid = targetCcsidOptions.find(option => option.value === config.cssConvertTo);
+        const selectedSourceCcsid = sourceCcsidOptions.find(option => option.value === config.ccsidConvertFrom);
+        const selectedTargetCcsid = targetCcsidOptions.find(option => option.value === config.ccsidConvertTo);
         
         if (selectedSourceCcsid) {
           selectedSourceCcsid.selected = true;
@@ -1330,8 +1330,8 @@ export class SettingsUI {
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
           .addHorizontalRule()
           .addCheckbox(`ccsidConversionEnabled`,`Automatic Conversion for non UTF compatible CCSIDs`, `When enabled, members with selected source CCSID will be converted to target CCSID`  ,config.ccsidConversionEnabled )
-          .addSelect(`cssConvertFrom`, `Source CCSID`, sourceCcsidOptions)
-          .addSelect(`cssConvertTo`, `Target CCSID`, targetCcsidOptions)
+          .addSelect(`ccsidConvertFrom`, `Source CCSID`, sourceCcsidOptions)
+          .addSelect(`ccsidConvertTo`, `Target CCSID`, targetCcsidOptions)
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter. This also enables date search and sequence view.`, config.sourceDateGutter)

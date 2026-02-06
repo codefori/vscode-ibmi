@@ -3,6 +3,7 @@ import tmp from "tmp";
 import util from "util";
 import vscode from "vscode";
 import IBMi from "../../api/IBMi";
+import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
 import { CommandResult } from "../../api/types";
@@ -174,14 +175,16 @@ export class ExtendedIBMiContent {
           await connection.sendCommand({ command: `${setccsid} 1208 ${tempRmt}` });
         }
 
-        // BiDi handling if enabled
-        const isBidi = config?.bidi;
-        const bidiCcsid = config?.bidiCcsid;
+        // Fetch source file CCSID and determine if conversion is needed
+        const memberPath = { library, name: file, member: name };
+        const attr = await connection.getContent().getAttributes(memberPath, "CCSID");
+        const sourceCcsid = Number(attr?.["CCSID"]) || 0;
+        const [requiresConversion, targetCcsid] = Tools.determineCcsidConversion(sourceCcsid, config);
 
         let insertResult: CommandResult = { code: 0, stdout: '', stderr: '' };
-        if (isBidi) {
+        if (requiresConversion) {
           await connection.runSQL([
-            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${bidiCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
             `@QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
           ].join("\n")).catch(e => {
             insertResult.code = -1;

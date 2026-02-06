@@ -57,8 +57,9 @@ async function convertToUTF8WithCCSID(connection: IBMi, text: string, baseCcsid:
   const tempSPF = Tools.makeid(8);
   const tempMbr = Tools.makeid(4);
 
-  config.bidi = true;
-  config.bidiCcsid = intermediateCcsid;
+  config.ccsidConversionEnabled = true;
+  config.ccsidConvertFrom = baseCcsid;
+  config.ccsidConvertTo = intermediateCcsid;
 
   const createResult = await connection!.runCommand({
     command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr}) CCSID(${baseCcsid})`,
@@ -89,14 +90,15 @@ async function uploadWithoutBidiDownloadWithBidi(connection: IBMi, text: string,
   });
 
   try {
-    // Upload WITHOUT bidi support (so content uploads correctly)
-    config.bidi = false;
+    // Upload WITHOUT CCSID conversion (so content uploads correctly)
+    config.ccsidConversionEnabled = false;
     const uploadResult = await content.uploadMemberContent(tempLib, tempSPF, tempMbr, text);
     expect(uploadResult).toBeTruthy();
 
-    // Download WITH bidi support enabled
-    config.bidi = true;
-    config.bidiCcsid = bidiCcsid;
+    // Download WITH CCSID conversion enabled
+    config.ccsidConversionEnabled = true;
+    config.ccsidConvertFrom = baseCcsid;
+    config.ccsidConvertTo = bidiCcsid;
     const memberContent = await content.downloadMemberContent(tempLib, tempSPF, tempMbr);
     
     return memberContent;
@@ -104,7 +106,7 @@ async function uploadWithoutBidiDownloadWithBidi(connection: IBMi, text: string,
     // Cleanup
     await connection.runCommand({ command: `DLTF ${tempLib}/${tempSPF}`, noLibList: true });
     // Reset config
-    config.bidi = false;
+    config.ccsidConversionEnabled = false;
   }
 }
 

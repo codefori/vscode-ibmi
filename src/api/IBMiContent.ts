@@ -170,9 +170,10 @@ export default class IBMiContent {
     const tempRmt = this.getTempRemote(path);
     let retry = false;
     
-    // BiDi handling if enabled
-    const isBidi = this.config.bidi;
-    const bidiCcsid = this.config.bidiCcsid;
+    // Fetch source file CCSID and determine if conversion is needed
+    const attr = await this.getAttributes(path, "CCSID");
+    const sourceCcsid = Number(attr?.["CCSID"]) || 0;
+    const [requiresConversion, targetCcsid] = Tools.determineCcsidConversion(sourceCcsid, this.config);
 
   
   while (true) {
@@ -180,11 +181,11 @@ export default class IBMiContent {
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
 
-        if (isBidi) {
+        if (requiresConversion) {
           await this.ibmi.runSQL([
-            `@QSYS/RMVLNK OBJLNK('${tempRmt}');`, 
+            `@QSYS/RMVLNK OBJLNK('${tempRmt}');`,
             `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${bidiCcsid}) DBFCCSID(${this.config.sourceFileCCSID});`,
+            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID});`,
             `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES);`
           ].join("\n")).catch(e => {
             copyResult.code = -1;
@@ -203,12 +204,12 @@ export default class IBMiContent {
         }
       }
       else {
-        if (isBidi) {
+        if (requiresConversion) {
           copyResult = { code: 0, stdout: '', stderr: '' };
 
           await this.ibmi.runSQL([
-            `@QSYS/RMVLNK OBJLNK('${tempRmt}');`,  
-            `@QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${bidiCcsid}) DBFCCSID(${this.config.sourceFileCCSID});`,
+            `@QSYS/RMVLNK OBJLNK('${tempRmt}');`,
+            `@QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID});`,
             `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES);`
           ].join("\n")).catch(e => {
             copyResult.code = -1;
@@ -284,13 +285,15 @@ export default class IBMiContent {
     const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
 
-    // BiDi handling if enabled
-    const isBidi = this.config.bidi;
-    const bidiCcsid = this.config.bidiCcsid;
-
     try {
       await writeFileAsync(tmpobj, content || memberOrContent, `utf8`);
       const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+      
+      // Fetch source file CCSID and determine if conversion is needed
+      const attr = await this.getAttributes(path, "CCSID");
+      const sourceCcsid = Number(attr?.["CCSID"]) || 0;
+      const [requiresConversion, targetCcsid] = Tools.determineCcsidConversion(sourceCcsid, this.config);
+      
       const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
 
@@ -298,10 +301,10 @@ export default class IBMiContent {
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
 
-        if (isBidi) {
+        if (requiresConversion) {
           await this.ibmi.runSQL([
             `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${bidiCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
             `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`,
             `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`,
             `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208);`,
@@ -323,11 +326,11 @@ export default class IBMiContent {
       }
       }
       else {
-         if (isBidi) {
+         if (requiresConversion) {
           copyResult = { code: 0, stdout: '', stderr: '' };
-            await this.ibmi.runSQL([            
-            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${bidiCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
-            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${bidiCcsid}) DBFCCSID(${this.config.sourceFileCCSID});`,
+            await this.ibmi.runSQL([
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
+            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID});`,
             `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208);`,
           ].join("\n")).catch(e => {
             copyResult.code = -1;
