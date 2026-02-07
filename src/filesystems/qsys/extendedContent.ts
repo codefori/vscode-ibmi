@@ -184,12 +184,18 @@ export class ExtendedIBMiContent {
         let insertResult: CommandResult = { code: 0, stdout: '', stderr: '' };
         if (requiresConversion) {
           await connection.runSQL([
-            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES);`,
-            `@QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`
           ].join("\n")).catch(e => {
             insertResult.code = -1;
             insertResult.stderr = String(e);
           });
+          
+          if (insertResult.code === 0) {
+            insertResult = await connection.runCommand({
+              command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
+              noLibList: true
+            });
+          }
         } else {
           insertResult = await connection.runCommand({
             command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
