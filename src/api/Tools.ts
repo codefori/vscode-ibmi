@@ -194,4 +194,32 @@ export namespace Tools {
     path = path.replace("~", os.homedir());
     return process.platform === "win32" ? path.replaceAll('/', '\\') : path;
   }
+
+  /**
+   * Determines if CCSID conversion should be applied based on configuration and source file CCSID.
+   * @param sourceCcsid The CCSID of the source file
+   * @param config Connection configuration containing conversion settings
+   * @returns [requiresConversion, targetCcsid] - whether conversion is required and the target CCSID to use
+   */
+  export function determineCcsidConversion(sourceCcsid: number, config: { ccsidConversionEnabled?: boolean, ccsidConvertFrom?: string, ccsidConvertTo?: string }): [boolean, number] {
+    // If conversion is not enabled, don't convert
+    if (!config.ccsidConversionEnabled) {
+      return [false, 0];
+    }
+
+    const configuredSourceCcsid = Number(config.ccsidConvertFrom) || 0;
+    const configuredTargetCcsid = Number(config.ccsidConvertTo) || 0;
+
+    // If no source or target CCSID configured, don't convert
+    if (configuredSourceCcsid === 0 || configuredTargetCcsid === 0) {
+      return [false, 0];
+    }
+
+    // Only convert if the source file CCSID matches the configured source CCSID
+    if (sourceCcsid === configuredSourceCcsid) {
+      return [true, configuredTargetCcsid];
+    }
+
+    return [false, 0];
+  }
 }
