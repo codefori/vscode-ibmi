@@ -75,7 +75,13 @@ async function convertToUTF8WithCCSID(connection: IBMi, text: string, baseCcsid:
   return memberContent;
 }
 
-async function uploadWithoutBidiDownloadWithBidi(connection: IBMi, text: string, baseCcsid: string, bidiCcsid: string): Promise<string> {
+async function uploadWithoutBidiDownloadWithBidi(
+  connection: IBMi,
+  text: string,
+  originalCcsid: string,
+  sourceCcsid: string | undefined,
+  bidiCcsid: string
+): Promise<string> {
   const content = connection.getContent();
   const config = connection.getConfig();
 
@@ -83,9 +89,9 @@ async function uploadWithoutBidiDownloadWithBidi(connection: IBMi, text: string,
   const tempSPF = Tools.makeid(8);
   const tempMbr = Tools.makeid(4);
 
-  // Create source file with correct CCSID
+  // Create source file with the original CCSID (the file's actual CCSID)
   await connection!.runCommand({
-    command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr}) CCSID(${baseCcsid})`,
+    command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr}) CCSID(${originalCcsid})`,
     environment: `ile`,
   });
 
@@ -96,8 +102,10 @@ async function uploadWithoutBidiDownloadWithBidi(connection: IBMi, text: string,
     expect(uploadResult).toBeTruthy();
 
     // Download WITH CCSID conversion enabled
+    // If sourceCcsid is provided, use it as the "from" CCSID (what we're looking for)
+    // Otherwise, use originalCcsid (the file's actual CCSID)
     config.ccsidConversionEnabled = true;
-    config.ccsidConvertFrom = baseCcsid;
+    config.ccsidConvertFrom = sourceCcsid || originalCcsid;
     config.ccsidConvertTo = bidiCcsid;
     const memberContent = await content.downloadMemberContent(tempLib, tempSPF, tempMbr);
     
@@ -492,35 +500,60 @@ describe('BiDi encoding tests', () => {
       expect(converted).not.toBe(baseContent);
     });
   });
+});
+
+// Separate suite for non-BiDi tests to avoid connection issues when filtering
+describe('Non-BiDi encoding tests', () => {
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  }, CONNECTION_TIMEOUT);
 
   // Test that non-BiDi source files are not corrupted when BiDi support is enabled
   const nonBidiTests = [
     {
-      ccsid: "37",
+      originalCcsid: "37",
+      sourceCcsid: undefined,
       bidiCcsid: "8612",
       text: ["Hello world", "This is a test", "DSPLY 'Test message';"],
+      description: "CCSID 37 (English) should not be corrupted with BiDi 8612"
     },
     {
-      ccsid: "273",
+      originalCcsid: "273",
+      sourceCcsid: undefined,
       bidiCcsid: "8612",
       text: [
         "Hello world",
         "This is a test message.Das ist ein Test mit Umlauten wie ä ö ü und dem Wort Straße",
         "German sentence with special chars",
       ],
+      description: "CCSID 273 (German) should not be corrupted with BiDi 8612"
     },
     {
-      ccsid: "37",
+      originalCcsid: "37",
+      sourceCcsid: undefined,
       bidiCcsid: "62211",
       text: ["Hello world", "Simple ASCII text", "No special chars"],
+      description: "CCSID 37 (English) should not be corrupted with BiDi 62211"
+    },
+    {
+      originalCcsid: "273",
+      sourceCcsid: "424",
+      bidiCcsid: "62211",
+      text: [
+        "Hello world",
+        "This is a test message.Das ist ein Test mit Umlauten wie ä ö ü und dem Wort Straße",
+        "German sentence with special chars",
+      ],
+      description: "CCSID 273 (German) uploaded normally, downloaded with BiDi settings 424→62211 should not convert (273≠424)"
     },
   ];
 
-  nonBidiTests.forEach(({ ccsid, bidiCcsid, text }) => {
-    it(`Non-BiDi CCSID ${ccsid} should not be corrupted when downloading with BiDi CCSID ${bidiCcsid}`, async () => {
+  nonBidiTests.forEach(({ originalCcsid, sourceCcsid, bidiCcsid, text, description }) => {
+    it(description, async () => {
       const baseContent = text.join("\r\n") + "\r\n";
       // Upload without bidi, download with bidi enabled
-      const converted = await uploadWithoutBidiDownloadWithBidi(connection, baseContent, ccsid, bidiCcsid);
+      const converted = await uploadWithoutBidiDownloadWithBidi(connection, baseContent, originalCcsid, sourceCcsid, bidiCcsid);
       expect(converted).toBe(baseContent);
     });
   });
