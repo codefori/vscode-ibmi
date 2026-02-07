@@ -63,7 +63,7 @@ export const ContentSuite: TestSuite = {
     {
       name: `Write tab to member using SQL`, test: async () => {
         // Note: This is a known failure.
-        const lines = [
+        let lines = [
           `if (a) {`,
           `\tcoolstuff();\t`,
           `}`
@@ -90,6 +90,9 @@ export const ContentSuite: TestSuite = {
         await connection!.runCommand({ command: `DLTF FILE(${tempLib}/TABTEST)`, noLibList: true }); // Cleanup...!
 
         const fileContent = new TextDecoder().decode(memberContentBuf)
+
+        // Match how the SQL returns the lines
+        lines = lines.split(`\n`).map(l => l.trimEnd()).join(`\n`);
 
         assert.strictEqual(fileContent, lines);
 

@@ -99,6 +99,7 @@ describe('Component Tests', () => {
     try {
       await manager.uninstallComponent(CustomCLI.ID);
     } catch (e) {
+      console.log(e);
       console.log(`Component not installed, skipping uninstall.`);
     }
 

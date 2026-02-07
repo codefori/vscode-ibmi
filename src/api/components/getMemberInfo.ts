@@ -57,6 +57,11 @@ export class GetMemberInfo implements IBMiComponent {
     if (!tsString) {
       return undefined;
     }
+
+    let possibleDate = new Date(tsString);
+    if (!isNaN(possibleDate.getTime())) {
+      return possibleDate;
+    }
     
     const dateParts = tsString.split('-');
     const timeParts = dateParts[3].split('.');
@@ -165,7 +170,7 @@ function getSource(library: string, name: string, version: number) {
     `specific ${name}`,
     `modifies sql data`,
     `begin`,
-    `  declare  buffer  char( 135 ) for bit data not null default '';`,
+    `  declare  buffer  char( 135 ) not null default '';`,
     `  declare  BUFLEN  integer     constant 135 ;`,
     `  declare  FORMAT  char(   8 ) constant 'MBRD0100' ;`,
     `  declare  OVR     char(   1 ) constant '0' ;`,

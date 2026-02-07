@@ -1,43 +1,46 @@
-import path from "path";
 import vscode, { l10n } from "vscode";
 import IBMi from "../../api/IBMi";
+import { instance } from "../../instantiate";
 import { ReconnectMode } from "../../typings";
-import { VscodeTools } from "../../ui/Tools";
+
+export let restoreEditors: Promise<boolean> | undefined;
+
+export function handleEditorsLeftOpened(context: vscode.ExtensionContext) {
+  const reconnect = IBMi.connectionManager.get<ReconnectMode>("autoReconnect") || "ask";
+
+  if (reconnect !== "never") {
+    const editorsLeftOpened = vscode.window.tabGroups.all
+      .flatMap(group => group.tabs)
+      .filter(tab => tab.input instanceof vscode.TabInputText && ["member", "streamfile"].includes(tab.input.uri.scheme));
+
+    const lastConnection = IBMi.GlobalStorage.getLastConnections()?.at(0)?.name;
+    if (editorsLeftOpened.length && lastConnection) {
+      const promises: PromiseLike<boolean>[] = [new Promise<boolean>((resolve) => instance.subscribe(context, "connected", "Restore previously opened editor", () => resolve(instance.getConnection()?.currentConnectionName === lastConnection), true))];
+      if (reconnect === "ask") {
+        promises.push(
+          vscode.window.showInformationMessage(l10n.t("{0} editors were left opened; do you want to reconnect to {1} and restore them?", editorsLeftOpened.length, lastConnection), l10n.t("Reconnect"))
+            .then(reply => reply ? vscode.commands.executeCommand<boolean>(`code-for-ibmi.connectToPrevious`) : false)
+        );
+      }
+      else {
+        vscode.commands.executeCommand<boolean>(`code-for-ibmi.connectToPrevious`);
+      }
+      restoreEditors = Promise.race(promises).then(restore => {
+        if (!restore) {
+          return vscode.window.tabGroups.close(editorsLeftOpened).then(() => false);
+        }
+        return restore;
+      });
+    }
+  }
+}
 
 /**
  * Called when a member/streamfile is left open when VS Code is closed and re-opened to reconnect (or not) to the previous IBM i, based on the `autoReconnect` global configuration value.
  * If the user choses not to reconnect, the editor tab will be closed.
  * 
- * @param uri the uri of the file triggerring the reconnection attempt
- * @returns `true` if the user choses to reconnect, `false` otherwise.
+ * @returns `true` if the user has chose to reconnect, `false` otherwise.
  */
-export async function reconnectFS(uri: vscode.Uri) {
-  const reconnect = IBMi.connectionManager.get<ReconnectMode>("autoReconnect") || "ask";
-  let doReconnect = false;
-  switch (reconnect) {
-    case "always":
-      doReconnect = true;
-      break;
-
-    case "ask":
-      const lastConnection = IBMi.GlobalStorage.getLastConnections()?.at(0)?.name;
-      if (lastConnection) {
-        if (await vscode.window.showInformationMessage(l10n.t("Do you want to reconnect to {0} and open {1}?", lastConnection, path.basename(uri.path)), l10n.t("Reconnect"))) {
-          doReconnect = true;
-        }
-      }
-      break;
-
-    default:
-  }
-
-  if (doReconnect) {
-    return await vscode.commands.executeCommand<boolean>(`code-for-ibmi.connectToPrevious`);
-  }
-  else {
-    for (const tab of VscodeTools.findUriTabs(uri)) {
-      await vscode.window.tabGroups.close(tab);
-    }
-    return false;
-  }
+export async function waitOnReconnect() {
+  return restoreEditors ? await restoreEditors : false;
 }
