@@ -7,18 +7,13 @@ import { DeployToolsSuite } from "./deployTools";
 import { EncodingSuite } from "./encoding";
 import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
-import { ToolsSuite } from "./tools";
 import { Server } from "../typings";
-import { SearchSuite } from "./search";
-
 const suites: TestSuite[] = [
   ActionSuite,
   ContentSuite,
   DeployToolsSuite,
-  ToolsSuite,
   StorageSuite,
   EncodingSuite,
-  SearchSuite
 ]
 
 export type TestSuite = {

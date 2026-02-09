@@ -1,4 +1,5 @@
 import path from "path";
+import { SemanticVersion } from "../../typings";
 import IBMi from "../IBMi";
 
 export const SERVICE_CERTIFICATE = `debug_service.pfx`;
@@ -94,11 +95,7 @@ export class DebugConfiguration {
 interface DebugServiceDetails {
   version: string
   java: string
-  semanticVersion: () => {
-    major: number
-    minor: number
-    patch: number
-  }
+  semanticVersion: () => SemanticVersion
 }
 
 let debugServiceDetails: DebugServiceDetails | undefined;

@@ -1,10 +1,9 @@
 import path from "path";
 import IBMi from "../IBMi";
-import { CopyToImport } from "../components/copyToImport";
-import { CustomQSh } from "../components/cqsh";
 import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { extensionComponentRegistry } from "../components/manager";
+import { Mapepire } from "../components/mapepire";
 import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
 import { ConnectionData } from "../types";
 import { CustomCLI } from "./components/customCli";
@@ -50,16 +49,12 @@ export async function newConnection(reloadSettings?: boolean) {
 
   const conn = new IBMi();
 
-  const customQsh = new CustomQSh();
-  const cqshPath = path.join(__dirname, `..`, `components`, `cqsh`, `cqsh`);
-  customQsh.setLocalAssetPath(cqshPath);
+  const mapepire = new Mapepire(path.join(__dirname, `..`, `..`, `..`, `dist`));
 
   const testingId = `testing`;
-  extensionComponentRegistry.registerComponent(testingId, customQsh);
+  extensionComponentRegistry.registerComponent(testingId, mapepire);
   extensionComponentRegistry.registerComponent(testingId, new GetNewLibl());
   extensionComponentRegistry.registerComponent(testingId, new GetMemberInfo());
-  extensionComponentRegistry.registerComponent(testingId, new CopyToImport());
-
   extensionComponentRegistry.registerComponent(testingId, new CustomCLI());
 
   const creds: ConnectionData = {
@@ -76,6 +71,12 @@ export async function newConnection(reloadSettings?: boolean) {
       callbacks: {
         message: (type: string, message: string) => {
           // console.log(`${type.padEnd(10)} ${message}`);
+        },
+        inputBox: async (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => {
+          // console.log(`PROMPT: ${prompt}`);
+          // console.log(`PLACEHOLDER: ${placeHolder}`);
+          // console.log(`IGNORE FOCUS OUT: ${ignoreFocusOut}`);
+          return undefined;
         },
         progress: ({ message }) => {
           // console.log(`PROGRESS: ${message}`);
