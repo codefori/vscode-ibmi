@@ -1,7 +1,7 @@
 import vscode, { l10n } from "vscode";
 import { isActiveProfile, updateConnectionProfile } from "../api/connectionProfiles";
 import { instance } from "../instantiate";
-import { ConnectionProfile } from "../typings";
+import { AnyConnectionProfile } from "../typings";
 import { CustomEditor } from "./customEditorProvider";
 
 type ConnectionProfileData = {
@@ -11,20 +11,20 @@ type ConnectionProfileData = {
   setLibraryListCommand: string
 }
 
-const editedProfiles: Set<string> = new Set;
+const editedProfiles: Set<{ name: string, type: string }> = new Set;
 
-export function isProfileEdited(profile: ConnectionProfile) {
-  return editedProfiles.has(profile.name);
+export function isProfileEdited(profile: AnyConnectionProfile) {
+  return editedProfiles.has({ name: profile.name, type: profile.type });
 }
 
-export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: () => Thenable<void>) {
+export function editConnectionProfile(profile: AnyConnectionProfile, doAfterSave?: () => Thenable<void>) {
   const activeProfile = isActiveProfile(profile);
   const config = instance.getConnection()?.getConfig();
   const objectFilters = (activeProfile && config ? config : profile).objectFilters;
   const ifsShortcuts = (activeProfile && config ? config : profile).ifsShortcuts;
   const customVariables = (activeProfile && config ? config : profile).customVariables;
 
-  new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave), () => editedProfiles.delete(profile.name))
+  new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave), () => editedProfiles.delete({ name: profile.name, type: profile.type }))
     .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory, readonly: activeProfile })
     .addInput("currentLibrary", l10n.t("Current Library"), '', { minlength: 1, maxlength: 10, default: profile.currentLibrary, readonly: activeProfile })
     .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries."), { default: profile.libraryList.join(","), readonly: activeProfile })
@@ -40,10 +40,10 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
     .addParagraph(customVariables.length ? `<ul>${customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join('')}</ul>` : l10n.t("None"))
     .open();
 
-  editedProfiles.add(profile.name);
+  editedProfiles.add({ name: profile.name, type: profile.type });
 }
 
-async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
+async function save(profile: AnyConnectionProfile, data: ConnectionProfileData) {
   const content = instance.getConnection()?.getContent();
   if (content) {
     profile.homeDirectory = data.homeDirectory.trim();

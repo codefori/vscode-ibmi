@@ -1,18 +1,20 @@
 
 import { parse as parseQuery } from "querystring";
-import vscode, { l10n, QuickPickItem } from 'vscode';
+import vscode, { l10n, QuickPickItem, ThemeIcon } from 'vscode';
 import { getActions, updateAction } from '../../../api/actions';
 import { GetNewLibl } from '../../../api/components/getNewLibl';
-import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
+import { assignProfile, cloneProfile, getConnectionProfile, getAllConnectionProfiles, getDefaultProfile, updateConnectionProfile, isProfileInSync } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
 import { editConnectionProfile, isProfileEdited } from '../../../editors/connectionProfileEditor';
 import { instance } from '../../../instantiate';
-import { Action, ActionEnvironment, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions } from '../../../typings';
+import { Action, ActionEnvironment, AnyConnectionProfile, BrowserItem, ConnectionConfig, ConnectionProfile, CustomVariable, FocusOptions, ProfileState, ProfileType } from '../../../typings';
 import { uriToActionTarget } from '../../actions';
 import { ActionItem, Actions, ActionsNode, ActionTypeNode } from './actions';
 import { ConnectionProfiles, ProfileItem, ProfilesNode } from './connectionProfiles';
 import { CustomVariableItem, CustomVariables, CustomVariablesNode } from './customVariables';
+import * as path from 'path';
+import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 
 export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   const environmentView = new EnvironmentView();
@@ -23,7 +25,6 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   });
 
   const updateUIContext = async (profileName?: string) => {
-    await vscode.commands.executeCommand(`setContext`, "code-for-ibmi:activeProfile", profileName);
     environmentTreeViewer.description = profileName ? l10n.t("Current profile: {0}", profileName) : l10n.t("No active profile");
     vscode.commands.executeCommand("code-for-ibmi.updateConnectedBar");
   };
@@ -39,10 +40,14 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(async editor => environmentView.actionsNode?.activeEditorChanged(editor)),
     vscode.window.registerFileDecorationProvider({
       provideFileDecoration(uri: vscode.Uri, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FileDecoration> {
-        if (uri.scheme.startsWith(ProfileItem.contextValue) && uri.query === "active") {
-          return { color: new vscode.ThemeColor(ProfileItem.activeColor) };
-        }
-        else if (uri.scheme === ActionItem.context) {
+        if (uri.scheme.startsWith(ProfileItem.contextValue)) {
+          const query = parseQuery(uri.query);
+          const active = query.active ? true : false;
+          const color = ProfileItem.getColor(active, query.type as ProfileType, query.state as ProfileState);
+          if (color) {
+            return { color: new vscode.ThemeColor(color) };
+          }
+        } else if (uri.scheme === ActionItem.contextValue) {
           const query = parseQuery(uri.query);
           if (query.matched && query.canRun) {
             return { color: new vscode.ThemeColor(ActionItem.matchedCanRunColor) };
@@ -57,7 +62,17 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.environment.refresh", () => environmentView.refresh()),
+    vscode.commands.registerCommand("code-for-ibmi.environment.refresh", async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
+        if (config.currentProfile && config.currentProfileType === `server`) {
+          await connection.loadRemoteConfigs([`profiles`]);
+        }
+      }
+
+      environmentView.refresh();
+    }),
     vscode.commands.registerCommand("code-for-ibmi.environment.refresh.item", (item: BrowserItem) => environmentView.refresh(item)),
     vscode.commands.registerCommand("code-for-ibmi.environment.reveal", (item: BrowserItem, options?: FocusOptions) => environmentTreeViewer.reveal(item, options)),
 
@@ -166,7 +181,6 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         const variable = { name, value: from?.value } as CustomVariable;
         if (from) {
           await CustomVariables.update(variable);
-          environmentView.refresh(variablesNode);
         } else {
           vscode.commands.executeCommand("code-for-ibmi.environment.variable.edit", variable, variablesNode);
         }
@@ -177,7 +191,6 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       if (value !== undefined) {
         variable.value = value;
         await CustomVariables.update(variable);
-        environmentView.refresh(variablesNode);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.variable.rename", async (variableItem: CustomVariableItem) => {
@@ -191,7 +204,6 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
       if (newName) {
         await CustomVariables.update(variable, { newName });
-        environmentView.refresh(variableItem.parent);
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.variable.copy", async (variableItem: CustomVariableItem) => {
@@ -201,12 +213,11 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       const variable = variableItem.customVariable;
       if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete Custom Variable '{0}' ?", variable.name), { modal: true }, l10n.t("Yes"))) {
         await CustomVariables.update(variable, { delete: true });
-        environmentView.refresh(variableItem.parent);
       }
     }),
 
     vscode.commands.registerCommand("code-for-ibmi.environment.profile.create", async (node?: ProfilesNode, from?: ConnectionProfile) => {
-      const existingNames = getConnectionProfiles().map(profile => profile.name);
+      const existingNames = (await getAllConnectionProfiles()).map(profile => profile.name);
 
       const name = await vscode.window.showInputBox({
         title: l10n.t("Enter new profile name"),
@@ -214,12 +225,55 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         value: from?.name,
         validateInput: name => ConnectionProfiles.validateName(name, existingNames)
       });
+      if (!name) {
+        return;
+      }
 
-      if (name) {
-        const connection = instance.getConnection();
-        const homeDirectory = connection?.getConfig().homeDirectory || `/home/${connection?.currentUser || 'QPGMR'}`; //QPGMR case should not happen, but better be safe here
-        const profile: ConnectionProfile = from ? cloneProfile(from, name) : {
+      const connection = instance.getConnection();
+      const localConfigFilePath = process.env.APPDATA ? path.join(process.env.APPDATA, 'Code', 'User', 'settings.json') : undefined;
+      const profilesConfigFile = connection?.getConfigFile(`profiles`);
+      const profilesConfigFilePath = profilesConfigFile?.getPaths().server;
+      const locationItems = [
+        { label: `Local`, description: `Stored on this PC (for your use only)`, detail: localConfigFilePath, iconPath: new ThemeIcon(`person`) },
+        { label: `Server`, description: `Stored on IBM i (to be used amongst your team)`, detail: profilesConfigFilePath, iconPath: new ThemeIcon(`vm`) }
+      ];
+      const type = await vscode.window.showQuickPick(locationItems, {
+        title: `Select what type of profile this is`,
+        placeHolder: `Profile type`
+      });
+      if (!type) {
+        return;
+      }
+      const isServerProfile = type.label === `Local` ? false : true;
+
+      const homeDirectory = connection?.getConfig().homeDirectory || `/home/${connection?.currentUser || 'QPGMR'}`; //QPGMR case should not happen, but better be safe here
+      let profile: AnyConnectionProfile;
+      if (from) {
+        // Copy existing profile
+        const clone = cloneProfile(from, name);
+        profile = isServerProfile ? {
+          ...clone,
+          type: `server`,
+          state: `In-sync`,
+        } : {
+          ...clone,
+          type: `local`,
+        }
+      } else {
+        // Create new profile
+        profile = isServerProfile ? {
           name,
+          type: `server`,
+          state: `In-sync`,
+          homeDirectory,
+          currentLibrary: 'QGPL',
+          libraryList: ["QGPL", "QTEMP"],
+          customVariables: [],
+          ifsShortcuts: [homeDirectory],
+          objectFilters: [],
+        } : {
+          name,
+          type: `local`,
           homeDirectory,
           currentLibrary: 'QGPL',
           libraryList: ["QGPL", "QTEMP"],
@@ -227,19 +281,18 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           ifsShortcuts: [homeDirectory],
           objectFilters: [],
         };
-        await updateConnectionProfile(profile);
-        environmentView.refresh(environmentView.profilesNode);
-        if (!from) {
-          vscode.commands.executeCommand("code-for-ibmi.environment.profile.edit", profile);
-        }
-        else {
-          vscode.window.showInformationMessage(l10n.t("Created connection Profile '{0}'.", profile.name), l10n.t("Activate profile {0}", profile.name))
-            .then(doSwitch => {
-              if (doSwitch) {
-                vscode.commands.executeCommand("code-for-ibmi.environment.profile.activate", profile);
-              }
-            })
-        }
+      }
+
+      await updateConnectionProfile(profile);
+      if (!from) {
+        vscode.commands.executeCommand("code-for-ibmi.environment.profile.edit", profile);
+      } else {
+        vscode.window.showInformationMessage(l10n.t("Created {0} connection profile '{1}'.", isServerProfile ? l10n.t("server") : "local", profile.name), l10n.t("Activate profile {1}", profile.name))
+          .then(doSwitch => {
+            if (doSwitch) {
+              vscode.commands.executeCommand("code-for-ibmi.environment.profile.activate", profile);
+            }
+          })
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.profile.fromCurrent", async (profilesNode: ProfilesNode) => {
@@ -250,18 +303,19 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         vscode.commands.executeCommand("code-for-ibmi.environment.profile.create", undefined, current);
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.environment.profile.edit", async (profile: ConnectionProfile) => {
-      editConnectionProfile(profile, async () => environmentView.refresh(environmentView.profilesNode))
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.edit", async (profile: AnyConnectionProfile) => {
+      editConnectionProfile(profile)
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.profile.rename", async (item: ProfileItem) => {
       if (isProfileEdited(item.profile)) {
-        vscode.window.showWarningMessage(l10n.t("Profile {0} is being edited. Please close its editor first.", item.profile.name));
+        vscode.window.showWarningMessage(l10n.t("{0} profile {1} is being edited. Please close its editor first.", item.profile.type === `server` ? l10n.t("Server") : "Local", item.profile.name));
       }
       else {
         const currentName = item.profile.name;
-        const existingNames = getConnectionProfiles().map(profile => profile.name).filter(name => name !== currentName);
+        const currentType = item.profile.type;
+        const existingNames = (await getAllConnectionProfiles()).map(profile => profile.name).filter(name => name !== currentName);
         const newName = await vscode.window.showInputBox({
-          title: l10n.t('Enter Profile {0} new name', item.profile.name),
+          title: l10n.t('Enter {0} profile {1} new name', item.profile.type === `server` ? l10n.t("server") : "local", item.profile.name),
           placeHolder: l10n.t("Profile name..."),
           validateInput: name => ConnectionProfiles.validateName(name, existingNames)
         });
@@ -269,12 +323,9 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         if (newName) {
           await updateConnectionProfile(item.profile, { newName });
           const config = instance.getConnection()?.getConfig();
-          if (config?.currentProfile === currentName) {
-            config.currentProfile = newName;
-            await IBMi.connectionManager.update(config);
+          if (config?.currentProfile === currentName && config?.currentProfileType === currentType) {
             updateUIContext(newName);
           }
-          environmentView.refresh(environmentView.profilesNode);
         }
       }
     }),
@@ -283,59 +334,68 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.profile.delete", async (item: ProfileItem) => {
       if (isProfileEdited(item.profile)) {
-        vscode.window.showWarningMessage(l10n.t("Profile {0} is being edited. Please close its editor first.", item.profile.name));
+        vscode.window.showWarningMessage(l10n.t("{0} profile {1} is being edited. Please close its editor first.", item.profile.type === `server` ? l10n.t("Server") : "Local", item.profile.name));
       }
-      else if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete profile '{0}' ?", item.profile.name), { modal: true }, l10n.t("Yes"))) {
+      else if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete {0} profile '{1}' ?", item.profile.type === `server` ? l10n.t("server") : l10n.t("local"), item.profile.name), { modal: true }, l10n.t("Yes"))) {
         await updateConnectionProfile(item.profile, { delete: true });
-        environmentView.refresh(environmentView.profilesNode);
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.environment.profile.activate", async (item: ProfileItem | ConnectionProfile) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.activate", async (item: ProfileItem | AnyConnectionProfile) => {
       const connection = instance.getConnection();
       const storage = instance.getStorage();
       if (connection && storage) {
         const profile = "profile" in item ? item.profile : item;
         const config = connection.getConfig();
-        const profileToBackup = config.currentProfile ? getConnectionProfile(config.currentProfile) : getDefaultProfile();
+        const profileToBackup = config.currentProfile ?
+          await getConnectionProfile(config.currentProfile, config.currentProfileType || 'local') :
+          getDefaultProfile(config);
 
         if (isProfileEdited(profile)) {
-          vscode.window.showWarningMessage(l10n.t("Profile {0} is being edited. Please close its editor before activating it.", profile.name));
+          vscode.window.showWarningMessage(l10n.t("{0} profile {1} is being edited. Please close its editor before activating it.", config.currentProfileType === `server` ? l10n.t("Server") : "Local", profile.name));
           return;
-        }
-        else if (profileToBackup && isProfileEdited(profileToBackup)) {
-          vscode.window.showWarningMessage(l10n.t("Profile {0} is being edited. Please close its editor before unloading it.", profileToBackup.name));
+        } else if (profileToBackup && isProfileEdited(profileToBackup)) {
+          vscode.window.showWarningMessage(l10n.t("{0} profile {1} is being edited. Please close its editor before unloading it.", config.currentProfileType === `server` ? l10n.t("Server") : "Local", profileToBackup.name));
           return;
         }
 
+        // Back up previous profile
         if (profileToBackup) {
           assignProfile(config, profileToBackup);
         }
+
+        // Activate new profile
         assignProfile(profile, config);
-        config.currentProfile = profile.name || undefined;
-        await IBMi.connectionManager.update(config);
+        config.currentProfile = profile.name || "";
+        config.currentProfileType = profile.type;
+        config.currentProfileLastKnownUpdate = profile.type === 'server' ? profile.lastUpdated : undefined;
+
+        if (profileToBackup) {
+          await updateConnectionProfile(profileToBackup, { modifiedConfig: config });
+        } else {
+          await IBMi.connectionManager.update(config);
+        }
 
         await Promise.all([
           vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
         ]);
-        environmentView.refresh();
 
         if (profile.name && profile.setLibraryListCommand) {
           await vscode.commands.executeCommand("code-for-ibmi.environment.profile.runLiblistCommand", profile);
         }
 
         await updateUIContext(profile.name);
-        vscode.window.showInformationMessage(config.currentProfile ? l10n.t(`Switched to profile "{0}".`, profile.name) : l10n.t("Active profile unloaded"));
+        vscode.window.showInformationMessage(config.currentProfile ? l10n.t(`Switched to {0} profile "{1}".`, config.isSystemProfile ? l10n.t("system") : "local", profile.name) : l10n.t("Active profile unloaded"));
       }
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.environment.profile.runLiblistCommand", async (profileItem?: ProfileItem | ConnectionProfile) => {
+    vscode.commands.registerCommand("code-for-ibmi.environment.profile.runLiblistCommand", async (item: ProfileItem | ConnectionProfile) => {
       const connection = instance.getConnection();
       const storage = instance.getStorage();
       if (connection && storage) {
+        const profile = "profile" in item ? item.profile : item;
         const config = connection.getConfig();
-        const profile = profileItem && ("profile" in profileItem ? profileItem?.profile : profileItem) || getConnectionProfile(config.get);
 
         if (profile?.setLibraryListCommand) {
           const command = profile.setLibraryListCommand.startsWith(`?`) ?
@@ -365,26 +425,20 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.profile.unload", async () => {
-      vscode.commands.executeCommand("code-for-ibmi.environment.profile.activate", getDefaultProfile());
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
+        vscode.commands.executeCommand("code-for-ibmi.environment.profile.activate", getDefaultProfile(config));
+      }
+    }),
+
+    onCodeForIBMiConfigurationChange("connectionSettings", async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        environmentView.refresh();
+      }
     })
   );
-
-  instance.subscribe(context, 'connected', 'Update environment view description', async () => {
-    const config = instance.getConnection()?.getConfig();
-    const storage = instance.getStorage();
-    if (config && storage) {
-      //Retrieve and clear old value for last used profile
-      const deprecatedLastProfile = storage.getLastProfile();
-      if (deprecatedLastProfile) {
-        if (deprecatedLastProfile.toLocaleLowerCase() !== 'default') {
-          config.currentProfile = deprecatedLastProfile;
-          await IBMi.connectionManager.update(config);
-        }
-        await storage.clearDeprecatedLastProfile();
-      }
-      updateUIContext(config.currentProfile);
-    }
-  });
 }
 
 class EnvironmentView implements vscode.TreeDataProvider<BrowserItem> {
@@ -392,6 +446,65 @@ class EnvironmentView implements vscode.TreeDataProvider<BrowserItem> {
   readonly onDidChangeTreeData = this.emitter.event;
   readonly actionsNode = new ActionsNode();
   readonly profilesNode = new ProfilesNode();
+  private static instance?: EnvironmentView;
+  private configChangeCallbacks: Map<string, Set<(key: string, oldValue: any, newValue: any) => void>> = new Map();
+
+  constructor() {
+    EnvironmentView.instance = this;
+  }
+
+  /**
+   * Register a callback to be invoked when specific configuration keys change
+   * @param keys Array of configuration keys to watch
+   * @param callback Function to call when any of the watched keys change
+   * @returns Disposable to unregister the callback
+   */
+  static registerConfigChangeListener(
+    keys: string[],
+    callback: (key: string, oldValue: any, newValue: any) => void
+  ): vscode.Disposable {
+    if (!EnvironmentView.instance) {
+      throw new Error('EnvironmentView not initialized');
+    }
+
+    for (const key of keys) {
+      if (!EnvironmentView.instance.configChangeCallbacks.has(key)) {
+        EnvironmentView.instance.configChangeCallbacks.set(key, new Set());
+      }
+      EnvironmentView.instance.configChangeCallbacks.get(key)!.add(callback);
+    }
+
+    return new vscode.Disposable(() => {
+      if (EnvironmentView.instance) {
+        for (const key of keys) {
+          EnvironmentView.instance.configChangeCallbacks.get(key)?.delete(callback);
+        }
+      }
+    });
+  }
+
+  /**
+   * Notify registered callbacks about configuration changes
+   * @param changes Map of changed keys with their old and new values
+   */
+  static notifyConfigChanges(changes: Map<string, { oldValue: any, newValue: any }>) {
+    if (!EnvironmentView.instance) {
+      return;
+    }
+
+    for (const [key, { oldValue, newValue }] of changes) {
+      const callbacks = EnvironmentView.instance.configChangeCallbacks.get(key);
+      if (callbacks) {
+        for (const callback of callbacks) {
+          try {
+            callback(key, oldValue, newValue);
+          } catch (error) {
+            console.error(`Error in config change callback for key '${key}':`, error);
+          }
+        }
+      }
+    }
+  }
 
   refresh(target?: BrowserItem) {
     this.emitter.fire(target);

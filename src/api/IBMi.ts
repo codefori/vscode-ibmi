@@ -189,8 +189,9 @@ export default class IBMi {
     return configFile;
   }
 
-  async loadRemoteConfigs() {
-    for (const configFile in this.configFiles) {
+  async loadRemoteConfigs(configKeys?: (keyof ConnectionConfigFiles)[]) {
+    configKeys = configKeys ?? Object.keys(this.configFiles);
+    for (const configFile of configKeys) {
       const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
 
       currentConfig.reset();

@@ -3153,8 +3153,8 @@
 				},
 				{
 					"command": "code-for-ibmi.environment.profile.unload",
-					"when": "view === environmentView && viewItem =~ /^profilesNode/ && code-for-ibmi:activeProfile",
-					"group": "inline@03"
+					"when": "view === environmentView && viewItem =~ /^profileItem_active/",
+					"group": "inline@01"
 				},
 				{
 					"command": "code-for-ibmi.environment.profile.activate",
