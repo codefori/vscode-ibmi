@@ -1,4 +1,4 @@
-import vscode, { FileDecoration, l10n, window } from "vscode";
+import vscode, { l10n } from "vscode";
 import { stringify } from "querystring";
 import { getConnectionProfilesInGroups } from "../../../api/connectionProfiles";
 import { instance } from "../../../instantiate";
@@ -30,6 +30,7 @@ export class ProfilesNode extends EnvironmentItem {
     const currentProfileType = config?.currentProfileType ?? `local`;
     const { localProfiles, serverProfiles } = await getConnectionProfilesInGroups();
     const localProfileItems = localProfiles
+      .filter(profile => Boolean(profile.name))
       .sort((p1, p2) => p1.name.localeCompare(p2.name))
       .map(profile => new ProfileItem(this, profile, profile.name === currentProfile && profile.type === currentProfileType));
     const serverProfileItems = serverProfiles

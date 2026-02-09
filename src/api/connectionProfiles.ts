@@ -75,7 +75,7 @@ export async function getConnectionProfilesInGroups() {
   const connection = instance.getConnection();
   if (connection) {
     const config = connection.getConfig();
-    const rawLocalProfiles: ConnectionProfile[] = config.connectionProfiles.filter(profile => Boolean(profile.name));
+    const rawLocalProfiles: ConnectionProfile[] = config.connectionProfiles;
 
     // Map connection profiles to internal local profile type
     const localProfiles: LocalConnectionProfile[] = rawLocalProfiles.map(rawlocalProfile => ({
