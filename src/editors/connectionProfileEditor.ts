@@ -4,6 +4,7 @@ import { instance } from "../instantiate";
 import { AnyConnectionProfile } from "../typings";
 import { CustomEditor } from "./customEditorProvider";
 import { verifyLatestServerProfileState } from "../ui/views/environment/environmentView";
+import IBMi from "../api/IBMi";
 
 type ConnectionProfileData = {
   homeDirectory: string
@@ -49,34 +50,44 @@ export function editConnectionProfile(profile: AnyConnectionProfile, doAfterSave
 }
 
 async function save(profile: AnyConnectionProfile, data: ConnectionProfileData) {
-  const content = instance.getConnection()?.getContent();
-  if (content) {
-    profile.homeDirectory = data.homeDirectory.trim();
-    profile.setLibraryListCommand = data.setLibraryListCommand.trim();
-
-    data.currentLibrary = data.currentLibrary.trim();
-    if (data.currentLibrary) {
-      if (await content.checkObject({ library: "QSYS", name: data.currentLibrary, type: "*LIB" })) {
-        profile.currentLibrary = data.currentLibrary;
+  const connection = instance.getConnection();
+  if (connection) {
+    const content = connection.getContent();
+    const config = connection.getConfig();
+    const isActive = isActiveProfile(profile);
+    if (isActive && profile.type === `server`) {
+      config.setLibraryListCommand = data.setLibraryListCommand.trim();
+      await IBMi.connectionManager.update(config);
+    } else {
+      if (profile.type === `local`) {
+        profile.homeDirectory = data.homeDirectory.trim();
       }
-      else {
-        throw new Error(l10n.t("Current library {0} is invalid", data.currentLibrary));
+      profile.setLibraryListCommand = data.setLibraryListCommand.trim();
+
+      data.currentLibrary = data.currentLibrary.trim();
+      if (data.currentLibrary) {
+        if (await content.checkObject({ library: "QSYS", name: data.currentLibrary, type: "*LIB" })) {
+          profile.currentLibrary = data.currentLibrary;
+        }
+        else {
+          throw new Error(l10n.t("Current library {0} is invalid", data.currentLibrary));
+        }
       }
-    }
 
-    const libraryList = data.libraryList.split(',').map(library => library.trim());
-    const badLibraries = await content.validateLibraryList(libraryList);
-    if (badLibraries.length && !await vscode.window.showWarningMessage(l10n.t("The following libraries are invalid. Do you still want to save that profile?"), {
-      modal: true,
-      detail: badLibraries.sort().map(library => `- ${library}`).join("\n")
-    }, l10n.t("Yes"))) {
-      throw new Error(l10n.t("Save aborted"));
-    }
-    profile.libraryList = libraryList;
+      const libraryList = data.libraryList.split(',').map(library => library.trim());
+      const badLibraries = await content.validateLibraryList(libraryList);
+      if (badLibraries.length && !await vscode.window.showWarningMessage(l10n.t("The following libraries are invalid. Do you still want to save that profile?"), {
+        modal: true,
+        detail: badLibraries.sort().map(library => `- ${library}`).join("\n")
+      }, l10n.t("Yes"))) {
+        throw new Error(l10n.t("Save aborted"));
+      }
+      profile.libraryList = libraryList;
 
-    const canProceed = await verifyLatestServerProfileState(profile);
-    if (canProceed) {
-      await updateConnectionProfile(profile);
+      const canProceed = await verifyLatestServerProfileState(profile);
+      if (canProceed) {
+        await updateConnectionProfile(profile);
+      }
     }
   }
 }
