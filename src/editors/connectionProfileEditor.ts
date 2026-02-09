@@ -3,6 +3,7 @@ import { isActiveProfile, updateConnectionProfile } from "../api/connectionProfi
 import { instance } from "../instantiate";
 import { AnyConnectionProfile } from "../typings";
 import { CustomEditor } from "./customEditorProvider";
+import { verifyLatestServerProfileState } from "../ui/views/environment/environmentView";
 
 type ConnectionProfileData = {
   homeDirectory: string
@@ -24,8 +25,12 @@ export function editConnectionProfile(profile: AnyConnectionProfile, doAfterSave
   const ifsShortcuts = (activeProfile && config ? config : profile).ifsShortcuts;
   const customVariables = (activeProfile && config ? config : profile).customVariables;
 
-  new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave), () => editedProfiles.delete({ name: profile.name, type: profile.type }))
-    .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory, readonly: activeProfile })
+  const profileEditor = new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave), () => editedProfiles.delete({ name: profile.name, type: profile.type }));
+  if (profile.type === `local`) {
+    profileEditor
+      .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory, readonly: activeProfile })
+  }
+  profileEditor
     .addInput("currentLibrary", l10n.t("Current Library"), '', { minlength: 1, maxlength: 10, default: profile.currentLibrary, readonly: activeProfile })
     .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries."), { default: profile.libraryList.join(","), readonly: activeProfile })
     .addInput("setLibraryListCommand", l10n.t("Library List Command"), l10n.t("Library List Command can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.<br/>Commands should be as explicit as possible.<br/>When refering to commands and objects, both should be qualified with a library.<br/>Put <code>?</code> in front of the command to prompt it before execution."), { default: profile.setLibraryListCommand })
@@ -69,6 +74,9 @@ async function save(profile: AnyConnectionProfile, data: ConnectionProfileData) 
     }
     profile.libraryList = libraryList;
 
-    await updateConnectionProfile(profile);
+    const canProceed = await verifyLatestServerProfileState(profile);
+    if (canProceed) {
+      await updateConnectionProfile(profile);
+    }
   }
 }

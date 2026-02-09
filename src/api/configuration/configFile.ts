@@ -30,11 +30,12 @@ export class ConfigFile<T> {
   async loadFromServer() {
     this.state = `no_exist`;
 
-    const isAvailable = await this.connection.getContent().testStreamFile(this.serverFile, `r`);
+    const content = this.connection.getContent();
+    const isAvailable = await content.testStreamFile(this.serverFile, `r`);
     if (isAvailable) {
-      const content = await this.connection.getContent().downloadStreamfileRaw(this.serverFile);
+      const fileContent = await content.downloadStreamfileRaw(this.serverFile);
       try {
-        const serverConfig: T = JSON.parse(content.toString());
+        const serverConfig: T = JSON.parse(fileContent.toString());
         this.state = `ok`;
 
         if (this.validateData) {
@@ -57,7 +58,7 @@ export class ConfigFile<T> {
     try {
       const content = this.connection.getContent();
       if (this.state === `no_exist`) {
-        await content.createStreamFile(this.serverFile);
+        await content.createStreamFile(this.serverFile, true);
       }
 
       content.writeStreamfileRaw(this.serverFile, JSON.stringify(newConfig, null, 4));

@@ -50,14 +50,12 @@ export async function updateConnectionProfile(profile: AnyConnectionProfile, opt
     if (isServerProfile) {
       // Map internal server profile type to connection profile
       const serverProfiles: ConnectionProfile[] = (profiles as ServerConnectionProfile[]).map(({ type, state, homeDirectory, ...profile }) => profile);
-
       const profilesConfigFile = connection.getConfigFile<ConnectionProfile[]>(`profiles`);
       await profilesConfigFile.writeToServer(serverProfiles);
       await IBMi.connectionManager.update(config);
     } else {
       // Map internal local profile type to connection profile
       const localProfiles: ConnectionProfile[] = (profiles as LocalConnectionProfile[]).map(({ type, ...profile }) => profile);
-
       config.connectionProfiles = localProfiles;
       await IBMi.connectionManager.update(config);
     }
@@ -114,17 +112,15 @@ export async function getConnectionProfilesInGroups() {
         const isOutdated = profileLastUpdated > lastKnownUpdate;
 
         if (isOutdated && !isInSync) {
-          state = 'Conflict';
-        } else if (isOutdated && isInSync) {
-          state = 'Outdated';
+          state = 'Out of Sync';
         } else if (!isOutdated && !isInSync) {
           state = 'Modified';
         } else {
-          state = 'In-sync';
+          state = 'In Sync';
         }
       } else {
         // Not current server profile, so it's in sync
-        state = 'In-sync';
+        state = 'In Sync';
       }
 
       return {
@@ -139,7 +135,7 @@ export async function getConnectionProfilesInGroups() {
     if (currentProfileName && currentProfileType === 'server') {
       const profileExistsOnServer = serverProfiles.some(p => p.name === currentProfileName);
       if (!profileExistsOnServer) {
-        // Add the missing profile with Conflict state
+        // Add the missing profile with out of sync state
         const localVersionOfServerProfile: ServerConnectionProfile = {
           name: currentProfileName,
           type: 'server' as const,
@@ -149,7 +145,7 @@ export async function getConnectionProfilesInGroups() {
           ifsShortcuts: config.ifsShortcuts,
           customVariables: config.customVariables,
           setLibraryListCommand: config.setLibraryListCommand,
-          state: 'Conflict',
+          state: 'Out of Sync',
           lastUpdated: 0
         };
 
@@ -209,7 +205,11 @@ export function getDefaultProfile(config: ConnectionConfig): LocalConnectionProf
 }
 
 export function assignProfile(fromProfile: ConnectionProfile, toProfile: ConnectionProfile) {
-  toProfile.homeDirectory = fromProfile.homeDirectory;
+  if (fromProfile.homeDirectory) {
+    // Home directory will be undefined when assigning from a server profile
+    toProfile.homeDirectory = fromProfile.homeDirectory;
+  }
+
   toProfile.currentLibrary = fromProfile.currentLibrary;
   toProfile.libraryList = fromProfile.libraryList;
   toProfile.objectFilters = fromProfile.objectFilters;

@@ -42,11 +42,10 @@ export class ProfilesNode extends EnvironmentItem {
 export class ProfileItem extends EnvironmentItem {
   static activeColor = "charts.green";
   static modifiedColor = "charts.blue";
-  static outdatedColor = "charts.yellow";
-  static conflictColor = "charts.red";
+  static outOfSyncColor = "charts.yellow";
   static contextValue = `profileItem`;
 
-  constructor(parent: EnvironmentItem, readonly profile: AnyConnectionProfile, active: boolean) {
+  constructor(parent: EnvironmentItem, readonly profile: AnyConnectionProfile, readonly active: boolean) {
     const state = profile.type === 'server' ? profile.state : undefined;
     const icon = profile.type === 'server' ? `vm` : `person`;
     const color = ProfileItem.getColor(active, profile.type, state);
@@ -76,14 +75,12 @@ export class ProfileItem extends EnvironmentItem {
     if (active) {
       if (type === `server` && state) {
         switch (state) {
-          case 'In-sync':
+          case 'In Sync':
             return ProfileItem.activeColor;
           case 'Modified':
             return ProfileItem.modifiedColor;
-          case 'Outdated':
-            return ProfileItem.outdatedColor;
-          case 'Conflict':
-            return ProfileItem.conflictColor;
+          case 'Out of Sync':
+            return ProfileItem.outOfSyncColor;
         }
       }
 

@@ -63,7 +63,7 @@ export type AnyConnectionProfile = | LocalConnectionProfile | ServerConnectionPr
 
 export type ProfileType = 'local' | 'server';
 
-export type ProfileState = 'In-sync' | 'Modified' | 'Outdated' | 'Conflict';
+export type ProfileState = 'In Sync' | 'Modified' | 'Out of Sync';
 
 export interface LocalConnectionProfile extends ConnectionProfile {
   type: 'local';

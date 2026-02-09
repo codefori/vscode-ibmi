@@ -1764,6 +1764,30 @@
 				"category": "IBM i",
 				"title": "Unload active profile",
 				"icon": "$(sign-out)"
+			},
+			{
+				"command": "code-for-ibmi.resolveProfile.saveChangeToServer",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i",
+				"title": "Save Changes To Server"
+			},
+			{
+				"command": "code-for-ibmi.resolveProfile.discardChangesAndSyncWithServer",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i",
+				"title": "Discard Changes and Sync with Server"
+			},
+			{
+				"command": "code-for-ibmi.resolveProfile.inspectChanges",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i",
+				"title": "Inspect Changes"
+			},
+			{
+				"command": "code-for-ibmi.resolveProfile.overwriteChangesToServer",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i",
+				"title": "Overwrite Changes to Server"
 			}
 		],
 		"customEditors": [
@@ -1960,6 +1984,11 @@
 			{
 				"id": "code-for-ibmi.compareWithLocal",
 				"label": "Compare with"
+			},
+			{
+				"id": "code-for-ibmi.resolveProfile",
+				"label": "Resolve...",
+				"icon": "$(edit-sparkle)"
 			}
 		],
 		"menus": {
@@ -2048,6 +2077,28 @@
 				{
 					"command": "code-for-ibmi.compareWithActiveFile.short",
 					"when": "!explorerResourceIsFolder"
+				}
+			],
+			"code-for-ibmi.resolveProfile": [
+				{
+					"command": "code-for-ibmi.resolveProfile.saveChangeToServer",
+					"when": "viewItem =~ /^profileItem_active.*_Modified/",
+					"group": "00_resolve@01"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.discardChangesAndSyncWithServer",
+					"when": "viewItem =~ /^profileItem_active.*_(Modified|Out of Sync)/",
+					"group": "00_resolve@02"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.inspectChanges",
+					"when": "viewItem =~ /^profileItem_active.*_(Modified|Out of Sync)/",
+					"group": "00_resolve@03"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.overwriteChangesToServer",
+					"when": "viewItem =~ /^profileItem_active.*_Out of Sync/",
+					"group": "00_resolve@01"
 				}
 			],
 			"commandPalette": [
@@ -2513,6 +2564,22 @@
 				},
 				{
 					"command": "code-for-ibmi.environment.profile.unload",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.saveChangeToServer",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.discardChangesAndSyncWithServer",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.inspectChanges",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.overwriteChangesToServer",
 					"when": "never"
 				}
 			],
@@ -3154,7 +3221,7 @@
 				{
 					"command": "code-for-ibmi.environment.profile.unload",
 					"when": "view === environmentView && viewItem =~ /^profileItem_active/",
-					"group": "inline@01"
+					"group": "inline@03"
 				},
 				{
 					"command": "code-for-ibmi.environment.profile.activate",
@@ -3165,6 +3232,11 @@
 					"command": "code-for-ibmi.environment.profile.runLiblistCommand",
 					"when": "view === environmentView && viewItem =~ /^profileItem_active_command/",
 					"group": "inline@01"
+				},
+				{
+					"submenu": "code-for-ibmi.resolveProfile",
+					"when": "view === environmentView && viewItem =~ /^profileItem_active.*_(Modified|Out of Sync)/",
+					"group": "inline@02"
 				},
 				{
 					"command": "code-for-ibmi.environment.profile.rename",
@@ -3244,6 +3316,7 @@
 		"csv": "^6.2.1",
 		"escape-string-regexp": "^5.0.0",
 		"ignore": "^5.1.9",
+		"jsonc-parser": "^3.3.1",
 		"node-ssh": "^13.1.0",
 		"tar": "^6.2.1",
 		"tmp": "^0.2.1",
