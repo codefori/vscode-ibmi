@@ -1800,12 +1800,6 @@
 				"title": "Discard Changes and Sync with Server"
 			},
 			{
-				"command": "code-for-ibmi.resolveProfile.inspectChanges",
-				"enablement": "code-for-ibmi:connected",
-				"category": "IBM i",
-				"title": "Inspect Changes"
-			},
-			{
 				"command": "code-for-ibmi.resolveProfile.overwriteChangesToServer",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i",
@@ -2111,11 +2105,6 @@
 					"command": "code-for-ibmi.resolveProfile.discardChangesAndSyncWithServer",
 					"when": "viewItem =~ /^profileItem_active.*_(Modified|Out of Sync)/",
 					"group": "00_resolve@02"
-				},
-				{
-					"command": "code-for-ibmi.resolveProfile.inspectChanges",
-					"when": "viewItem =~ /^profileItem_active.*_(Modified|Out of Sync)/",
-					"group": "00_resolve@03"
 				},
 				{
 					"command": "code-for-ibmi.resolveProfile.overwriteChangesToServer",
@@ -2594,10 +2583,6 @@
 				},
 				{
 					"command": "code-for-ibmi.resolveProfile.discardChangesAndSyncWithServer",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.resolveProfile.inspectChanges",
 					"when": "never"
 				},
 				{
