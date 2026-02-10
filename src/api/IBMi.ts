@@ -67,7 +67,6 @@ interface ConnectionOptions {
 interface ConnectionConfigFiles {
   settings: ConfigFile<RemoteConfigFile>;
   profiles: ConfigFile<ConnectionProfile[]>
-  actions: ConfigFile<Action[]>
   [key: string]: ConfigFile<any>;
 }
 
@@ -88,7 +87,6 @@ export default class IBMi {
   private configFiles: ConnectionConfigFiles = {
     settings: new ConfigFile<RemoteConfigFile>(this, `settings`, {}),
     profiles: new ConfigFile<ConnectionProfile[]>(this, `profiles`, []),
-    actions: new ConfigFile<Action[]>(this, `actions`, [])
   };
 
   /**
