@@ -15,15 +15,19 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
     if (!nextCheck || today > nextCheck) {
       const connection = instance.getConnection();
       const expiration = await connection?.getComponent<PasswordManager>(PasswordManager.ID)?.getPasswordExpiration(connection);
-      let whenNextDay = 7; //Next check in one week by default
+      let whenNextDay = 14; //Next check in two weeks by default
       if (expiration) {
         if (expiration.daysLeft < 7) {
           //Less than a week left: check every day
           whenNextDay = 1;
         }
-        else if (expiration.daysLeft < 14) {
+        else if (expiration.daysLeft <= 14) {
           //Less than two weeks left: check again when there will be one week left
           whenNextDay = expiration.daysLeft - 7;
+        }
+        else {
+          //Else two weeks before expiraation
+          whenNextDay = expiration.daysLeft - 14;
         }
 
         if (expiration.daysLeft <= 14) { //Warn at least two weeks before expiration
@@ -156,7 +160,9 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
                   await setStoredPassword(context, connection.currentConnectionName, newPassword);
                 }
                 const today = new Date();
-                await instance.getStorage()?.setNextPasswordCheck(today.setDate(today.getDate() + 7));
+                const expiration = (await connection?.getComponent<PasswordManager>(PasswordManager.ID)?.getPasswordExpiration(connection))?.daysLeft || 24;
+                const nextCheck = expiration - (expiration > 14 ? 14 : 1);
+                await instance.getStorage()?.setNextPasswordCheck(today.setDate(today.getDate() + nextCheck));
                 window.showInformationMessage(l10n.t("Password successfully changed for {0} on {1}", connection.currentUser, connection.currentHost));
                 done = true;
               }
