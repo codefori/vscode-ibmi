@@ -147,9 +147,9 @@ export async function stopService(connection: IBMi) {
 
 export async function getDebugEngineJobs(): Promise<DebugJobs> {
   const rows = await instance.getConnection()?.runSQL([
-    "select 'SERVER' as TYPE, JOB_NAME from table(qsys2.job_info(job_status_filter => '*ACTIVE', job_type_filter => '*BATCH', job_name_filter => 'QB5ROUTER'))",
+    "select 'SERVER' as TYPE, JOB_NAME from table(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'QB5ROUTER'))",
     "Union",
-    "select 'SERVICE' as TYPE, JOB_NAME from table(qsys2.job_info(job_status_filter => '*ACTIVE', job_type_filter => '*BATCH', job_name_filter => 'QDBGSRV'))"
+    "select 'SERVICE' as TYPE, JOB_NAME from table(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'QDBGSRV'))"
   ].join(" "));
 
   return {
