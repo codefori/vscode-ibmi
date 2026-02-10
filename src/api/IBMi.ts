@@ -11,10 +11,10 @@ import { sshSqlJob } from './components/mapepire/sqlJob';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
-import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
-import { ConfigFile } from './configuration/serverFile';
+import { ConnectionConfig, ConnectionProfile, RemoteConfigFile } from './configuration/config/types';
+import { ConfigFile } from './configuration/configFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand } from './types';
+import { Action, AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -66,6 +66,7 @@ interface ConnectionOptions {
 
 interface ConnectionConfigFiles {
   settings: ConfigFile<RemoteConfigFile>;
+  profiles: ConfigFile<ConnectionProfile[]>
   [key: string]: ConfigFile<any>;
 }
 
@@ -84,7 +85,8 @@ export default class IBMi {
   private componentManager = new ComponentManager(this);
 
   private configFiles: ConnectionConfigFiles = {
-    settings: new ConfigFile<RemoteConfigFile>(this, `settings`, {})
+    settings: new ConfigFile<RemoteConfigFile>(this, `settings`, {}),
+    profiles: new ConfigFile<ConnectionProfile[]>(this, `profiles`, []),
   };
 
   /**
@@ -169,8 +171,9 @@ export default class IBMi {
     return this.configFiles[id] as ConfigFile<T>;
   }
 
-  async loadRemoteConfigs() {
-    for (const configFile in this.configFiles) {
+  async loadRemoteConfigs(configKeys?: (keyof ConnectionConfigFiles)[]) {
+    configKeys = configKeys ?? Object.keys(this.configFiles);
+    for (const configFile of configKeys) {
       const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
 
       currentConfig.reset();

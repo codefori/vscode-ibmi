@@ -26,7 +26,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   debugSepPort: string;
   debugUpdateProductionFiles: boolean;
   debugEnableDebugTracing: boolean;
-  debugIgnoreCertificateErrors:boolean;
+  debugIgnoreCertificateErrors: boolean;
   readOnlyMode: boolean;
   quickConnect: boolean;
   defaultDeploymentMethod: DeploymentMethod | '';
@@ -35,7 +35,9 @@ export interface ConnectionConfig extends ConnectionProfile {
   secureSQL: boolean;
   keepActionSpooledFiles: boolean;
   mapepireJavaVersion: string
-  currentProfile?: string
+  currentProfile?: string;
+  currentProfileType?: ProfileType;
+  currentProfileLastKnownUpdate?: number;
   [name: string]: any;
 }
 
@@ -59,15 +61,31 @@ export interface CustomVariable {
   value: string
 }
 
+export type AnyConnectionProfile = | LocalConnectionProfile | ServerConnectionProfile
+
+export type ProfileType = 'local' | 'server';
+
+export type ProfileState = 'In Sync' | 'Modified' | 'Out of Sync';
+
+export interface LocalConnectionProfile extends ConnectionProfile {
+  type: 'local';
+}
+
+export interface ServerConnectionProfile extends ConnectionProfile {
+  type: 'server';
+  state: ProfileState;
+}
+
 export interface ConnectionProfile {
-  name: string
-  homeDirectory: string
-  currentLibrary: string
-  libraryList: string[]
-  objectFilters: ObjectFilters[]
-  ifsShortcuts: string[]
-  customVariables: CustomVariable[]
-  setLibraryListCommand?: string
+  name: string;
+  homeDirectory?: string;
+  currentLibrary: string;
+  libraryList: string[];
+  objectFilters: ObjectFilters[];
+  ifsShortcuts: string[];
+  customVariables: CustomVariable[];
+  setLibraryListCommand?: string;
+  lastUpdated?: number;
 }
 
 export interface StoredConnection {

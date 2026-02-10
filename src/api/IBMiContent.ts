@@ -1076,9 +1076,24 @@ export default class IBMiContent {
    * @param path the full path to the streamfile
    * @throws an Error if the file could not be correctly created
    */
-  async createStreamFile(path: string) {
-    path = Tools.escapePath(path);
-    const result = (await this.ibmi.sendCommand({ command: `echo "" > ${path} && ${this.ibmi.remoteFeatures.attr} ${path} CCSID=1208` }));
+  async createStreamFile(posixPath: string, createParents: boolean = false) {
+    posixPath = Tools.escapePath(posixPath);
+
+    const commands: string[] = [];
+
+    if (createParents) {
+      const dir = path.posix.dirname(posixPath);
+      if (dir && dir !== '/') {
+        commands.push(`mkdir -p ${dir}`);
+      }
+    }
+
+    commands.push(`echo "" > ${posixPath}`);
+    commands.push(`${this.ibmi.remoteFeatures.attr} ${posixPath} CCSID=1208`);
+
+    const result = await this.ibmi.sendCommand({
+    command: commands.join(' && ')
+    });
     if (result.code !== 0) {
       throw new Error(result.stderr);
     }

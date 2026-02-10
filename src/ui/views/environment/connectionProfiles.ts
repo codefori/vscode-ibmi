@@ -1,7 +1,8 @@
 import vscode, { l10n } from "vscode";
-import { getConnectionProfiles } from "../../../api/connectionProfiles";
+import { stringify } from "querystring";
+import { getConnectionProfilesInGroups } from "../../../api/connectionProfiles";
 import { instance } from "../../../instantiate";
-import { ConnectionProfile } from "../../../typings";
+import { AnyConnectionProfile, ProfileState, ProfileType } from "../../../api/configuration/config/types";
 import { VscodeTools } from "../../Tools";
 import { EnvironmentItem } from "./environmentItem";
 
@@ -22,30 +23,69 @@ export class ProfilesNode extends EnvironmentItem {
     this.contextValue = "profilesNode";
   }
 
-  getChildren() {
-    const currentProfile = instance.getConnection()?.getConfig().currentProfile;
-    return getConnectionProfiles()
+  async getChildren() {
+    const connection = instance.getConnection();
+    const config = connection?.getConfig();
+    const currentProfile = config?.currentProfile;
+    const currentProfileType = config?.currentProfileType ?? `local`;
+    const { localProfiles, serverProfiles } = await getConnectionProfilesInGroups();
+    const localProfileItems = localProfiles
+      .filter(profile => Boolean(profile.name))
       .sort((p1, p2) => p1.name.localeCompare(p2.name))
-      .map(profile => new ProfileItem(this, profile, profile.name === currentProfile));
+      .map(profile => new ProfileItem(this, profile, profile.name === currentProfile && profile.type === currentProfileType));
+    const serverProfileItems = serverProfiles
+      .sort((p1, p2) => p1.name.localeCompare(p2.name))
+      .map(profile => new ProfileItem(this, profile, profile.name === currentProfile && profile.type === currentProfileType));
+    return [...localProfileItems, ...serverProfileItems];
   }
 }
 
 export class ProfileItem extends EnvironmentItem {
-  static contextValue = `profileItem`;
   static activeColor = "charts.green";
+  static modifiedColor = "charts.blue";
+  static outOfSyncColor = "charts.yellow";
+  static contextValue = `profileItem`;
 
-  constructor(parent: EnvironmentItem, readonly profile: ConnectionProfile, active: boolean) {
-    super(profile.name, { parent, icon: "person", color: active ? ProfileItem.activeColor : undefined });
+  constructor(parent: EnvironmentItem, readonly profile: AnyConnectionProfile, readonly active: boolean) {
+    const state = profile.type === 'server' ? profile.state : undefined;
+    const icon = profile.type === 'server' ? `vm` : `person`;
+    const color = ProfileItem.getColor(active, profile.type, state);
+    super(profile.name, { parent, icon: icon, color });
 
-    this.contextValue = `${ProfileItem.contextValue}${active ? '_active' : ''}${profile.setLibraryListCommand ? '_command' : ''}`;
-    this.description = active ? l10n.t(`Active profile`) : ``;
-    this.resourceUri = vscode.Uri.from({ scheme: this.contextValue, authority: profile.name, query: active ? "active" : "" });
-    this.tooltip = VscodeTools.profileToToolTip(profile)
+    this.contextValue = `${ProfileItem.contextValue}${active ? '_active' : ''}${profile.setLibraryListCommand ? '_command' : ''}${profile.type === 'server' ? `_${profile.state}` : ''}`;
+    this.description = active ? l10n.t(`Active`) : ``;
+    if (active && profile.type === 'server') {
+      this.description = this.description ? `${this.description} (${profile.state})` : `(${profile.state})`;
+    }
+
+    this.resourceUri = vscode.Uri.from({
+      scheme: ProfileItem.contextValue,
+      authority: profile.name,
+      query: stringify({ active: active || undefined, type: profile.type, state: state })
+    });
+    this.tooltip = VscodeTools.profileToToolTip(profile);
 
     this.command = {
       title: "Edit connection profile",
       command: "code-for-ibmi.environment.profile.edit",
       arguments: [this.profile]
+    }
+  }
+
+  static getColor(active: boolean, type: ProfileType, state?: ProfileState): string | undefined {
+    if (active) {
+      if (type === `server` && state) {
+        switch (state) {
+          case 'In Sync':
+            return ProfileItem.activeColor;
+          case 'Modified':
+            return ProfileItem.modifiedColor;
+          case 'Out of Sync':
+            return ProfileItem.outOfSyncColor;
+        }
+      }
+
+      return ProfileItem.activeColor;
     }
   }
 }

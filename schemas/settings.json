@@ -139,6 +139,8 @@
       "type": "object",
       "properties": {
         "codefori": {
+          "title": "Connection settings",
+          "description": "Set of Code for IBM i connection settings.",
           "$ref": "#/definitions/CodeForI"
         }
       }

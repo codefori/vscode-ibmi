@@ -1,0 +1,138 @@
+{
+  "type": "array",
+  "title": "Profiles",
+  "description": "List of Code for IBM i Profiles which may be used to have collections of library lists, filters, and custom variables to easily switch between on this system",
+  "items": {
+    "$ref": "#/$defs/code4iProfile"
+  },
+  "$defs": {
+    "code4iProfile": {
+      "type": "object",
+      "title": "Profile",
+      "description": "A single profile.",
+      "required": [
+        "name",
+        "currentLibrary",
+        "libraryList",
+        "objectFilters",
+        "ifsShortcuts",
+        "customVariables"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "Profile name"
+        },
+        "currentLibrary": {
+          "type": "string",
+          "title": "Current Library",
+          "description": "Library used as the current library and &CURLIB variable when running Actions.",
+          "default": ""
+        },
+        "libraryList": {
+          "type": "array",
+          "title": "Library List",
+          "description": "Library list used when running Actions.",
+          "default": [],
+          "items": {
+            "type": "string",
+            "title": "Library"
+          }
+        },
+        "objectFilters": {
+          "type": "array",
+          "title": "Object Filters",
+          "description": "List of filters shown in the Object Browser.",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "library",
+              "object",
+              "types",
+              "member",
+              "memberType"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Filter name"
+              },
+              "library": {
+                "type": "string",
+                "description": "Library filter",
+                "maxLength": 10
+              },
+              "object": {
+                "type": "string",
+                "description": "Object filter",
+                "maxLength": 10
+              },
+              "types": {
+                "type": "array",
+                "description": "Object types filter",
+                "items": {
+                  "type": "string",
+                  "description": "Object type. Usually starts with an asterisk."
+                },
+                "default": [
+                  "*ALL"
+                ]
+              },
+              "member": {
+                "type": "string",
+                "description": "Member filter",
+                "maxLength": 10,
+                "default": "*"
+              },
+              "memberType": {
+                "type": "string",
+                "description": "Member type filter",
+                "maxLength": 10,
+                "default": "*"
+              }
+            }
+          }
+        },
+        "ifsShortcuts": {
+          "type": "array",
+          "title": "IFS Shortcuts",
+          "description": "List of directories shown in the IFS Browser.",
+          "default": [],
+          "items": {
+            "type": "string",
+            "title": "Library"
+          }
+        },
+        "customVariables": {
+          "type": "array",
+          "title": "Custom Variables",
+          "description": "Custom variables used when running Actions.",
+          "default": [],
+          "items": {
+            "type": "object",
+            "description": "Variable",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Variable name. Will be forced uppercase."
+              },
+              "value": {
+                "type": "string",
+                "description": "Variable value"
+              }
+            }
+          }
+        },
+        "setLibraryListCommand": {
+          "type": "string",
+          "title": "Set Library List Command",
+          "description": "Library List Command can be used to set your library list based on the result of a command like `CHGLIBL`, or your own command that sets the library list. Commands should be as explicit as possible. When refering to commands and objects, both should be qualified with a library. Put `?` in front of the command to prompt it before execution."
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

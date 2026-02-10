@@ -139,7 +139,7 @@ export class ActionItem extends EnvironmentItem {
   static matchedColor = "charts.yellow";
   static canRunColor = "charts.blue";
   static matchedCanRunColor = "charts.green";
-  static context = `actionItem`;
+  static contextValue = `actionItem`;
 
   private context: ActionContext = {}
 
@@ -165,11 +165,11 @@ export class ActionItem extends EnvironmentItem {
     this.description = this.context.matched ? l10n.t("search match") : undefined;
     this.tooltip = this.action.command;
     this.resourceUri = vscode.Uri.from({
-      scheme: ActionItem.context,
+      scheme: ActionItem.contextValue,
       authority: this.action.name,
       query: stringify({ matched: this.context.matched || undefined, canRun: this.context.canRun || undefined })
     });
-    this.contextValue = `${ActionItem.context}${this.context.canRun ? "_canrun" : ""}${this.context.matched ? '_matched' : ''}`;
+    this.contextValue = `${ActionItem.contextValue}${this.context.canRun ? "_canrun" : ""}${this.context.matched ? '_matched' : ''}`;
   }
 }
 
