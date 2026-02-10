@@ -430,7 +430,7 @@ export class SettingsUI {
 
                   default:
                     if (data.password) {
-                      delete data.privateKeyPath;
+                      data.privateKeyPath = undefined;
                       await deleteStoredPassphrase(context, name);
                       if (data.password !== storedPassword) {
                         // New password was entered, so store the password
