@@ -559,65 +559,6 @@ class EnvironmentView implements vscode.TreeDataProvider<BrowserItem> {
   readonly onDidChangeTreeData = this.emitter.event;
   readonly actionsNode = new ActionsNode();
   readonly profilesNode = new ProfilesNode();
-  private static instance?: EnvironmentView;
-  private configChangeCallbacks: Map<string, Set<(key: string, oldValue: any, newValue: any) => void>> = new Map();
-
-  constructor() {
-    EnvironmentView.instance = this;
-  }
-
-  /**
-   * Register a callback to be invoked when specific configuration keys change
-   * @param keys Array of configuration keys to watch
-   * @param callback Function to call when any of the watched keys change
-   * @returns Disposable to unregister the callback
-   */
-  static registerConfigChangeListener(
-    keys: string[],
-    callback: (key: string, oldValue: any, newValue: any) => void
-  ): vscode.Disposable {
-    if (!EnvironmentView.instance) {
-      throw new Error('EnvironmentView not initialized');
-    }
-
-    for (const key of keys) {
-      if (!EnvironmentView.instance.configChangeCallbacks.has(key)) {
-        EnvironmentView.instance.configChangeCallbacks.set(key, new Set());
-      }
-      EnvironmentView.instance.configChangeCallbacks.get(key)!.add(callback);
-    }
-
-    return new vscode.Disposable(() => {
-      if (EnvironmentView.instance) {
-        for (const key of keys) {
-          EnvironmentView.instance.configChangeCallbacks.get(key)?.delete(callback);
-        }
-      }
-    });
-  }
-
-  /**
-   * Notify registered callbacks about configuration changes
-   * @param changes Map of changed keys with their old and new values
-   */
-  static notifyConfigChanges(changes: Map<string, { oldValue: any, newValue: any }>) {
-    if (!EnvironmentView.instance) {
-      return;
-    }
-
-    for (const [key, { oldValue, newValue }] of changes) {
-      const callbacks = EnvironmentView.instance.configChangeCallbacks.get(key);
-      if (callbacks) {
-        for (const callback of callbacks) {
-          try {
-            callback(key, oldValue, newValue);
-          } catch (error) {
-            console.error(`Error in config change callback for key '${key}':`, error);
-          }
-        }
-      }
-    }
-  }
 
   refresh(target?: BrowserItem) {
     this.emitter.fire(target);
