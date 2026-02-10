@@ -151,7 +151,10 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
             else {
               try {
                 await window.withProgress({ title: l10n.t("Changing password..."), location: ProgressLocation.Notification }, async () => await connection.getComponent<PasswordManager>(PasswordManager.ID)?.changePassword(connection, currentPassword, newPassword));
-                await setStoredPassword(context, connection.currentConnectionName, newPassword);
+                if (await getStoredPassword(context, connection.currentConnectionName)) {
+                  //Only save the new password if one was already stored
+                  await setStoredPassword(context, connection.currentConnectionName, newPassword);
+                }
                 const today = new Date();
                 await instance.getStorage()?.setNextPasswordCheck(today.setDate(today.getDate() + 7));
                 window.showInformationMessage(l10n.t("Password successfully changed for {0} on {1}", connection.currentUser, connection.currentConnectionName));
