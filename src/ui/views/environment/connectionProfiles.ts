@@ -53,7 +53,7 @@ export class ProfileItem extends EnvironmentItem {
     super(profile.name, { parent, icon: icon, color });
 
     this.contextValue = `${ProfileItem.contextValue}${active ? '_active' : ''}${profile.setLibraryListCommand ? '_command' : ''}${profile.type === 'server' ? `_${profile.state}` : ''}`;
-    this.description = active ? l10n.t(`Active profile`) : ``;
+    this.description = active ? l10n.t(`Active`) : ``;
     if (active && profile.type === 'server') {
       this.description = this.description ? `${this.description} (${profile.state})` : `(${profile.state})`;
     }

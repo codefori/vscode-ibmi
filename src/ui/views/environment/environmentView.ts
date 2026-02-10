@@ -35,6 +35,18 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   localActionsWatcher.onDidChange(() => environmentView.actionsNode?.forceRefresh());
   localActionsWatcher.onDidDelete(() => environmentView.actionsNode?.forceRefresh());
 
+
+  instance.subscribe(context, "connected", "Update active profile status on environment view", () => {
+    const connection = instance.getConnection();
+    if (connection) {
+      const config = connection.getConfig();
+      const currentProfile = config.currentProfile;
+      if (currentProfile) {
+        updateUIContext(currentProfile);
+      }
+    }
+  });
+
   context.subscriptions.push(
     environmentTreeViewer,
     localActionsWatcher,
@@ -285,7 +297,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         }
 
         await updateConnectionProfile(profile);
-        
+
         // Do an explicit refresh as creation / copy of a profile doesn't impact the active profile so onCodeForIBMiConfigurationChange is not called
         environmentView.refresh();
 
