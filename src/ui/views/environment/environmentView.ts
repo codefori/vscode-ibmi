@@ -41,9 +41,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     if (connection) {
       const config = connection.getConfig();
       const currentProfile = config.currentProfile;
-      if (currentProfile) {
-        updateUIContext(currentProfile);
-      }
+      updateUIContext(currentProfile);
     }
   });
 
