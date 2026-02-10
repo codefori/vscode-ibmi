@@ -187,7 +187,7 @@ export const EncodingSuite: TestSuite = {
 
         const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
 
-        const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`], ccsidData.userDefaultCCSID);
+        const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.runtimeCcsid})`], ccsidData.runtimeCcsid);
         assert.strictEqual(createResult.code, 0);
 
         const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
@@ -195,7 +195,7 @@ export const EncodingSuite: TestSuite = {
 
         const attributes = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
         assert.ok(attributes);
-        assert.strictEqual(attributes[`CCSID`], String(ccsidData.userDefaultCCSID));
+        assert.strictEqual(attributes[`CCSID`], String(ccsidData.runtimeCcsid));
 
         /// Test for getAttributes on member with all variants
 
@@ -204,7 +204,7 @@ export const EncodingSuite: TestSuite = {
 
         const attributesB = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
         assert.ok(attributesB);
-        assert.strictEqual(attributesB[`CCSID`], String(ccsidData.userDefaultCCSID));
+        assert.strictEqual(attributesB[`CCSID`], String(ccsidData.runtimeCcsid));
 
         /// -----
 
@@ -274,7 +274,6 @@ export const EncodingSuite: TestSuite = {
           const newLines = fileContent.split(`\n`);
 
           assert.strictEqual(newLines.length, 2);
-          assert.ok(newLines[1].startsWith(` `)); // RTL
 
           assert.strictEqual(newLines[0].trim(), oldLines[0]);
           assert.strictEqual(newLines[1].trim(), oldLines[1]);

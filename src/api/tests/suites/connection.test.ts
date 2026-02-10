@@ -131,7 +131,8 @@ describe(`connection tests`, { concurrent: true }, () => {
   it('runCommand (ILE)', async () => {
     const result = await connection.runCommand({
       command: `DSPJOB OPTION(*DFNA)`,
-      environment: `ile`
+      environment: `ile`,
+      getSpooledFiles: true
     });
 
     expect(result?.code).toBe(0);
@@ -172,7 +173,8 @@ describe(`connection tests`, { concurrent: true }, () => {
       env: {
         '&LIBL': `QSYSINC`,
         '&CURLIB': `QSYSINC`
-      }
+      },
+      getSpooledFiles: true
     });
 
     expect(resultB?.code).toBe(0);
@@ -186,7 +188,8 @@ describe(`connection tests`, { concurrent: true }, () => {
       environment: `ile`,
       env: {
         '&LIBL': `QTEMP QSYSINC`,
-      }
+      },
+      getSpooledFiles: true
     });
 
     expect(result?.code).toBe(0);
@@ -208,6 +211,7 @@ describe(`connection tests`, { concurrent: true }, () => {
     const result = await connection?.runCommand({
       command: `DSPLIBL`,
       environment: `ile`,
+      getSpooledFiles: true
     });
 
     config!.libraryList = ogLibl;
@@ -307,6 +311,11 @@ describe(`connection tests`, { concurrent: true }, () => {
     if (connection.remoteFeatures.jdk17) {
       const jdk17 = getJavaHome(connection, '17');
       expect(jdk17).toBe(connection.remoteFeatures.jdk17);
+    }
+
+    if (connection.remoteFeatures.jdk21) {
+      const jdk21 = getJavaHome(connection, '21');
+      expect(jdk21).toBe(connection.remoteFeatures.jdk21);
     }
 
     expect(getJavaHome(connection, '666')).toBeUndefined();

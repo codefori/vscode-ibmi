@@ -7,7 +7,7 @@ import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
-import { reconnectFS } from "./FSUtils";
+import { waitOnReconnect } from "./FSUtils";
 import { SourceDateHandler } from "./sourceDateHandler";
 
 export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
@@ -182,7 +182,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             if (retrying) {
                 throw new FileSystemError("Not connected to IBM i");
             } else {
-                if (await reconnectFS(uri)) {
+                if (await waitOnReconnect()) {
                     this.updateMemberSupport(); //this needs to be done right after reconnecting, before the member is read (the connect event may be triggered too late at this point)
                     return this.readFile(uri, true);
                 } else {

@@ -1,5 +1,3 @@
-
-import os from "os";
 import { ConnectionData } from "../../types";
 import { ConnectionConfig } from "./types";
 import { Config, VirtualConfig } from "./VirtualConfig";
@@ -14,7 +12,6 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     autoClearTempData: parameters.autoClearTempData || false,
     customVariables: parameters.customVariables || [],
     connectionProfiles: parameters.connectionProfiles || [],
-    commandProfiles: parameters.commandProfiles || [],
     ifsShortcuts: parameters.ifsShortcuts || [],
     /** Default auto sorting of shortcuts to off  */
     autoSortIFSShortcuts: parameters.autoSortIFSShortcuts || false,
@@ -38,12 +35,15 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     debugSepPort: (parameters.debugSepPort || "8008"),
     debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
     debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
+    debugIgnoreCertificateErrors: (parameters.debugIgnoreCertificateErrors === true),
     readOnlyMode: (parameters.readOnlyMode === true),
     quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
     defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
     protectedPaths: (parameters.protectedPaths || []),
     showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
-    lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir())
+    secureSQL: (parameters.secureSQL === true),
+    keepActionSpooledFiles: (parameters.keepActionSpooledFiles === true),
+    mapepireJavaVersion: (parameters.mapepireJavaVersion || "default"),
   }
 }
 
@@ -73,7 +73,7 @@ export class ConnectionManager {
   }
 
   async sort() {
-    const connections = await this.getAll();
+    const connections = this.getAll();
     connections.sort((a, b) => a.name.localeCompare(b.name));
     return this.configMethod.set(`connections`, connections);
   }
@@ -87,7 +87,7 @@ export class ConnectionManager {
   }
 
   async storeNew(data: ConnectionData) {
-    const connections = await this.getAll();
+    const connections = this.getAll();
     const newId = connections.length;
     connections.push(data);
     await this.setAll(connections);

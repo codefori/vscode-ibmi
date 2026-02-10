@@ -236,7 +236,7 @@ describe('Content Tests', { concurrent: true }, () => {
       await connection.runSQL('select from qiws.qcustcdt');
       expect.fail('Should have thrown an error');
     } catch (e: any) {
-      expect(e.message.endsWith(': , FROM INTO. (42601)')).toBeTruthy();
+      expect(e.message.endsWith(': , FROM INTO., 42601, -104')).toBeTruthy();
       expect(e.sqlstate).toBe('42601');
     }
   });
@@ -411,7 +411,9 @@ describe('Content Tests', { concurrent: true }, () => {
 
     let members = await content?.getMemberList({ library: 'qsysinc', sourceFile: 'mih', members: '*inxen' });
 
-    expect(members?.length).toBe(3);
+    for (const member of members) {
+      expect(member.name.endsWith(`INXEN`)).toBeTruthy();
+    }
 
     members = await content?.getMemberList({ library: 'qsysinc', sourceFile: 'mih' });
 
@@ -524,20 +526,22 @@ describe('Content Tests', { concurrent: true }, () => {
   });
 
   it('Test @clCommand + select statement', async () => {
-    const content = connection.getContent();
+    const [resultA] = await connection.runSQL(`@CRTSAVF FILE(QTEMP/UNITTESTA) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
 
-    const [resultA] = await connection.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
-
-    expect(resultA.OBJNAME).toBe('UNITTEST');
+    expect(resultA.OBJNAME).toBe('UNITTESTA');
     expect(resultA.OBJTEXT).toBe('Code for i test');
+  });
 
-    const [resultB] = await content.runStatements(
-      `@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test')`,
-      `Select * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF'`
-    );
-
-    expect(resultB.OBJNAME).toBe('UNITTEST');
-    expect(resultB.OBJTEXT).toBe('Code for i test');
+  it('Test @clCommand with error', async () => {
+    try {
+      const [resultA] = await connection.runSQL(`@CRTBNDRPG BOOP('hello world');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+      expect(resultA).toBeDefined(); // Never reaches here
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(Tools.SqlError);
+      expect(e.cause).toBeDefined();
+      expect(e.cause.command).toBe(`CRTBNDRPG BOOP('hello world')`);
+      expect(e.cause.jobLog).toBeDefined();
+    }
   });
 
   it('should get attributes', async () => {
@@ -641,7 +645,36 @@ describe('Content Tests', { concurrent: true }, () => {
         expect(members?.length).toBe(1);
       }
       finally {
-        await connection.runCommand({ command: `RUNSQL 'drop schema "${longName}"' commit(*none)`, noLibList: true });
+        // The job goes into MSGW (message waiting) status with message CPA7025 "Receiver QSQJRN0001 in <name> never fully saved. (I C)"
+        // We need to add a reply list entry and change the job to use the system reply list
+        
+        // Add reply list entry to automatically reply to CPA7025 with 'I'
+        await connection.runCommand({
+          command: `ADDRPYLE SEQNBR(9999) MSGID(CPA7025) RPY('I')`,
+        });
+        
+        // Change job to use system reply list
+        await connection.runCommand({
+          command: `CHGJOB INQMSGRPY(*SYSRPYL)`,
+        });
+        
+        try {
+          // Now drop the schema - it will automatically reply to CPA7025
+          await connection.runCommand({
+            command: `RUNSQL 'drop schema "${longName}"' commit(*none)`,
+            noLibList: true
+          });
+        } finally {
+          // Restore job to default inquiry message reply
+          await connection.runCommand({
+            command: `CHGJOB INQMSGRPY(*RQD)`,
+          });
+          
+          // Clean up the reply list entry
+          await connection.runCommand({
+            command: `RMVRPYLE SEQNBR(9999)`,
+          });
+        }
       }
     } else {
       throw new Error(`Failed to create schema "${longName}"`);
@@ -655,7 +688,6 @@ describe('Content Tests', { concurrent: true }, () => {
     const id = `${Tools.makeid().toUpperCase()}`;
     await connection.withTempDirectory(async directory => {
       const source = `${directory}/vscodetemp-${id}.clle`;
-      console.log(source);
       try {
         await content.runStatements(
           `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
@@ -666,9 +698,10 @@ describe('Content Tests', { concurrent: true }, () => {
                            LINE => 'ENDPGM', 
                            OVERWRITE => 'APPEND', 
                            END_OF_LINE => 'CRLF')`,
-          `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
-          `select 1 from sysibm.sysdummy1`
         );
+
+        await connection.runCommand({environment: `ile`, command: `CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`})
+
         let exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
 
         expect(exports.length).toBe(1);

@@ -1,4 +1,4 @@
-import { TreeItemCollapsibleState, TreeItem, ThemeIcon, ThemeColor, ProviderResult, MarkdownString } from "vscode"
+import { MarkdownString, ProviderResult, ThemeColor, ThemeIcon, TreeItem, TreeItemCollapsibleState } from "vscode"
 import { FocusOptions, IBMiMember, IBMiObject, ObjectFilters, WithPath } from "../api/types"
 
 export type BrowserItemParameters = {
@@ -31,7 +31,13 @@ export class BrowserItem extends TreeItem {
   }
 
   getChildren?(): ProviderResult<BrowserItem[]>;
-  refresh?(): void;
+  refresh?(): Thenable<void>;
   reveal?(options?: FocusOptions): Thenable<void>;
   getToolTip?(): Promise<MarkdownString | undefined>;
+}
+
+export type SemanticVersion = {
+  major: number
+  minor: number
+  patch: number
 }

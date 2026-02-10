@@ -1,14 +1,14 @@
 
 import path from 'path';
-import tar from 'tar';
+import { create as tarCreate, t as tarT } from 'tar';
 import tmp from 'tmp';
 import vscode from 'vscode';
+import { getActions, getLocalActionsFiles } from '../../api/actions';
 import IBMi from '../../api/IBMi';
 import IBMiContent from '../../api/IBMiContent';
 import { Tools } from '../../api/Tools';
 import { instance } from '../../instantiate';
 import { DeploymentParameters } from '../../typings';
-import { getLocalActions, getLocalActionsFiles } from './actions';
 import { DeployTools } from './deployTools';
 
 export namespace Deployment {
@@ -82,7 +82,7 @@ export namespace Deployment {
               });
             }
 
-            getLocalActions(workspace).then(result => {
+            getActions(workspace).then(result => {
               if (result.length === 0) {
                 vscode.window.showInformationMessage(
                   `There are no local Actions defined for this project.`,
@@ -161,7 +161,7 @@ export namespace Deployment {
         workspace = uri;
       }
 
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasLocalActions`, (await getLocalActionsFiles(workspace)).length > 0);
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasLocalActions`, workspace ? (await getLocalActionsFiles(workspace)).length > 0 : false);
     };
 
     watcher.onDidChange(uri => {
@@ -253,7 +253,7 @@ export namespace Deployment {
       const toSend = files.map(file => path.relative(parameters.workspaceFolder.uri.fsPath, file.fsPath));
 
       progress?.report({ message: `creating deployment tarball for ${toSend.length} file(s)...` });
-      tar.create({ cwd: parameters.workspaceFolder.uri.fsPath, sync: true, file: localTarball.name }, toSend);
+      tarCreate({ cwd: parameters.workspaceFolder.uri.fsPath, sync: true, file: localTarball.name }, toSend);
       deploymentLog.appendLine(`Created deployment tarball ${localTarball.name}`);
 
       progress?.report({ message: `sending deployment tarball...` });
@@ -268,7 +268,7 @@ export namespace Deployment {
       }
 
       const entries: string[] = [];
-      tar.t({ sync: true, file: localTarball.name, onentry: entry => entries.push(entry.path) });
+      tarT({ sync: true, file: localTarball.name, onentry: entry => entries.push(entry.path) });
       deploymentLog.appendLine(`${entries.length} file(s) uploaded to ${parameters.remotePath}`);
       entries.sort().map(e => `\t${e}`).forEach(deploymentLog.appendLine);
 

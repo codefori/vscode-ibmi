@@ -1,4 +1,5 @@
 import path from "path";
+import { SemanticVersion } from "../../typings";
 import IBMi from "../IBMi";
 
 export const SERVICE_CERTIFICATE = `debug_service.pfx`;
@@ -81,16 +82,20 @@ export class DebugConfiguration {
   getNavigatorLogFile() {
     return `${this.getRemoteServiceWorkspace()}/startDebugServiceNavigator.log`;
   }
+
+  getRemoteServiceSecuredPort() {
+    return this.getOrDefault("DBGSRV_SECURED_PORT", "8005");
+  }
+
+  getRemoteServiceSepDaemonPort() {
+    return this.getOrDefault("DBGSRV_SEP_DAEMON_PORT", "8008");
+  }
 }
 
 interface DebugServiceDetails {
   version: string
   java: string
-  semanticVersion: () => {
-    major: number
-    minor: number
-    patch: number
-  }
+  semanticVersion: () => SemanticVersion
 }
 
 let debugServiceDetails: DebugServiceDetails | undefined;

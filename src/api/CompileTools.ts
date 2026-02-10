@@ -1,5 +1,6 @@
 
 import IBMi from './IBMi';
+import { SimpleQueue } from './queue';
 import { Tools } from './Tools';
 import { CommandResult, RemoteCommand, StandardIO } from './types';
 import { Variables } from './variables';
@@ -12,10 +13,16 @@ export interface ILELibrarySettings {
 export namespace CompileTools {
   export const NEWLINE = `\r\n`;
   export const DID_NOT_RUN = -123;
+  const HIDE_MESSAGE_IDS = [`CPF3485`, `SQL0462`];
+
+  const ileQueue = new SimpleQueue();
+
+  let jobLogOrdinal = 0;
 
   interface RunCommandEvents {
-    writeEvent?: (content: string) => void;
-    commandConfirm?: (command: string) => Promise<string>;
+    writeEvent?: (content: string) => void
+    commandConfirm?: (command: string) => Promise<string>
+    updateProgress?: (message: string) => void
   }
 
   /**
@@ -40,7 +47,9 @@ export namespace CompileTools {
       let commandString = variables.expand(options.command);
 
       if (events.commandConfirm) {
+        events.updateProgress?.(" - Prompting...");
         commandString = await events.commandConfirm(commandString);
+        events.updateProgress?.("");
       }
 
       if (commandString) {
@@ -66,7 +75,7 @@ export namespace CompileTools {
           }
         } : {};
 
-        let commandResult;
+        let commandResult: CommandResult;
         switch (options.environment) {
           case `pase`:
             commandResult = await connection.sendCommand({
@@ -90,17 +99,69 @@ export namespace CompileTools {
 
           case `ile`:
           default:
-            // escape $ and # in commands
-            commandResult = await connection.sendQsh({
-              command: [
-                ...options.noLibList ? [] : buildLiblistCommands(connection, ileSetup),
-                ...commands.map(command =>
-                  `${`system "${IBMi.escapeForShell(command)}"`}`,
-                )
-              ].join(` && `),
-              directory: cwd,
-              ...callbacks
+            commandResult = {
+              code: 0,
+              stderr: ``,
+              stdout: ``,
+              command: commands.join(`, `),
+            };
+
+            await ileQueue.next(async () => {
+              const start = options.getSpooledFiles ? (await connection.runSQL('Values Current TimeStamp'))[0]["00001"] : undefined;
+              try {
+                await connection.runSQL([
+                  ...(cwd ? [`@CHGCURDIR DIR('${cwd}')`] : []),
+                  ...(options.noLibList ? [] : [`@CHGLIBL CURLIB(${ileSetup.currentLibrary}) LIBL(${ileSetup.libraryList.join(` `)})`]),
+                  ...commands.map(c => `@${c}`)
+                ]);
+              } catch (e: any) {
+                commandResult.stdout = e.message;
+                commandResult.code = 1;
+              }
+
+              // Then fetch the job log
+              try {
+                // We only care about messages since the last run :)
+                const lastJobLog = await connection.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) where ordinal_position > ${jobLogOrdinal}`);
+                if (lastJobLog?.length) {
+                  commandResult.stderr = lastJobLog
+                    .filter(r => !HIDE_MESSAGE_IDS.includes(r.MESSAGE_ID as string))
+                    .map(r => `${r.MESSAGE_ID}: ${r.MESSAGE_TEXT}`).join(`\n`);
+                  callbacks.onStderr?.(Buffer.from(commandResult.stderr));
+                  jobLogOrdinal = Number(lastJobLog[lastJobLog.length - 1].ORDINAL_POSITION);
+                } else {
+                  jobLogOrdinal = 0; // Reset if no job log
+                }
+              } catch (e) {
+                commandResult.code = 3;
+              }
+
+              // Fetch the spooled files if requested
+              if (start) {
+                try {
+                  const spooledOutputs: string[] = [];
+                  const spooledFiles = await connection.runSQL(`SELECT QUALIFIED_JOB_NAME, SPOOLED_FILE_NAME,	SPOOLED_FILE_NUMBER FROM TABLE(QSYS2.SPOOLED_FILE_INFO(STARTING_TIMESTAMP => '${start}', USER_DATA => '${connection.splfUserData}', STATUS => '*HELD'))`);
+                  for (const spooledFile of spooledFiles) {
+                    spooledOutputs.push((await connection.runSQL(`SELECT spooled_data as LINE FROM TABLE(systools.spooled_file_data(
+                        job_name => '${spooledFile.QUALIFIED_JOB_NAME}',
+                        spooled_file_name => '${spooledFile.SPOOLED_FILE_NAME}', 
+                        spooled_file_number => ${spooledFile.SPOOLED_FILE_NUMBER})
+                      )`)).map(row => String(row.LINE).trimEnd()).join("\n"));
+                  }
+                  commandResult.stdout = spooledOutputs.join("\n\n");
+                  callbacks.onStdout?.(Buffer.from(commandResult.stdout));
+                } catch (e) {
+                  commandResult.code = 2;
+                  callbacks.onStderr?.(Buffer.from(`Failed to get spool output: ${JSON.stringify(e, undefined, 2)}`));
+                }
+                finally {
+                  if (!connection.getConfig().keepActionSpooledFiles) {
+                    await connection.runSQL(`@DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${connection.splfUserData})`);
+                  }
+                }
+              }
             });
+
             break;
         }
 

@@ -26,7 +26,8 @@ export interface RemoteCommand {
   environment?: ActionEnvironment;
   cwd?: string;
   env?: Record<string, string> | Variables;
-  noLibList?: boolean
+  noLibList?: boolean,
+  getSpooledFiles?: boolean
 }
 
 export interface CommandData extends StandardIO {
@@ -78,14 +79,11 @@ export interface ConnectionData {
   keepaliveInterval?: number;
   readyTimeout?: number;
   sshDebug?: boolean;
+  enableMfa?: boolean;
 }
 
 export interface Server {
   name: string
-}
-
-export interface Profile {
-  profile: string
 }
 
 export interface QsysPath {

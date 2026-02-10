@@ -143,27 +143,10 @@ export default class IBMiContent {
    * @param member
    * @param localPath
    */
-  async downloadMemberContent(library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
-  /**
-   * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.downloadMemberContent()} without the `asp` parameter instead.
-   *
-   * @param asp
-   * @param library
-   * @param sourceFile
-   * @param member
-   * @param localPath
-   */
-  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string): Promise<string>;
-  async downloadMemberContent(aspOrLibrary: string | undefined, libraryOrSourceFile: string, sourceFileOrMember: string, memberOrLocalPath?: string, localPath?: string): Promise<string> {
-    const smallSignature = Boolean(aspOrLibrary && libraryOrSourceFile && sourceFileOrMember && ((memberOrLocalPath && !localPath) || !memberOrLocalPath));
-
-    if (!smallSignature) {
-      console.warn(`[Code for IBM i] downloadMemberContent with 5 parameters is deprecated and will be removed by 3.0.0. Use downloadMemberContent with 4 parameters instead (no ASP).`);
-    }
-
-    const library = this.ibmi.upperCaseName(smallSignature ? String(aspOrLibrary) : libraryOrSourceFile);
-    const sourceFile = this.ibmi.upperCaseName(smallSignature ? libraryOrSourceFile : sourceFileOrMember);
-    const member = this.ibmi.upperCaseName(smallSignature ? sourceFileOrMember : String(memberOrLocalPath));
+  async downloadMemberContent(library: string, sourceFile: string, member: string, localPath?: string): Promise<string> {
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
 
     const asp = await this.ibmi.lookupLibraryIAsp(library);
     const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
@@ -175,9 +158,9 @@ export default class IBMiContent {
         copyResult = { code: 0, stdout: '', stderr: '' };
         try {
           await this.ibmi.runSQL([
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
-          ].join("\n"));
+            `Drop table if exists QTEMP.QTEMPSRC`,
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`]);
         } catch (error: any) {
           copyResult.code = -1;
           copyResult.stderr = String(error);
@@ -226,36 +209,24 @@ export default class IBMiContent {
    * @param member
    * @param content
    */
-  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
-
-  /**
-   * @deprecated Will be removed in `v3.0.0`; use {@link IBMiContent.uploadMemberContent()} without the `asp` parameter instead.
-   * @param asp
-   * @param library
-   * @param sourceFile
-   * @param member
-   * @param content
-   */
-  async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean>;
-  async uploadMemberContent(aspOrLibrary: string | undefined, libraryOrFile: string, sourceFileOrMember: string, memberOrContent: string | Uint8Array, content?: string | Uint8Array): Promise<boolean> {
-    const fullSignature = Boolean(content);
-
-    if (fullSignature) {
-      console.warn(`[Code for IBM i] uploadMemberContent with 5 parameters is deprecated and will be removed by 3.0.0. Use uploadMemberContent with 4 parameters instead (no ASP).`);
-    }
-
-    const library = this.ibmi.upperCaseName(fullSignature ? libraryOrFile : String(aspOrLibrary));
-    const sourceFile = this.ibmi.upperCaseName(fullSignature ? sourceFileOrMember : libraryOrFile);
-    const member = this.ibmi.upperCaseName(fullSignature ? String(memberOrContent) : sourceFileOrMember);
+  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean> {
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
     const asp = await this.ibmi.lookupLibraryIAsp(library);
 
     const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
 
     try {
-      await writeFileAsync(tmpobj, content || memberOrContent, `utf8`);
+      await writeFileAsync(tmpobj, content, `utf8`);
       const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       const tempRmt = this.getTempRemote(path);
+
+      const touchUnicode = await this.ibmi.sendCommand({ command: `touch ${tempRmt} && attr ${tempRmt} CCSID=1208` });
+      if (touchUnicode.code !== 0) {
+        throw new Error(`Could not create UTF-8 file: ${touchUnicode.stderr}`)
+      }
       await client.putFile(tmpobj, tempRmt);
 
       let copyResult: CommandResult;
@@ -263,10 +234,11 @@ export default class IBMiContent {
         copyResult = { code: 0, stdout: '', stderr: '' };
         try {
           await this.ibmi.runSQL([
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+            `Drop table if exists QTEMP.QTEMPSRC`,
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
             `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
-          ].join("\n"));
+            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`
+          ]);
         } catch (error: any) {
           copyResult.code = -1;
           copyResult.stderr = String(error);
@@ -300,7 +272,7 @@ export default class IBMiContent {
    * @returns result set
    */
   runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
-    return this.ibmi.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
+    return this.ibmi.runSQL(statements);
   }
 
   /**
@@ -332,7 +304,7 @@ export default class IBMiContent {
     const copyResult = await this.ibmi.runCommand({
       command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
         `TOSTMF('${tempRmt}') ` +
-        `MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
+        `MBROPT(*REPLACE) STMFCCSID(1208) STMFCODPAG(*STMF) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
       noLibList: true
     });
 
@@ -475,7 +447,7 @@ export default class IBMiContent {
       lines.forEach(line => {
         const isNotFound = line.includes(`CPF2110`);
         if (isNotFound) {
-          const libraryReference = sanitized.find(lib => line.includes(lib));
+          const libraryReference = sanitized.find(library => line.includes(` ${library} `));
 
           // If there is an error about the library, remove it
           if (libraryReference) {
@@ -512,6 +484,7 @@ export default class IBMiContent {
       }
     }
 
+    const usLocalLibrary = this.ibmi.sysNameInAmerican(localLibrary);
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
     const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
@@ -522,21 +495,24 @@ export default class IBMiContent {
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     // Here's the downlow on CCSIDs here.
-    // SYSTABLES takes the name in the local format (with the local variant characters)
-    // OBJECT_STATISTICS takes the name in the system format
+    // SYSTABLES takes the name in CCSID 37 format
+    // OBJECT_STATISTICS takes the name in the connection CCSID format
 
-    const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${objectFilter.replace('*', '%')}'` : '';
+    const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
 
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
     let createOBJLIST: string[];
+    const usVariants = this.ibmi.variantChars.american;
+    const localVariants = this.ibmi.variantChars.local;
+    let translateName = false;
     if (sourceFilesOnly) {
-      //DSPFD only
+      //DSPFD only      
       createOBJLIST = [
         `with SRCFILES as (`,
         `  select `,
-        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10) for bit data)) as LIBRARY,`,
-        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10) for bit data)) as NAME,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,`,
         `    '*FILE'             as TYPE,`,
         `    'PF'                as ATTRIBUTE,`,
         `    t.TABLE_TEXT        as TEXT,`,
@@ -547,8 +523,9 @@ export default class IBMiContent {
         `  where t.FILE_TYPE = 'S'`,
         `)`,
         `SELECT * FROM SRCFILES as f`,
-        `where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}`,
+        `where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
       ];
+      translateName = true;
     } else if (!withSourceFiles) {
       //DSPOBJD only
       createOBJLIST = [
@@ -572,19 +549,15 @@ export default class IBMiContent {
       createOBJLIST = [
         `with SRCFILES as (`,
         `  select `,
-        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10) for bit data)) as LIBRARY,`,
-        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10) for bit data)) as NAME,`,
-        `    '*FILE'             as TYPE,`,
-        `    'PF'                as ATTRIBUTE,`,
-        `    t.TABLE_TEXT        as TEXT,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,`,
         `    1                   as IS_SOURCE,`,
-        `    t.ROW_LENGTH        as SOURCE_LENGTH,`,
-        `    t.IASP_NUMBER       as IASP_NUMBER`,
+        `    t.ROW_LENGTH        as SOURCE_LENGTH`,
         `  from QSYS2.SYSTABLES as t`,
         `  where t.FILE_TYPE = 'S'`,
         `), SRCPF as (`,
-        `  SELECT * FROM SRCFILES as f`,
-        `  where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}`,
+        `SELECT replace(replace(replace(NAME, '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}') NAME, IS_SOURCE, SOURCE_LENGTH FROM SRCFILES as f`,
+        `  where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
@@ -621,7 +594,7 @@ export default class IBMiContent {
 
     return objects.map(object => ({
       library: localLibrary,
-      name: Boolean(object.IS_SOURCE) ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
+      name: translateName ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
       text: String(object.TEXT || ""),
@@ -723,12 +696,12 @@ export default class IBMiContent {
     const statement =
       `with MEMBERS as (
         select
-          rtrim(cast(a.SYSTEM_TABLE_SCHEMA as char(10) for bit data)) as LIBRARY,
+          rtrim(cast(a.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,
           b.AVGROWSIZE as RECORD_LENGTH,
           a.IASP_NUMBER as ASP,
-          rtrim(cast(a.SYSTEM_TABLE_NAME as char(10) for bit data)) AS SOURCE_FILE,
-          rtrim(cast(b.SYSTEM_TABLE_MEMBER as char(10) for bit data)) as NAME,
-          coalesce(rtrim(cast(b.SOURCE_TYPE as varchar(10) for bit data)), '') as TYPE,
+          rtrim(cast(a.SYSTEM_TABLE_NAME as char(10))) AS SOURCE_FILE,
+          rtrim(cast(b.SYSTEM_TABLE_MEMBER as char(10))) as NAME,
+          coalesce(rtrim(cast(b.SOURCE_TYPE as varchar(10))), '') as TYPE,
           coalesce(rtrim(varchar(b.PARTITION_TEXT)), '') as TEXT,
           b.NUMBER_ROWS as LINES,
           extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
@@ -738,9 +711,9 @@ export default class IBMiContent {
             on ( b.SYSTEM_TABLE_SCHEMA, b.SYSTEM_TABLE_NAME ) = ( a.SYSTEM_TABLE_SCHEMA, a.SYSTEM_TABLE_NAME )
       )
       select * from MEMBERS
-      where LIBRARY = '${library}'
-        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${sourceFile}'` : ``}
-        ${singleMember ? `and NAME like '${singleMember}'` : ''}
+      where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
+        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
+        ${singleMember ? `and NAME like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
         ${singleMemberExtension ? `and TYPE like '${singleMemberExtension}'` : ''}
       order by ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
@@ -1081,23 +1054,6 @@ export default class IBMiContent {
     const userAuthorities = row?.AUTHORITIES ? String(row.AUTHORITIES).split(" ").filter(Boolean).filter(Tools.distinct) : [];
     const missing = authorities.filter(auth => !userAuthorities.includes(auth));
     return { valid: !Boolean(missing.length), missing };
-  }
-
-  async getSshCcsid() {
-    const sql = `
-    with SSH_DETAIL (id, iid) as (
-      select substring(job_name, locate('/', job_name, locate('/', job_name) + 1) + 1, 10) as id, internal_job_id as iid from qsys2.netstat_job_info j where local_address = '0.0.0.0' and local_port = ${this.ibmi.currentPort}
-    )
-    select DEFAULT_CCSID, CCSID from table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => (select id from SSH_DETAIL), DETAILED_INFO => 'ALL')) where INTERNAL_JOB_ID = (select iid from SSH_DETAIL)
-    `;
-
-    const [result] = await this.ibmi.runSQL(sql);
-
-    if (!result) {
-      return this.ibmi.getCcsids().qccsid;
-    }
-
-    return Number(result.CCSID === IBMi.CCSID_NOCONVERSION ? result.DEFAULT_CCSID : result.CCSID);
   }
 
   async getSysEnvVars() {

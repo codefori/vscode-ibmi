@@ -1,5 +1,5 @@
 import { FilterType } from "../../Filter";
-import { DeploymentMethod, ConnectionData } from "../../types";
+import { ConnectionData, DeploymentMethod } from "../../types";
 
 export type DefaultOpenMode = "browse" | "edit";
 export type ReconnectMode = "always" | "never" | "ask";
@@ -8,7 +8,6 @@ export interface ConnectionConfig extends ConnectionProfile {
   host: string;
   autoClearTempData: boolean;
   connectionProfiles: ConnectionProfile[];
-  commandProfiles: CommandProfile[];
   autoSortIFSShortcuts: boolean;
   tempLibrary: string;
   tempDir: string;
@@ -27,12 +26,16 @@ export interface ConnectionConfig extends ConnectionProfile {
   debugSepPort: string;
   debugUpdateProductionFiles: boolean;
   debugEnableDebugTracing: boolean;
+  debugIgnoreCertificateErrors:boolean;
   readOnlyMode: boolean;
   quickConnect: boolean;
   defaultDeploymentMethod: DeploymentMethod | '';
   protectedPaths: string[];
   showHiddenFiles: boolean;
-  lastDownloadLocation: string;
+  secureSQL: boolean;
+  keepActionSpooledFiles: boolean;
+  mapepireJavaVersion: string
+  currentProfile?: string
   [name: string]: any;
 }
 
@@ -64,11 +67,7 @@ export interface ConnectionProfile {
   objectFilters: ObjectFilters[]
   ifsShortcuts: string[]
   customVariables: CustomVariable[]
-}
-
-export interface CommandProfile {
-  name: string;
-  command: string;
+  setLibraryListCommand?: string
 }
 
 export interface StoredConnection {

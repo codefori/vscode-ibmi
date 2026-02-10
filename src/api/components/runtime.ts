@@ -46,7 +46,7 @@ export class IBMiComponentRuntime {
       const newState = await this.component.getRemoteState(this.connection, installDirectory);
       await this.setState(newState);
       if (newState !== `Installed` && !this.component.getIdentification().userManaged) {
-        this.update(installDirectory);
+        await this.update(installDirectory);
       }
     }
     catch (error) {
