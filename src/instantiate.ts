@@ -119,7 +119,7 @@ async function updateConnectedBar() {
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       terminalMenuItem,
       actionsMenuItem,
-      `[$(key) Change password](command:code-for-ibmi.changePassword)`,
+      `[$(key) Change Password](command:code-for-ibmi.changePassword)`,
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
         :

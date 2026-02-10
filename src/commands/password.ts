@@ -125,7 +125,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
         let done = false;
         let error = "";
         while (!done) {
-          const form = new CustomUI().addHeading(l10n.t("Change password for {0} on {1}", connection.currentUser, connection.currentConnectionName));
+          const form = new CustomUI().addHeading(l10n.t("Change password for {0} on {1}", connection.currentUser, connection.currentHost));
           if (error) {
             form.addParagraph(`<span style="color: var(--vscode-errorForeground)">${error}</span>`);
           }
@@ -157,7 +157,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
                 }
                 const today = new Date();
                 await instance.getStorage()?.setNextPasswordCheck(today.setDate(today.getDate() + 7));
-                window.showInformationMessage(l10n.t("Password successfully changed for {0} on {1}", connection.currentUser, connection.currentConnectionName));
+                window.showInformationMessage(l10n.t("Password successfully changed for {0} on {1}", connection.currentUser, connection.currentHost));
                 done = true;
               }
               catch (e: any) {
