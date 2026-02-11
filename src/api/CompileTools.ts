@@ -29,6 +29,7 @@ export namespace CompileTools {
    * Execute a command
    */
   export async function runCommand(connection: IBMi, options: RemoteCommand, events: RunCommandEvents = {}): Promise<CommandResult> {
+    await updateDefaultUserLibraries(connection);
     const config = connection.getConfig();
     if (config && connection) {
       const cwd = options.cwd;
@@ -194,4 +195,34 @@ export namespace CompileTools {
       `liblist -a ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(buildLibraryList(config)).join(` `))}`
     ];
   }
+
+   /**
+   * Update connection.defaultUserLibraries by fetching the current library list from the server
+   * @param connection IBMi connection
+   */
+
+  async function updateDefaultUserLibraries(connection: IBMi): Promise<void> {
+    const liblResult = await connection.sendQsh({
+      command: `liblist`
+    });
+
+    if (liblResult.code === 0 && liblResult.stdout) {
+      const userLibraries: string[] = [];
+      const libraryList = liblResult.stdout.split(`\n`);
+
+      for (const line of libraryList) {
+        const lib = line.substring(0, 10).trim();
+        const type = line.substring(12).trim();
+
+        if (lib && type === `USR`) {
+          userLibraries.push(lib);
+        }
+      }
+
+    // Update connection.defaultUserLibraries with the libraries from the server
+    connection.defaultUserLibraries = userLibraries;
+
+    }
+  }
+
 }
