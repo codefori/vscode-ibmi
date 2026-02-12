@@ -29,6 +29,14 @@ export interface ConnectionResult {
   errorCodes?: ConnectionErrorCode[]
 }
 
+export type SSHError = {
+  level: 'client-socket' | 'client-ssh'
+  message?: string
+  description?: string
+}
+
+export type DisconnectedCallback = (conn: IBMi, error?: SSHError) => Promise<void>;
+
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
@@ -45,11 +53,9 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   }
 ];
 
-type DisconnectCallback = (conn: IBMi) => Promise<void>;
-
 interface ConnectionCallbacks {
   onConnectedOperations?: Function[],
-  timeoutCallback?: (conn: IBMi) => Promise<void>,
+  onDisconnected?: DisconnectedCallback,
   uiErrorHandler: (connection: IBMi, error: ConnectionErrorCode, data?: any) => Promise<boolean>,
   progress: (detail: { message: string }) => void,
   message: (type: ConnectionMessageType, message: string) => void,
@@ -116,6 +122,8 @@ export default class IBMi {
   private currentAsp: string | undefined;
   private libraryAsps = new Map<string, number>();
 
+  connectionSuccessful = false;
+
   /**
    * @deprecated Will be replaced with {@link IBMi.getAllIAsps} in v3.0.0
    */
@@ -146,15 +154,6 @@ export default class IBMi {
   public appendOutput: (text: string) => void = (text) => {
     process.stdout.write(text);
   };
-
-  private disconnectedCallback: (DisconnectCallback) | undefined;
-
-  /**
-   * Will only be called once per connection.
-   */
-  setDisconnectedCallback(callback: DisconnectCallback) {
-    this.disconnectedCallback = callback;
-  }
 
   /**
    * getConfigFile can return pre-defined configuration files,
@@ -336,19 +335,17 @@ export default class IBMi {
         };
       }
 
-      if (callbacks.timeoutCallback) {
-        const timeoutCallbackWrapper = () => {
-          // Don't call the callback function if it was based on a user cancellation request.
-          if (!wasCancelled) {
-            callbacks.timeoutCallback!(this);
-          }
+      // Trigger callbacks unless the connection is cancelled
+      const callbackWrapper = (error?: SSHError) => {
+        if (!wasCancelled) {
+          callbacks.onDisconnected?.(this, error);
         }
+      };
 
-        // Register handlers after we might have to abort due to bad configuration.
-        this.client.connection!.once(`timeout`, timeoutCallbackWrapper);
-        this.client.connection!.once(`end`, timeoutCallbackWrapper);
-        this.client.connection!.once(`error`, timeoutCallbackWrapper);
-      }
+      //end: disconnected by user
+      this.client.connection.once(`end`, callbackWrapper);
+      //error: connection dropped for some reason (details given in the SSHError type) 
+      this.client.connection.once(`error`, callbackWrapper);
 
       callbacks.progress({
         message: `Checking home directory.`
@@ -956,8 +953,7 @@ export default class IBMi {
       }
 
       if (!options.reconnecting) {
-        const delayedOperations: Function[] = callbacks.onConnectedOperations ? [...callbacks.onConnectedOperations] : [];
-        for (const operation of delayedOperations) {
+        for (const operation of callbacks.onConnectedOperations || []) {
           await operation();
         }
       }
@@ -976,6 +972,8 @@ export default class IBMi {
         debugConfigLoaded,
         maximumArgsLength: this.maximumArgsLength
       });
+
+      this.connectionSuccessful = true;
 
       return {
         success: true
@@ -1172,11 +1170,8 @@ export default class IBMi {
     }
 
     if (this.client) {
+      this.client.dispose();
       this.client = undefined;
-
-      if (failedToConnect === false && this.disconnectedCallback) {
-        this.disconnectedCallback(this);
-      }
     }
   }
 

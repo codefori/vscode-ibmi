@@ -1,7 +1,7 @@
 import { EventEmitter } from "stream";
 import * as vscode from "vscode";
 import { ILELibrarySettings } from "./api/CompileTools";
-import IBMi, { ConnectionResult } from "./api/IBMi";
+import IBMi, { ConnectionResult, DisconnectedCallback } from "./api/IBMi";
 import { BaseStorage } from "./api/configuration/storage/BaseStorage";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
@@ -79,27 +79,32 @@ export default class Instance {
 
     let result: ConnectionResult;
 
-    const timeoutHandler = async (conn: IBMi) => {
-      if (conn) {
-        const choice = await vscode.window.showWarningMessage(`Connection lost`, {
-          modal: true,
-          detail: `Connection to ${conn.currentConnectionName} has dropped. Would you like to reconnect?`
-        }, `Yes`, `No, get logs`);
+    const onDisconnected: DisconnectedCallback = async (connection, error) => {
+      if (connection.connectionSuccessful) {
+        this.setConnection();
+        this.fire(`disconnected`);
 
-        let reconnect = choice === `Yes`;
-        let collectLogs = choice === `No, get logs`;
+        if (error) {
+          const choice = await vscode.window.showWarningMessage(`Connection lost: ${error.description || error.message || error.level}`, {
+            modal: true,
+            detail: `Connection to ${connection.currentConnectionName} has dropped. Would you like to reconnect?`
+          }, `Yes`, `No, get logs`);
 
-        if (collectLogs) {
-          const logs = this.output.content;
-          vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
-            vscode.window.showTextDocument(doc);
-          });
-        }
+          const reconnect = choice === `Yes`;
+          const collectLogs = choice === `No, get logs`;
 
-        this.disconnect();
+          if (collectLogs) {
+            const logs = this.output.content;
+            vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
+              vscode.window.showTextDocument(doc);
+            });
+          }
 
-        if (reconnect) {
-          await this.connect({ ...options, reconnecting: true });
+          this.disconnect();
+
+          if (reconnect) {
+            await this.connect({ ...options, reconnecting: true });
+          }
         }
       }
     };
@@ -119,8 +124,8 @@ export default class Instance {
               options.data,
               {
                 callbacks: {
-                  timeoutCallback: timeoutHandler,
-                  onConnectedOperations: options.onConnectedOperations || [],
+                  onDisconnected,
+                  onConnectedOperations: options.onConnectedOperations,
                   uiErrorHandler: handleConnectionResults,
                   progress: (message) => { p.report(message) },
                   message: messageCallback,
@@ -183,11 +188,6 @@ export default class Instance {
     }
 
     if (connection) {
-      connection.setDisconnectedCallback(async () => {
-        this.setConnection();
-        this.fire(`disconnected`);
-      });
-
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
       await IBMi.GlobalStorage.setLastConnection(connection.currentConnectionName);
