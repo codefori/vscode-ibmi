@@ -191,10 +191,11 @@ export default class IBMiContent {
           copyResult = { code: 0, stdout: '', stderr: '' };
 
           try {
-            // Run each command separately to avoid issues with job context
-            await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`);
-            await this.ibmi.runSQL(`@QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`);
-            await this.ibmi.runSQL(`@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`);
+            await this.ibmi.runSQL([
+              `@QSYS/RMVLNK OBJLNK('${tempRmt}')`,
+              `@QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
+              `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
+            ]);
           } catch (e: any) {
             copyResult.code = -1;
             copyResult.stderr = String(e);
@@ -304,9 +305,11 @@ export default class IBMiContent {
          if (requiresConversion) {
           copyResult = { code: 0, stdout: '', stderr: '' };
           try {
-            await this.ibmi.runSQL(`@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`);
-            await this.ibmi.runSQL(`@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`);
-            await this.ibmi.runSQL(`@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`);
+            await this.ibmi.runSQL([
+              `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
+              `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
+              `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
+            ]);
           } catch (e: any) {
             copyResult.code = -1;
             copyResult.stderr = String(e);
