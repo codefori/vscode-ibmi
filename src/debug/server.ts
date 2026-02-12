@@ -149,7 +149,7 @@ export async function getDebugEngineJobs(): Promise<DebugJobs> {
   const rows = await instance.getConnection()?.runSQL([
     "select 'SERVER' as TYPE, JOB_NAME from table(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'QB5ROUTER'))",
     "Union",
-    "select 'SERVICE' as TYPE, JOB_NAME from table(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'QDBGSRV'))"
+    "select 'SERVICE' as TYPE, JOB_NAME from table(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'QP0ZSP*')) where JOB_USER = 'QDBGSRV'"
   ].join(" "));
 
   return {
