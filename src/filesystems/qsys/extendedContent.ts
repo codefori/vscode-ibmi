@@ -2,8 +2,11 @@ import fs from "fs";
 import tmp from "tmp";
 import util from "util";
 import vscode from "vscode";
+import IBMi from "../../api/IBMi";
+import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
+import { CommandResult } from "../../api/types";
 
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -172,10 +175,33 @@ export class ExtendedIBMiContent {
           await connection.sendCommand({ command: `${setccsid} 1208 ${tempRmt}` });
         }
 
-        const insertResult = await connection.runCommand({
-          command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
-          noLibList: true
-        });
+        // Fetch source file CCSID and determine if conversion is needed
+        const memberPath = { library, name: file, member: name };
+        const attr = await connection.getContent().getAttributes(memberPath, "CCSID");
+        const sourceCcsid = Number(attr?.["CCSID"]) || 0;
+        const [requiresConversion, targetCcsid] = Tools.determineCcsidConversion(sourceCcsid, config);
+
+        let insertResult: CommandResult = { code: 0, stdout: '', stderr: '' };
+        if (requiresConversion) {
+          await connection.runSQL([
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`
+          ].join("\n")).catch(e => {
+            insertResult.code = -1;
+            insertResult.stderr = String(e);
+          });
+          
+          if (insertResult.code === 0) {
+            insertResult = await connection.runCommand({
+              command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
+              noLibList: true
+            });
+          }
+        } else {
+          insertResult = await connection.runCommand({
+            command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
+            noLibList: true
+          });
+        }
 
         if (insertResult.code !== 0) {
           throw new Error(`Failed to save member: ` + insertResult.stderr);

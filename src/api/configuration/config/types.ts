@@ -16,6 +16,9 @@ export interface ConnectionConfig extends ConnectionProfile {
   hideCompileErrors: string[];
   enableSourceDates: boolean;
   sourceDateGutter: boolean;
+  ccsidConversionEnabled: boolean;
+  ccsidConvertFrom: string;
+  ccsidConvertTo: string;
   encodingFor5250: string;
   terminalFor5250: string;
   setDeviceNameFor5250: boolean;

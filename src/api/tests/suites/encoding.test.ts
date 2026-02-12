@@ -16,6 +16,90 @@ const contents = {
 
 const SHELL_CHARS = [`$`, `#`];
 
+async function convertToUTF8WithCCSID(
+  connection: IBMi,
+  text: string,
+  originalCcsid: string,
+  sourceCcsid: string | undefined,
+  bidiCcsid: string
+): Promise<string> {
+  const content = connection.getContent();
+  const config = connection.getConfig();
+
+  const tempLib = config.tempLibrary;
+  const tempSPF = Tools.makeid(8);
+  const tempMbr = Tools.makeid(4);
+
+  // Create source file with the original CCSID
+  await connection!.runCommand({
+    command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr}) CCSID(${originalCcsid})`,
+    environment: `ile`,
+  });
+
+  try {
+    // Upload and download WITH CCSID conversion enabled
+    config.ccsidConversionEnabled = true;
+    config.ccsidConvertFrom = sourceCcsid || originalCcsid;
+    config.ccsidConvertTo = bidiCcsid;
+
+    const uploadResult = await content.uploadMemberContent(tempLib, tempSPF, tempMbr, text);
+    expect(uploadResult).toBeTruthy();
+
+    const memberContent = await content.downloadMemberContent(tempLib, tempSPF, tempMbr);
+    
+    return memberContent;
+  } finally {
+    // Cleanup
+    await connection!.runCommand({
+      command: `DLTF ${tempLib}/${tempSPF}`,
+      environment: `ile`,
+    });
+  }
+}
+
+async function uploadWithoutBidiDownloadWithBidi(
+  connection: IBMi,
+  text: string,
+  originalCcsid: string,
+  sourceCcsid: string | undefined,
+  bidiCcsid: string
+): Promise<string> {
+  const content = connection.getContent();
+  const config = connection.getConfig();
+
+  const tempLib = config.tempLibrary;
+  const tempSPF = Tools.makeid(8);
+  const tempMbr = Tools.makeid(4);
+
+  // Create source file with the original CCSID (the file's actual CCSID)
+  await connection!.runCommand({
+    command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr}) CCSID(${originalCcsid})`,
+    environment: `ile`,
+  });
+
+  try {
+    // Upload WITHOUT CCSID conversion (so content uploads correctly)
+    config.ccsidConversionEnabled = false;
+    const uploadResult = await content.uploadMemberContent(tempLib, tempSPF, tempMbr, text);
+    expect(uploadResult).toBeTruthy();
+
+    // Download WITH CCSID conversion enabled
+    // If sourceCcsid is provided, use it as the "from" CCSID (what we're looking for)
+    // Otherwise, use originalCcsid (the file's actual CCSID)
+    config.ccsidConversionEnabled = true;
+    config.ccsidConvertFrom = sourceCcsid || originalCcsid;
+    config.ccsidConvertTo = bidiCcsid;
+    const memberContent = await content.downloadMemberContent(tempLib, tempSPF, tempMbr);
+    
+    return memberContent;
+  } finally {
+    // Cleanup
+    await connection.runCommand({ command: `DLTF ${tempLib}/${tempSPF}`, noLibList: true });
+    // Reset config
+    config.ccsidConversionEnabled = false;
+  }
+}
+
 describe('Encoding tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
@@ -333,5 +417,145 @@ describe('Encoding tests', { concurrent: true }, () => {
     for (const varChar of connection.variantChars.local) {
       await testSingleVariant(varChar);
     }
+  });
+});
+
+// seperate suite for tests that require synchronous execution
+// as global variables are modified in each test
+describe('BiDi encoding tests', () => {
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  }, CONNECTION_TIMEOUT);
+
+  afterAll(async () => {
+    await disposeConnection(connection);
+  });
+
+  // Test data for BiDi conversions
+  const bidiTests = [
+    {
+      originalCcsid: "420",
+      sourceCcsid: "420",
+      bidiCcsid: "8612",
+      text: [
+        "مرحبا بالعالم",
+        "Welcome to البرمجة",
+        "if a = 'با';",
+        "code then comment // مرحبا بالعالم",
+      ],
+      description: "Valid conversion of CCSID 420 (Arabic) with BiDi 8612"
+    },
+    {
+      originalCcsid: "424",
+      sourceCcsid: "424",
+      bidiCcsid: "62211",
+      text: [
+        "שלום עולם",
+        "English and Hebrew - עברית",
+        "if a = 'אר';",
+        "code then comment // הערה כלשהי",
+      ],
+      description: "Valid conversion of CCSID 424 (Hebrew) with BiDi 62211"
+    },
+    {
+      originalCcsid: "420",
+      sourceCcsid: "420",
+      bidiCcsid: "273",
+      text: [
+        "مرحبا بالعالم",
+        "Welcome to البرمجة",
+        "if a = 'با';",
+        "code then comment // مرحبا بالعالم",
+      ],
+      description: "Invalid conversion of CCSID 420 (Arabic) with incompatible CCSID 273",
+      shouldFail: true
+    },
+    {
+      originalCcsid: "424",
+      sourceCcsid: "424",
+      bidiCcsid: "273",
+      text: [
+        "שלום עולם",
+        "English and Hebrew - עברית",
+        "if a = 'אר';",
+        "code then comment // הערה כלשהי",
+      ],
+      description: "Invalid conversion of CCSID 424 (Hebrew) with incompatible CCSID 273",
+      shouldFail: true
+    },
+  ];
+
+  bidiTests.forEach(({ originalCcsid, sourceCcsid, bidiCcsid, text, description, shouldFail }) => {
+    it(description, async () => {
+      const baseContent = text.join("\r\n") + "\r\n";
+      const converted = await convertToUTF8WithCCSID(connection, baseContent, originalCcsid, sourceCcsid, bidiCcsid);
+      if (shouldFail) {
+        expect(converted).not.toBe(baseContent);
+      } else {
+        expect(converted).toBe(baseContent);
+      }
+    });
+  });
+});
+
+// Separate suite for non-BiDi tests to avoid connection issues when filtering
+describe('Non-BiDi encoding tests', () => {
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  }, CONNECTION_TIMEOUT);
+
+  afterAll(async () => {
+    await disposeConnection(connection);
+  });
+
+  // Test that non-BiDi source files are not corrupted when BiDi support is enabled
+  const nonBidiTests = [
+    {
+      originalCcsid: "37",
+      sourceCcsid: undefined,
+      bidiCcsid: "8612",
+      text: ["Hello world", "This is a test", "DSPLY 'Test message';"],
+      description: "CCSID 37 (English) should not be corrupted with BiDi 8612"
+    },
+    {
+      originalCcsid: "273",
+      sourceCcsid: "420",
+      bidiCcsid: "8612",
+      text: [
+        "Hello world",
+        "This is a test msg.Das ist ein Test mit Umlauten wie ä ö ü und dem Wort Straße",
+        "German sentence with special chars",
+      ],
+      description: "CCSID 273 (German) should not be corrupted with BiDi 8612"
+    },
+    {
+      originalCcsid: "37",
+      sourceCcsid: undefined,
+      bidiCcsid: "62211",
+      text: ["Hello world", "Simple ASCII text", "No special chars"],
+      description: "CCSID 37 (English) should not be corrupted with BiDi 62211"
+    },
+    {
+      originalCcsid: "273",
+      sourceCcsid: "424",
+      bidiCcsid: "62211",
+      text: [
+        "Hello world",
+        "This is a test msg.Das ist ein Test mit Umlauten wie ä ö ü und dem Wort Straße",
+        "German sentence with special chars",
+      ],
+      description: "CCSID 273 (German) uploaded normally, downloaded with BiDi settings 424→62211 should not convert (273≠424)"
+    },
+  ];
+
+  nonBidiTests.forEach(({ originalCcsid, sourceCcsid, bidiCcsid, text, description }) => {
+    it(description, async () => {
+      const baseContent = text.join("\r\n") + "\r\n";
+      // Upload without bidi, download with bidi enabled
+      const converted = await uploadWithoutBidiDownloadWithBidi(connection, baseContent, originalCcsid, sourceCcsid, bidiCcsid);
+      expect(converted).toBe(baseContent);
+    });
   });
 });
