@@ -215,6 +215,10 @@ export default class IBMi {
     this.config = newConfig;
   }
 
+  getConnectionManager(): ConnectionManager {
+    return IBMi.connectionManager;
+  }
+
   constructor() {
     this.remoteFeatures = {
       git: undefined,
