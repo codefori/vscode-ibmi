@@ -1,3 +1,4 @@
+import { Socket } from "net";
 import path from "path";
 import { commands, l10n, window } from "vscode";
 import IBMi from "../api/IBMi";
@@ -52,9 +53,9 @@ export async function startService(connection: IBMi) {
 
       let debugConfig: DebugConfiguration;
       let debugConfigLoaded = false;
+      const config = connection.getConfig();
       try {
         debugConfig = await new DebugConfiguration(connection).load();
-        const config = connection.getConfig();
         config.debugPort = debugConfig.getRemoteServiceSecuredPort();
         config.debugSepPort = debugConfig.getRemoteServiceSepDaemonPort();
         IBMi.connectionManager.update(config);
@@ -84,31 +85,50 @@ export async function startService(connection: IBMi) {
           const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
           if (job) {
             let tries = 0;
+            let debugServiceJob: string | undefined;
+            const debugPort = Number(config.debugPort);
+            const debugSepPort = Number(config.debugSepPort);
             const checkJob = async (done: (started: boolean) => void) => {
-              if (tries++ < 30) {
-                const jobDetail = await readActiveJob(connection, job);
-                if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
+              if (tries++ < 40) {
+                if (debugServiceJob) {
                   if ((await getDebugEngineJobs()).service) {
-                    window.showInformationMessage(l10n.t(`Debug service started.`));
-                    refreshDebugSensitiveItems();
-                    done(true);
+                    //Debug service job running Java is still alive
+                    if ((await Promise.all([checkPort(connection, debugPort), checkPort(connection, debugSepPort)])).every(Boolean)) {
+                      window.showInformationMessage(l10n.t(`Debug service started.`));
+                      refreshDebugSensitiveItems();
+                      done(true);
+                    }
+                    else {
+                      //Job is alive but ports are not opened yet
+                      setTimeout(() => checkJob(done), 1000);
+                    }
                   }
                   else {
+                    //Debug service job died
+                    window.showErrorMessage(`Debug Service job ${debugServiceJob} failed.`, 'Open logs')
+                      .then(() => commands.executeCommand('code-for-ibmi.browse', { path: `${debugConfig.getRemoteServiceWorkDir()}/DebugService_log.txt` }));
+                    done(false);
+                  }
+                }
+                else {
+                  const jobDetail = await readActiveJob(connection, job);
+                  if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
+                    debugServiceJob = (await getDebugEngineJobs()).service;
                     setTimeout(() => checkJob(done), 1000);
+                  } else {
+                    let reason;
+                    if (typeof jobDetail === "object") {
+                      reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
+                    }
+                    else if (jobDetail) {
+                      reason = jobDetail;
+                    }
+                    else {
+                      reason = "job has ended";
+                    }
+                    window.showErrorMessage(`Debug Service starter job ${job} failed: ${reason}.`, 'Open output').then(() => openQPRINT(connection, job));
+                    done(false);
                   }
-                } else {
-                  let reason;
-                  if (typeof jobDetail === "object") {
-                    reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
-                  }
-                  else if (jobDetail) {
-                    reason = jobDetail;
-                  }
-                  else {
-                    reason = "job has ended";
-                  }
-                  window.showErrorMessage(`Debug Service job ${job} failed: ${reason}.`, 'Open output').then(() => openQPRINT(connection, job));
-                  done(false);
                 }
               }
               else {
@@ -255,4 +275,15 @@ async function openQPRINT(connection: IBMi, job: string) {
   else {
     window.showWarningMessage(`No QPRINT spooled file found for job ${job}!`);
   }
+}
+
+async function checkPort(connection: IBMi, port: number) {
+  return await new Promise<boolean>((resolve) => {
+    const socket = new Socket();
+    socket.connect(port, connection.currentHost, () => {
+      socket.destroy();
+      resolve(true);
+    })
+    socket.on('error', () => resolve(false));
+  });
 }
