@@ -64,6 +64,7 @@ export interface ConnectionData {
   username: string;
   password?: string;
   privateKeyPath?: string;
+  passphrase?:string;
   keepaliveInterval?: number;
   readyTimeout?: number;
   sshDebug?: boolean;

@@ -295,6 +295,7 @@ export default class IBMi {
       await this.client.connect({
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
+        passphrase: connectionObject.privateKeyPath ? connectionObject.passphrase : undefined,
         debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
       } as node_ssh.Config);
 
