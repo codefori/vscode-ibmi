@@ -289,7 +289,8 @@ export default class IBMi {
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
         debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
-      } as node_ssh.Config);
+      });
+      this.connectionSuccessful = true;
 
       this.currentConnectionName = connectionObject.name;
       this.currentHost = connectionObject.host;
@@ -332,9 +333,7 @@ export default class IBMi {
 
       // Trigger callbacks unless the connection is cancelled
       const callbackWrapper = (error?: Error & ClientErrorExtensions) => {
-        if (!wasCancelled) {
-          callbacks.onDisconnected?.(this, error);
-        }
+          callbacks.onDisconnected?.(this, error);        
       };
 
       //end: disconnected by user
@@ -971,14 +970,12 @@ export default class IBMi {
         maximumArgsLength: this.maximumArgsLength
       });
 
-      this.connectionSuccessful = true;
-
       return {
         success: true
       };
 
     } catch (e: any) {
-      this.disconnect(true);
+      this.disconnect();
 
       let error = e.message;
       if (wasCancelled) {
@@ -1160,7 +1157,7 @@ export default class IBMi {
     };
   }
 
-  private disconnect(failedToConnect = false) {
+  private disconnect() {
     if (this.sqlJob) {
       this.sqlJob.close();
       this.sqlJob = undefined;
