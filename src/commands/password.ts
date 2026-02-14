@@ -26,7 +26,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
           whenNextDay = expiration.daysLeft - 7;
         }
         else {
-          //Else two weeks before expiraation
+          //Else two weeks before expiration
           whenNextDay = expiration.daysLeft - 14;
         }
 
