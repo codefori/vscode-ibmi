@@ -10,6 +10,7 @@ import { instance } from "../../instantiate";
 import { ConnectionConfig, ConnectionData, RemoteConfigFile, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
 import { ComplexTab, CustomUI, Section } from "../CustomUI";
+import { checkLoginForm } from "../login";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
 
@@ -413,7 +414,7 @@ export class SettingsUI {
               );
 
             await VscodeTools.withContext(EDITING_CONTEXT, async () => {
-              const page = await ui.loadPage<LoginSettings>(vscode.l10n.t(`Login Settings: "{0}"`, name));
+              const page = await ui.loadPage<LoginSettings>(vscode.l10n.t(`Login Settings: "{0}"`, name), checkLoginForm);
               if (page && page.data) {
                 page.panel.dispose();
 

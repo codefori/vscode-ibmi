@@ -53,7 +53,7 @@ export class Login {
         { id: `connect`, label: `Connect`, requiresValidation: true },
         { id: `saveExit`, label: `Save & Exit` }
       )
-      .loadPage<NewLoginSettings>(`IBM i Login`);
+      .loadPage<NewLoginSettings>(`IBM i Login`, checkLoginForm);
 
     if (page && page.data) {
       const data = page.data;
@@ -80,11 +80,15 @@ export class Login {
           };
 
           if (data.savePassword && data.password) {
+            delete data.privateKeyPath;
+            delete data.passphrase;
             await setStoredPassword(context, data.name, data.password);
           }
-
-          if (data.passphrase) {
-            await setStoredPassphrase(context, data.name, data.passphrase);
+          else if (data.privateKeyPath) {
+            delete data.password;
+            if (data.passphrase) {
+              await setStoredPassphrase(context, data.name, data.passphrase);
+            }
           }
 
           await IBMi.connectionManager.storeNew(newConnection);
@@ -226,4 +230,23 @@ async function promptPassword(connection: ConnectionData) {
   passwordBox.show();
   await new Promise(resolve => passwordBox.onDidHide(resolve));
   return savePassword;
+}
+
+export async function checkLoginForm(data: ConnectionData) {
+  if (data.password && data.privateKeyPath) {
+    const password = l10n.t("Password");
+    const privateKey = l10n.t("Private Key");
+    const toKeep = await vscode.window.showWarningMessage(l10n.t("Both a password and a private key were provided. Which one should be kept?"), { modal: true }, password, privateKey);
+    if (toKeep === password) {
+      delete data.privateKeyPath;
+      delete data.passphrase;
+    }
+    else if (toKeep === privateKey) {
+      delete data.password;
+    }
+    else {
+      return false;
+    }
+  }
+  return true;
 }
