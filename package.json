@@ -1779,6 +1779,12 @@
 				"category": "IBM i",
 				"title": "Unload active profile",
 				"icon": "$(sign-out)"
+			},
+			{
+				"command": "code-for-ibmi.changePassword",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Change password...",
+				"category": "IBM i"
 			}
 		],
 		"customEditors": [
@@ -2528,6 +2534,10 @@
 				},
 				{
 					"command": "code-for-ibmi.environment.profile.unload",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.changePassword",
 					"when": "never"
 				}
 			],

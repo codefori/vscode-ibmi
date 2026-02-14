@@ -9,6 +9,7 @@ import IBMi from "./api/IBMi";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
+import { PasswordManager } from "./api/components/password";
 import { Mapepire } from "./api/components/mapepire";
 import { sshSqlJob } from "./api/components/mapepire/sqlJob";
 import { parseErrors } from "./api/errors/parser";
@@ -125,6 +126,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   extensionComponentRegistry.registerComponent(context, mapepire);
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
+  extensionComponentRegistry.registerComponent(context, new PasswordManager());
 
   registerURIHandler(context,
     sandboxURIHandler,

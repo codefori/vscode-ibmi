@@ -1,3 +1,4 @@
+import { BindingValue } from "@ibm/mapepire-js";
 import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
 import { EventEmitter } from 'stream';
@@ -1359,7 +1360,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string | string[], options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string | string[], options: { bindings?: BindingValue[] } = {}): Promise<Tools.DB2Row[]> {
     if (this.sqlJob) {
       let list = Array.isArray(statements) ? statements : statements.split(`;`).filter(x => x.trim().length > 0);
 
@@ -1397,37 +1398,11 @@ export default class IBMi {
             throw error;
           }
         } else {
-          if (isLast) {
-            // There is a bug with Mapepire handling of binding parameters.
-            // We work around it by using these fake parameters and passing
-            // in UTF8 encoding strings/numbers.
-            const fakeBindings = options.fakeBindings;
-            if (statement.includes(`?`) && fakeBindings && fakeBindings.length > 0) {
-              const parts = statement.split(`?`);
-
-              statement = ``;
-              for (let partsIndex = 0; partsIndex < parts.length; partsIndex++) {
-                statement += parts[partsIndex];
-                if (fakeBindings[partsIndex] !== undefined) {
-                  switch (typeof fakeBindings[partsIndex]) {
-                    case `number`:
-                      statement += fakeBindings[partsIndex];
-                      break;
-
-                    case `string`:
-                      statement += Tools.bufferToUx(fakeBindings[partsIndex] as string);
-                      break;
-                  }
-                }
-              }
-            }
-          }
-
           let query;
           let error: Tools.SqlError | undefined;
           const log = `Running SQL query: ${statement}\n`;
           try {
-            query = this.sqlJob.query<Tools.DB2Row>(statement);
+            query = this.sqlJob.query<Tools.DB2Row>(statement, { parameters: options.bindings });
             const rs = await query.execute(99999);
             if (rs.has_results) {
               lastResultSet.push(...rs.data);
