@@ -1,5 +1,6 @@
 import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
+import { ClientErrorExtensions } from "ssh2";
 import { EventEmitter } from 'stream';
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
@@ -29,13 +30,7 @@ export interface ConnectionResult {
   errorCodes?: ConnectionErrorCode[]
 }
 
-export type SSHError = {
-  level: 'client-socket' | 'client-ssh'
-  message?: string
-  description?: string
-}
-
-export type DisconnectedCallback = (conn: IBMi, error?: SSHError) => Promise<void>;
+export type DisconnectedCallback = (conn: IBMi, error?: Error & ClientErrorExtensions) => Promise<void>;
 
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
@@ -336,16 +331,19 @@ export default class IBMi {
       }
 
       // Trigger callbacks unless the connection is cancelled
-      const callbackWrapper = (error?: SSHError) => {
+      const callbackWrapper = (error?: Error & ClientErrorExtensions) => {
         if (!wasCancelled) {
           callbacks.onDisconnected?.(this, error);
         }
       };
 
       //end: disconnected by user
-      this.client.connection.once(`end`, callbackWrapper);
-      //error: connection dropped for some reason (details given in the SSHError type) 
-      this.client.connection.once(`error`, callbackWrapper);
+      if (this.client.connection) {
+        this.client.connection.once(`end`, callbackWrapper);
+        //error/tiemout: connection dropped for some reason (details given in the SSHError type) 
+        this.client.connection.once(`error`, callbackWrapper);
+        this.client.connection.once(`timeout`, callbackWrapper);
+      }
 
       callbacks.progress({
         message: `Checking home directory.`
