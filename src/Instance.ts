@@ -80,8 +80,8 @@ export default class Instance {
     let result: ConnectionResult;
 
     const onDisconnected: DisconnectedCallback = async (connection, error) => {
-      if (connection.connectionSuccessful) {
-        this.setConnection();
+      this.setConnection();
+      if (connection.connectionSuccessful) {        
         this.fire(`disconnected`);
 
         if (error) {
