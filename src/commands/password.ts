@@ -168,7 +168,7 @@ async function updateNextPasswordCheck(instance: Instance) {
     const today = new Date();
     const daysLeft = (await connection?.getComponent<PasswordManager>(PasswordManager.ID)?.getPasswordExpiration(connection))?.daysLeft || 24;
     let whenNextDay = 14; //Next check in two weeks by default
-    if (daysLeft < 7) {
+    if (daysLeft <= 7) {
       //Less than a week left: check every day
       whenNextDay = 1;
     }
