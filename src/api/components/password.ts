@@ -8,7 +8,7 @@ export class PasswordManager implements IBMiComponent {
   static readonly VERSION = 1;
 
   getIdentification(): ComponentIdentification {
-    return { name: PasswordManager.ID, version: 1 };
+    return { name: PasswordManager.ID, version: PasswordManager.VERSION };
   }
 
   async setInstallDirectory?(_installDirectory: string) {
