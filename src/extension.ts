@@ -142,7 +142,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     deployTools: DeployTools,
     evfeventParser: parseErrors,
     tools: VscodeTools,
-    componentRegistry: extensionComponentRegistry
+    componentRegistry: extensionComponentRegistry,
+    connectionManager: IBMi.connectionManager
   };
 }
 
