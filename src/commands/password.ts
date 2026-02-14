@@ -13,34 +13,16 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
     //Never checked or next check is overdue
     const today = new Date();
     if (!nextCheck || today > nextCheck) {
-      const connection = instance.getConnection();
-      const expiration = await connection?.getComponent<PasswordManager>(PasswordManager.ID)?.getPasswordExpiration(connection);
-      let whenNextDay = 14; //Next check in two weeks by default
-      if (expiration) {
-        if (expiration.daysLeft < 7) {
-          //Less than a week left: check every day
-          whenNextDay = 1;
-        }
-        else if (expiration.daysLeft <= 14) {
-          //Less than two weeks left: check again when there will be one week left
-          whenNextDay = expiration.daysLeft - 7;
-        }
-        else {
-          //Else two weeks before expiration
-          whenNextDay = expiration.daysLeft - 14;
-        }
+      const daysLeft = await updateNextPasswordCheck(instance);
 
-        if (expiration.daysLeft <= 14) { //Warn at least two weeks before expiration
-          window.showInformationMessage(l10n.t("Your IBM i password will expire in {0} day(s); do you want to change it now?", expiration.daysLeft), { modal: true }, l10n.t("Change password"))
-            .then(change => {
-              if (change) {
-                commands.executeCommand("code-for-ibmi.changePassword");
-              }
-            });
-        }
+      if (daysLeft <= 14) { //Warn at least two weeks before expiration
+        window.showInformationMessage(l10n.t("Your IBM i password will expire in {0} day(s); do you want to change it now?", daysLeft), { modal: true }, l10n.t("Change password"))
+          .then(change => {
+            if (change) {
+              commands.executeCommand("code-for-ibmi.changePassword");
+            }
+          });
       }
-
-      instance.getStorage()?.setNextPasswordCheck(today.setDate(today.getDate() + whenNextDay));
     }
   });
 
@@ -159,10 +141,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
                   //Only save the new password if one was already stored
                   await setStoredPassword(context, connection.currentConnectionName, newPassword);
                 }
-                const today = new Date();
-                const expiration = (await connection?.getComponent<PasswordManager>(PasswordManager.ID)?.getPasswordExpiration(connection))?.daysLeft || 24;
-                const nextCheck = expiration - (expiration > 14 ? 14 : 1);
-                await instance.getStorage()?.setNextPasswordCheck(today.setDate(today.getDate() + nextCheck));
+                await updateNextPasswordCheck(instance);
                 window.showInformationMessage(l10n.t("Password successfully changed for {0} on {1}", connection.currentUser, connection.currentHost));
                 done = true;
               }
@@ -181,4 +160,28 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
       }
     })
   ]
+}
+
+async function updateNextPasswordCheck(instance: Instance) {
+  const connection = instance.getConnection();
+  if (connection) {
+    const today = new Date();
+    const daysLeft = (await connection?.getComponent<PasswordManager>(PasswordManager.ID)?.getPasswordExpiration(connection))?.daysLeft || 24;
+    let whenNextDay = 14; //Next check in two weeks by default
+    if (daysLeft < 7) {
+      //Less than a week left: check every day
+      whenNextDay = 1;
+    }
+    else if (daysLeft <= 14) {
+      //Less than two weeks left: check again when there will be one week left
+      whenNextDay = daysLeft - 7;
+    }
+    else {
+      //Else two weeks before expiration
+      whenNextDay = daysLeft - 14;
+    }
+    await instance.getStorage()?.setNextPasswordCheck(today.setDate(today.getDate() + whenNextDay));
+    return daysLeft;
+  }
+  return 0;
 }
