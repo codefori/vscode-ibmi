@@ -13,6 +13,7 @@ const annotationDecoration = vscode.window.createTextEditorDecorationType({
     fontWeight: `normal`,
     fontStyle: `normal`,
     margin: `0 1em 0 0`,
+    width: `7ch`,
     // Pull the decoration out of the document flow if we want to be scrollable
   },
   rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
@@ -46,6 +47,7 @@ export class SourceDateHandler {
 
   private timeout?: NodeJS.Timeout;
   private readonly timeoutDelay = 2000;
+  private decorationTimeout?: NodeJS.Timeout;
 
   private highlightSince?: number;
   private highlightBefore?: number;
@@ -145,7 +147,13 @@ export class SourceDateHandler {
       const doRefresh = (!editedBefore || currentEditingLine !== this.lineEditedBefore || isAtStartOfLine || isDelete);
 
       if (doRefresh) {
-        this._diffRefreshGutter(document);
+        // Defer decoration update for multi-line changes to allow editor layout to stabilize
+        const isBulkChange = !isSingleLine || event.contentChanges.length > 1;
+        if (isBulkChange) {
+          this._deferredRefreshGutter(document);
+        } else {
+          this._diffRefreshGutter(document);
+        }
       }
 
       if (isDelete || isSpace) {
@@ -178,6 +186,16 @@ export class SourceDateHandler {
 
       lengthDiagnostics.set(document.uri, lengthDiags);
     }
+  }
+
+  private _deferredRefreshGutter(document: vscode.TextDocument) {
+    // Clear any pending decoration update
+    clearTimeout(this.decorationTimeout);
+
+    // Defer decoration application to allow editor layout to stabilize after bulk changes
+    this.decorationTimeout = setTimeout(() => {
+      this._diffRefreshGutter(document);
+    }, 0);
   }
 
   private _diffRefreshGutter(document: vscode.TextDocument) {
@@ -243,7 +261,7 @@ export class SourceDateHandler {
           hoverMessage.isTrusted = true;
 
           // Due to the way source dates are stored, we're doing some magic.
-          // Dates are stored in zoned/character columns, which means 26th 
+          // Dates are stored in zoned/character columns, which means 26th
           // August 2022 is 220826, 4th May 1997 means 970504.
 
           // We support the ability to search and highlight dates after a
@@ -320,7 +338,7 @@ export class SourceDateHandler {
       let changedLines = 0;
 
       if (change.originalEndLineNumber === 0) {
-        // New line was added 
+        // New line was added
         // at index (modifiedStartLineNumber-1)
         removedLines = 0;
         changedLines = change.modifiedEndLineNumber - change.modifiedStartLineNumber + 1;
@@ -335,7 +353,7 @@ export class SourceDateHandler {
           if (change.modifiedEndLineNumber >= change.modifiedStartLineNumber) {
             // Lines added
             // at index (change.modifiedStartLineNumber-1)
-            // on lines (modifiedEndLineNumber - modifiedStartLineNumber + 1) 
+            // on lines (modifiedEndLineNumber - modifiedStartLineNumber + 1)
             removedLines = change.originalEndLineNumber - change.originalStartLineNumber + 1;
             changedLines = change.modifiedEndLineNumber - change.modifiedStartLineNumber + 1;
           }
