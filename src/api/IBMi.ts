@@ -333,7 +333,7 @@ export default class IBMi {
 
       // Trigger callbacks unless the connection is cancelled
       const callbackWrapper = (error?: Error & ClientErrorExtensions) => {
-          callbacks.onDisconnected?.(this, error);        
+        callbacks.onDisconnected?.(this, error);
       };
 
       //end: disconnected by user
@@ -342,6 +342,10 @@ export default class IBMi {
         //error/tiemout: connection dropped for some reason (details given in the SSHError type) 
         this.client.connection.once(`error`, callbackWrapper);
         this.client.connection.once(`timeout`, callbackWrapper);
+
+        //Release and clear SQL jobs when connection drops
+        this.client.connection.once('error', () => this.closeSQLJobs());
+        this.client.connection.once('timeout', () => this.closeSQLJobs());
       }
 
       callbacks.progress({
@@ -975,7 +979,7 @@ export default class IBMi {
       };
 
     } catch (e: any) {
-      this.disconnect();
+      await this.disconnect();
 
       let error = e.message;
       if (wasCancelled) {
@@ -1157,21 +1161,25 @@ export default class IBMi {
     };
   }
 
-  private disconnect() {
-    if (this.sqlJob) {
-      this.sqlJob.close();
-      this.sqlJob = undefined;
-      this.splfUserData = undefined;
-    }
-
+  private async disconnect() {
     if (this.client) {
+      await this.closeSQLJobs();
       this.client.dispose();
       this.client = undefined;
     }
   }
 
+  private async closeSQLJobs() {
+    //Clear connected resources
+    if (this.sqlJob) {
+      this.sqlJob = undefined;
+      this.splfUserData = undefined;
+    }
+    await this.getComponent<Mapepire>(Mapepire.ID)?.endJobs();
+  }
+
   async dispose() {
-    this.disconnect();
+    await this.disconnect();
   }
 
   /**

@@ -79,8 +79,7 @@ export default class Instance {
 
     let result: ConnectionResult;
 
-    const onDisconnected: DisconnectedCallback = async (connection, error) => {
-      this.setConnection();
+    const onDisconnected: DisconnectedCallback = async (connection, error) => {      
       if (connection.connectionSuccessful) {        
         this.fire(`disconnected`);
 
@@ -106,6 +105,9 @@ export default class Instance {
             await this.connect({ ...options, reconnecting: true });
           }
         }
+      }
+      else{
+        this.disconnect();
       }
     };
 

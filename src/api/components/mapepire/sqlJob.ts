@@ -8,6 +8,7 @@ import { JobStatus } from "./types";
 export class sshSqlJob extends SQLJob {
   static application = "<unknown>";
   private channel: ClientChannel | undefined;
+  private onClose?: () => void;
 
   async getSshChannel(mapepire: Mapepire, connection: IBMi, javaPath: string): Promise<ClientChannel> {
     const useExec = await Mapepire.useExec(connection);
@@ -23,6 +24,8 @@ export class sshSqlJob extends SQLJob {
           reject(err);
           // ServerComponent.writeOutput(err);
         }
+        mapepire.jobs.set(this.getUniqueId(), this);
+        this.onClose = () => mapepire.jobs.delete(this.uniqueId);
 
         let outString = ``;
 
@@ -156,5 +159,6 @@ export class sshSqlJob extends SQLJob {
     this.channel = undefined;
     this.status = JobStatus.ENDED;
     this.responseEmitter.removeAllListeners();
+    this.onClose?.();
   }
 }
