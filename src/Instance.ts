@@ -79,8 +79,8 @@ export default class Instance {
 
     let result: ConnectionResult;
 
-    const onDisconnected: DisconnectedCallback = async (connection, error) => {      
-      if (connection.connectionSuccessful) {        
+    const onDisconnected: DisconnectedCallback = async (connection, error) => {
+      if (connection.connectionSuccessful) {
         this.fire(`disconnected`);
 
         if (error) {
@@ -106,7 +106,7 @@ export default class Instance {
           }
         }
       }
-      else{
+      else {
         this.disconnect();
       }
     };
@@ -115,41 +115,35 @@ export default class Instance {
       while (true) {
         let customError: string | undefined;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: options.data.name, cancellable: true }, async (p, cancelToken) => {
-          try {
-            const cancelEmitter = new EventEmitter();
+          const cancelEmitter = new EventEmitter();
 
-            cancelToken.onCancellationRequested(() => {
-              cancelEmitter.emit(`cancel`);
-            });
+          cancelToken.onCancellationRequested(() => {
+            cancelEmitter.emit(`cancel`);
+          });
 
-            result = await connection.connect(
-              options.data,
-              {
-                callbacks: {
-                  onDisconnected,
-                  onConnectedOperations: options.onConnectedOperations,
-                  uiErrorHandler: handleConnectionResults,
-                  progress: (message) => { p.report(message) },
-                  message: messageCallback,
-                  inputBox: async (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => {
-                    return await inputBoxCallback(prompt, placeHolder, ignoreFocusOut, cancelToken)
-                  },
-                  cancelEmitter
+          result = await connection.connect(
+            options.data,
+            {
+              callbacks: {
+                onDisconnected,
+                onConnectedOperations: options.onConnectedOperations,
+                uiErrorHandler: handleConnectionResults,
+                progress: (message) => { p.report(message) },
+                message: messageCallback,
+                inputBox: async (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => {
+                  return await inputBoxCallback(prompt, placeHolder, ignoreFocusOut, cancelToken)
                 },
-                reconnecting: options.reconnecting,
-                reloadServerSettings: options.reloadServerSettings,
+                cancelEmitter
               },
-            );
-          } catch (e: any) {
-            customError = e.message;
-            result = { success: false };
-          }
+              reconnecting: options.reconnecting,
+              reloadServerSettings: options.reloadServerSettings,
+            },
+          )
         });
 
         if (result.success) {
           await this.setConnection(connection);
           break;
-
         } else {
           await this.disconnect();
           if (options.reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
@@ -164,10 +158,6 @@ export default class Instance {
             break;
           }
         }
-      }
-
-      if (result.success === false) {
-        connection.dispose();
       }
 
       return result;
@@ -186,7 +176,7 @@ export default class Instance {
 
   private async setConnection(connection?: IBMi) {
     if (this.connection) {
-      await this.connection.dispose();
+      this.connection.disconnect();
     }
 
     if (connection) {

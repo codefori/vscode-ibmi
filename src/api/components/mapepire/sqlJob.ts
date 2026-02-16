@@ -43,7 +43,7 @@ export class sshSqlJob extends SQLJob {
               outString = ``;
               // if (this.isTracingChannelData) ServerComponent.writeOutput(thisMsg);
               try {
-                let response: ServerResponse = JSON.parse(thisMsg);
+                const response: ServerResponse = JSON.parse(thisMsg);
                 this.responseEmitter.emit(response.id, response);
               } catch (e: any) {
                 console.log(`Error: ` + e);

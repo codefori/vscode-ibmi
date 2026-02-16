@@ -261,7 +261,7 @@ export default class IBMi {
       if (callbacks.cancelEmitter) {
         callbacks.cancelEmitter.once('cancel', () => {
           wasCancelled = true;
-          this.dispose();
+          this.disconnect();
         });
       }
 
@@ -332,20 +332,17 @@ export default class IBMi {
       }
 
       // Trigger callbacks unless the connection is cancelled
-      const callbackWrapper = (error?: Error & ClientErrorExtensions) => {
+      const onDisconnected = async (error?: Error & ClientErrorExtensions) => {
+        await this.dispose();
         callbacks.onDisconnected?.(this, error);
       };
 
-      //end: disconnected by user
       if (this.client.connection) {
-        this.client.connection.once(`end`, callbackWrapper);
+        //end: Disconnected by the user
+        this.client.connection.once(`end`, onDisconnected);
         //error/tiemout: connection dropped for some reason (details given in the SSHError type) 
-        this.client.connection.once(`error`, callbackWrapper);
-        this.client.connection.once(`timeout`, callbackWrapper);
-
-        //Release and clear SQL jobs when connection drops
-        this.client.connection.once('error', () => this.closeSQLJobs());
-        this.client.connection.once('timeout', () => this.closeSQLJobs());
+        this.client.connection.once(`error`, onDisconnected);
+        this.client.connection.once(`timeout`, onDisconnected);
       }
 
       callbacks.progress({
@@ -979,7 +976,7 @@ export default class IBMi {
       };
 
     } catch (e: any) {
-      await this.disconnect();
+      this.disconnect();
 
       let error = e.message;
       if (wasCancelled) {
@@ -1161,25 +1158,25 @@ export default class IBMi {
     };
   }
 
-  private async disconnect() {
-    if (this.client) {
-      await this.closeSQLJobs();
+  disconnect() {    
+    if (this.client?.connection) {
+      //Close the connection and triggers its 'end' event
       this.client.dispose();
-      this.client = undefined;
+    }
+    else{
+      //There is no connection: dispose directly
+      this.dispose();
     }
   }
 
-  private async closeSQLJobs() {
+  private async dispose() {
     //Clear connected resources
     if (this.sqlJob) {
-      this.sqlJob = undefined;
-      this.splfUserData = undefined;
+      delete this.sqlJob;
+      delete this.splfUserData;
     }
     await this.getComponent<Mapepire>(Mapepire.ID)?.endJobs();
-  }
-
-  async dispose() {
-    await this.disconnect();
+    delete this.client;
   }
 
   /**
