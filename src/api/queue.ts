@@ -1,19 +1,14 @@
 export class SimpleQueue {
-	private static _instance: SimpleQueue | null = null;
-
-	static get instance() {
-		if (!this._instance) {
-			this._instance = new SimpleQueue();
-		}
-		return this._instance;
-	}
-
 	private delay = 0; // milliseconds
-	private queue: (() => Promise<void>)[] = [];
+	private readonly queue: (() => Promise<void>)[] = [];
 	private queueRunning = false;
 
 	setDelay(delay: number) {
 		this.delay = delay;
+	}
+
+	clear(){
+		this.queue.splice(0, this.queue.length);
 	}
 
 	next<T>(run: () => Promise<T>, cancelCheck?: () => boolean): Promise<T> {

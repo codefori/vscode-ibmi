@@ -1170,6 +1170,8 @@ export default class IBMi {
   }
 
   private async dispose() {
+    CompileTools.reset();
+
     //Clear connected resources
     if (this.sqlJob) {
       delete this.sqlJob;
