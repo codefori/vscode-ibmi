@@ -138,8 +138,6 @@ async function onConnected() {
     connectedBarItem,
     disconnectBarItem,
   ].forEach(barItem => barItem.show());
-
-  updateConnectedBar();
 }
 
 async function onDisconnected() {
