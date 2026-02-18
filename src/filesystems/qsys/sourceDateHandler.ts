@@ -147,13 +147,9 @@ export class SourceDateHandler {
       const doRefresh = (!editedBefore || currentEditingLine !== this.lineEditedBefore || isAtStartOfLine || isDelete);
 
       if (doRefresh) {
-        // Defer decoration update for multi-line changes to allow editor layout to stabilize
-        const isBulkChange = !isSingleLine || event.contentChanges.length > 1;
-        if (isBulkChange) {
-          this._deferredRefreshGutter(document);
-        } else {
-          this._diffRefreshGutter(document);
-        }
+        // Defer decoration update to allow editor layout to stabilize
+        // This prevents visual artifacts where dates briefly appear at the caret
+        this._deferredRefreshGutter(document);
       }
 
       if (isDelete || isSpace) {
