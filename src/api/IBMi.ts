@@ -1,6 +1,7 @@
 import { BindingValue } from "@ibm/mapepire-js";
 import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
+import { ClientErrorExtensions } from "ssh2";
 import { EventEmitter } from 'stream';
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
@@ -30,6 +31,8 @@ export interface ConnectionResult {
   errorCodes?: ConnectionErrorCode[]
 }
 
+export type DisconnectedCallback = (conn: IBMi, error?: Error & ClientErrorExtensions) => Promise<void>;
+
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
@@ -46,11 +49,9 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   }
 ];
 
-type DisconnectCallback = (conn: IBMi) => Promise<void>;
-
 interface ConnectionCallbacks {
   onConnectedOperations?: Function[],
-  timeoutCallback?: (conn: IBMi) => Promise<void>,
+  onDisconnected?: DisconnectedCallback,
   uiErrorHandler: (connection: IBMi, error: ConnectionErrorCode, data?: any) => Promise<boolean>,
   progress: (detail: { message: string }) => void,
   message: (type: ConnectionMessageType, message: string) => void,
@@ -117,6 +118,8 @@ export default class IBMi {
   private currentAsp: string | undefined;
   private libraryAsps = new Map<string, number>();
 
+  connectionSuccessful = false;
+
   /**
    * @deprecated Will be replaced with {@link IBMi.getAllIAsps} in v3.0.0
    */
@@ -147,15 +150,6 @@ export default class IBMi {
   public appendOutput: (text: string) => void = (text) => {
     process.stdout.write(text);
   };
-
-  private disconnectedCallback: (DisconnectCallback) | undefined;
-
-  /**
-   * Will only be called once per connection.
-   */
-  setDisconnectedCallback(callback: DisconnectCallback) {
-    this.disconnectedCallback = callback;
-  }
 
   /**
    * getConfigFile can return pre-defined configuration files,
@@ -268,7 +262,7 @@ export default class IBMi {
       if (callbacks.cancelEmitter) {
         callbacks.cancelEmitter.once('cancel', () => {
           wasCancelled = true;
-          this.dispose();
+          this.disconnect();
         });
       }
 
@@ -297,7 +291,8 @@ export default class IBMi {
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
         passphrase: connectionObject.privateKeyPath ? connectionObject.passphrase : undefined,
         debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
-      } as node_ssh.Config);
+      });
+      this.connectionSuccessful = true;
 
       this.currentConnectionName = connectionObject.name;
       this.currentHost = connectionObject.host;
@@ -338,18 +333,18 @@ export default class IBMi {
         };
       }
 
-      if (callbacks.timeoutCallback) {
-        const timeoutCallbackWrapper = () => {
-          // Don't call the callback function if it was based on a user cancellation request.
-          if (!wasCancelled) {
-            callbacks.timeoutCallback!(this);
-          }
-        }
+      // Trigger callbacks unless the connection is cancelled
+      const onDisconnected = async (error?: Error & ClientErrorExtensions) => {
+        await this.dispose();
+        callbacks.onDisconnected?.(this, error);
+      };
 
-        // Register handlers after we might have to abort due to bad configuration.
-        this.client.connection!.once(`timeout`, timeoutCallbackWrapper);
-        this.client.connection!.once(`end`, timeoutCallbackWrapper);
-        this.client.connection!.once(`error`, timeoutCallbackWrapper);
+      if (this.client.connection) {
+        //end: Disconnected by the user
+        this.client.connection.once(`end`, onDisconnected);
+        //error/tiemout: connection dropped for some reason (details given in the SSHError type) 
+        this.client.connection.once(`error`, onDisconnected);
+        this.client.connection.once(`timeout`, onDisconnected);
       }
 
       callbacks.progress({
@@ -958,8 +953,7 @@ export default class IBMi {
       }
 
       if (!options.reconnecting) {
-        const delayedOperations: Function[] = callbacks.onConnectedOperations ? [...callbacks.onConnectedOperations] : [];
-        for (const operation of delayedOperations) {
+        for (const operation of callbacks.onConnectedOperations || []) {
           await operation();
         }
       }
@@ -984,7 +978,7 @@ export default class IBMi {
       };
 
     } catch (e: any) {
-      this.disconnect(true);
+      this.disconnect();
 
       let error = e.message;
       if (wasCancelled) {
@@ -1166,24 +1160,27 @@ export default class IBMi {
     };
   }
 
-  private disconnect(failedToConnect = false) {
-    if (this.sqlJob) {
-      this.sqlJob.close();
-      this.sqlJob = undefined;
-      this.splfUserData = undefined;
+  disconnect() {    
+    if (this.client?.connection) {
+      //Close the connection and triggers its 'end' event
+      this.client.dispose();
     }
-
-    if (this.client) {
-      this.client = undefined;
-
-      if (failedToConnect === false && this.disconnectedCallback) {
-        this.disconnectedCallback(this);
-      }
+    else{
+      //There is no connection: dispose directly
+      this.dispose();
     }
   }
 
-  async dispose() {
-    this.disconnect();
+  private async dispose() {
+    CompileTools.reset();
+
+    //Clear connected resources
+    if (this.sqlJob) {
+      delete this.sqlJob;
+      delete this.splfUserData;
+    }
+    await this.getComponent<Mapepire>(Mapepire.ID)?.endJobs();
+    delete this.client;
   }
 
   /**

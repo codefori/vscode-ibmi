@@ -25,6 +25,11 @@ export namespace CompileTools {
     updateProgress?: (message: string) => void
   }
 
+  export function reset(){
+    ileQueue.clear();
+    jobLogOrdinal = 0;
+  }
+
   /**
    * Execute a command
    */
