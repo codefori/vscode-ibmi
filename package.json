@@ -3259,16 +3259,16 @@
 		"webpack-cli": "^4.5.0"
 	},
 	"dependencies": {
-		"@ibm/ibmi-eventf-parser": "^1.0.2",
-		"@ibm/mapepire-js": "^0.6.0",
-		"@vscode-elements/elements": "2.5.0",
+		"@ibm/ibmi-eventf-parser": "2.0.1",
+		"@ibm/mapepire-js": "0.6.0",
+		"@vscode-elements/elements": "2.5.1",
 		"adm-zip": "0.5.16",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
 		"csv": "6.4.1",
 		"escape-string-regexp": "5.0.0",
 		"ignore": "7.0.5",
 		"node-ssh": "13.2.1",
-		"tar": "^7.5.9",
+		"tar": "7.5.9",
 		"tmp": "0.2.5",
 		"vscode-diff": "3.0.1"
 	},
