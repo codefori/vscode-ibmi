@@ -19,10 +19,11 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
         const fieldElement = document.getElementById(field);
         fieldElement.addEventListener(inputFields.some(f => f.id === field) ? 'input' : 'change', function(event) {
           event?.preventDefault();
-          const data = document.querySelector('#laforma').data;
-          for (const checkbox of checkboxes) {
-            data[checkbox] = data[checkbox]?.length >= 1;
-          }
+          const data = {};
+          new FormData(document.querySelector('#laforma')).entries().forEach(([key, value]) => data[key] = value);
+
+          // Convert checkboxes value to actual boolean
+          checkboxes.forEach(checkbox => data[checkbox] = (data[checkbox] === 'on'));
 
           data.valid = validateInputs();
 

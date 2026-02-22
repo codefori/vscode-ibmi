@@ -51,7 +51,7 @@ export class Login {
       ])
       .addButtons(
         { id: `connect`, label: `Connect`, requiresValidation: true },
-        { id: `saveExit`, label: `Save & Exit` }
+        { id: `saveExit`, label: `Save & Exit`, requiresValidation: true },
       )
       .loadPage<NewLoginSettings>(`IBM i Login`, checkLoginForm);
 
