@@ -227,9 +227,9 @@ export class CustomHTML extends Section {
     ${this.options?.fullPage ?
         this.fields.map(field => field.getHTML()).join(``) :
       /* html */ `
-      <vscode-form-container id="laforma">
+      <form id="laforma">
         ${this.fields.map(field => field.getHTML()).join(``)}
-      </vscode-form-container>
+      </form>
         `
       }        
     </body>
@@ -364,7 +364,7 @@ export class CustomHTML extends Section {
             document.addEventListener('DOMContentLoaded', () => {
               validateInputs(); 
               var currentTree;
-              ${trees.map(tree => /*js*/`
+              ${trees.map(tree => /* javascript */`
                 currentTree = document.getElementById('${tree.id}');
                 currentTree.data = ${JSON.stringify(tree.treeList)};
                 currentTree.addEventListener('vsc-tree-select', (event) => {
@@ -466,19 +466,13 @@ export class CustomUI extends CustomHTML {
     return /* javascript */ `
       const doDone = (event, buttonId) => {
         console.log('submit now!!', buttonId)
-        if (event)
-            event.preventDefault();
-            
-        var data = document.querySelector('#laforma').data;
+        event?.preventDefault();
+        
+        const data = { buttons: buttonId };
+        new FormData(document.querySelector('#laforma')).entries().forEach(([key, value]) => data[key] = value);
 
-        if (buttonId) {
-          data['buttons'] = buttonId;
-        }
-
-        // Convert the weird array value of checkboxes to boolean
-        for (const checkbox of checkboxes) {
-          data[checkbox] = (data[checkbox] && data[checkbox].length >= 1);
-        }
+        // Convert checkboxes value to actual boolean
+        checkboxes.forEach(checkbox => data[checkbox] = (data[checkbox] === 'on'));
 
         vscode.postMessage({ type: 'submit', data });
       };
@@ -683,7 +677,7 @@ export class Field {
               ${this.renderLabel()}
               ${this.renderDescription()}
               <vscode-single-select id="${this.id}" name="${this.id}" ${this.readonly ? `disabled` : ``}>
-                  ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
+                  ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`).join('')}
               </vscode-single-select>
           </vscode-form-group>`;
 
