@@ -2,6 +2,7 @@ import { Ignore } from "ignore";
 import { WorkspaceFolder } from "vscode";
 import Instance from "./Instance";
 import { ComponentRegistry } from './api/components/manager';
+import { ConnectionManager } from "./api/configuration/config/ConnectionManager";
 import { DeploymentMethod, FileError } from "./api/types";
 import { CustomEditor } from "./editors/customEditorProvider";
 import { DeployTools } from "./filesystems/local/deployTools";
@@ -15,7 +16,8 @@ export interface CodeForIBMi {
   deployTools: typeof DeployTools,
   evfeventParser: (lines: string[]) => Map<string, FileError[]>,
   tools: typeof VscodeTools,
-  componentRegistry: ComponentRegistry
+  componentRegistry: ComponentRegistry,
+  connectionManager: ConnectionManager
 }
 
 export interface DeploymentParameters {
