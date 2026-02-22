@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import vscode from 'vscode';
+import vscode, { ProviderResult } from 'vscode';
 
 //Webpack is returning this as a string
 const vscodeweb = require(`@vscode-elements/elements/dist/bundled`);
@@ -388,21 +388,21 @@ export class CustomUI extends CustomHTML {
    * If no callback is provided, a Promise will be returned.
    * If the page is already opened, it grabs the focus and return no Promise (as it's alreay handled by the first call).
    * 
-   * @param title 
-   * @param callback
+   * @param title the title displayed in the webview tab
+   * @param checkData an optional function that can check and updates the data before they are returned. If it returns `false`, the view will stay open.
    * @returns a Promise<Page<T>> if no callback is provided
    */
-  loadPage<T>(title: string): Promise<Page<T>> | undefined {
+  loadPage<T>(title: string, checkData?: (data: T) => ProviderResult<boolean>): Promise<Page<T>> | undefined {
     const webview = openedWebviews.get(title);
     if (webview) {
       webview.reveal();
     }
     else {
-      return this.createPage(title);
+      return this.createPage(title, checkData);
     }
   }
 
-  private createPage<T>(title: string): Promise<Page<T>> | undefined {
+  private createPage<T>(title: string, checkData?: (data: T) => ProviderResult<boolean>): Promise<Page<T>> | undefined {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -422,12 +422,14 @@ export class CustomUI extends CustomHTML {
 
     const page = new Promise<Page<T>>((resolve) => {
       panel.webview.onDidReceiveMessage(
-        (message: WebviewMessageRequest) => {
+        async (message: WebviewMessageRequest) => {
           if (message.type && message.data) {
             switch (message.type) {
               case `submit`:
-                didSubmit = true;
-                resolve({ panel, data: message.data });
+                if (checkData ? await checkData(message.data) : true) {
+                  didSubmit = true;
+                  resolve({ panel, data: message.data });
+                }
                 break;
 
               case `file`:

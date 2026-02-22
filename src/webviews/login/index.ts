@@ -1,7 +1,7 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
-import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
+import { deleteStoredPassword, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from "../../config/passwords";
 import { instance, safeDisconnect } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 import { CustomUI, Section } from "../CustomUI";
@@ -36,6 +36,7 @@ export class Login {
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
       .addCheckbox(`enableMfa`, l10n.t(`Enable Multi-Factor Authentication (MFA)`), l10n.t(`Enable this to be prompted for your additional factor when connecting.`))
       .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716 and PPK formats are supported.`))
+      .addPassword(`passphrase`, l10n.t(`Key Passphrase`))
       .addHorizontalRule()
       .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" })
       .addCheckbox(`sshDebug`, l10n.t(`Turn on SSH debug output`), l10n.t(`Enable this to output debug traces in the Code for i and help diagnose SSH connection issues.`));
@@ -52,7 +53,7 @@ export class Login {
         { id: `connect`, label: `Connect`, requiresValidation: true },
         { id: `saveExit`, label: `Save & Exit` }
       )
-      .loadPage<NewLoginSettings>(`IBM i Login`);
+      .loadPage<NewLoginSettings>(`IBM i Login`, checkLoginForm);
 
     if (page && page.data) {
       const data = page.data;
@@ -62,7 +63,7 @@ export class Login {
       data.readyTimeout = Number(data.readyTimeout);
       data.privateKeyPath = data.privateKeyPath?.trim() ? Tools.normalizePath(data.privateKeyPath) : undefined;
       if (data.name) {
-        const existingConnection = await IBMi.connectionManager.getByName(data.name);
+        const existingConnection = IBMi.connectionManager.getByName(data.name);
 
         if (existingConnection) {
           vscode.window.showErrorMessage(`Connection with name ${data.name} already exists.`);
@@ -74,11 +75,20 @@ export class Login {
             port: data.port,
             username: data.username,
             privateKeyPath: data.privateKeyPath,
+            passphrase: data.passphrase,
             enableMfa: data.enableMfa
           };
 
           if (data.savePassword && data.password) {
+            delete data.privateKeyPath;
+            delete data.passphrase;
             await setStoredPassword(context, data.name, data.password);
+          }
+          else if (data.privateKeyPath) {
+            delete data.password;
+            if (data.passphrase) {
+              await setStoredPassphrase(context, data.name, data.passphrase);
+            }
           }
 
           await IBMi.connectionManager.storeNew(newConnection);
@@ -96,7 +106,7 @@ export class Login {
             case `connect`:
               vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
               const toDoOnConnected: Function[] = [];
-              if (!data.password && !data.privateKeyPath && await promptPassword(context, data)) {
+              if (!data.password && !data.privateKeyPath && await promptPassword(data)) {
                 toDoOnConnected.push(() => setStoredPassword(context, data.name, data.password!));
               }
 
@@ -163,11 +173,12 @@ export class Login {
       if (connectionConfig.privateKeyPath) {
         // If connecting with a private key, remove the password
         await deleteStoredPassword(context, connectionConfig.name);
+        connectionConfig.passphrase = await getStoredPassphrase(context, connectionConfig.name);
       } else {
         // Assume connection with a password, but prompt if we don't have one        
         connectionConfig.password = await getStoredPassword(context, connectionConfig.name);
         if (!connectionConfig.password) {
-          if (await promptPassword(context, connectionConfig)) {
+          if (await promptPassword(connectionConfig)) {
             toDoOnConnected.push(() => setStoredPassword(context, connectionConfig.name, connectionConfig.password!));
           }
         }
@@ -195,7 +206,7 @@ export class Login {
 
 }
 
-async function promptPassword(context: vscode.ExtensionContext, connection: ConnectionData) {
+async function promptPassword(connection: ConnectionData) {
   let savePassword = false;
   const savePasswordLabel = "Save password and connect"
   const passwordBox = vscode.window.createInputBox();
@@ -219,4 +230,23 @@ async function promptPassword(context: vscode.ExtensionContext, connection: Conn
   passwordBox.show();
   await new Promise(resolve => passwordBox.onDidHide(resolve));
   return savePassword;
+}
+
+export async function checkLoginForm(data: ConnectionData) {
+  if (data.password && data.privateKeyPath) {
+    const password = l10n.t("Password");
+    const privateKey = l10n.t("Private Key");
+    const toKeep = await vscode.window.showWarningMessage(l10n.t("Both a password and a private key were provided. Which one should be kept?"), { modal: true }, password, privateKey);
+    if (toKeep === password) {
+      delete data.privateKeyPath;
+      delete data.passphrase;
+    }
+    else if (toKeep === privateKey) {
+      delete data.password;
+    }
+    else {
+      return false;
+    }
+  }
+  return true;
 }
