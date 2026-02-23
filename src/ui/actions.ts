@@ -13,8 +13,7 @@ import { Action, ActionResult, DeploymentMethod } from '../typings';
 import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 import { VscodeTools } from './Tools';
-
-import { getActions } from '../api/actions';
+import { ActionTools } from '../api/actions';
 import { BrowserItem } from './types';
 
 type CommandObject = {
@@ -636,7 +635,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 export type AvailableAction = { label: string; action: Action; }
 
 export async function getAllAvailableActions(targets: ActionTarget[], scheme: string) {
-  const allActions = [...await getActions()];
+  const allActions = [...await ActionTools.getActions()];
 
   // Then, if we're being called from a local file
   // we fetch the Actions defined from the workspace.
@@ -648,7 +647,7 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     const allTargetsInOne = targets.every(t => t.workspaceFolder?.index === workspaceId);
 
     if (allTargetsInOne) {
-      const localActions = await getActions(firstWorkspace);
+      const localActions = await ActionTools.getActions(firstWorkspace);
       allActions.push(...localActions);
     }
   }

@@ -66,7 +66,7 @@ export interface ActionResult {
     executionOK: boolean,
     output: string[]
   }[],
-  message?: string
+  message: string
 }
 
 export interface ConnectionData {

@@ -1,5 +1,5 @@
 import vscode, { l10n } from "vscode";
-import { getActions, updateAction } from "../api/actions";
+import { ActionTools } from "../api/actions";
 import { Tools } from "../api/Tools";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../typings";
 import { CustomVariables } from "../ui/views/environment/customVariables";
@@ -139,13 +139,13 @@ async function save(targetAction: Action, actionData: ActionData, workspace?: vs
   const oldType = targetAction.type;
   Object.assign(targetAction, actionData);
   const typeChanged = (oldType !== targetAction.type);
-  if (typeChanged && (await getActions(workspace)).some(a => a.name === targetAction.name && a.type === targetAction.type)) {
+  if (typeChanged && (await ActionTools.getActions(workspace)).some(a => a.name === targetAction.name && a.type === targetAction.type)) {
     throw new Error(l10n.t("The action '{0}' already exists for the '{1}' type", targetAction.name, targetAction.type!))
   }
   // We don't want \r (Windows line endings)
   targetAction.command = targetAction.command.replace(new RegExp(`\\\r`, `g`), ``);
   targetAction.extensions = actionData.extensions.split(`,`).map(item => item.trim().toUpperCase())
-  await updateAction(targetAction, workspace, { oldType });
+  await ActionTools.updateAction(targetAction, workspace, { oldType });
   if (typeChanged) {
     editedActions.delete({ name: targetAction.name, type: oldType });
     editedActions.add({ name: targetAction.name, type: targetAction.type });

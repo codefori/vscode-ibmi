@@ -41,6 +41,7 @@ import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
+import { ActionTools } from "./api/actions";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -141,9 +142,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     instance,
     customUI: () => new CustomUI(),
     customEditor: (target, onSave, onClosed) => new CustomEditor(target, onSave, onClosed),
-    deployTools: DeployTools,
     evfeventParser: parseErrors,
     tools: VscodeTools,
+    deployTools: DeployTools,
+    actionTools: ActionTools,
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager
   };

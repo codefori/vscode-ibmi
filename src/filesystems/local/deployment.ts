@@ -3,7 +3,7 @@ import path from 'path';
 import { create as tarCreate, t as tarT } from 'tar';
 import tmp from 'tmp';
 import vscode from 'vscode';
-import { getActions, getLocalActionsFiles } from '../../api/actions';
+import { ActionTools } from '../../api/actions';
 import IBMi from '../../api/IBMi';
 import IBMiContent from '../../api/IBMiContent';
 import { Tools } from '../../api/Tools';
@@ -82,7 +82,7 @@ export namespace Deployment {
               });
             }
 
-            getActions(workspace).then(result => {
+            ActionTools.getActions(workspace).then(result => {
               if (result.length === 0) {
                 vscode.window.showInformationMessage(
                   `There are no local Actions defined for this project.`,
@@ -161,7 +161,7 @@ export namespace Deployment {
         workspace = uri;
       }
 
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasLocalActions`, workspace ? (await getLocalActionsFiles(workspace)).length > 0 : false);
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasLocalActions`, workspace ? (await ActionTools.getActions(workspace)).length > 0 : false);
     };
 
     watcher.onDidChange(uri => {
