@@ -7,8 +7,8 @@ import { DeploymentMethod, FileError } from "./api/types";
 import { CustomEditor } from "./editors/customEditorProvider";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { VscodeTools } from "./ui/Tools";
+import { SearchTools } from "./api/SearchTools";
 import { CustomUI } from "./webviews/CustomUI";
-import { Search } from "./api/Search";
 
 export interface CodeForIBMi {
   instance: Instance,
@@ -19,7 +19,7 @@ export interface CodeForIBMi {
   tools: typeof VscodeTools,
   componentRegistry: ComponentRegistry,
   connectionManager: ConnectionManager,
-  search: typeof Search
+  searchTools: typeof SearchTools
 }
 
 export interface DeploymentParameters {
