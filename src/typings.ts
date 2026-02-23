@@ -19,9 +19,7 @@ export interface CodeForIBMi {
   tools: typeof VscodeTools,
   componentRegistry: ComponentRegistry,
   connectionManager: ConnectionManager,
-  searchMembers: typeof Search.searchMembers,
-  searchIFS: typeof Search.searchIFS,
-  findIFS: typeof Search.findIFS
+  search: typeof Search
 }
 
 export interface DeploymentParameters {

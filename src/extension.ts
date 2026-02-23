@@ -147,9 +147,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     tools: VscodeTools,
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager,
-    searchMembers: Search.searchMembers,
-    searchIFS: Search.searchIFS,
-    findIFS: Search.findIFS
+    search: Search
   };
 }
 
