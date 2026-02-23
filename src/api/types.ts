@@ -222,5 +222,10 @@ export interface ModuleExport {
 
 export type EditorPath = string | { fsPath: string };
 
+export interface CacheItem<T> {
+  value: T;
+  createdAt?: number; // milliseconds elapsed since the epoch
+}
+
 export * from "./configuration/config/types";
 

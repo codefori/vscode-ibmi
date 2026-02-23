@@ -14,7 +14,7 @@ import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/serverFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand } from './types';
+import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, QsysPath, CacheItem } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -142,6 +142,8 @@ export default class IBMi {
 
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
+
+  ccsidCache: Map<String, CacheItem<String>> = new Map();
 
   public appendOutput: (text: string) => void = (text) => {
     process.stdout.write(text);
@@ -1545,6 +1547,51 @@ export default class IBMi {
     if (foundNumber) {
       return this.getIAspName(foundNumber);
     }
+  }
+
+  async getFileCcsid(path: string | QsysPath): Promise<number> {
+    const minute = 60 * 1000;
+    const timeToLive = 10 * minute;
+
+    const isQsysPath = typeof path === `object`;
+    let fileObjPath: string;
+
+    if (isQsysPath) {
+      const localPath: QsysPath = path;
+      localPath.asp = localPath.asp ? this.sysNameInAmerican(localPath.asp) : undefined;
+      localPath.library = this.sysNameInAmerican(localPath.library);
+      localPath.name = this.sysNameInAmerican(localPath.name);
+      fileObjPath = Tools.qualifyPath(localPath.library, localPath.name, '', localPath.asp || '', true);
+    } else {
+      fileObjPath = path.replace(/\/[^/]+\.MBR$/i, ''); // strip the member from path
+    }
+
+    const cached = this.ccsidCache.get(fileObjPath);
+    if (cached) {
+      if (!cached.createdAt || cached.createdAt + timeToLive >= Date.now()) {
+        // cached ccsid still valid
+        return Number(cached.value);
+      }
+      // clear the stale cached ccsid
+      this.ccsidCache.delete(fileObjPath);
+    }
+
+    // Take {DOES_THIS_WORK: `YESITDOES`} away, and all of a sudden names with # aren't found.
+    const result = await this.sendCommand({ command: `${this.remoteFeatures.attr} -p "${fileObjPath}" CCSID`, env: { DOES_THIS_WORK: `YESITDOES` } });
+
+    if (result.code === 0) {
+      const pieces = result.stdout.split('=');
+      if (pieces.length === 2) {
+        const ccsid = Number(pieces[1]) || 0;
+        if (ccsid !== 0) {
+          // save result to cache
+          this.ccsidCache.set(fileObjPath, { value: ccsid.toString(), createdAt: Date.now() })
+          return ccsid;
+        }
+      }
+    }
+
+    return 0;
   }
 
   getLibraryIAsp(library: string) {
