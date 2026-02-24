@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { parseFilter } from '../../Filter';
 import IBMi from '../../IBMi';
-import { Search } from '../../Search';
+import { SearchTools } from '../../SearchTools';
 import { Tools } from '../../Tools';
 import { SearchResults } from '../../types';
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
@@ -17,7 +17,7 @@ describe('Search Tests', { concurrent: true }, () => {
   });
 
   it('Single member search', async () => {
-    const result = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+    const result = await SearchTools.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
     expect(result.term).toBe("IBM");
     expect(result.hits.length).toBe(1);
     const [hit] = result.hits;
@@ -36,7 +36,7 @@ describe('Search Tests', { concurrent: true }, () => {
   it('Generic name search', async () => {
     const memberFilter = "E*";
     const filter = parseFilter(memberFilter);
-    const result = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", memberFilter);
+    const result = await SearchTools.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", memberFilter);
     expect(result.hits.every(hit => filter.test(hit.path.split("/").at(-1)!))).toBe(true);
     expect(result.hits.every(hit => !hit.path.endsWith(`MBR`))).toBe(true);
   });
@@ -51,7 +51,7 @@ describe('Search Tests', { concurrent: true }, () => {
     const members = await connection.getContent().getMemberList({ library, sourceFile, members: memberFilter });
     expect(checkNames(members.map(member => member.name))).toBe(true);
 
-    const result = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "SQL", members);
+    const result = await SearchTools.searchMembers(connection, "QSYSINC", "QRPGLESRC", "SQL", members);
     expect(result.hits.length).toBe(6);
     expect(checkNames(result.hits.map(hit => hit.path.split("/").at(-1)!))).toBe(true);
     expect(result.hits.every(hit => !hit.path.endsWith(`MBR`))).toBe(true);
@@ -81,13 +81,13 @@ describe('Search Tests', { concurrent: true }, () => {
 
         const hasMember = (results: SearchResults, member: string) => results.hits.map(hit => hit.path.split('/').pop()).includes(member);
 
-        const searchTest = await Search.searchMembers(connection, library, file, "test", '*');
+        const searchTest = await SearchTools.searchMembers(connection, library, file, "test", '*');
         expect(searchTest.hits.length).toBe(3);
         expect(hasMember(searchTest, "AN.RPGLE.RPGLE")).toBe(true);
         expect(hasMember(searchTest, "A.CLLE.CLLE")).toBe(true);
         expect(hasMember(searchTest, "A.CMD.CMD")).toBe(true);
 
-        const searchTesting = await Search.searchMembers(connection, library, file, "testing", '*');
+        const searchTesting = await SearchTools.searchMembers(connection, library, file, "testing", '*');
         expect(searchTesting.hits.length).toBe(2);
         expect(hasMember(searchTesting, "AN.RPGLE.RPGLE")).toBe(true);
         expect(hasMember(searchTesting, "A.CLLE.CLLE")).toBe(true);
@@ -102,9 +102,9 @@ describe('Search Tests', { concurrent: true }, () => {
     const pfgrep = connection.remoteFeatures.pfgrep;
     // This test only needs to run if pfgrep is installed
     if (pfgrep) {
-      const resultPfgrep = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+      const resultPfgrep = await SearchTools.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
       connection.remoteFeatures.pfgrep = undefined;
-      const resultQsh = await Search.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+      const resultQsh = await SearchTools.searchMembers(connection, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
       connection.remoteFeatures.pfgrep = pfgrep;
       // XXX: Do a deep equals here (without having to reimplement one)
       expect(resultPfgrep.hits[0].lines[0] == resultQsh.hits[0].lines[0]);

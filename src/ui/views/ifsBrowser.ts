@@ -5,7 +5,7 @@ import vscode, { CancellationToken, FileDecoration, FileDecorationProvider, File
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import IBMi from "../../api/IBMi";
 import { SortOptions } from "../../api/IBMiContent";
-import { Search } from "../../api/Search";
+import { SearchTools } from "../../api/SearchTools";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { FocusOptions, IFS_BROWSER_MIMETYPE, IFSFile, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithPath } from "../../typings";
@@ -1012,7 +1012,7 @@ async function doSearchInStreamfiles(searchTerm: string, searchPaths: string[]) 
           message: searchPath,
           increment
         });
-        const results = await Search.searchIFS(instance.getConnection()!, searchPath, searchTerm);
+        const results = await SearchTools.searchIFS(instance.getConnection()!, searchPath, searchTerm);
         if (results) {
           total += results.hits.length;
           openIFSSearchResults(searchPath, results, append);
@@ -1048,7 +1048,7 @@ async function doFindStreamfiles(findTerm: string, findPaths: string[]) {
           message: findPath,
           increment
         });
-        const results = (await Search.findIFS(instance.getConnection()!, findPath, findTerm));
+        const results = (await SearchTools.findIFS(instance.getConnection()!, findPath, findTerm));
         if (results) {
           total += results.hits.length;
           openIFSSearchResults(findPath, results, append);

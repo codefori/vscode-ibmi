@@ -3,7 +3,7 @@ import IBMi from './IBMi';
 import { Tools } from './Tools';
 import { IBMiMember, SearchHit, SearchResults, CommandResult } from './types';
 
-export namespace Search {
+export namespace SearchTools {
 
   function parseHitPath(hit: SearchHit): IBMiMember {
     const parts = hit.path.split('/');

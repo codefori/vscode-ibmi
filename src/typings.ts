@@ -7,6 +7,7 @@ import { DeploymentMethod, FileError } from "./api/types";
 import { CustomEditor } from "./editors/customEditorProvider";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { VscodeTools } from "./ui/Tools";
+import { SearchTools } from "./api/SearchTools";
 import { CustomUI } from "./webviews/CustomUI";
 
 export interface CodeForIBMi {
@@ -17,7 +18,8 @@ export interface CodeForIBMi {
   evfeventParser: (lines: string[]) => Map<string, FileError[]>,
   tools: typeof VscodeTools,
   componentRegistry: ComponentRegistry,
-  connectionManager: ConnectionManager
+  connectionManager: ConnectionManager,
+  searchTools: typeof SearchTools
 }
 
 export interface DeploymentParameters {
