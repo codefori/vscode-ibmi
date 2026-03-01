@@ -69,7 +69,7 @@ export class Mapepire implements IBMiComponent {
         throw `Local Mapepire asset not found at ${this.localAssetPath}!`;
       }
 
-      let result = await connection.sendCommand({ command: `rm ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*.jar` });
+      let result = await connection.sendCommand({ command: `rm -f ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*.jar` });
       if (result.code !== 0) {
         throw `Failed to clear previous Mapepire installation: ${result.stderr}`;
       }
