@@ -5,6 +5,7 @@ import { getActions, updateAction } from '../../../api/actions';
 import { GetNewLibl } from '../../../api/components/getNewLibl';
 import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
+import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
 import { editConnectionProfile, isProfileEdited } from '../../../editors/connectionProfileEditor';
 import { instance } from '../../../instantiate';
@@ -32,6 +33,8 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   localActionsWatcher.onDidCreate(() => environmentView.actionsNode?.forceRefresh());
   localActionsWatcher.onDidChange(() => environmentView.actionsNode?.forceRefresh());
   localActionsWatcher.onDidDelete(() => environmentView.actionsNode?.forceRefresh());
+
+  onCodeForIBMiConfigurationChange("actions", () => environmentView.actionsNode?.forceRefresh())
 
   context.subscriptions.push(
     environmentTreeViewer,
@@ -84,7 +87,6 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
             command: ''
           };
           await updateAction(action, typeNode.workspace);
-          environmentView.actionsNode?.forceRefresh();
           vscode.commands.executeCommand("code-for-ibmi.environment.action.edit", { action, workspace: typeNode.workspace });
         }
       }
@@ -106,12 +108,11 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
         if (newName) {
           await updateAction(action, node.workspace, { newName });
-          environmentView.actionsNode?.forceRefresh();
         }
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.edit", (node: ActionItem) => {
-      editAction(node.action, async () => environmentView.actionsNode?.forceRefresh(), node.workspace);
+      editAction(node.action, undefined, node.workspace);
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.copy", async (node: ActionItem) => {
       vscode.commands.executeCommand('code-for-ibmi.environment.action.create', node.parent, node);
@@ -122,7 +123,6 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       }
       else if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
         await updateAction(node.action, node.workspace, { delete: true });
-        environmentView.actionsNode?.forceRefresh();
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.runOnEditor", (node: ActionItem) => {
