@@ -166,7 +166,7 @@ export class CustomHTML extends Section {
   }
 
   protected getHTML(panel: vscode.WebviewPanel, title: string) {
-    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`, 'browser'] as FieldType[];
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`, 'browser', 'heading'] as FieldType[];
     const trees = this.fields.filter(field => [`tree`, 'browser'].includes(field.type));
 
     const complexTabFields = this.fields.filter(field => field.type === `complexTabs`).map(tabs => tabs.complexTabItems?.map(tab => tab.fields));
@@ -464,60 +464,33 @@ export class CustomUI extends CustomHTML {
 
   protected getSpecificScript() {
     return /* javascript */ `
-      const doDone = (event, buttonId) => {
-        console.log('submit now!!', buttonId)
+      const theForm = document.querySelector('#laforma');
+
+      const doDone = (event, button) => {
+        console.log('submit now!!', button || 'enter pressed')
         event?.preventDefault();
-        
-        const data = { buttons: buttonId };
-        new FormData(document.querySelector('#laforma')).entries().forEach(([key, value]) => data[key] = value);
+        const isValid = (!button || button.requiresValidation) ? validateInputs() : true;          
+        if (isValid) {
+          const data = { buttons: button?.id };
+          new FormData(theForm).entries().forEach(([key, value]) => data[key] = value);
 
-        // Convert checkboxes value to actual boolean
-        checkboxes.forEach(checkbox => data[checkbox] = (data[checkbox] === 'on'));
+          // Convert checkboxes value to actual boolean
+          checkboxes.forEach(checkbox => data[checkbox] = (data[checkbox] === 'on'));
 
-        vscode.postMessage({ type: 'submit', data });
-      };
+          vscode.postMessage({ type: 'submit', data });
+        }
+      };      
+
+      //Pressing enter will submit the form
+      theForm.addEventListener("submit", doDone);
 
       // Now many buttons can be pressed to submit
       for (const fieldData of groupButtons) {
-        const field = fieldData.id;
-        
-        console.log('group button', fieldData, document.getElementById(field));
-        var button = document.getElementById(field);
+        const button = document.getElementById(fieldData.id);
 
-        const submitButtonAction = (event) => {
-          const isValid = fieldData.requiresValidation ? validateInputs() : true;
-          console.log({requiresValidation: fieldData.requiresValidation, isValid});
-          if (isValid) doDone(event, field);
-        }
-
-        button.onclick = submitButtonAction;
-        button.onKeyDown = submitButtonAction;
-      }
-
-      for (const field of submitfields) {
-          const currentElement = document.getElementById(field);
-          if (currentElement.hasAttribute('rows')) {
-            currentElement
-              .addEventListener('keyup', function(event) {
-                  event.preventDefault();
-                  if (event.keyCode === 13 && event.altKey) {
-                    if (validateInputs()) {
-                      doDone();
-                    }
-                  }
-              });
-          } else {
-            currentElement
-              .addEventListener('keyup', function(event) {
-                  event.preventDefault();
-                  if (event.keyCode === 13) {
-                    if (validateInputs()) {
-                      doDone();
-                    }
-                  }
-              });
-          }
-      }
+        button.onclick = () => doDone(event, fieldData);
+        button.onKeyDown = () => doDone(event, fieldData);
+      }      
     `;
   }
 }
