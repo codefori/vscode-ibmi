@@ -86,14 +86,13 @@ export async function startService(connection: IBMi) {
           if (job) {
             let tries = 0;
             let debugServiceJob: string | undefined;
-            const debugPort = Number(config.debugPort);
-            const debugSepPort = Number(config.debugSepPort);
+            const debugPort = Number(debugConfig.getRemoteServiceSecuredPort());
             const checkJob = async (done: (started: boolean) => void) => {
               if (tries++ < 40) {
                 if (debugServiceJob) {
                   if ((await getDebugEngineJobs()).service) {
                     //Debug service job running Java is still alive
-                    if ((await Promise.all([checkPort(connection, debugPort), checkPort(connection, debugSepPort)])).every(Boolean)) {
+                    if (await checkPort(connection, debugPort)) {
                       window.showInformationMessage(l10n.t(`Debug service started.`));
                       refreshDebugSensitiveItems();
                       done(true);
