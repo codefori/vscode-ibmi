@@ -141,20 +141,6 @@ async function onConnected() {
 }
 
 async function onDisconnected() {
-  // Close the tabs with no dirty editors
-  vscode.window.tabGroups.all
-    .filter(group => !group.tabs.some(tab => tab.isDirty))
-    .forEach(group => {
-      group.tabs.forEach(tab => {
-        if (tab.input instanceof vscode.TabInputText) {
-          const uri = tab.input.uri;
-          if ([`member`, `streamfile`, `object`].includes(uri.scheme)) {
-            vscode.window.tabGroups.close(tab);
-          }
-        }
-      })
-    });
-
   // Hide the bar items
   [
     disconnectBarItem,
