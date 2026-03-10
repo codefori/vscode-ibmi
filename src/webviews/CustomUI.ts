@@ -175,12 +175,12 @@ export class CustomHTML extends Section {
     return /*html*/`
     <!DOCTYPE html>
     <html lang="en">
-    
+
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${title}</title>
-    
+
         <script type="module">${vscodeweb}</script>
         <style>
             @media only screen and (min-width: 750px) {
@@ -216,13 +216,13 @@ export class CustomHTML extends Section {
               overflow: auto;
             }
 
-            pre{              
+            pre{
               background-color: var(--vscode-textPreformat-background);
             }
             ${this.options?.css || ""}
         </style>
     </head>
-    
+
     <body>
     ${this.options?.fullPage ?
         this.fields.map(field => field.getHTML()).join(``) :
@@ -231,9 +231,9 @@ export class CustomHTML extends Section {
         ${this.fields.map(field => field.getHTML()).join(``)}
       </form>
         `
-      }        
+      }
     </body>
-    
+
     <script>
         (function () {
             const vscode = acquireVsCodeApi();
@@ -272,7 +272,7 @@ export class CustomHTML extends Section {
                     }
                   }
                   validateInputs(response.field);
-                }              
+                }
               }
             });
 
@@ -310,13 +310,13 @@ export class CustomHTML extends Section {
                 }
               }
 
-              // If not validating a specific field, 
+              // If not validating a specific field,
               // then we can enable/disable certain buttons
               if (!optionalId) {
                 for (const fieldData of groupButtons) {
                   if (fieldData.requiresValidation) {
                     const field = fieldData.id;
-                    
+
                     let button = document.getElementById(field);
                     if (isValid) {
                       button.removeAttribute("disabled");
@@ -328,7 +328,7 @@ export class CustomHTML extends Section {
               }
 
               return isValid;
-            }            
+            }
 
             const treeItemClick = (treeId, type, value) => {
               if(type === "browse"){
@@ -337,7 +337,7 @@ export class CustomHTML extends Section {
               }
               else{
                 vscode.postMessage({ type, data: {treeId, value} });
-              }              
+              }
             }
 
             const doFileRequest = (event, fieldId) => {
@@ -351,7 +351,7 @@ export class CustomHTML extends Section {
             for (const field of inputFields) {
               const fieldElement = document.getElementById(field.id);
               fieldElement.addEventListener("change", (e) => validateInputs());
-            }            
+            }
 
             // This is used to read the file in order to get the real path.
             for (const field of filefields) {
@@ -362,7 +362,7 @@ export class CustomHTML extends Section {
             }
 
             document.addEventListener('DOMContentLoaded', () => {
-              validateInputs(); 
+              validateInputs();
               var currentTree;
               ${trees.map(tree => /* javascript */`
                 currentTree = document.getElementById('${tree.id}');
@@ -370,7 +370,7 @@ export class CustomHTML extends Section {
                 currentTree.addEventListener('vsc-tree-select', (event) => {
                   console.log(JSON.stringify(event.detail));
                   if (event.detail.itemType === 'leaf') {
-                    treeItemClick('${tree.id}', '${tree.treeLeafAction}', event.detail.value);                      
+                    treeItemClick('${tree.id}', '${tree.treeLeafAction}', event.detail.value);
                   }
                 });`
       )}
@@ -378,7 +378,7 @@ export class CustomHTML extends Section {
             ${this.getSpecificScript()}
         }())
     </script>
-    
+
     </html>`;
   }
 }
@@ -387,7 +387,7 @@ export class CustomUI extends CustomHTML {
   /**
    * If no callback is provided, a Promise will be returned.
    * If the page is already opened, it grabs the focus and return no Promise (as it's alreay handled by the first call).
-   * 
+   *
    * @param title the title displayed in the webview tab
    * @param checkData an optional function that can check and updates the data before they are returned. If it returns `false`, the view will stay open.
    * @returns a Promise<Page<T>> if no callback is provided
@@ -469,7 +469,7 @@ export class CustomUI extends CustomHTML {
       const doDone = (event, button) => {
         console.log('submit now!!', button || 'enter pressed')
         event?.preventDefault();
-        const isValid = (!button || button.requiresValidation) ? validateInputs() : true;          
+        const isValid = (!button || button.requiresValidation) ? validateInputs() : true;
         if (isValid) {
           const data = { buttons: button?.id };
           new FormData(theForm).entries().forEach(([key, value]) => data[key] = value);
@@ -479,7 +479,7 @@ export class CustomUI extends CustomHTML {
 
           vscode.postMessage({ type: 'submit', data });
         }
-      };      
+      };
 
       //Pressing enter will submit the form
       theForm.addEventListener("submit", doDone);
@@ -490,7 +490,7 @@ export class CustomUI extends CustomHTML {
 
         button.onclick = () => doDone(event, fieldData);
         button.onKeyDown = () => doDone(event, fieldData);
-      }      
+      }
     `;
   }
 }
@@ -596,13 +596,13 @@ export class Field {
         return /* html */`
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
-              ${this.renderDescription()}              
-              <${tag} class="long-input" id="${this.id}" name="${this.id}" 
-                ${this.inputType ? `type="${this.inputType}"` : ``} 
-                ${this.default ? `value="${this.default}"` : ``} 
-                ${this.readonly ? `readonly` : ``} 
+              ${this.renderDescription()}
+              <${tag} class="long-input" id="${this.id}" name="${this.id}"
+                ${this.inputType ? `type="${this.inputType}"` : ``}
+                ${this.default ? `value="${this.default}"` : ``}
+                ${this.readonly ? `readonly` : ``}
                 ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}
-                ${this.minlength ? `minlength="${this.minlength}"` : ``} 
+                ${this.minlength ? `minlength="${this.minlength}"` : ``}
                 ${this.maxlength ? `maxlength="${this.maxlength}"` : ``}
                 ${this.min ? `min="${this.min}"` : ``}
                 ${this.max ? `max="${this.max}"` : ``}

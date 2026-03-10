@@ -29,7 +29,7 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
           data.valid = validateInputs();
 
           vscode.postMessage({ type: 'dataChange', data });
-        });        
+        });
       }
 
       //Prevent form from being submitted
