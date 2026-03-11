@@ -15,12 +15,13 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
 
   protected getSpecificScript() {
     return /* javascript */ `
+      const theForm = document.querySelector('#laforma');
       for (const field of submitfields) {
         const fieldElement = document.getElementById(field);
         fieldElement.addEventListener(inputFields.some(f => f.id === field) ? 'input' : 'change', function(event) {
           event?.preventDefault();
           const data = {};
-          new FormData(document.querySelector('#laforma')).entries().forEach(([key, value]) => data[key] = value);
+          new FormData(theForm).entries().forEach(([key, value]) => data[key] = value);
 
           // Convert checkboxes value to actual boolean
           checkboxes.forEach(checkbox => data[checkbox] = (data[checkbox] === 'on'));
@@ -28,8 +29,11 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
           data.valid = validateInputs();
 
           vscode.postMessage({ type: 'dataChange', data });
-        });        
+        });
       }
+
+      //Prevent form from being submitted
+      theForm.addEventListener("submit", (event) => event?.preventDefault());
     `;
   }
 
