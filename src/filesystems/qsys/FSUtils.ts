@@ -42,5 +42,12 @@ export function handleEditorsLeftOpened(context: vscode.ExtensionContext) {
  * @returns `true` if the user has chose to reconnect, `false` otherwise.
  */
 export async function waitOnReconnect() {
-  return restoreEditors ? await restoreEditors : false;
+  if(restoreEditors){
+    return await restoreEditors
+  }
+  else if(instance.connected){
+    return (await instance.connected).success;
+  }
+
+  return false;
 }
