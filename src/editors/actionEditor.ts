@@ -38,7 +38,7 @@ export function isActionEdited(action: Action) {
 
 export function editAction(targetAction: Action, doAfterSave?: () => Thenable<void>, workspace?: vscode.WorkspaceFolder) {
   const customVariables = CustomVariables.getAll().map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
-  new CustomEditor<ActionData>(`${targetAction.type}/${targetAction.name}.action`, (actionData) => save(targetAction, actionData, workspace).then(doAfterSave), () => editedActions.delete({ name: targetAction.name, type: targetAction.type }))
+  const actionEditor = new CustomEditor<ActionData>(`${targetAction.type}/${targetAction.name}.action`, (actionData) => save(targetAction, actionData, workspace).then(doAfterSave), () => editedActions.delete({ name: targetAction.name, type: targetAction.type }))
     .addInput(
       `command`,
       vscode.l10n.t(`Command(s) to run`),
@@ -128,9 +128,14 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
         description: vscode.l10n.t(`Browser`),
         text: vscode.l10n.t(`The entire browser is refreshed`)
       }], vscode.l10n.t(`The browser level to refresh after the action is done`)
-    )
+    );
+
+  if (workspace) {
+    actionEditor.addInput(`postDownload`, vscode.l10n.t(`Post execution downloads`), vscode.l10n.t("A comma separated list of remote files/folders to download when the Action is complete. Supports variables. Using <code>.evfevent</code> in combination with a build tool will populate the Problems view."), { default: targetAction.postDownload?.join(', ') });
+  }
+
+  actionEditor
     .addCheckbox("runOnProtected", vscode.l10n.t(`Run on protected/read only`), vscode.l10n.t(`Allows the execution of this Action on protected or read only targets`), targetAction.runOnProtected)
-    .addInput(`postDownload`, vscode.l10n.t(`Post execution downloads`), vscode.l10n.t("A comma separated list of remote files/folders to download when the Action is complete. Using `.evfevent` in combination with a build tool will populate the Problems view."), { default: targetAction.postDownload?.join(', ') })
     .addInput(`outputToFile`, vscode.l10n.t(`Copy output to file`), vscode.l10n.t(`Copy the action output to a file. Variables can be used to define the file's path; use <code>&i</code> to compute file index.<br/>Example: <code>~/outputs/&CURLIB_&OPENMBR&i.txt</code>.`), { default: targetAction.outputToFile })
     .open();
 
@@ -153,7 +158,7 @@ async function save(targetAction: Action, actionData: ActionData, workspace?: vs
   if (typeChanged && (await getActions(workspace)).some(a => a.name === targetAction.name && a.type === targetAction.type)) {
     throw new Error(l10n.t("The action '{0}' already exists for the '{1}' type", targetAction.name, targetAction.type!))
   }
-  
+
   await updateAction(targetAction, workspace, { oldType });
   if (typeChanged) {
     editedActions.delete({ name: targetAction.name, type: oldType });
