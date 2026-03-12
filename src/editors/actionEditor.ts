@@ -53,7 +53,7 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
         } as Tab)), getDefaultTabIndex(targetAction.type)
     )
     .addHorizontalRule()
-    .addInput(`extensions`, vscode.l10n.t(`Extensions`), vscode.l10n.t(`A comma delimited list of extensions for this action. This can be a member extension, a streamfile extension, an object type or an object attribute`), { default: targetAction.extensions?.join(`, `) })
+    .addInput(`extensions`, vscode.l10n.t(`Extensions`), vscode.l10n.t(`A comma separated list of extensions for this action. This can be a member extension, a streamfile extension, an object type or an object attribute`), { default: targetAction.extensions?.join(`, `) })
     .addSelect(`type`, vscode.l10n.t(`Type`), workspace ? [{
       selected: targetAction.type === `file`,
       value: `file`,
@@ -130,7 +130,7 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
       }], vscode.l10n.t(`The browser level to refresh after the action is done`)
     )
     .addCheckbox("runOnProtected", vscode.l10n.t(`Run on protected/read only`), vscode.l10n.t(`Allows the execution of this Action on protected or read only targets`), targetAction.runOnProtected)
-    .addInput(`postDownload`, vscode.l10n.t(`Post execution downloads`), vscode.l10n.t("Remote files/folders to download when the Action is complete. Using `.evfevent` in combination with a build tool will populate the Problems view."), { default: targetAction.postDownload?.join(', ') })
+    .addInput(`postDownload`, vscode.l10n.t(`Post execution downloads`), vscode.l10n.t("A comma separated list of remote files/folders to download when the Action is complete. Using `.evfevent` in combination with a build tool will populate the Problems view."), { default: targetAction.postDownload?.join(', ') })
     .addInput(`outputToFile`, vscode.l10n.t(`Copy output to file`), vscode.l10n.t(`Copy the action output to a file. Variables can be used to define the file's path; use <code>&i</code> to compute file index.<br/>Example: <code>~/outputs/&CURLIB_&OPENMBR&i.txt</code>.`), { default: targetAction.outputToFile })
     .open();
 
