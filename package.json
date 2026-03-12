@@ -2671,7 +2671,7 @@
 			"editor/title": [
 				{
 					"submenu": "code-for-ibmi.debug.group",
-					"when": "code-for-ibmi:connected && editorLangId =~ /^rpgle$|^rpg$|^cobol$|^cl$/i",
+					"when": "code-for-ibmi:connected && editorLangId =~ /^rpg(le)?|cl(le)?|(ile)?cobol|c?$/i",
 					"group": "navigation@1"
 				},
 				{
