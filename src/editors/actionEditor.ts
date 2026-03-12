@@ -27,6 +27,7 @@ type ActionData = {
   refresh: ActionRefresh
   runOnProtected: boolean
   outputToFile: string
+  postDownload: string
 }
 
 const editedActions: Set<{ name: string, type?: ActionType }> = new Set;
@@ -129,6 +130,7 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
       }], vscode.l10n.t(`The browser level to refresh after the action is done`)
     )
     .addCheckbox("runOnProtected", vscode.l10n.t(`Run on protected/read only`), vscode.l10n.t(`Allows the execution of this Action on protected or read only targets`), targetAction.runOnProtected)
+    .addInput(`postDownload`, vscode.l10n.t(`Post execution downloads`), vscode.l10n.t("Remote files/folders to download when the Action is complete. Using `.evfevent` in combination with a build tool will populate the Problems view."), { default: targetAction.postDownload?.join(', ') })
     .addInput(`outputToFile`, vscode.l10n.t(`Copy output to file`), vscode.l10n.t(`Copy the action output to a file. Variables can be used to define the file's path; use <code>&i</code> to compute file index.<br/>Example: <code>~/outputs/&CURLIB_&OPENMBR&i.txt</code>.`), { default: targetAction.outputToFile })
     .open();
 
@@ -137,14 +139,21 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
 
 async function save(targetAction: Action, actionData: ActionData, workspace?: vscode.WorkspaceFolder) {
   const oldType = targetAction.type;
-  Object.assign(targetAction, actionData);
+  const postDownload = actionData.postDownload.split(',').map(path => path.trim()).filter(Boolean);
+  const extensions = actionData.extensions.split(`,`).map(item => item.trim().toUpperCase()).filter(Boolean);
+  Object.assign(targetAction, actionData,
+    //Fields that needs to be tranformed before saving
+    {
+      command: targetAction.command.replace(new RegExp(`\\\r`, `g`), ``), // We don't want \r (Windows line endings)
+      extensions: extensions.length ? extensions : undefined,
+      outputToFile: actionData.outputToFile || undefined,
+      postDownload: postDownload.length ? postDownload : undefined
+    });
   const typeChanged = (oldType !== targetAction.type);
   if (typeChanged && (await getActions(workspace)).some(a => a.name === targetAction.name && a.type === targetAction.type)) {
     throw new Error(l10n.t("The action '{0}' already exists for the '{1}' type", targetAction.name, targetAction.type!))
   }
-  // We don't want \r (Windows line endings)
-  targetAction.command = targetAction.command.replace(new RegExp(`\\\r`, `g`), ``);
-  targetAction.extensions = actionData.extensions.split(`,`).map(item => item.trim().toUpperCase())
+  
   await updateAction(targetAction, workspace, { oldType });
   if (typeChanged) {
     editedActions.delete({ name: targetAction.name, type: oldType });
