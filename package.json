@@ -648,8 +648,7 @@
 						{
 							"type": "member",
 							"extensions": [
-								"RPGLE",
-								"RPG"
+								"RPGLE"
 							],
 							"name": "Create Bound RPG Program (CRTBNDRPG)",
 							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
@@ -657,10 +656,27 @@
 						{
 							"type": "member",
 							"extensions": [
-								"GLOBAL"
+								"RPGLE"
 							],
 							"name": "Create Service Program (CRTSRVPGM)",
 							"command": "?CRTSRVPGM SRVPGM(&OPENLIB/&OPENMBR) EXPORT(*ALL) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"RPG",
+								"RPG38"
+							],
+							"name": "Create RPG Program (CRTRPGPGM)",
+							"command": "CRTRPGPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) REPLACE(*NO)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"RPG36"
+							],
+							"name": "Create RPG Program (CRTRPGPGM)",
+							"command": "CRTS36RPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) REPLACE(*NO)"
 						},
 						{
 							"type": "member",
@@ -681,8 +697,7 @@
 						{
 							"type": "member",
 							"extensions": [
-								"RPGLE",
-								"RPG"
+								"RPGLE"
 							],
 							"name": "Create RPG Module (CRTRPGMOD)",
 							"command": "?CRTRPGMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
@@ -765,7 +780,7 @@
 						{
 							"type": "member",
 							"extensions": [
-								"GLOBAL"
+								"RPGLE"
 							],
 							"name": "Create Program (CRTPGM)",
 							"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"
