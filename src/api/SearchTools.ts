@@ -122,13 +122,13 @@ export namespace SearchTools {
           stdin: searchTerm
         });
 
-        if (grepRes.code == 0) {
+        if (grepRes.code == 0 || grepRes.stdout) {
           return {
             term: searchTerm,
             hits: parseGrepOutput(grepRes.stdout)
           }
         }
-        
+
       } else {
         throw new Error(`Grep must be installed on the remote system.`);
       }
