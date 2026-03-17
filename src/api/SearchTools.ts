@@ -128,6 +128,12 @@ export namespace SearchTools {
             hits: parseGrepOutput(grepRes.stdout)
           }
         }
+        else if(grepRes.code!==0 && grepRes.stdout!==undefined && grepRes.stdout!==""){
+          return {
+            term: searchTerm,
+            hits: parseGrepOutput(grepRes.stdout)
+          }
+        }
       } else {
         throw new Error(`Grep must be installed on the remote system.`);
       }
