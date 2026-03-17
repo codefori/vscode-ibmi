@@ -149,7 +149,7 @@ async function save(targetAction: Action, actionData: ActionData, workspace?: vs
   Object.assign(targetAction, actionData,
     //Fields that needs to be tranformed before saving
     {
-      command: targetAction.command.replace(new RegExp(`\\\r`, `g`), ``), // We don't want \r (Windows line endings)
+      command: actionData.command.replace(new RegExp(`\\\r`, `g`), ``), // We don't want \r (Windows line endings)
       extensions: extensions.length ? extensions : undefined,
       outputToFile: actionData.outputToFile || undefined,
       postDownload: postDownload.length ? postDownload : undefined
