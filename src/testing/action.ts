@@ -143,7 +143,7 @@ export const ActionSuite: TestSuite = {
           ],
         };
         const uri = getMemberUri({ library: tempLib, file: 'QRPGLESRC', name: 'HELLO', extension: 'RPGLE' })
-        await testHelloWorldProgram(uri, action, tempLib, 'HELLO');
+        await testHelloWorldProgram(uri, action, tempLib);
       }
     },
 
