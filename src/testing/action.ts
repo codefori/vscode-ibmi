@@ -26,7 +26,7 @@ export const helloWorldProject: Folder = {
       `     A                                      DSPATR(HI)`,
       `     A                                      DSPATR(UL)`,
     ]),
-    new File("TRPG.pgm.rpg", [
+    new File("HELLO.pgm.rpg", [
       `     C           'HELLO'   DSPLY`,
       `     C                     SETON                     LR`,
     ]),
@@ -130,10 +130,9 @@ export const ActionSuite: TestSuite = {
         const config = connection.getConfig();
         const content = connection.getContent();
         const tempLib = config!.tempLibrary;
-        const pgmName = 'HELLO';
 
-        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(${pgmName}) SRCTYPE(RPGLE)` });
-        await content!.uploadMemberContent(tempLib, 'QRPGLESRC', pgmName, helloWorldProject.files![0].content.join('\n'));
+        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(HELLO) SRCTYPE(RPGLE)` });
+        await content!.uploadMemberContent(tempLib, 'QRPGLESRC', 'HELLO', helloWorldProject.files![0].content.join('\n'));
         const action: Action = {
           "name": "Create Bound RPG Program (CRTBNDRPG)",
           "command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)",
@@ -143,8 +142,8 @@ export const ActionSuite: TestSuite = {
             "RPGLE",
           ],
         };
-        const uri = getMemberUri({ library: tempLib, file: 'QRPGLESRC', name: pgmName, extension: 'RPGLE' })
-        await testHelloWorldProgram(uri, action, tempLib, pgmName);
+        const uri = getMemberUri({ library: tempLib, file: 'QRPGLESRC', name: 'HELLO', extension: 'RPGLE' })
+        await testHelloWorldProgram(uri, action, tempLib, 'HELLO');
       }
     },
 
@@ -177,11 +176,10 @@ export const ActionSuite: TestSuite = {
         const config = connection.getConfig();
         const content = connection.getContent();
         const tempLib = config!.tempLibrary;
-        const SRCTYPE = 'RPG';
-        const pgmName = "TRPG";
+        const srcType = 'RPG';
 
-        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGSRC) MBR(${pgmName}) SRCTYPE(${SRCTYPE})` });
-        await content!.uploadMemberContent(tempLib, 'QRPGSRC', pgmName, helloWorldProject.files![3].content.join('\n'));
+        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGSRC) MBR(HELLO) SRCTYPE(${srcType})` });
+        await content!.uploadMemberContent(tempLib, 'QRPGSRC', 'HELLO', helloWorldProject.files![3].content.join('\n'));
         const action: Action = {
           "name": "Create RPG Program (CRTRPGPGM)",
           "command": "CRTRPGPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) REPLACE(*NO)",
@@ -191,8 +189,8 @@ export const ActionSuite: TestSuite = {
             "RPG"
           ],
         };
-        const uri = getMemberUri({ library: tempLib, file: 'QRPGSRC', name: pgmName, extension: SRCTYPE })
-        await testHelloWorldProgram(uri, action, tempLib, pgmName, SRCTYPE);
+        const uri = getMemberUri({ library: tempLib, file: 'QRPGSRC', name: 'HELLO', extension: srcType })
+        await testHelloWorldProgram(uri, action, tempLib, srcType);
       }
     },
     {
@@ -201,9 +199,9 @@ export const ActionSuite: TestSuite = {
         const config = connection.getConfig();
         const content = connection.getContent();
         const tempLib = config!.tempLibrary;
-        const SRCTYPE = 'RPG';
+        const srcType = 'RPG';
 
-        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGSRC) MBR(BADRPG) SRCTYPE(${SRCTYPE})` });
+        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGSRC) MBR(BADRPG) SRCTYPE(${srcType})` });
         await content!.uploadMemberContent(tempLib, 'QRPGSRC', 'BADRPG', helloWorldProject.files![4].content.join('\n'));
         const action: Action = {
           "name": "Create RPG Program (CRTRPGPGM)",
@@ -214,7 +212,7 @@ export const ActionSuite: TestSuite = {
             "RPG"
           ],
         };
-        const uri = getMemberUri({ library: tempLib, file: 'QRPGSRC', name: 'BADRPG', extension: SRCTYPE })
+        const uri = getMemberUri({ library: tempLib, file: 'QRPGSRC', name: 'BADRPG', extension: srcType })
         const success = await runAction(instance, uri, action, `all`);
         assert.strictEqual(success, false);
       }
@@ -336,7 +334,12 @@ export const ActionSuite: TestSuite = {
   ]
 };
 
-async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: string, pgmName: string | undefined = undefined, SRCTYPE: string = 'RPGLE') {
+/**
+ * @param srcType Source type identifier (RPG or RPGLE). 
+ * Defaults to 'RPGLE' to maintain backward compatibility with existing .rpgle test cases while allowing reuse for .rpg test cases.
+ */
+
+async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: string, srcType: string = 'RPGLE') {
   const actionRan = await runAction(instance, uri, action, `all`);
   assert.ok(actionRan);
 
@@ -345,16 +348,16 @@ async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: s
     if (keysToCompare.includes(key)) { return value }
   });
   const content = instance.getConnection()?.getContent();
-  const helloWorldProgram = (await content?.getObjectList({ library: library, object: pgmName, types: ['*PGM'] }))![0];
+  const helloWorldProgram = (await content?.getObjectList({ library: library, object: 'HELLO', types: ['*PGM'] }))![0];
   assert.deepStrictEqual(toJSON(helloWorldProgram), toJSON({
     library: library,
-    name: pgmName,
+    name: 'HELLO',
     type: '*PGM',
     text: '',
-    attribute: SRCTYPE,
+    attribute: srcType,
     sourceFile: false
   } as IBMiObject));
 
   const connection = instance.getConnection();
-  await connection?.runCommand({ command: `DLTOBJ OBJ(${library}/${pgmName}) OBJTYPE(*PGM)` });
+  await connection?.runCommand({ command: `DLTOBJ OBJ(${library}/HELLO) OBJTYPE(*PGM)` });
 }
