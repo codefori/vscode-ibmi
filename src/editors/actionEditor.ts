@@ -27,6 +27,7 @@ type ActionData = {
   refresh: ActionRefresh
   runOnProtected: boolean
   outputToFile: string
+  deployFirst: boolean
   postDownload: string
 }
 
@@ -131,6 +132,7 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
     );
 
   if (workspace) {
+    actionEditor.addCheckbox(`deployFirst`, vscode.l10n.t(`Deploy before running`), vscode.l10n.t("When enabled, the local workspace will be deployed before the action is run."), targetAction.deployFirst);
     actionEditor.addInput(`postDownload`, vscode.l10n.t(`Post execution downloads`), vscode.l10n.t("A comma separated list of remote files/folders to download when the Action is complete. Supports variables. Using <code>.evfevent</code> in combination with a build tool will populate the Problems view."), { default: targetAction.postDownload?.join(', ') });
   }
 
