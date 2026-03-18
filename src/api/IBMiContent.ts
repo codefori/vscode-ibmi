@@ -498,9 +498,28 @@ export default class IBMiContent {
     // SYSTABLES takes the name in CCSID 37 format
     // OBJECT_STATISTICS takes the name in the connection CCSID format
 
-    const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
+    const sourceFileNameLike = () => {
+      if (filters.filterType === 'regex' && filters.object && !nameFilter.noFilter) {
+        // For regex, add REGEXP_LIKE clause
+        return ` AND REGEXP_LIKE(f.NAME, '${filters.object}', 'i')`;
+      }
+      return objectFilter ? ` AND f.NAME ${(objectFilter.includes('*') ? ` LIKE ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
+    };
 
-    const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
+    const objectName = () => {
+      // For regex, use * to get all objects
+      if (filters.filterType === 'regex' && filters.object && !nameFilter.noFilter) {
+        return `, OBJECT_NAME => '*'`;
+      }
+      return objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
+    };
+    
+    const regexWhereClause = () => {
+      if (filters.filterType === 'regex' && filters.object && !nameFilter.noFilter) {
+        return ` WHERE REGEXP_LIKE(OBJNAME, '${filters.object}', 'i')`;
+      }
+      return '';
+    };
 
     let createOBJLIST: string[];
     const usVariants = this.ibmi.variantChars.american;
@@ -523,7 +542,7 @@ export default class IBMiContent {
         `  where t.FILE_TYPE = 'S'`,
         `)`,
         `SELECT * FROM SRCFILES as f`,
-        `where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
+        `WHERE f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
       ];
       translateName = true;
     } else if (!withSourceFiles) {
@@ -542,6 +561,7 @@ export default class IBMiContent {
         `  OBJOWNER         as OWNER,`,
         `  OBJDEFINER       as CREATED_BY`,
         `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
+        regexWhereClause()
       ];
     }
     else {
@@ -557,7 +577,7 @@ export default class IBMiContent {
         `  where t.FILE_TYPE = 'S'`,
         `), SRCPF as (`,
         `SELECT replace(replace(replace(NAME, '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}') NAME, IS_SOURCE, SOURCE_LENGTH FROM SRCFILES as f`,
-        `  where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
+        `  WHERE f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
@@ -572,6 +592,7 @@ export default class IBMiContent {
         `    OBJOWNER          as OWNER,`,
         `    OBJDEFINER        as CREATED_BY`,
         `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
+        regexWhereClause(),
         `  )`,
         `select`,
         `  o.NAME,`,

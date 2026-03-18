@@ -112,4 +112,164 @@ describe('Search Tests', { concurrent: true }, () => {
       expect(true)
     }
   });
+  it('Complex regex for library - excludes QSYS and contains SYS', async () => {
+    const library = "^QSYSINC$";
+    const object = "*";
+    const types = ["*LIB"];
+    const filterType = "regex";
+
+    // Get library that matches exactly 'QSYSINC'
+    const libraries = await connection.getContent().getLibraries({ library, filterType });
+
+    // Verify we have exactly 1 matching library
+    expect(libraries.length).toBe(1);
+
+    // Verify the library is exactly 'QSYSINC'
+    expect(libraries[0].name.toUpperCase()).toBe('QSYSINC');
+
+  });
+  it('Regex sourcefile filter with getObjectList ', async () => {
+    const library = "QSYSINC";
+    const object = "^lay.*";
+    const types = ["*SRCPF"];
+    const filterType = "regex"
+
+
+    // Get member list using regex pattern
+    const Sourcefiles = await connection.getContent().getObjectList({
+      library,
+      object,
+      types,
+      filterType
+    });
+
+    // Verify that 7 members match the pattern
+    expect(Sourcefiles.length).toBe(7);
+
+    // Verify all members start with "lay" (case insensitive)
+    expect(Sourcefiles.every(Sourcefile => Sourcefile.name.toLowerCase().startsWith('lay'))).toBe(true);
+  })
+  it('Regex object filter excluding E and containing 40', async () => {
+    const library = "QSYSINC";
+    const object = "^[^E].*40*$";
+    const types = ["*SRCPF"];
+    const filterType = "regex";
+
+    // Get object list using regex pattern that excludes names starting with 'E' and contains '40'
+    const sourceFiles = await connection.getContent().getObjectList({
+      library,
+      object,
+      types,
+      filterType
+    });
+
+    // Verify all objects match the pattern:
+    // - Don't start with 'E' (case insensitive)
+    // - Contain '4' followed by zero or more '0's
+    expect(sourceFiles.every(sourceFile => {
+      const name = sourceFile.name.toLowerCase();
+      return !name.startsWith('e') && /4[0]*/.test(name);
+    })).toBe(true);
+
+    // Verify we have at least some matching objects
+    expect(sourceFiles.length).toBe(5);
+  });
+
+  it('Simple regex for members - starts with S', async () => {
+    const library = "QSYSINC";
+    const sourceFile = "QRPGLESRC";
+    const memberFilter = "^S.*";
+    const filterType = "regex";
+
+    // Get members starting with 'S'
+    const members = await connection.getContent().getMemberList({
+      library,
+      sourceFile,
+      members: memberFilter,
+      filterType
+    });
+
+    // Verify all members start with 'S'
+    expect(members.every(member => member.name.toUpperCase().startsWith('S'))).toBe(true);
+
+    // Verify we have at least some matching members
+    expect(members.length).toBe(12);
+
+  });
+
+  it('Complex regex for members - contains digit and ends with 1', async () => {
+    const library = "QSYSINC";
+    const sourceFile = "QRPGLESRC";
+    const memberFilter = ".*[0-9].1*$";
+    const filterType = "regex";
+
+    // Get members that contain a digit followed by any character and zero or more '1's at the end
+    const members = await connection.getContent().getMemberList({
+      library,
+      sourceFile,
+      members: memberFilter,
+      filterType
+    });
+
+    // Verify all members contain at least one digit, followed by any character, and end with zero or more '1's
+    expect(members.every(member => {
+      const name = member.name.toUpperCase();
+      return /[0-9].1*$/.test(name);
+    })).toBe(true);
+
+    // Verify we have exactly 1 matching member
+    expect(members.length).toBe(1);
+  });
+
+  it('Simple regex for getting 2 members - exact pattern match', async () => {
+    const library = "QSYSINC";
+    const sourceFile = "QRPGLESRC";
+    const memberFilter = "^(SQLCA|SQLDA|QCSTCF.*)$";
+    const filterType = "regex";
+
+    // Get members matching SQLCA, SQLDA, or starting with QCSTCF
+    const members = await connection.getContent().getMemberList({
+      library,
+      sourceFile,
+      members: memberFilter,
+      filterType
+    });
+
+    // Verify we have at least 2 members (SQLCA and SQLDA are guaranteed, plus any QCSTCF* members)
+    expect(members.length).toBe(2);
+
+    // Verify the members match the pattern
+    const memberNames = members.map(m => m.name.toUpperCase());
+    expect(memberNames.some(name => name === 'SQLCA' || name === 'SQLDA' || name.startsWith('QCSTCF'))).toBe(true);
+
+    // Verify all members match the regex pattern
+    expect(members.every(member => {
+      const name = member.name.toUpperCase();
+      return name === 'SQLCA' || name === 'SQLDA' || name.startsWith('QCSTCF');
+    })).toBe(true);
+  });
+
+  it('Complex regex for getting members - pattern with alternation', async () => {
+    const library = "QSYSINC";
+    const sourceFile = "QRPGLESRC";
+    const memberFilter = "^E(ERRNO|RRNO)$";
+    const filterType = "regex";
+
+    // Get members matching: EERRNO or ERRNO
+    const members = await connection.getContent().getMemberList({
+      library,
+      sourceFile,
+      members: memberFilter,
+      filterType
+    });
+
+    // Verify we have at least 1 member
+    expect(members.length).toBe(1);
+
+    // Verify the members match the pattern (EERRNO or ERRNO)
+    expect(members.every(member => {
+      const name = member.name.toUpperCase();
+      return name === 'EERRNO' || name === 'ERRNO';
+    })).toBe(true);
+  });
 });
