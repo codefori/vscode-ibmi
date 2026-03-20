@@ -467,7 +467,7 @@ export default class IBMiContent {
         .filter(lib => !libraries.find(l => l.name === lib.name))
         .forEach(lib => libraries.push(lib));
     }
-    return libraries;
+    return libraries.sort((a, b) => { return a.name.localeCompare(b.name) });
   }
 
   /**
