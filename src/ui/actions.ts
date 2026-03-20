@@ -652,10 +652,10 @@ function getObjectsFromJoblog(stderr: string): CommandObject[] | undefined {
   const objects: CommandObject[] = [];
 
   // Filter lines with EVFEVENT info from server.
-  const joblogLines = stderr.split(`\n`).filter(line => line.match(/:  EVFEVENT:/i));
+  const joblogLines = stderr.split(`\n`).filter(line => line.match(/:[ ]+EVFEVENT:/i));
 
   for (const joblogLine of joblogLines) {
-    const evfevent = joblogLine.match(/:  EVFEVENT:(.*)/i) || '';
+    const evfevent = joblogLine.match(/:[ ]+EVFEVENT:(.*)/i) || '';
     if (evfevent.length) {
       const object = evfevent[1].trim().split(/[,\|/]/);
       if (object) {
