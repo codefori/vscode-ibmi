@@ -47,7 +47,7 @@ const objectIcons = {
 
 type SearchParameters = {
   path: string
-  fillter?: ObjectFilters
+  filter?: ObjectFilters
 }
 
 abstract class ObjectBrowserItem extends BrowserItem {
@@ -979,7 +979,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       const parameters: SearchParameters[] = [];
 
       if (node) {
-        (nodes || [node]).forEach(n => parameters.push({ path: n.path, fillter: n.filter }));
+        (nodes || [node]).forEach(n => parameters.push({ path: n.path, filter: n.filter }));
       }
       else {
         const connection = getConnection();
@@ -1449,7 +1449,7 @@ async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
         }
 
         const path = parameter.path;
-        const filter = parameter.fillter;
+        const filter = parameter.filter;
         progress.report({ message: vscode.l10n.t(`"{0}" in {1}.`, searchTerm, path), increment });
 
         // NOTE: if more messages are added, lower the timeout interval
