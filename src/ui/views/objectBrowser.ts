@@ -5,7 +5,7 @@ import vscode, { commands, DataTransferItem, l10n, Uri } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
-import { Search } from "../../api/Search";
+import { SearchTools } from "../../api/SearchTools";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
@@ -47,7 +47,7 @@ const objectIcons = {
 
 type SearchParameters = {
   path: string
-  fillter?: ObjectFilters
+  filter?: ObjectFilters
 }
 
 abstract class ObjectBrowserItem extends BrowserItem {
@@ -979,7 +979,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       const parameters: SearchParameters[] = [];
 
       if (node) {
-        (nodes || [node]).forEach(n => parameters.push({ path: n.path, fillter: n.filter }));
+        (nodes || [node]).forEach(n => parameters.push({ path: n.path, filter: n.filter }));
       }
       else {
         const connection = getConnection();
@@ -1449,7 +1449,7 @@ async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
         }
 
         const path = parameter.path;
-        const filter = parameter.fillter;
+        const filter = parameter.filter;
         progress.report({ message: vscode.l10n.t(`"{0}" in {1}.`, searchTerm, path), increment });
 
         // NOTE: if more messages are added, lower the timeout interval
@@ -1483,7 +1483,7 @@ async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
         }
 
         const [library, sourceFile] = path.split(`/`);
-        const results = await Search.searchMembers(instance.getConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
+        const results = await SearchTools.searchMembers(instance.getConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
         clearInterval(messageTimeout);
         if (cancel.isCancellationRequested) {
           return;

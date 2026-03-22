@@ -23,6 +23,7 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@alanseiden](https://github.com/alanseiden)
 * [@richardschoen](https://github.com/richardschoen)
 * [@barrettotte](https://github.com/barrettotte)
+* [@bobcozzi](https://github.com/bobcozzi)
 * [@thebeardedgeek](https://github.com/thebeardedgeek)
 * [@dferrand](https://github.com/dferrand)
 * [@dariocs](https://github.com/dariocs)
@@ -68,3 +69,4 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@e1mais](https://github.com/e1mais)
 * [@NattyNarwhal](https://github.com/NattyNarwhal)
 * [@jman116](https://github.com/jman116)
+* [@Mohammed-Yaseen-Ali-2081](https://github.com/Mohammed-Yaseen-Ali-2081)

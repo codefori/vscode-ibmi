@@ -8,11 +8,29 @@ export let restoreEditors: Promise<boolean> | undefined;
 export function handleEditorsLeftOpened(context: vscode.ExtensionContext) {
   const reconnect = IBMi.connectionManager.get<ReconnectMode>("autoReconnect") || "ask";
 
-  if (reconnect !== "never") {
-    const editorsLeftOpened = vscode.window.tabGroups.all
+  const getLeftOpenedEditors = () =>
+    vscode.window.tabGroups.all
       .flatMap(group => group.tabs)
-      .filter(tab => tab.input instanceof vscode.TabInputText && ["member", "streamfile"].includes(tab.input.uri.scheme));
+      .filter(
+        tab =>
+          tab.input instanceof vscode.TabInputText &&
+          ["member", "streamfile"].includes(tab.input.uri.scheme)
+      );
 
+  const closeAll = async () => {
+    const tabsToClose = getLeftOpenedEditors(); // re-resolve fresh tab handles
+    if (!tabsToClose.length) return false;
+
+    try {
+      await vscode.window.tabGroups.close(tabsToClose, false);
+    } catch {
+      // Tabs can disappear between query and close; ignore safely.
+    }
+    return false;
+  };
+
+  if (reconnect !== "never") {
+    const editorsLeftOpened = getLeftOpenedEditors();
     const lastConnection = IBMi.GlobalStorage.getLastConnections()?.at(0)?.name;
     if (editorsLeftOpened.length && lastConnection) {
       const promises: PromiseLike<boolean>[] = [new Promise<boolean>((resolve) => instance.subscribe(context, "connected", "Restore previously opened editor", () => resolve(instance.getConnection()?.currentConnectionName === lastConnection), true))];
@@ -27,11 +45,14 @@ export function handleEditorsLeftOpened(context: vscode.ExtensionContext) {
       }
       restoreEditors = Promise.race(promises).then(restore => {
         if (!restore) {
-          return vscode.window.tabGroups.close(editorsLeftOpened).then(() => false);
+          return closeAll();
         }
         return restore;
       });
     }
+  }
+  else {
+    return closeAll();
   }
 }
 

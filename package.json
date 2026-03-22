@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.18.3-dev.0",
+	"version": "2.18.4-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -1779,6 +1779,12 @@
 				"category": "IBM i",
 				"title": "Unload active profile",
 				"icon": "$(sign-out)"
+			},
+			{
+				"command": "code-for-ibmi.changePassword",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Change password...",
+				"category": "IBM i"
 			}
 		],
 		"customEditors": [
@@ -2529,6 +2535,10 @@
 				{
 					"command": "code-for-ibmi.environment.profile.unload",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.changePassword",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2661,7 +2671,7 @@
 			"editor/title": [
 				{
 					"submenu": "code-for-ibmi.debug.group",
-					"when": "code-for-ibmi:connected && editorLangId =~ /^rpgle$|^rpg$|^cobol$|^cl$/i",
+					"when": "code-for-ibmi:connected && editorLangId =~ /^rpg(le)?|cl(le)?|(ile)?cobol|c?$/i",
 					"group": "navigation@1"
 				},
 				{
@@ -3234,17 +3244,14 @@
 	"devDependencies": {
 		"@octokit/rest": "22.0.1",
 		"@types/adm-zip": "0.5.7",
-		"@types/glob": "^7.1.3",
 		"@types/node": "22.19.7",
-		"@types/source-map-support": "^0.5.6",
+		"@types/ssh2": "^1.15.5",
 		"@types/tar": "6.1.13",
 		"@types/tmp": "0.2.5",
 		"@types/vscode": "^1.90.0",
 		"esbuild": "^0.25.0",
-		"esbuild-loader": "^3.0.1",
-		"eslint": "^7.19.0",
-		"glob": "^7.1.6",
-		"semver": "^7.5.2",
+		"esbuild-loader": "^4.4.2",
+		"eslint": "7.19.0",
 		"ssh2-streams": "^0.4.10",
 		"ts-loader": "^9.3.1",
 		"typescript": "5.9.3",
@@ -3253,16 +3260,16 @@
 		"webpack-cli": "^4.5.0"
 	},
 	"dependencies": {
-		"@ibm/ibmi-eventf-parser": "^1.0.2",
-		"@ibm/mapepire-js": "^0.6.0",
-		"@vscode-elements/elements": "^1.9.1",
+		"@ibm/ibmi-eventf-parser": "2.0.1",
+		"@ibm/mapepire-js": "0.6.0",
+		"@vscode-elements/elements": "2.5.1",
 		"adm-zip": "0.5.16",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
 		"csv": "6.4.1",
 		"escape-string-regexp": "5.0.0",
 		"ignore": "7.0.5",
 		"node-ssh": "13.2.1",
-		"tar": "7.5.7",
+		"tar": "7.5.9",
 		"tmp": "0.2.5",
 		"vscode-diff": "3.0.1"
 	},

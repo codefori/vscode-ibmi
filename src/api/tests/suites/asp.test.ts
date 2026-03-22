@@ -1,7 +1,7 @@
 import assert from "assert";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import IBMi from "../../IBMi";
-import { Search } from "../../Search";
+import { SearchTools } from "../../SearchTools";
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from "../connection";
 
 const LIBNAME = `VSCODELIBT`;
@@ -76,7 +76,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
   });
 
   it('can find ASP members via search', async () => {
-    const searchResults = await Search.searchMembers(connection, LIBNAME, SPFNAME, `hello world`, `*`);
+    const searchResults = await SearchTools.searchMembers(connection, LIBNAME, SPFNAME, `hello world`, `*`);
     expect(searchResults.hits.length).toBeGreaterThan(0);
     // TODO: additional expects
   });

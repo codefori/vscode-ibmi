@@ -2,7 +2,7 @@ import vscode from 'vscode';
 import { ConnectionConfig, ConnectionData, Server } from '../../typings';
 
 import IBMi from '../../api/IBMi';
-import { deleteStoredPassword, getStoredPassword, setStoredPassword } from '../../config/passwords';
+import { deleteStoredPassphrase, deleteStoredPassword, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from '../../config/passwords';
 import { instance } from '../../instantiate';
 import { Login } from '../../webviews/login';
 
@@ -83,7 +83,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.renameConnection`, async (server: Server) => {
       if (!connectionBrowser.attemptingConnection && server) {
-        const existingConnections = await IBMi.connectionManager.getAll();
+        const existingConnections = IBMi.connectionManager.getAll();
         const newName = await vscode.window.showInputBox({
           prompt: vscode.l10n.t(`Rename connection "{0}"`, server.name),
           value: server.name,
@@ -99,7 +99,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
         if (newName) {
           try {
             // First rename the connection details
-            let { index, data } = (await IBMi.connectionManager.getByName(server.name))!
+            let { index, data } = IBMi.connectionManager.getByName(server.name)!;
             if (index === -1) throw (vscode.l10n.t(`No connection named "{0}" was found`, server.name));
             data.name = newName;
             await IBMi.connectionManager.updateByIndex(index, data);
@@ -114,7 +114,8 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             const cachedConnectionSettings = IBMi.GlobalStorage.getServerSettingsCache(server.name);
 
             // Then get the password key
-            const secret = await getStoredPassword(context, server.name);
+            const password = await getStoredPassword(context, server.name);
+            const passphrase = await getStoredPassphrase(context, server.name);
 
             // No errors - update the settings.
             await IBMi.connectionManager.set(`connectionSettings`, connectionSettings);
@@ -122,9 +123,15 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
               IBMi.GlobalStorage.setServerSettingsCache(newName, cachedConnectionSettings);
               IBMi.GlobalStorage.deleteServerSettingsCache(server.name);
             }
-            if (secret) {
-              await setStoredPassword(context, newName, secret);
+            
+            if (password) {
+              await setStoredPassword(context, newName, password);
               await deleteStoredPassword(context, server.name);
+            }
+
+            if (passphrase) {
+              await setStoredPassphrase(context, newName, passphrase);
+              await deleteStoredPassphrase(context, server.name);
             }
 
             connectionBrowser.refresh();
@@ -169,8 +176,9 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             // Also remove the cached connection settings
             IBMi.GlobalStorage.deleteServerSettingsCache(server.name);
 
-            // Then remove the password
+            // Then remove the password and passphrase
             await deleteStoredPassword(context, server.name);
+            await deleteStoredPassphrase(context, server.name);
           }
 
           connectionBrowser.refresh();
@@ -191,7 +199,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             prompt: vscode.l10n.t(`Copy connection "{0}"`, server.name),
             placeHolder: vscode.l10n.t(`New connection name`),
             value: newConnectionName,
-            validateInput: async value => await IBMi.connectionManager.getByName(value) ?
+            validateInput: async value => IBMi.connectionManager.getByName(value) ?
               vscode.l10n.t(`Connection "{0}" already exists`, value) :
               undefined
           });
@@ -233,6 +241,11 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
           const password = await getStoredPassword(context, server.name);
           if (password) {
             await setStoredPassword(context, newConnectionName, password);
+          }
+
+          const passphrase = await getStoredPassphrase(context, server.name);
+          if (passphrase) {
+            await setStoredPassphrase(context, newConnectionName, passphrase);
           }
 
           connectionBrowser.refresh();
