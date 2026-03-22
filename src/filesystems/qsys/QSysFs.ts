@@ -252,7 +252,15 @@ export class QSysFS implements vscode.FileSystemProvider {
                     .map(srcPF => [srcPF.name, vscode.FileType.Directory]);
             }
             else if (uri.path === '/') {
-                return (await connection.runSQL(`select OBJNAME from table (QSYS2.OBJECT_STATISTICS ('*ALLSIMPLE', 'LIB', '*ALLSIMPLE'))`))
+                let statement = `select OBJNAME from table (QSYS2.OBJECT_STATISTICS ('*ALLSIMPLE', 'LIB', '*ALLSIMPLE'))`;
+                
+                const libraryList = connection.getConfig().libraryList;
+                if (uri.fragment === `libl`) {
+                    statement += ` where OBJNAME in (${libraryList.map(entry => `'${connection.upperCaseName(entry)}'`).join(`, `)})`;
+                    console.log({statement});
+                }
+
+                return (await connection.runSQL(statement))
                     .map(row => [row.OBJNAME as string, vscode.FileType.Directory]);
             }
         }
