@@ -43,16 +43,16 @@ export const ContentSuite: TestSuite = {
         const testMember = `MEMBER`;
         const testExt = `RPGLE`;
 
-        await connection!.runCommand({ command: `DLTF FILE(${testLib}/${testFile})`, noLibList: true });
-        await connection!.runCommand({ command: `CRTSRCPF FILE(${testLib}/${testFile}) RCDLEN(112)`, noLibList: true });
-        await connection!.runCommand({ command: `ADDPFM FILE(${testLib}/${testFile}) MBR(${testMember}) SRCTYPE(${testExt})` });
+        await connection!.runCommand({ command: `QSYS/DLTF FILE(${testLib}/${testFile})`, noLibList: true });
+        await connection!.runCommand({ command: `QSYS/CRTSRCPF FILE(${testLib}/${testFile}) RCDLEN(112)`, noLibList: true });
+        await connection!.runCommand({ command: `QSYS/ADDPFM FILE(${testLib}/${testFile}) MBR(${testMember}) SRCTYPE(${testExt})` });
 
         const testMemberRui = getMemberUri({ library: testLib, file: testFile, name: testMember, extension: testExt });
 
         await workspace.fs.writeFile(testMemberRui, Buffer.from(lines, `utf8`));
 
         const memberContentBuf = await workspace.fs.readFile(testMemberRui);
-        await connection!.runCommand({ command: `DLTF FILE(${testLib}/${testFile})`, noLibList: true }); // Cleanup...!
+        await connection!.runCommand({ command: `QSYS/DLTF FILE(${testLib}/${testFile})`, noLibList: true }); // Cleanup...!
 
         const fileContent = new TextDecoder().decode(memberContentBuf)
 
@@ -76,8 +76,8 @@ export const ContentSuite: TestSuite = {
 
         const tempLib = config!.tempLibrary;
 
-        await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/TABTEST) RCDLEN(112)`, noLibList: true });
-        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/TABTEST) MBR(THEBADONE) SRCTYPE(HELLO)` });
+        await connection!.runCommand({ command: `QSYS/CRTSRCPF FILE(${tempLib}/TABTEST) RCDLEN(112)`, noLibList: true });
+        await connection!.runCommand({ command: `QSYS/ADDPFM FILE(${tempLib}/TABTEST) MBR(THEBADONE) SRCTYPE(HELLO)` });
 
         const theBadOneUri = getMemberUri({ library: tempLib, file: `TABTEST`, name: `THEBADONE`, extension: `HELLO` });
 
@@ -87,7 +87,7 @@ export const ContentSuite: TestSuite = {
         await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
 
         const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
-        await connection!.runCommand({ command: `DLTF FILE(${tempLib}/TABTEST)`, noLibList: true }); // Cleanup...!
+        await connection!.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/TABTEST)`, noLibList: true }); // Cleanup...!
 
         const fileContent = new TextDecoder().decode(memberContentBuf)
 

@@ -39,7 +39,7 @@ export class GetNewLibl implements IBMiComponent {
 
       await connection.getContent().writeStreamfileRaw(tempSourcePath, this.getSource(config.tempLibrary));
       const result = await connection.runCommand({
-        command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
+        command: `QSYS/RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
         noLibList: true
       });

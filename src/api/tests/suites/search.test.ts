@@ -60,7 +60,7 @@ describe('Search Tests', { concurrent: true }, () => {
     it('Member with `.` in name search', async () => {
       const library = connection.getConfig().tempLibrary;
       const file = connection.upperCaseName(`ZZ${Tools.makeid(6)}`);
-      const crtsrcpf = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${file}) RCDLEN(112)`, noLibList: true });
+      const crtsrcpf = await connection.runCommand({ command: `QSYS/CRTSRCPF FILE(${library}/${file}) RCDLEN(112)`, noLibList: true });
       if (crtsrcpf.code !== 0) {
         throw new Error(`Failed to create test source file: ${crtsrcpf.stderr}`);
       }
@@ -72,7 +72,7 @@ describe('Search Tests', { concurrent: true }, () => {
         ];
 
         for (const member of members) {
-          const addpfm = await connection.runCommand({ command: `ADDPFM FILE(${library}/${file}) MBR(${member.name}) SRCTYPE(${member.type})`, noLibList: true });
+          const addpfm = await connection.runCommand({ command: `QSYS/ADDPFM FILE(${library}/${file}) MBR(${member.name}) SRCTYPE(${member.type})`, noLibList: true });
           if (addpfm.code !== 0) {
             throw new Error(`Failed to add test member: ${addpfm.stderr}`);
           }
@@ -94,7 +94,7 @@ describe('Search Tests', { concurrent: true }, () => {
         expect(hasMember(searchTesting, "A.CMD.CMD")).toBe(false);
       }
       finally {
-        await connection.runCommand({ command: `DLTF FILE(${library}/${file})`, noLibList: true });
+        await connection.runCommand({ command: `QSYS/DLTF FILE(${library}/${file})`, noLibList: true });
       }
     });
   

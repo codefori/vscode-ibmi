@@ -198,7 +198,7 @@ export async function isDebugEngineRunning() {
 }
 
 export async function startServer() {
-  const result = await instance.getConnection()?.runCommand({ command: "STRDBGSVR", noLibList: true });
+  const result = await instance.getConnection()?.runCommand({ command: "QSYS/STRDBGSVR", noLibList: true });
   if (result) {
     if (result.code) {
       window.showErrorMessage(l10n.t(`Failed to start debug server: {0}`, result.stderr));
@@ -213,7 +213,7 @@ export async function startServer() {
 }
 
 export async function stopServer() {
-  const result = await instance.getConnection()?.runCommand({ command: "ENDDBGSVR", noLibList: true });
+  const result = await instance.getConnection()?.runCommand({ command: "QSYS/ENDDBGSVR", noLibList: true });
   if (result) {
     if (result.code) {
       window.showErrorMessage(l10n.t(`Failed to stop debug server: {0}`, result.stderr));

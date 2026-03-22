@@ -130,12 +130,12 @@ describe('Encoding tests', { concurrent: true }, () => {
       const tempMbr = char + Tools.makeid(4);
 
       await connection!.runCommand({
-        command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(*NONE)`,
+        command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(*NONE)`,
         environment: `ile`
       });
 
       await connection!.runCommand({
-        command: `ADDPFM FILE(${tempLib}/${tempSPF}) MBR(${tempMbr}) `,
+        command: `QSYS/ADDPFM FILE(${tempLib}/${tempSPF}) MBR(${tempMbr}) `,
         environment: `ile`
       });
 
@@ -152,7 +152,7 @@ describe('Encoding tests', { concurrent: true }, () => {
         expect(memberContentA).toBe(baseContent);
       }
       finally {
-        await connection.runCommand({ command: `DLTF ${tempLib}/${tempSPF}`, noLibList: true });
+        await connection.runCommand({ command: `QSYS/DLTF ${tempLib}/${tempSPF}`, noLibList: true });
       }
     });
   });
@@ -172,23 +172,23 @@ describe('Encoding tests', { concurrent: true }, () => {
         members.push(`TSTMBR${connection.variantChars.local}${i}`);
       }
 
-      await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true });
+      await connection.runCommand({ command: `QSYS/DLTLIB LIB(${library})`, noLibList: true });
       try {
-        const crtLib = await connection.runCommand({ command: `CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
+        const crtLib = await connection.runCommand({ command: `QSYS/CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
         if (Tools.parseMessages(crtLib.stderr).findId("CPD0032")) {
           library = tempLib;
           skipLibrary = true;
         }
 
-        let result = await connection.runCommand({command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112)`});
+        let result = await connection.runCommand({command: `QSYS/CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112)`});
         expect(result.code).toBe(0);
 
         for (const member of members) {
-          result = await connection.runCommand({command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT) TEXT('Test ${member}')`});
+          result = await connection.runCommand({command: `QSYS/ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT) TEXT('Test ${member}')`});
           expect(result.code).toBe(0);
         }
 
-        result = await connection.runCommand({command: `CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`});
+        result = await connection.runCommand({command: `QSYS/CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`});
         expect(result.code).toBe(0);
 
         if (!skipLibrary) {
@@ -237,11 +237,11 @@ describe('Encoding tests', { concurrent: true }, () => {
       }
       finally {
         if (skipLibrary) {
-          await connection.runCommand({ command: `DLTF FILE(${library}/${sourceFile})`, noLibList: true });
-          await connection.runCommand({ command: `DLTDTAARA DTAARA(${library}/${dataArea})`, noLibList: true });
+          await connection.runCommand({ command: `QSYS/DLTF FILE(${library}/${sourceFile})`, noLibList: true });
+          await connection.runCommand({ command: `QSYS/DLTDTAARA DTAARA(${library}/${dataArea})`, noLibList: true });
         }
         else {
-          await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true });
+          await connection.runCommand({ command: `QSYS/DLTLIB LIB(${library})`, noLibList: true });
         }
       }
     }
@@ -253,30 +253,30 @@ describe('Encoding tests', { concurrent: true }, () => {
     const member = `TEST${connection.variantChars.local}MBR`;
 
     if (library.includes(`$`)) {
-      await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true });
+      await connection.runCommand({ command: `QSYS/DLTLIB LIB(${library})`, noLibList: true });
 
-      const crtLib = await connection.runCommand({ command: `CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
+      const crtLib = await connection.runCommand({ command: `QSYS/CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
       if (Tools.parseMessages(crtLib.stderr).findId("CPD0032")) {
         return;
       }
 
       try {
-        const createSourceFileCommand = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112)`, noLibList: true });
+        const createSourceFileCommand = await connection.runCommand({ command: `QSYS/CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112)`, noLibList: true });
         expect(createSourceFileCommand.code).toBe(0);
 
-        const addPf = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
+        const addPf = await connection.runCommand({ command: `QSYS/ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
         expect(addPf.code).toBe(0);
 
         await connection.getContent().uploadMemberContent(library, sourceFile, member, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
 
-        const compileResultA = await connection.runCommand({ command: `CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${sourceFile}) SRCMBR(${member})`, env: { '&CURLIB': library } });
+        const compileResultA = await connection.runCommand({ command: `QSYS/CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${sourceFile}) SRCMBR(${member})`, env: { '&CURLIB': library } });
         expect(compileResultA.code).toBe(0);
 
-        const compileResultB = await connection.runCommand({ command: `CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${sourceFile}) SRCMBR(${member})`, env: { '&LIBL': library } });
+        const compileResultB = await connection.runCommand({ command: `QSYS/CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${sourceFile}) SRCMBR(${member})`, env: { '&LIBL': library } });
         expect(compileResultB.code).toBe(0);
       }
       finally {
-        await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true });
+        await connection.runCommand({ command: `QSYS/DLTLIB LIB(${library})`, noLibList: true });
       }
     }
   });
@@ -290,15 +290,15 @@ describe('Encoding tests', { concurrent: true }, () => {
       const testMember = connection.upperCaseName(`${varChar}${Tools.makeid(4)}`);
       const variantMember = connection.upperCaseName(`${connection.variantChars.local}MBR`);
 
-      await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
+      await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
 
-      const createResult = await connection.runCommand({command: `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112)`});
+      const createResult = await connection.runCommand({command: `QSYS/CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112)`});
       expect(createResult.code).toBe(0);
       try {
-        const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
+        const addPf = await connection.runCommand({ command: `QSYS/ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
         expect(addPf.code).toBe(0);
 
-        const addPfB = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
+        const addPfB = await connection.runCommand({ command: `QSYS/ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
         expect(addPfB.code).toBe(0);
 
         const objects = await connection.getContent().getObjectList({ library: tempLib, types: [`*SRCPF`] });
@@ -320,13 +320,13 @@ describe('Encoding tests', { concurrent: true }, () => {
 
         await connection.getContent().uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
-        const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
+        const compileResult = await connection.runCommand({ command: `QSYS/CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
         expect(compileResult.code).toBe(0);
 
-        await connection.runCommand({ command: `DLTOBJ OBJ(${tempLib}/${testMember}) OBJTYPE(*PGM)`, noLibList: true });
+        await connection.runCommand({ command: `QSYS/DLTOBJ OBJ(${tempLib}/${testMember}) OBJTYPE(*PGM)`, noLibList: true });
       }
       finally {
-        await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
+        await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
       }
     }
 

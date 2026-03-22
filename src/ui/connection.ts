@@ -69,7 +69,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
         switch (choice) {
           case `Delete`:
             connection.runCommand({
-              command: `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+              command: `QSYS/DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
               noLibList: true
             })
               .then((result) => {
@@ -94,7 +94,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
         switch (choice) {
           case `Delete`:
             connection.runCommand({
-              command: `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+              command: `QSYS/DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
               noLibList: true
             })
               .then((result) => {

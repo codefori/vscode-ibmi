@@ -637,7 +637,7 @@ export default class IBMi {
         });
 
         this.runCommand({
-          command: `DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
+          command: `QSYS/DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
           noLibList: true,
         })
           .then(result => {
@@ -682,7 +682,7 @@ export default class IBMi {
 
 
         const QCPTOIMPF = await this.runCommand({
-          command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+          command: `QSYS/CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
           noLibList: true
         });
 
@@ -691,7 +691,7 @@ export default class IBMi {
         }
 
         const QCPFRMIMPF = await this.runCommand({
-          command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+          command: `QSYS/CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
           noLibList: true
         })
 
@@ -1021,7 +1021,7 @@ export default class IBMi {
     }
 
     const createdTempLib = await this.runCommand({
-      command: `CRTLIB LIB(${this.config.tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
+      command: `QSYS/CRTLIB LIB(${this.config.tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
       noLibList: true
     });
 
@@ -1034,7 +1034,7 @@ export default class IBMi {
       }
       else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
         const tempLibExists = await this.runCommand({
-          command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+          command: `QSYS/CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
           noLibList: true
         });
 

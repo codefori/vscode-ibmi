@@ -205,7 +205,7 @@ export class QSysFS implements vscode.FileSystemProvider {
 
             if (!content.length) { //Coming from "Save as"
                 const addMember = await connection.runCommand({
-                    command: `ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
+                    command: `QSYS/ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
                     noLibList: true
                 });
                 if (addMember.code === 0) {
@@ -265,7 +265,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             const qsysPath = Tools.parseQSysPath(uri.path);
             if (qsysPath.library && !await connection.getContent().checkObject({ library: "QSYS", name: qsysPath.library, type: "*LIB" })) {
                 const createLibrary = await connection.runCommand({
-                    command: `CRTLIB LIB(${qsysPath.library})`,
+                    command: `QSYS/CRTLIB LIB(${qsysPath.library})`,
                     noLibList: true
                 });
                 if (createLibrary.code !== 0) {
@@ -274,7 +274,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
             if (qsysPath.name) {
                 const createFile = await connection.runCommand({
-                    command: `CRTSRCPF FILE(${qsysPath.library}/${qsysPath.name}) RCDLEN(112)`,
+                    command: `QSYS/CRTSRCPF FILE(${qsysPath.library}/${qsysPath.name}) RCDLEN(112)`,
                     noLibList: true
                 });
                 if (createFile.code !== 0) {
