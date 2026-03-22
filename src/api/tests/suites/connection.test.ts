@@ -236,7 +236,7 @@ describe(`connection tests`, { concurrent: true }, () => {
       },
       {
         commandConfirm: async (command) => {
-          expect(command).toBe(`CRTDTAARA DTAARA(QTEMP/TEST) TYPE(*CHAR) LEN(10)`);
+          expect(command).toBe(`QSYS/CRTDTAARA DTAARA(QTEMP/TEST) TYPE(*CHAR) LEN(10)`);
           return command;
         }
       }
