@@ -498,29 +498,50 @@ export default class IBMiContent {
     // SYSTABLES takes the name in CCSID 37 format
     // OBJECT_STATISTICS takes the name in the connection CCSID format
 
-    const sourceFileNameLike = () => {
-      if (filters.filterType === 'regex' && filters.object && !nameFilter.noFilter) {
-        // For regex, add REGEXP_LIKE clause
-        return ` AND REGEXP_LIKE(f.NAME, '${filters.object}', 'i')`;
-      }
-      return objectFilter ? ` AND f.NAME ${(objectFilter.includes('*') ? ` LIKE ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
-    };
+    const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
 
+    // const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
+    /**
+     * Generates the OBJECT_NAME parameter for QSYS2.OBJECT_STATISTICS table function.
+     *
+     * When using regex filters (filterType === 'regex'), this function returns a wildcard '*'
+     * to retrieve all objects from the library, allowing subsequent filtering via REGEXP_LIKE
+     * in the WHERE clause. This is necessary because OBJECT_STATISTICS doesn't support regex
+     * patterns directly in its OBJECT_NAME parameter - it only accepts simple wildcards.
+     *
+     * For non-regex filters, it returns the specific object name or empty string if no filter.
+     *
+     * @returns SQL parameter string for OBJECT_NAME (e.g., ", OBJECT_NAME => 'OBJ*'" or ", OBJECT_NAME => '*'")
+     */
     const objectName = () => {
-      // For regex, use * to get all objects
+      // For regex filters, use wildcard '*' to get all objects, then filter with REGEXP_LIKE
       if (filters.filterType === 'regex' && filters.object && !nameFilter.noFilter) {
         return `, OBJECT_NAME => '*'`;
       }
       return objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
     };
     
+    /**
+     * Generates a WHERE clause with REGEXP_LIKE for regex-based object name filtering.
+     *
+     * This function is essential for regex filtering to work correctly with libraries and objects.
+     * Since QSYS2.OBJECT_STATISTICS doesn't support regex patterns in its OBJECT_NAME parameter,
+     * we must:
+     * 1. Pass '*' to OBJECT_NAME (via objectName() function) to retrieve all objects
+     * 2. Apply the actual regex pattern here using REGEXP_LIKE in a WHERE clause
+     *
+     * The 'i' flag enables case-insensitive matching, consistent with IBM i naming conventions.
+     * Without this WHERE clause, regex filters would return all objects instead of filtered results.
+     *
+     * @returns SQL WHERE clause with REGEXP_LIKE (e.g., " WHERE REGEXP_LIKE(OBJNAME, '^TEST.*', 'i')") or empty string
+     */
     const regexWhereClause = () => {
       if (filters.filterType === 'regex' && filters.object && !nameFilter.noFilter) {
+        // Apply the regex pattern using REGEXP_LIKE with case-insensitive matching
         return ` WHERE REGEXP_LIKE(OBJNAME, '${filters.object}', 'i')`;
       }
       return '';
     };
-
     let createOBJLIST: string[];
     const usVariants = this.ibmi.variantChars.american;
     const localVariants = this.ibmi.variantChars.local;
@@ -542,7 +563,7 @@ export default class IBMiContent {
         `  where t.FILE_TYPE = 'S'`,
         `)`,
         `SELECT * FROM SRCFILES as f`,
-        `WHERE f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
+        `where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
       ];
       translateName = true;
     } else if (!withSourceFiles) {
@@ -561,7 +582,7 @@ export default class IBMiContent {
         `  OBJOWNER         as OWNER,`,
         `  OBJDEFINER       as CREATED_BY`,
         `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
-        regexWhereClause()
+        regexWhereClause(),
       ];
     }
     else {
@@ -577,7 +598,7 @@ export default class IBMiContent {
         `  where t.FILE_TYPE = 'S'`,
         `), SRCPF as (`,
         `SELECT replace(replace(replace(NAME, '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}') NAME, IS_SOURCE, SOURCE_LENGTH FROM SRCFILES as f`,
-        `  WHERE f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
+        `  where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
