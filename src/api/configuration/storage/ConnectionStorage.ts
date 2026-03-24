@@ -7,6 +7,7 @@ const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
 const MESSAGE_SHOWN_KEY = `messageShown`;
+const LAST_PASSWORD_CHECK = `lastPasswordCheck`;
 
 const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
 const AUTHORISED_EXTENSIONS_KEY = `authorisedExtensions`
@@ -147,5 +148,13 @@ export class ConnectionStorage {
     if (shownMessages.includes(messageId)) {
       await this.internalStorage.set(MESSAGE_SHOWN_KEY, shownMessages.filter(message => message !== messageId));
     }
+  }
+
+  getNextPasswordCheck() {
+    return new Date(this.internalStorage.get<number>(LAST_PASSWORD_CHECK) || 0);
+  }
+
+  setNextPasswordCheck(epoch: number) {
+    return this.internalStorage.set(LAST_PASSWORD_CHECK, epoch);
   }
 }

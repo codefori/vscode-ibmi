@@ -171,7 +171,7 @@ export namespace Terminal {
             }
           },
           setDimensions: (dim: vscode.TerminalDimensions) => {
-            channel.setWindow(String(dim.rows), String(dim.columns), `500`, `500`);
+            channel.setWindow(dim.rows, dim.columns, 500, 500);
           }
         },
       });

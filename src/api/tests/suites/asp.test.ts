@@ -1,7 +1,7 @@
 import assert from "assert";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import IBMi from "../../IBMi";
-import { Search } from "../../Search";
+import { SearchTools } from "../../SearchTools";
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from "../connection";
 
 const LIBNAME = `VSCODELIBT`;
@@ -20,7 +20,7 @@ function checkAsps(connection: IBMi) {
 
 async function ensureLibExists(connection: IBMi) {
   const detail = connection.getIAspDetail(connection.getCurrentIAspName()!)!;
-  const res = await connection.runCommand({ command: `CRTLIB LIB(${LIBNAME}) ASPDEV(${detail.name})` });
+  const res = await connection.runCommand({ command: `QSYS/CRTLIB LIB(${LIBNAME}) ASPDEV(${detail.name})` });
   if (res.code) {
     assert.strictEqual(res.code, 0, res.stderr || res.stdout);
   }
@@ -30,12 +30,12 @@ async function createTempRpgle(connection: IBMi) {
   const content = connection.getContent();
 
   await connection.runCommand({
-    command: `CRTSRCPF ${LIBNAME}/${SPFNAME} MBR(*NONE)`,
+    command: `QSYS/CRTSRCPF ${LIBNAME}/${SPFNAME} MBR(*NONE)`,
     environment: `ile`
   });
 
   await connection.runCommand({
-    command: `ADDPFM FILE(${LIBNAME}/${SPFNAME}) MBR(${MBRNAME}) `,
+    command: `QSYS/ADDPFM FILE(${LIBNAME}/${SPFNAME}) MBR(${MBRNAME}) `,
     environment: `ile`
   });
 
@@ -59,7 +59,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
   }, CONNECTION_TIMEOUT)
 
   afterAll(async () => {
-    await connection.runCommand({ command: `DLTLIB LIB(${LIBNAME})` });
+    await connection.runCommand({ command: `QSYS/DLTLIB LIB(${LIBNAME})` });
     await disposeConnection(connection);
   });
 
@@ -76,7 +76,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
   });
 
   it('can find ASP members via search', async () => {
-    const searchResults = await Search.searchMembers(connection, LIBNAME, SPFNAME, `hello world`, `*`);
+    const searchResults = await SearchTools.searchMembers(connection, LIBNAME, SPFNAME, `hello world`, `*`);
     expect(searchResults.hits.length).toBeGreaterThan(0);
     // TODO: additional expects
   });

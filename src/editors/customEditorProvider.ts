@@ -15,20 +15,25 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
 
   protected getSpecificScript() {
     return /* javascript */ `
+      const theForm = document.querySelector('#laforma');
       for (const field of submitfields) {
         const fieldElement = document.getElementById(field);
         fieldElement.addEventListener(inputFields.some(f => f.id === field) ? 'input' : 'change', function(event) {
           event?.preventDefault();
-          const data = document.querySelector('#laforma').data;
-          for (const checkbox of checkboxes) {
-            data[checkbox] = data[checkbox]?.length >= 1;
-          }
+          const data = {};
+          new FormData(theForm).entries().forEach(([key, value]) => data[key] = value);
+
+          // Convert checkboxes value to actual boolean
+          checkboxes.forEach(checkbox => data[checkbox] = (data[checkbox] === 'on'));
 
           data.valid = validateInputs();
 
           vscode.postMessage({ type: 'dataChange', data });
-        });        
+        });
       }
+
+      //Prevent form from being submitted
+      theForm.addEventListener("submit", (event) => event?.preventDefault());
     `;
   }
 

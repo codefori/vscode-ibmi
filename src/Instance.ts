@@ -1,7 +1,7 @@
 import { EventEmitter } from "stream";
 import * as vscode from "vscode";
 import { ILELibrarySettings } from "./api/CompileTools";
-import IBMi, { ConnectionResult } from "./api/IBMi";
+import IBMi, { ConnectionResult, DisconnectedCallback } from "./api/IBMi";
 import { BaseStorage } from "./api/configuration/storage/BaseStorage";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
@@ -28,6 +28,7 @@ export interface ConnectionOptions {
 
 export default class Instance {
   private connection: IBMi | undefined;
+  connected?: Promise<ConnectionResult>;
 
   private output = {
     channel: vscode.window.createOutputChannel(`Code for IBM i`),
@@ -79,72 +80,73 @@ export default class Instance {
 
     let result: ConnectionResult;
 
-    const timeoutHandler = async (conn: IBMi) => {
-      if (conn) {
-        const choice = await vscode.window.showWarningMessage(`Connection lost`, {
-          modal: true,
-          detail: `Connection to ${conn.currentConnectionName} has dropped. Would you like to reconnect?`
-        }, `Yes`, `No, get logs`);
+    const onDisconnected: DisconnectedCallback = async (connection, error) => {
+      if (connection.connectionSuccessful) {
+        this.fire(`disconnected`);
 
-        let reconnect = choice === `Yes`;
-        let collectLogs = choice === `No, get logs`;
+        if (error) {
+          const choice = await vscode.window.showWarningMessage(`Connection lost: ${error.description || error.message || error.level}`, {
+            modal: true,
+            detail: `Connection to ${connection.currentConnectionName} has dropped. Would you like to reconnect?`
+          }, `Yes`, `No, get logs`);
 
-        if (collectLogs) {
-          const logs = this.output.content;
-          vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
-            vscode.window.showTextDocument(doc);
-          });
+          const reconnect = choice === `Yes`;
+          const collectLogs = choice === `No, get logs`;
+
+          if (collectLogs) {
+            const logs = this.output.content;
+            vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
+              vscode.window.showTextDocument(doc);
+            });
+          }
+
+          this.disconnect(reconnect);
+
+          if (reconnect) {
+            await this.connect({ ...options, reconnecting: true });
+          }
         }
-
+      }
+      else {
         this.disconnect();
-
-        if (reconnect) {
-          await this.connect({ ...options, reconnecting: true });
-        }
       }
     };
 
-    return VscodeTools.withContext("code-for-ibmi:connecting", async () => {
+    this.connected = VscodeTools.withContext("code-for-ibmi:connecting", async () => {
       while (true) {
         let customError: string | undefined;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: options.data.name, cancellable: true }, async (p, cancelToken) => {
-          try {
-            const cancelEmitter = new EventEmitter();
+          const cancelEmitter = new EventEmitter();
 
-            cancelToken.onCancellationRequested(() => {
-              cancelEmitter.emit(`cancel`);
-            });
+          cancelToken.onCancellationRequested(() => {
+            cancelEmitter.emit(`cancel`);
+          });
 
-            result = await connection.connect(
-              options.data,
-              {
-                callbacks: {
-                  timeoutCallback: timeoutHandler,
-                  onConnectedOperations: options.onConnectedOperations || [],
-                  uiErrorHandler: handleConnectionResults,
-                  progress: (message) => { p.report(message) },
-                  message: messageCallback,
-                  inputBox: async (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => {
-                    return await inputBoxCallback(prompt, placeHolder, ignoreFocusOut, cancelToken)
-                  },
-                  cancelEmitter
+          result = await connection.connect(
+            options.data,
+            {
+              callbacks: {
+                onDisconnected,
+                onConnectedOperations: options.onConnectedOperations,
+                uiErrorHandler: handleConnectionResults,
+                progress: (message) => { p.report(message) },
+                message: messageCallback,
+                inputBox: async (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => {
+                  return await inputBoxCallback(prompt, placeHolder, ignoreFocusOut, cancelToken)
                 },
-                reconnecting: options.reconnecting,
-                reloadServerSettings: options.reloadServerSettings,
+                cancelEmitter
               },
-            );
-          } catch (e: any) {
-            customError = e.message;
-            result = { success: false };
-          }
+              reconnecting: options.reconnecting,
+              reloadServerSettings: options.reloadServerSettings,
+            },
+          )
         });
 
         if (result.success) {
           await this.setConnection(connection);
           break;
-
         } else {
-          await this.disconnect();
+          await this.disconnect(options.reconnecting);
           if (options.reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
             modal: true,
             detail: `Reconnection has failed. Would you like to try again?\n\n${customError || `No error provided.`}`
@@ -159,15 +161,22 @@ export default class Instance {
         }
       }
 
-      if (result.success === false) {
-        connection.dispose();
-      }
-
       return result;
     });
+
+    return this.connected;
   }
 
-  async disconnect() {
+  async disconnect(keepTabsOpened?: boolean) {
+    delete this.connected;
+    if (!keepTabsOpened) {
+      vscode.window.tabGroups.close(
+        vscode.window.tabGroups.all
+          .flatMap(group => group.tabs)
+          .filter(tab => tab.input instanceof vscode.TabInputText && ["member", "streamfile", "object"].includes(tab.input.uri.scheme))
+      );
+    }
+
     await this.setConnection();
 
     await Promise.all([
@@ -179,15 +188,10 @@ export default class Instance {
 
   private async setConnection(connection?: IBMi) {
     if (this.connection) {
-      await this.connection.dispose();
+      this.connection.disconnect();
     }
 
     if (connection) {
-      connection.setDisconnectedCallback(async () => {
-        this.setConnection();
-        this.fire(`disconnected`);
-      });
-
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
       await IBMi.GlobalStorage.setLastConnection(connection.currentConnectionName);

@@ -119,6 +119,7 @@ async function updateConnectedBar() {
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       terminalMenuItem,
       actionsMenuItem,
+      `[$(key) Change Password](command:code-for-ibmi.changePassword)`,
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
         :
@@ -137,25 +138,9 @@ async function onConnected() {
     connectedBarItem,
     disconnectBarItem,
   ].forEach(barItem => barItem.show());
-
-  updateConnectedBar();
 }
 
 async function onDisconnected() {
-  // Close the tabs with no dirty editors
-  vscode.window.tabGroups.all
-    .filter(group => !group.tabs.some(tab => tab.isDirty))
-    .forEach(group => {
-      group.tabs.forEach(tab => {
-        if (tab.input instanceof vscode.TabInputText) {
-          const uri = tab.input.uri;
-          if ([`member`, `streamfile`, `object`].includes(uri.scheme)) {
-            vscode.window.tabGroups.close(tab);
-          }
-        }
-      })
-    });
-
   // Hide the bar items
   [
     disconnectBarItem,

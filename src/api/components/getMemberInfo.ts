@@ -39,7 +39,7 @@ export class GetMemberInfo implements IBMiComponent {
       const tempSourcePath = posix.join(tempDir, `getMemberInfo.sql`);
       await connection.getContent().writeStreamfileRaw(tempSourcePath, getSource(connection.getConfig().tempLibrary, this.procedureName, this.currentVersion));
       const result = await connection.runCommand({
-        command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
+        command: `QSYS/RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
         noLibList: true
       });

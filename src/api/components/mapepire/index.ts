@@ -1,4 +1,5 @@
 
+import { SQLJob } from "@ibm/mapepire-js";
 import { stat } from "fs/promises";
 import path from "path";
 import { SemanticVersion } from "../../../typings";
@@ -15,6 +16,8 @@ export class Mapepire implements IBMiComponent {
   private readonly localAssetPath: string;
   private installPath = "";
   private readonly version: SemanticVersion;
+
+  readonly jobs: Map<string, SQLJob> = new Map;
 
   constructor(localAssetRoot: string) {
     this.localAssetPath = path.join(localAssetRoot, SERVER_VERSION_FILE);
@@ -66,7 +69,7 @@ export class Mapepire implements IBMiComponent {
         throw `Local Mapepire asset not found at ${this.localAssetPath}!`;
       }
 
-      let result = await connection.sendCommand({ command: `rm ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*.jar` });
+      let result = await connection.sendCommand({ command: `rm -f ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*.jar` });
       if (result.code !== 0) {
         throw `Failed to clear previous Mapepire installation: ${result.stderr}`;
       }
@@ -128,6 +131,14 @@ export class Mapepire implements IBMiComponent {
     // sqlJob.setTraceConfig(`IN_MEM`, `ON`);
     // sqlJob.enableLocalTrace();
     return sqlJob;
+  }
+
+  public async endJobs() {
+    await Promise.all([...this.jobs.values()].map(job => job.close()));
+  }
+
+  reset() {
+    this.jobs.clear();
   }
 }
 

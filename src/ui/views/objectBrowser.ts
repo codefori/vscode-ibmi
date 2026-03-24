@@ -5,7 +5,7 @@ import vscode, { commands, DataTransferItem, l10n, Uri } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
-import { Search } from "../../api/Search";
+import { SearchTools } from "../../api/SearchTools";
 import { Tools } from "../../api/Tools";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
@@ -47,7 +47,7 @@ const objectIcons = {
 
 type SearchParameters = {
   path: string
-  fillter?: ObjectFilters
+  filter?: ObjectFilters
 }
 
 abstract class ObjectBrowserItem extends BrowserItem {
@@ -413,7 +413,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     const { library, file, name } = connection.parserMemberPath(this.path);
 
     const removeResult = await connection.runCommand({
-      command: `RMVM FILE(${library}/${file}) MBR(${name})`,
+      command: `QSYS/RMVM FILE(${library}/${file}) MBR(${name})`,
       noLibList: true
     });
 
@@ -609,7 +609,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const member = connection.parserMemberPath(fullPath);
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Creating member {0}...`, fullPath) }, async (progress) => {
           const addResult = await connection.runCommand({
-            command: `ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`,
+            command: `QSYS/ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`,
             noLibList: true
           })
 
@@ -667,7 +667,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Creating member {0}...`, fullPath.toUpperCase()) }, async (progress) => {
           try {
             const checkResult = await connection.runCommand({
-              command: `CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`,
+              command: `QSYS/CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`,
               noLibList: true
             })
 
@@ -677,7 +677,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Are you sure you want overwrite member {0}?`, memberPath.name), { modal: true }, vscode.l10n.t("Yes"));
               if (result === vscode.l10n.t(`Yes`)) {
                 await connection.runCommand({
-                  command: `RMVM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name})`,
+                  command: `QSYS/RMVM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name})`,
                   noLibList: true
                 })
               } else {
@@ -686,7 +686,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             const copyResult = await connection.runCommand({
-              command: `CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`,
+              command: `QSYS/CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`,
               noLibList: true
             })
 
@@ -697,7 +697,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
             if (oldMember.extension !== memberPath.extension) {
               await connection.runCommand({
-                command: `CHGPFM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name}) SRCTYPE(${memberPath.extension.length > 0 ? memberPath.extension : `*NONE`})`,
+                command: `QSYS/CHGPFM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name}) SRCTYPE(${memberPath.extension.length > 0 ? memberPath.extension : `*NONE`})`,
                 noLibList: true
               });
             }
@@ -743,7 +743,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const connection = getConnection();
 
         const changeResult = await connection.runCommand({
-          command: `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
+          command: `QSYS/CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
           noLibList: true
         });
 
@@ -811,7 +811,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
             if (oldMember.name !== newMember.name) {
               commandResult = await connection.runCommand({
-                command: `RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
+                command: `QSYS/RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
                 noLibList: true
               });
 
@@ -822,7 +822,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
             if (oldMember.extension !== newMember.extension) {
               commandResult = await connection.runCommand({
-                command: `CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
+                command: `QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
                 noLibList: true
               });
 
@@ -979,7 +979,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       const parameters: SearchParameters[] = [];
 
       if (node) {
-        (nodes || [node]).forEach(n => parameters.push({ path: n.path, fillter: n.filter }));
+        (nodes || [node]).forEach(n => parameters.push({ path: n.path, filter: n.filter }));
       }
       else {
         const connection = getConnection();
@@ -1084,7 +1084,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         const filters = config.objectFilters;
 
         const createResult = await connection.runCommand({
-          command: `CRTLIB LIB(${newLibrary})`,
+          command: `QSYS/CRTLIB LIB(${newLibrary})`,
           noLibList: true
         });
 
@@ -1147,7 +1147,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
 
           vscode.window.showInformationMessage(vscode.l10n.t(`Creating source file {0}.`, uriPath));
           const createResult = await connection.runCommand({
-            command: `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`,
+            command: `QSYS/CRTSRCPF FILE(${uriPath}) RCDLEN(112)`,
             noLibList: true
           });
 
@@ -1178,7 +1178,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
 
           newTextOK = true;
           const changeResult = await connection.runCommand({
-            command: `CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
+            command: `QSYS/CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
             noLibList: true
           });
 
@@ -1221,9 +1221,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           let command:string;
 
           if(node.object.type.toLocaleLowerCase() === `*lib`){
-            command= `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})`;
+            command= `QSYS/CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})`;
           } else {
-            command=`CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
+            command=`QSYS/CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
           }
 
           const commandRes = await connection.runCommand({
@@ -1265,7 +1265,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Renaming object {0} {1} to {2}...`, node.path, node.object.type.toUpperCase(), escapedObject.join('/')) }
             , async (progress) => {
               const renameResult = await connection.runCommand({
-                command: `RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`,
+                command: `QSYS/RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`,
                 noLibList: true
               });
 
@@ -1303,7 +1303,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           newLibraryOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Moving object {0} {1} to {2}...`, node.path, node.object.type.toUpperCase(), escapedLibrary) }
             , async (progress) => {
               const moveResult = await connection.runCommand({
-                command: `MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`,
+                command: `QSYS/MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`,
                 noLibList: true
               });
 
@@ -1449,7 +1449,7 @@ async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
         }
 
         const path = parameter.path;
-        const filter = parameter.fillter;
+        const filter = parameter.filter;
         progress.report({ message: vscode.l10n.t(`"{0}" in {1}.`, searchTerm, path), increment });
 
         // NOTE: if more messages are added, lower the timeout interval
@@ -1483,7 +1483,7 @@ async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
         }
 
         const [library, sourceFile] = path.split(`/`);
-        const results = await Search.searchMembers(instance.getConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
+        const results = await SearchTools.searchMembers(instance.getConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
         clearInterval(messageTimeout);
         if (cancel.isCancellationRequested) {
           return;
@@ -1530,7 +1530,7 @@ async function listObjects(item: ObjectBrowserFilterItem, filter?: ObjectFilters
 async function deleteObject(object: IBMiObject) {
   const connection = getConnection();
   const deleteResult = await connection.runCommand({
-    command: `DLTOBJ OBJ(${object.library}/${object.name}) OBJTYPE(${object.type})`,
+    command: `QSYS/DLTOBJ OBJ(${object.library}/${object.name}) OBJTYPE(${object.type})`,
     noLibList: true
   });
 
