@@ -192,27 +192,29 @@ export namespace Tools {
    * Determines if CCSID conversion should be applied based on configuration and source file CCSID.
    * @param sourceCcsid The CCSID of the source file
    * @param config Connection configuration containing conversion settings
-   * @returns [requiresConversion, targetCcsid] - whether conversion is required and the target CCSID to use
+   * @returns {requiresConversion, targetCcsid} - whether conversion is required and the target CCSID to use
    */
-  export function determineCcsidConversion(sourceCcsid: number, config: { ccsidConversionEnabled?: boolean, ccsidConvertFrom?: string, ccsidConvertTo?: string }): [boolean, number] {
-    // If conversion is not enabled, don't convert
+  export function determineCcsidConversion(sourceCcsid: number, config: { ccsidConversionEnabled?: boolean, ccsidConvertFrom?: string, ccsidConvertTo?: string }): { requiresConversion: boolean, targetCcsid: number } {
+    const noConversion = { requiresConversion: false, targetCcsid: 0 };
+
+    // conversion must be enabled
     if (!config.ccsidConversionEnabled) {
-      return [false, 0];
+      return noConversion;
     }
 
     const configuredSourceCcsid = Number(config.ccsidConvertFrom) || 0;
     const configuredTargetCcsid = Number(config.ccsidConvertTo) || 0;
 
-    // If no source or target CCSID configured, don't convert
+    // both source and target must be configured
     if (configuredSourceCcsid === 0 || configuredTargetCcsid === 0) {
-      return [false, 0];
+      return noConversion;
     }
 
-    // Only convert if the source file CCSID matches the configured source CCSID
-    if (sourceCcsid === configuredSourceCcsid) {
-      return [true, configuredTargetCcsid];
+    // source CCSID must match configured value
+    if (sourceCcsid != configuredSourceCcsid) {
+      return noConversion;
     }
 
-    return [false, 0];
+    return { requiresConversion: true, targetCcsid: configuredTargetCcsid };
   }
 }

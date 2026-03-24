@@ -176,9 +176,8 @@ export class ExtendedIBMiContent {
 
         // Fetch source file CCSID and determine if conversion is needed
         const memberPath = { library, name: file, member: name };
-        const attr = await connection.getContent().getAttributes(memberPath, "CCSID");
-        const sourceCcsid = Number(attr?.["CCSID"]) || 0;
-        const [requiresConversion, targetCcsid] = Tools.determineCcsidConversion(sourceCcsid, config);
+        const sourceCcsid = await connection.getFileCcsid(memberPath);
+        const {requiresConversion, targetCcsid} = Tools.determineCcsidConversion(sourceCcsid, config);
 
         let insertResult: CommandResult = { code: 0, stdout: '', stderr: '' };
         if (requiresConversion) {
