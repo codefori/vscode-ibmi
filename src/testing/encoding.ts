@@ -27,7 +27,7 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
 
   const tempLib = config.tempLibrary;
   const testPgmName = `T${commands.length}${ccsid}`;
-  const sourceFileCreated = await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
+  const sourceFileCreated = await connection!.runCommand({ command: `QSYS/CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
 
   await connection.getContent().uploadMemberContent(tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
 
@@ -136,12 +136,12 @@ export const EncodingSuite: TestSuite = {
           tempMbr = char + Tools.makeid(4)
 
         await connection!.runCommand({
-          command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(*NONE)`,
+          command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(*NONE)`,
           environment: `ile`
         });
 
         await connection!.runCommand({
-          command: `ADDPFM FILE(${tempLib}/${tempSPF}) MBR(${tempMbr}) `,
+          command: `QSYS/ADDPFM FILE(${tempLib}/${tempSPF}) MBR(${tempMbr}) `,
           environment: `ile`
         });
 
@@ -185,12 +185,12 @@ export const EncodingSuite: TestSuite = {
         const testMember = `${varChar}MEMBER`;
         const variantMember = `${connection.variantChars.local}MBR`;
 
-        const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
+        const attemptDelete = await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
 
-        const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.runtimeCcsid})`], ccsidData.runtimeCcsid);
+        const createResult = await runCommandsWithCCSID(connection, [`QSYS/CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.runtimeCcsid})`], ccsidData.runtimeCcsid);
         assert.strictEqual(createResult.code, 0);
 
-        const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
+        const addPf = await connection.runCommand({ command: `QSYS/ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
         assert.strictEqual(addPf.code, 0);
 
         const attributes = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
@@ -199,7 +199,7 @@ export const EncodingSuite: TestSuite = {
 
         /// Test for getAttributes on member with all variants
 
-        const addPfB = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
+        const addPfB = await connection.runCommand({ command: `QSYS/ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
         assert.strictEqual(addPfB.code, 0);
 
         const attributesB = await connection.getContent().getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
@@ -226,7 +226,7 @@ export const EncodingSuite: TestSuite = {
 
         await connection.getContent().uploadMemberContent(tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
-        const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
+        const compileResult = await connection.runCommand({ command: `QSYS/CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
         assert.strictEqual(compileResult.code, 0);
 
         const memberUri = getMemberUri({ library: tempLib, file: testFile, name: testMember, extension: `RPGLE` });
@@ -258,8 +258,8 @@ export const EncodingSuite: TestSuite = {
 
         const file = `TEST${ccsid}`;
 
-        await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
-        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(THEMEMBER) SRCTYPE(TXT)`, noLibList: true });
+        await connection!.runCommand({ command: `QSYS/CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
+        await connection!.runCommand({ command: `QSYS/ADDPFM FILE(${tempLib}/${file}) MBR(THEMEMBER) SRCTYPE(TXT)`, noLibList: true });
         const theBadOneUri = getMemberUri({ library: tempLib, file, name: `THEMEMBER`, extension: `TXT` });
 
         // Initial read to create the alias

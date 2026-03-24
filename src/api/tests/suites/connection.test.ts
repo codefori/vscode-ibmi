@@ -130,7 +130,7 @@ describe(`connection tests`, { concurrent: true }, () => {
 
   it('runCommand (ILE)', async () => {
     const result = await connection.runCommand({
-      command: `DSPJOB OPTION(*DFNA)`,
+      command: `QSYS/DSPJOB OPTION(*DFNA)`,
       environment: `ile`,
       getSpooledFiles: true
     });
@@ -141,7 +141,7 @@ describe(`connection tests`, { concurrent: true }, () => {
 
   it('runCommand (ILE, with error)', async () => {
     const result = await connection.runCommand({
-      command: `CHKOBJ OBJ(QSYS/NOEXIST) OBJTYPE(*DTAARA)`,
+      command: `QSYS/CHKOBJ OBJ(QSYS/NOEXIST) OBJTYPE(*DTAARA)`,
       noLibList: true
     });
 
@@ -230,13 +230,13 @@ describe(`connection tests`, { concurrent: true }, () => {
 
     const result = await CompileTools.runCommand(connection,
       {
-        command: `CRTDTAARA DTAARA(&SCOOBY/TEST) TYPE(*CHAR) LEN(10)`,
+        command: `QSYS/CRTDTAARA DTAARA(&SCOOBY/TEST) TYPE(*CHAR) LEN(10)`,
         environment: `ile`,
         env: { '&SCOOBY': `QTEMP` },
       },
       {
         commandConfirm: async (command) => {
-          expect(command).toBe(`CRTDTAARA DTAARA(QTEMP/TEST) TYPE(*CHAR) LEN(10)`);
+          expect(command).toBe(`QSYS/CRTDTAARA DTAARA(QTEMP/TEST) TYPE(*CHAR) LEN(10)`);
           return command;
         }
       }

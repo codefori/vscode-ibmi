@@ -62,7 +62,7 @@ describe('Content Tests', { concurrent: true }, () => {
       tempMbr = `O_ABC`.concat(connection!.variantChars.local);
 
     const result = await connection!.runCommand({
-      command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+      command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
       environment: 'ile'
     });
 
@@ -83,7 +83,7 @@ describe('Content Tests', { concurrent: true }, () => {
 
     // Cleanup...
     await connection!.runCommand({
-      command: `DLTF ${tempLib}/${tempSPF}`,
+      command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
       environment: 'ile'
     });
   });
@@ -129,7 +129,7 @@ describe('Content Tests', { concurrent: true }, () => {
       tempObj = `O_ABC`.concat(connection!.variantChars.local);
 
     await connection!.runCommand({
-      command: `CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+      command: `QSYS/CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
       environment: 'ile'
     });
 
@@ -143,7 +143,7 @@ describe('Content Tests', { concurrent: true }, () => {
 
     // Cleanup...
     await connection!.runCommand({
-      command: `DLTDTAARA ${tempLib}/${tempObj}`,
+      command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
       environment: 'ile'
     });
   });
@@ -580,14 +580,14 @@ describe('Content Tests', { concurrent: true }, () => {
     const tempLib = connection.getConfig().tempLibrary;
     if (tempLib) {
       const file = Tools.makeid(8);
-      const deleteSPF = async () => await connection.runCommand({ command: `DLTF FILE(${tempLib}/${file})`, noLibList: true });
+      const deleteSPF = async () => await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${file})`, noLibList: true });
       await deleteSPF();
-      const createSPF = await connection.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112)`, noLibList: true });
+      const createSPF = await connection.runCommand({ command: `QSYS/CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112)`, noLibList: true });
       if (createSPF.code === 0) {
         try {
           const expectedCount = Math.floor(Math.random() * (10 - 5 + 1)) + 5;
           for (let i = 0; i < expectedCount; i++) {
-            const createMember = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(MEMBER${i}) SRCTYPE(TXT)` });
+            const createMember = await connection.runCommand({ command: `QSYS/ADDPFM FILE(${tempLib}/${file}) MBR(MEMBER${i}) SRCTYPE(TXT)` });
             if (createMember.code) {
               throw new Error(`Failed to create member ${tempLib}/${file},MEMBER${i}: ${createMember.stderr}`);
             }
@@ -624,11 +624,11 @@ describe('Content Tests', { concurrent: true }, () => {
     const content = connection.getContent()
     const longName = Tools.makeid(18);
     const shortName = Tools.makeid(8);
-    const createLib = await connection.runCommand({ command: `RUNSQL 'create schema "${longName}" for ${shortName}' commit(*none)`, noLibList: true });
+    const createLib = await connection.runCommand({ command: `QSYS/RUNSQL 'create schema "${longName}" for ${shortName}' commit(*none)`, noLibList: true });
     if (createLib.code === 0) {
       try {
         const asp = await connection.lookupLibraryIAsp(shortName);
-        await connection.runCommand({ command: `CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
+        await connection.runCommand({ command: `QSYS/CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
 
         const libraries = await content.getLibraries({ library: `${shortName}` });
         expect(libraries?.length).toBe(1);
@@ -650,29 +650,29 @@ describe('Content Tests', { concurrent: true }, () => {
         
         // Add reply list entry to automatically reply to CPA7025 with 'I'
         await connection.runCommand({
-          command: `ADDRPYLE SEQNBR(9999) MSGID(CPA7025) RPY('I')`,
+          command: `QSYS/ADDRPYLE SEQNBR(9999) MSGID(CPA7025) RPY('I')`,
         });
         
         // Change job to use system reply list
         await connection.runCommand({
-          command: `CHGJOB INQMSGRPY(*SYSRPYL)`,
+          command: `QSYS/CHGJOB INQMSGRPY(*SYSRPYL)`,
         });
         
         try {
           // Now drop the schema - it will automatically reply to CPA7025
           await connection.runCommand({
-            command: `RUNSQL 'drop schema "${longName}"' commit(*none)`,
+            command: `QSYS/RUNSQL 'drop schema "${longName}"' commit(*none)`,
             noLibList: true
           });
         } finally {
           // Restore job to default inquiry message reply
           await connection.runCommand({
-            command: `CHGJOB INQMSGRPY(*RQD)`,
+            command: `QSYS/CHGJOB INQMSGRPY(*RQD)`,
           });
           
           // Clean up the reply list entry
           await connection.runCommand({
-            command: `RMVRPYLE SEQNBR(9999)`,
+            command: `QSYS/RMVRPYLE SEQNBR(9999)`,
           });
         }
       }
@@ -700,7 +700,7 @@ describe('Content Tests', { concurrent: true }, () => {
                            END_OF_LINE => 'CRLF')`,
         );
 
-        await connection.runCommand({environment: `ile`, command: `CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`})
+        await connection.runCommand({environment: `ile`, command: `QSYS/CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`})
 
         let exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
 
@@ -708,7 +708,7 @@ describe('Content Tests', { concurrent: true }, () => {
         expect(exports.at(0)?.symbolName).toBe(id);
       } finally {
         await connection!.runCommand({
-          command: `DLTMOD MODULE(${tempLib}/${id})`,
+          command: `QSYS/DLTMOD MODULE(${tempLib}/${id})`,
           environment: 'ile'
         });
       }
@@ -744,11 +744,11 @@ describe('Content Tests', { concurrent: true }, () => {
         expect(info.at(0)?.symbolName).toBe(id);
       } finally {
         await connection!.runCommand({
-          command: `DLTSRVPGM SRVPGM(${tempLib}/${id})`,
+          command: `QSYS/DLTSRVPGM SRVPGM(${tempLib}/${id})`,
           environment: 'ile'
         });
         await connection!.runCommand({
-          command: `DLTMOD MODULE(${tempLib}/${id})`,
+          command: `QSYS/DLTMOD MODULE(${tempLib}/${id})`,
           environment: 'ile'
         });
       }

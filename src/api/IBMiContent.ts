@@ -314,7 +314,7 @@ export default class IBMiContent {
       if (this.config.autoClearTempData) {
         Promise.allSettled([
           this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` }),
-          deleteTable ? this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
+          deleteTable ? this.ibmi.runCommand({ command: `QSYS/DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
         ]);
       }
 
