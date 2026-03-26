@@ -147,7 +147,7 @@ export default class IBMi {
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
 
-  ccsidCache: Map<String, CacheItem<String>> = new Map();
+  ccsidCache: Map<string, CacheItem<number>> = new Map();
 
   public appendOutput: (text: string) => void = (text) => {
     process.stdout.write(text);
@@ -1543,7 +1543,7 @@ export default class IBMi {
     if (cached) {
       if (!cached.createdAt || cached.createdAt + timeToLive >= Date.now()) {
         // cached ccsid still valid
-        return Number(cached.value);
+        return cached.value;
       }
       // clear the stale cached ccsid
       this.ccsidCache.delete(fileObjPath);
@@ -1558,7 +1558,7 @@ export default class IBMi {
         const ccsid = Number(pieces[1]) || 0;
         if (ccsid !== 0) {
           // save result to cache
-          this.ccsidCache.set(fileObjPath, { value: ccsid.toString(), createdAt: Date.now() })
+          this.ccsidCache.set(fileObjPath, { value: ccsid, createdAt: Date.now() })
           return ccsid;
         }
       }
