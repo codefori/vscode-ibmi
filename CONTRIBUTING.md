@@ -70,3 +70,4 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@NattyNarwhal](https://github.com/NattyNarwhal)
 * [@jman116](https://github.com/jman116)
 * [@Mohammed-Yaseen-Ali-2081](https://github.com/Mohammed-Yaseen-Ali-2081)
+* [@SamJessep](https://github.com/SamJessep)
