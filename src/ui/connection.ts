@@ -116,14 +116,24 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
         switch (choice) {
           case `Set shell to bash`:
-            const commandSetBashResult = await connection.sendCommand({
-              command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
-            });
-
-            if (!commandSetBashResult.stderr) {
-              window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
-            } else {
-              window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+            if (connection.remoteFeatures[`chsh`]){
+              const commandSetBashResult = await connection.sendCommand({
+                command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
+              });
+              if (!commandSetBashResult.stderr) {
+                window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+              } else {
+                window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+              }
+            }
+            else {
+              try {
+                await connection.runSQL(`CALL QSYS2.SET_PASE_SHELL_INFO('*CURRENT', '/QOpenSys/pkgs/bin/bash')`);
+                window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+              }
+              catch (e: any){
+                window.showInformationMessage(e.message);
+              }
             }
             break;
 
