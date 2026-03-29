@@ -148,6 +148,19 @@ export const DeployToolsSuite: TestSuite = {
             }
         },
         {
+            name: `Test 'Selected' deployment`, test: async () => {
+                const filesToDeploy = [
+                    fakeProject.files![1].localPath!,
+                    fakeProject.folders![0].localPath!,
+                ]
+
+                const locals = await getLocalFilesInfoForSelected(filesToDeploy);
+                const remotes = await deploy("selected", filesToDeploy);
+                assert.strictEqual(remotes.size, 4, "Expected 1 root file and 3 files from the folder to be deployed");
+                assertFilesInfoEquals(locals, remotes);
+            }
+        },
+        {
             name: `postDownload test`, test: async () => {
                 const action: Action = {
                     "name": "postDownload test",
@@ -215,7 +228,7 @@ export const DeployToolsSuite: TestSuite = {
     },
 }
 
-async function deploy(method: DeploymentMethod) {
+async function deploy(method: DeploymentMethod, selectedFiles?: vscode.Uri[]) {
     assert.ok(fakeProject.localPath, "No local path");
     assert.ok(fakeProject.remotePath, "No remote path");
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(fakeProject.localPath);
@@ -227,7 +240,7 @@ async function deploy(method: DeploymentMethod) {
         `!${basename(fakeProject.localPath.path)}/**` //Allow content
     ]);
 
-    assert.ok(await DeployTools.deploy({ method, remotePath: fakeProject.remotePath, workspaceFolder, ignoreRules }), `"${method}" deployment failed`);
+    assert.ok(await DeployTools.deploy({ method, remotePath: fakeProject.remotePath, workspaceFolder, ignoreRules, selectedFiles }), `"${method}" deployment failed`);
     return await getRemoteFilesInfo();
 }
 
@@ -261,6 +274,17 @@ async function getLocalFilesInfo() {
     for await (const file of await vscode.workspace.findFiles(new vscode.RelativePattern(fakeProject.localPath!, "**/*"))) {
         const path = posix.join(basename(fakeProject.localPath!.path), posix.relative(fakeProject.localPath!.path, file.path));
         localFiles.set(path, { date: "unused", md5: VscodeTools.md5Hash(file) });
+    }
+    return localFiles;
+}
+
+async function getLocalFilesInfoForSelected(selectedFiles: vscode.Uri[]) {
+    const localFiles = await getLocalFilesInfo();
+    const selectedPaths = selectedFiles.map(file => posix.join(basename(fakeProject.localPath!.path), posix.relative(fakeProject.localPath!.path, file.path)));
+    for (const path of localFiles.keys()) {
+        if (!selectedPaths.some(selected => selected === path || path.startsWith(selected+'/'))) {
+            localFiles.delete(path);
+        }
     }
     return localFiles;
 }
