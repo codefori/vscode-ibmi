@@ -54,7 +54,7 @@ export class ExtendedIBMiContent {
 
       const sourceDates = rows.map(row => String(row.SRCDAT).padStart(6, `0`));
       const body = rows
-        .map(row => row.SRCDTA.includes(`\\\t`) ? row.SRCDTA.replaceAll(`\\\t`, `\t`) : row.SRCDTA)
+        .map(row => row.SRCDTA)
         .join(`\n`);
       const sequences = rows.map(row => Number(row.SRCSEQ));
 
@@ -197,7 +197,7 @@ function sliceUp(arr: any[], size: number): any[] {
 }
 
 function escapeString(val: string): string {
-  val = val.replace(/[\0\n\r\b\t'\x1a]/g, function (s) {
+  val = val.replace(/[\0\n\r\b'\x1a]/g, function (s) {
     switch (s) {
       case `\0`:
         return `\\0`;
