@@ -35,7 +35,8 @@ export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
 export function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
     const parameters = parse(uri.query);
     return {
-        readonly: parameters.readonly === `true`
+        readonly: parameters.readonly === `true`,
+        libraries: parameters.libraries as string | undefined
     };
 }
 
@@ -254,10 +255,21 @@ export class QSysFS implements vscode.FileSystemProvider {
             else if (uri.path === '/') {
                 let statement = `select OBJNAME from table (QSYS2.OBJECT_STATISTICS ('*ALLSIMPLE', 'LIB', '*ALLSIMPLE'))`;
                 
-                const libraryList = connection.getConfig().libraryList;
-                if (uri.fragment === `libl`) {
-                    statement += ` where OBJNAME in (${libraryList.map(entry => `'${connection.upperCaseName(entry)}'`).join(`, `)})`;
-                    console.log({statement});
+                const fsOptions = parseFSOptions(uri);
+                if (fsOptions.libraries) {
+                    let libraries: string[];
+                    
+                    // Check if it's a reference to the library list
+                    if (fsOptions.libraries.toLowerCase() === 'librarylist') {
+                        libraries = connection.getConfig().libraryList;
+                    } else {
+                        // Parse comma-separated library names
+                        libraries = fsOptions.libraries.split(',').map(lib => lib.trim()).filter(Boolean);
+                    }
+                    
+                    if (libraries.length > 0) {
+                        statement += ` where OBJNAME in (${libraries.map(entry => `'${connection.upperCaseName(entry)}'`).join(`, `)})`;
+                    }
                 }
 
                 return (await connection.runSQL(statement))
