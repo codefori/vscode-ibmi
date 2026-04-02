@@ -1128,4 +1128,34 @@ export default class IBMiContent {
     paths = Array.isArray(paths) ? paths : [paths];
     return await this.ibmi.runCommand({ command: `mv ${paths.map(path => Tools.escapePath(path)).join(" ")} ${Tools.escapePath(toDirectory)}`, environment: "qsh" });
   }
+
+  /**
+   * Returns signature and version of an SQL component, assuming its description follows the pattern '<version> - <text>' 
+   * @param library 
+   * @param name 
+   * @param type 
+   * @returns 
+   */
+  async getSQLComponentInfo(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
+    const row = (await this.ibmi.runSQL( /* sql */
+      `select hash(RTNNAME concat ROUTINEDEF) SIGNATURE, trim(substr(REMARKS, 1, locate('-', REMARKS) - 1)) VERSION 
+       from qsys2.sysroutines where routine_type = '${type}' and rtnschema = '${library}' and RTNNAME = '${name}' fetch first row only`
+    )).at(0);
+
+    if (row) {
+      return { version: row.VERSION as string, signature: row.SIGNATURE as string }
+    }
+  }
+
+  async getSHA256FileHash(remoteFile: string) {
+    if (this.ibmi.remoteFeatures.md5sum) {
+      const sha256Sum = await this.ibmi.sendCommand({ command: `/QOpenSys/pkgs/bin/sha256sum ${remoteFile}` });
+      if (sha256Sum.code === 0) {
+        return sha256Sum.stdout.split(' ')[0];
+      }
+      else {
+        throw new Error(`Call to sha256sum failed: ${sha256Sum.stderr || sha256Sum.stdout}`);
+      }
+    }
+  }
 }

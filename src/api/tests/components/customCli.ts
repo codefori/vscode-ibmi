@@ -1,8 +1,7 @@
 
-import { stat } from "fs/promises";
 import path from "path";
 import IBMi from "../../IBMi";
-import { IBMiComponent, ComponentState, ComponentIdentification } from "../../components/component";
+import { ComponentIdentification, ComponentState, IBMiComponent } from "../../components/component";
 
 export class CustomCLI implements IBMiComponent {
   static ID = "customCli";
@@ -10,7 +9,7 @@ export class CustomCLI implements IBMiComponent {
   installPath = "";
 
   getIdentification(): ComponentIdentification {
-    return { name: CustomCLI.ID, version: 1, userManaged: true };
+    return { name: CustomCLI.ID, version: 1, userManaged: true, signature: "forTests" };
   }
 
   getFileName() {
@@ -44,8 +43,8 @@ export class CustomCLI implements IBMiComponent {
 
     return `Installed`;
   }
-  
+
   async uninstall(connection: IBMi): Promise<void> {
-    await connection.sendCommand({command: `rm ${this.installPath}`});
+    await connection.sendCommand({ command: `rm ${this.installPath}` });
   }
 }

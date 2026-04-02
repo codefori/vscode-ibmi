@@ -1,11 +1,12 @@
 import IBMi from "../IBMi";
 
-export type ComponentState = `NotChecked` | `NotInstalled` | `Installed` | `NeedsUpdate` | `Error`;
+export type ComponentState = `NotChecked` | `NotInstalled` | `Installed` | `NeedsUpdate` | `Error` | 'HashMismatch';
 
 export type ComponentIdentification = {
   name: string
-  version: number|string,
-  userManaged?: boolean;
+  version: number | string
+  signature?: string
+  userManaged?: boolean
 }
 
 export type ComponentInstallState = {
@@ -47,23 +48,25 @@ export type IBMiComponent = {
   setInstallDirectory?(installDirectory: string): Promise<void>;
 
   /**
-   * @returns the component's {@link ComponentState state} on the IBM i
+   * Check and retrieve the Component's version and signature (i.e. a unique hash to identify the component and make sure it's not been tampered with)
+   * 
+   * @returns the component's {@link SecureComponentState state} on the IBM i
    */
-  getRemoteState(connection: IBMi, installDirectory:string): ComponentState | Promise<ComponentState>;
+  getRemoteState(connection: IBMi, installDirectory: string, signature?: string): ComponentState | Promise<ComponentState>;
 
   /**
-   * Called whenever the components needs to be installed or updated, depending on its {@link ComponentState state}.
+   * Called whenever the components needs to be installed or updated, depending on its {@link SecureComponentState state}.
    * 
-   * The Component Manager is responsible for calling this, so the {@link ComponentState state} doesn't need to be checked here.
+   * The Component Manager is responsible for calling this, so the {@link SecureComponentState state} doesn't need to be checked here.
    * 
-   * @returns the component's {@link ComponentState state} after the update is done
+   * @returns the component's {@link SecureComponentStateComponentState state} after the update is done
    */
-  update(connection: IBMi, installDirectory:string): ComponentState | Promise<ComponentState>
+  update(connection: IBMi, installDirectory: string, signature?: string): ComponentState | Promise<ComponentState>
 
   /**
    * Called when connecting to clear every persitent information related to the previous connection
    */
-  reset?() : void | Promise<void>
+  reset?(): void | Promise<void>
 
   /**
    * Called when the component should be uninstalled. 

@@ -6,7 +6,7 @@ export class IBMiComponentRuntime {
   private state: ComponentState = `NotChecked`;
   private cachedInstallDirectory: string | undefined;
 
-  constructor(protected readonly connection: IBMi, readonly component: IBMiComponent) {}
+  constructor(protected readonly connection: IBMi, readonly component: IBMiComponent) { }
 
   async getInstallDirectory() {
     if (!this.cachedInstallDirectory) {
@@ -26,7 +26,7 @@ export class IBMiComponentRuntime {
 
   setState(newState: ComponentState) {
     this.state = newState;
-    return IBMi.GlobalStorage.storeComponentState(this.connection.currentConnectionName, {id: this.component.getIdentification(), state: newState});
+    return IBMi.GlobalStorage.storeComponentState(this.connection.currentConnectionName, { id: this.component.getIdentification(), state: newState });
   }
 
   async overrideState(newState: ComponentState) {
@@ -34,7 +34,7 @@ export class IBMiComponentRuntime {
     await this.component.setInstallDirectory?.(installDir);
     await this.setState(newState);
   }
-  
+
   async update(installDirectory: string) {
     const newState = await this.component.update(this.connection, installDirectory);
     await this.setState(newState);
@@ -42,10 +42,18 @@ export class IBMiComponentRuntime {
 
   async startupCheck() {
     try {
+      const identification = this.component.getIdentification();
+      if (!identification.signature) {
+        const missingSignature = `WARNING: Component ${identification.name} does not have a signature. If you're the maintainer of that component, please update it to add a signature and check it during remote state retrieval.`;
+        this.connection.appendOutput(missingSignature);
+        console.warn(missingSignature);
+      }
+
       const installDirectory = await this.getInstallDirectory();
-      const newState = await this.component.getRemoteState(this.connection, installDirectory);
+      const newState = await this.component.getRemoteState(this.connection, installDirectory, identification.signature);
       await this.setState(newState);
-      if (newState !== `Installed` && !this.component.getIdentification().userManaged) {
+
+      if (newState !== `Installed` && !identification.userManaged) {
         await this.update(installDirectory);
       }
     }

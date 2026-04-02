@@ -1,5 +1,5 @@
 
-import IBMi from "../IBMi";
+import IBMi, { ConnectionErrorCode } from "../IBMi";
 import { ComponentIdentification, ComponentInstallState, ComponentState, IBMiComponent } from "./component";
 import { IBMiComponentRuntime } from "./runtime";
 
@@ -9,12 +9,12 @@ interface ExtensionContextI {
   }
 }
 
-export interface ComponentSearchProps {ignoreState?: boolean};
+export interface ComponentSearchProps { ignoreState?: boolean };
 
 export class ComponentRegistry {
   private readonly components: Map<string, IBMiComponent[]> = new Map;
 
-  public registerComponent(context: ExtensionContextI|string, component: IBMiComponent) {
+  public registerComponent(context: ExtensionContextI | string, component: IBMiComponent) {
     const key = typeof context === `object` ? context.extension.id : context;
 
     if (typeof key !== `string`) {
@@ -40,7 +40,7 @@ export const extensionComponentRegistry = new ComponentRegistry();
 export class ComponentManager {
   private readonly registered: IBMiComponentRuntime[] = [];
 
-  constructor(private readonly connection: IBMi) {}
+  constructor(private readonly connection: IBMi) { }
 
   public getComponentIds(): ComponentIdentification[] {
     return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat()).map(c => c.getIdentification());
@@ -68,7 +68,7 @@ export class ComponentManager {
     if (!component) {
       throw new Error(`Component ${key} not found.`);
     }
-    
+
     const existingComponent = this.registered.find(c => c.component.getIdentification().name === key);
 
     if (!existingComponent) {
@@ -109,10 +109,11 @@ export class ComponentManager {
     };
   }
 
-  async getRemoteState(key: string): Promise<ComponentState|undefined> {
+  async getRemoteState(key: string): Promise<ComponentState | undefined> {
     const component = this.registered.find(c => c.component.getIdentification().name === key && c.component.getIdentification().userManaged);
     if (component) {
       component.component.reset?.();
+
       const state = await component.component.getRemoteState(this.connection, await component.getInstallDirectory());
       await component.overrideState(state);
       return state;
@@ -151,13 +152,18 @@ export class ComponentManager {
       await newComponent.overrideState(installedBefore.state);
     }
 
+    if (newComponent.getState() === "HashMismatch") {
+      const identification = newComponent.component.getIdentification();
+      throw new Error(`Component ${identification.name} version ${identification.version} local signature doesn't match its remote signature. It may have been tampered with and may not be safe to use. Clear your temporary folder and library and reconnect.`, { cause: "component_signature_mismatch" as ConnectionErrorCode });
+    }
+
     this.registered.push(newComponent);
   }
 
   /**
    * Returns the latest version of an installed component, or fetch a specific version
    */
-  get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): T|undefined {
+  get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): T | undefined {
     const componentEngine = this.registered.find(c => c.component.getIdentification().name === id);
 
     if (componentEngine && (options.ignoreState || componentEngine.getState() === `Installed`)) {

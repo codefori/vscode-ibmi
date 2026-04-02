@@ -6,33 +6,30 @@ import { ComponentIdentification, ComponentState, IBMiComponent } from "./compon
 export class PasswordManager implements IBMiComponent {
   static readonly ID = "CHGPWD";
   static readonly VERSION = 1;
+  static readonly SIGNATURE = "";
 
   getIdentification(): ComponentIdentification {
-    return { name: PasswordManager.ID, version: PasswordManager.VERSION };
+    return { name: PasswordManager.ID, version: PasswordManager.VERSION, signature: PasswordManager.SIGNATURE };
   }
 
   async setInstallDirectory?(_installDirectory: string) {
     //Not used
   }
 
-  async getRemoteState(connection: IBMi, _installDirectory: string) {
-    let version = 0;
-    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysprocs where routine_schema = '${connection.getConfig().tempLibrary.toUpperCase()}' and routine_name = '${PasswordManager.ID}'`);
-    if (result?.LONG_COMMENT) {
-      const comment = result.LONG_COMMENT as string;
-      const dash = comment.indexOf('-');
-      if (dash > -1) {
-        version = Number(comment.substring(0, dash).trim());
+  async getRemoteState(connection: IBMi, _installDirectory: string, signature: string): Promise<ComponentState> {
+    const info = await connection.getContent().getSQLComponentInfo(connection.getConfig().tempLibrary.toUpperCase(), PasswordManager.ID, "PROCEDURE");
+    if (info) {
+      if (info.signature !== signature) {
+        return "HashMismatch";
+      }
+      if (Number(info.version) >= PasswordManager.VERSION) {
+        return "Installed";
       }
     }
-    if (version < PasswordManager.VERSION) {
-      return `NeedsUpdate`;
-    }
-
-    return `Installed`;
+    return "NeedsUpdate";
   }
 
-  async update(connection: IBMi, _installDirectory: string): Promise<ComponentState> {
+  async update(connection: IBMi, _installDirectory: string, signature: string): Promise<ComponentState> {
     try {
       await connection.withTempDirectory(async directory => {
         const source = posix.join(directory, `${PasswordManager.ID}.sql`);
@@ -60,7 +57,11 @@ export class PasswordManager implements IBMiComponent {
           throw Error(compile.stderr || compile.stdout);
         }
       });
-      return "Installed";
+      const info = await connection.getContent().getSQLComponentInfo(connection.getConfig().tempLibrary.toUpperCase(), PasswordManager.ID, "PROCEDURE");
+      if (!info) {
+        throw new Error("Could not read procedure information");
+      }
+      return info.signature === signature ? "Installed" : "HashMismatch";
     }
     catch (error: any) {
       connection.appendOutput(`Failed to install ${PasswordManager.ID} procedure:\n${typeof error === "string" ? error : JSON.stringify(error)}`);
