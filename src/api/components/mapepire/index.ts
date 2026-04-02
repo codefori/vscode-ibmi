@@ -31,14 +31,14 @@ export class Mapepire implements IBMiComponent {
   }
 
   getIdentification() {
-    return { name: Mapepire.ID, version: VERSION };
+    return { name: Mapepire.ID, version: VERSION, signature: "9e3eb0a93a0cf38ec23b601c8008cb625b8ae50c29f89c70da27b5e65edd1707" };
   }
 
   async setInstallDirectory(installDirectory: string): Promise<void> {
     this.installPath = path.posix.join(installDirectory, path.basename(this.localAssetPath));
   }
 
-  async getRemoteState(connection: IBMi, installDirectory: string): Promise<ComponentState> {
+  async getRemoteState(connection: IBMi, installDirectory: string, signature: string): Promise<ComponentState> {
     this.setInstallDirectory(installDirectory);
     const remoteVersions = (await connection.sendCommand({ command: `stat --printf="%n\n" ${SERVER_FILE_PREFIX}*`, directory: installDirectory }))
       .stdout.split("\n")
@@ -47,18 +47,19 @@ export class Mapepire implements IBMiComponent {
       .filter(Boolean)
       .map(version => ({ major: Number(version![1]), minor: Number(version![2]), patch: Number(version![3]) } as SemanticVersion));
     if (!remoteVersions) {
-      return `NotInstalled`;
+      return "NotInstalled";
     }
     else if (remoteVersions.every(remoteVersion => remoteVersion.major < this.version.major || (remoteVersion.major === this.version.major && remoteVersion.minor < this.version.minor) || (remoteVersion.major === this.version.major && remoteVersion.minor === this.version.minor && remoteVersion.patch < this.version.patch))) {
       return "NeedsUpdate";
     }
-    else {
-      return "Installed";
+    else if (await connection.getContent().getSHA256FileHash(this.installPath) !== signature) {
+      return "HashMismatch";
     }
+    return "Installed";
   }
 
 
-  async update(connection: IBMi): Promise<ComponentState> {
+  async update(connection: IBMi, signature?: string): Promise<ComponentState> {
     try {
       if (!this.localAssetPath) {
         throw "Local Mapepire asset not set!";
@@ -86,7 +87,7 @@ export class Mapepire implements IBMiComponent {
       return "Error";
     }
 
-    return `Installed`;
+    return await connection.getContent().getSHA256FileHash(this.installPath) === signature ? `Installed` : 'HashMismatch';
   }
 
   getInitCommand(javaHome: string): string | undefined {

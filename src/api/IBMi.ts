@@ -23,7 +23,7 @@ export interface MemberParts extends IBMiMember {
 }
 
 export type ConnectionMessageType = 'info' | 'warning' | 'error';
-export type ConnectionErrorCode = `shell_config` | `home_directory_creation` | `QCPTOIMPF_exists` | `QCPFRMIMPF_exists` | `default_not_bash` | `invalid_bashrc` | `invalid_temp_lib` | `no_auto_conv_ebcdic` | `not_loaded_debug_config` | `no_sql_runner` | `ccsid_warning`;
+export type ConnectionErrorCode = `shell_config` | `home_directory_creation` | `QCPTOIMPF_exists` | `QCPFRMIMPF_exists` | `default_not_bash` | `invalid_bashrc` | `invalid_temp_lib` | `no_auto_conv_ebcdic` | `not_loaded_debug_config` | `no_sql_runner` | `ccsid_warning` | `component_signature_mismatch`;
 
 export interface ConnectionResult {
   success: boolean
@@ -522,7 +522,14 @@ export default class IBMi {
       callbacks.progress({ message: `Checking Code for IBM i components.` });
 
       // We always start up Mapepire first
-      await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
+      try {
+        await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
+      }
+      catch (error: any) {
+        if (!(error instanceof Error && error.cause === "component_signature_mismatch" && await callbacks.uiErrorHandler(this, error.cause, error.message))) {
+          throw error;
+        }
+      }
 
       // Check Mapepire state after startup
       const mapepireStates = this.componentManager.getComponentStates();
@@ -553,8 +560,14 @@ export default class IBMi {
       }
 
       // Then check the remaining components
-
-      await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
+      try {
+        await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
+      }
+      catch (error: any) {
+        if (!(error instanceof Error && error.cause === "component_signature_mismatch" && await callbacks.uiErrorHandler(this, error.cause, error.message))) {
+          throw error;
+        }
+      }
 
       const componentStates = this.componentManager.getComponentStates();
       this.appendOutput(`\nCode for IBM i components:\n`);
@@ -1160,12 +1173,12 @@ export default class IBMi {
     };
   }
 
-  disconnect() {    
+  disconnect() {
     if (this.client?.connection) {
       //Close the connection and triggers its 'end' event
       this.client.dispose();
     }
-    else{
+    else {
       //There is no connection: dispose directly
       this.dispose();
     }
