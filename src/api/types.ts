@@ -133,6 +133,7 @@ export interface FileError {
 
 export interface QsysFsOptions {
   readonly?: boolean
+  libraries?: string
 }
 
 export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
