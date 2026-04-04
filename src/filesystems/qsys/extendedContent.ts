@@ -23,9 +23,8 @@ export class ExtendedIBMiContent {
   async downloadMemberContentWithDates(uri: vscode.Uri) {
     const connection = instance.getConnection();
     if (connection) {
-      const content = connection.getContent();
       const config = connection.getConfig();
-      const tempLib = config.tempLibrary;
+      const tempLib = "QTEMP";
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
       const { library, file, name } = connection.parserMemberPath(uri.path);
@@ -105,7 +104,7 @@ export class ExtendedIBMiContent {
       const config = connection.getConfig();
       const setccsid = connection.remoteFeatures.setccsid;
 
-      const tempLib = config.tempLibrary;
+      const tempLib = "QTEMP";
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
 

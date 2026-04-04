@@ -222,8 +222,6 @@ export default class IBMi {
       chsh: undefined,
       stat: undefined,
       sort: undefined,
-      'GETNEWLIBL.PGM': undefined,
-      'GETMBRINFO.SQL': undefined,
       'startDebugService.sh': undefined,
       attr: undefined,
       iconv: undefined,
@@ -440,15 +438,6 @@ export default class IBMi {
           message: `Checking installed components on host IBM i.`
         });
 
-        // We need to check if our remote programs are installed.
-        remoteApps.push(
-          {
-            path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
-            names: [`GETNEWLIBL.PGM`],
-            specific: `GE*.PGM`
-          }
-        );
-
         //Next, we see what pase features are available (installed via yum)
         //This may enable certain features in the future.
         for (const feature of remoteApps) {
@@ -519,11 +508,16 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
-      callbacks.progress({ message: `Checking Code for IBM i components.` });
+      callbacks.progress({ message: `Checking Mapepire status.` });
+      const tempDirSet = await this.checkOrCreateTempDirectory();
+      if (!tempDirSet) {
+        this.config.tempDir = `/tmp`;
+      }
 
       // We always start up Mapepire first
+      let mapepireState;
       try {
-        await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
+        mapepireState = await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
       }
       catch (error: any) {
         if (!(error instanceof Error && error.cause === "component_signature_mismatch" && await callbacks.uiErrorHandler(this, error.cause, error.message))) {
@@ -532,9 +526,7 @@ export default class IBMi {
       }
 
       // Check Mapepire state after startup
-      const mapepireStates = this.componentManager.getComponentStates();
-      const mapepireState = mapepireStates.find(s => s.id.name === Mapepire.ID);
-      this.appendOutput(`Mapepire state after startup: ${mapepireState?.state || 'not found'}\n`);
+      this.appendOutput(`Mapepire state after startup: ${mapepireState?.status || 'not found'}\n`);
 
       const mapepire = this.getComponent<Mapepire>(Mapepire.ID);
       if (mapepire) {
@@ -559,7 +551,71 @@ export default class IBMi {
         this.appendOutput(`Warning: Mapepire component not available\n`);
       }
 
-      // Then check the remaining components
+      callbacks.progress({
+        message: `Checking library list configuration.`
+      });
+
+      //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
+      //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
+      let currentLibrary = `QGPL`;
+      this.defaultUserLibraries = [];
+
+      const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME, IASP_NUMBER FROM QSYS2.LIBRARY_LIST_INFO`);
+      for (const row of liblRows) {
+        switch (row.TYPE) {
+          case `USER`:
+            this.defaultUserLibraries.push(row.SYSTEM_SCHEMA_NAME as string);
+            break;
+          case `CURRENT`:
+            currentLibrary = (row.SYSTEM_SCHEMA_NAME as string);
+            break;
+        }
+      }
+
+      //If this is the first time the config is made, then these arrays will be empty
+      if (this.config.currentLibrary.length === 0) {
+        this.config.currentLibrary = currentLibrary;
+      }
+      if (this.config.libraryList.length === 0) {
+        this.config.libraryList = this.defaultUserLibraries;
+      }
+
+      callbacks.progress({ message: `Checking temporary library.` });
+      const tempLibrarySet = await this.checkOrCreateTempLibrary(currentLibrary, callbacks.message);
+      if (tempLibrarySet && this.config.autoClearTempData) {
+        callbacks.progress({
+          message: `Clearing temporary data.`
+        });
+
+        this.runCommand({
+          command: `QSYS/DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
+          noLibList: true,
+        })
+          .then(result => {
+            // All good!
+            if (result && result.stderr) {
+              const messages = Tools.parseMessages(result.stderr);
+              if (!messages.findId(`CPF2125`)) {
+                // @ts-ignore We know the config exists.
+                callbacks.message(`error`, `Temporary data not cleared from ${this.config.tempLibrary}.`);
+              }
+            }
+          })
+
+        this.sendCommand({
+          command: `rm -rf ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
+        })
+          .then(result => {
+            // All good!
+          })
+          .catch(e => {
+            // CPF2125: No objects deleted.
+            callbacks.message(`error`, `Temporary data not cleared from ${this.config?.tempDir}.`);
+          });
+      }
+
+      // Check the remaining components
+      callbacks.progress({ message: `Checking Code for i components statuses.` });
       try {
         await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
       }
@@ -572,7 +628,7 @@ export default class IBMi {
       const componentStates = this.componentManager.getComponentStates();
       this.appendOutput(`\nCode for IBM i components:\n`);
       for (const state of componentStates) {
-        this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
+        this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state.status}\n`);
       }
 
       this.appendOutput(`\n`);
@@ -596,83 +652,8 @@ export default class IBMi {
       }
 
       callbacks.progress({
-        message: `Checking library list configuration.`
-      });
-
-      // TODO: RIP OUT LIBLIST WITH LIBRARY_LIST_INFO
-
-      //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
-      //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
-      let currentLibrary = `QGPL`;
-      this.defaultUserLibraries = [];
-
-      const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME, IASP_NUMBER FROM QSYS2.LIBRARY_LIST_INFO`);
-
-      for (const row of liblRows) {
-        switch (row.TYPE) {
-          case `USER`:
-            this.defaultUserLibraries.push(row.SYSTEM_SCHEMA_NAME as string);
-            break;
-          case `CURRENT`:
-            currentLibrary = (row.SYSTEM_SCHEMA_NAME as string);
-            break;
-        }
-      }
-
-      //If this is the first time the config is made, then these arrays will be empty
-      if (this.config.currentLibrary.length === 0) {
-        this.config.currentLibrary = currentLibrary;
-      }
-      if (this.config.libraryList.length === 0) {
-        this.config.libraryList = this.defaultUserLibraries;
-      }
-
-      callbacks.progress({
         message: `Checking temporary directory and temporary library configuration.`
       });
-
-
-      const [tempLibrarySet, tempDirSet] = await Promise.all([
-        this.ensureTempLibraryExists(currentLibrary),
-        this.ensureTempDirectory()
-      ]);
-
-      if (!tempDirSet) {
-        this.config.tempDir = `/tmp`;
-      }
-
-      if (tempLibrarySet && this.config.autoClearTempData) {
-        callbacks.progress({
-          message: `Clearing temporary data.`
-        });
-
-        this.runCommand({
-          command: `QSYS/DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
-          noLibList: true,
-        })
-          .then(result => {
-            // All good!
-            if (result && result.stderr) {
-              const messages = Tools.parseMessages(result.stderr);
-              if (!messages.findId(`CPF2125`)) {
-                // @ts-ignore We know the config exists.
-                callbacks.message(`errror`, `Temporary data not cleared from ${this.config.tempLibrary}.`);
-              }
-            }
-          })
-
-        this.sendCommand({
-          command: `rm -rf ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
-        })
-          .then(result => {
-            // All good!
-          })
-          .catch(e => {
-            // CPF2125: No objects deleted.
-            // @ts-ignore We know the config exists.
-            callbacks.message(`error`, `Temporary data not cleared from ${this.config.tempDir}.`);
-          });
-      }
 
       const commandShellResult = await this.sendCommand({
         command: `echo $SHELL`
@@ -717,11 +698,8 @@ export default class IBMi {
 
           if (!commandShellResult.stderr) {
             let usesBash = this.shell === IBMi.bashShellPath;
-            if (!usesBash) {
-              // make sure chsh is installed
-              if (this.remoteFeatures[`chsh`]) {
-                callbacks.uiErrorHandler(this, `default_not_bash`);
-              }
+            if (!usesBash) {              
+              callbacks.uiErrorHandler(this, `default_not_bash`);
             }
 
             if (usesBash) {
@@ -1022,46 +1000,53 @@ export default class IBMi {
     }
   }
 
-  private async ensureTempLibraryExists(fallbackTempLib: string) {
-    let tempLibrarySet: boolean = false;
-
+  private async checkOrCreateTempLibrary(fallbackTempLib: string, message: (type: ConnectionMessageType, message: string) => void) {
     if (!this.config) {
       return false;
     }
 
-    const createdTempLib = await this.runCommand({
-      command: `QSYS/CRTLIB LIB(${this.config.tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
-      noLibList: true
-    });
+    const tempLibrary = this.config.tempLibrary;
 
-    if (createdTempLib.code === 0) {
-      tempLibrarySet = true;
-    } else {
-      const messages = Tools.parseMessages(createdTempLib.stderr);
-      if (messages.findId(`CPF2158`) || messages.findId(`CPF2111`)) { //Already exists, hopefully ok :)
-        tempLibrarySet = true;
+    //Check if exists and get the user defined attribute
+    const setLibraryUDA = () => this.runSQL(`call QSYS.QLICOBJD('', '${tempLibrary.padEnd(10)}QSYS      ', '*LIB      ', x'00000001' || x'00000009' || x'0000000A' || cast('CODE4ITEMP' as char(10) for bit data), x'0000000000000000')`);
+    const [libraryAttributes] = (await this.runSQL(`select USER_DEFINED_ATTRIBUTE, QSYS2.QCMDEXC('CHKOBJ OBJ(' concat OBJNAME concat ') OBJTYPE(*LIB) AUT(*CHANGE)') CAN_USE from table(QSYS2.OBJECT_STATISTICS('QSYS','LIB', '${tempLibrary}'))`));
+    if (libraryAttributes) {
+      //Library exists
+      if (libraryAttributes.CAN_USE === 0) {
+        message('error', `Temporary library ${tempLibrary} exists but it cannot use as you don't have *CHANGE authority on it.`);
+        return false;
       }
-      else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
-        const tempLibExists = await this.runCommand({
-          command: `QSYS/CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-          noLibList: true
-        });
 
-        if (tempLibExists.code === 0) {
-          //We're all good if no errors
-          tempLibrarySet = true;
-        } else if (fallbackTempLib && !fallbackTempLib.startsWith(`Q`)) {
-          //Using ${currentLibrary} as the temporary library for temporary data.
-          this.config.tempLibrary = fallbackTempLib;
-          tempLibrarySet = true;
-        }
+      if (!libraryAttributes.USER_DEFINED_ATTRIBUTE) {
+        //Set CODE4ITEMP as the user-defined attribute to easily locate Code for i temp libraries
+        await setLibraryUDA();
+      }
+    }
+    else {
+      //Library doesn't exist
+      const createdTempLib = await this.runCommand({
+        command: `QSYS/CRTLIB LIB(${tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
+        noLibList: true
+      });
+
+      if (createdTempLib.code === 0) {
+        await setLibraryUDA();
+      }
+      else if (fallbackTempLib && !fallbackTempLib.startsWith(`Q`)) {
+        //Using current library as the temporary library for temporary data.
+        message('warning', `Could not create temporary library ${tempLibrary}; using ${fallbackTempLib} instead. (${createdTempLib.stderr})`);
+        this.config.tempLibrary = fallbackTempLib;
+      }
+      else {
+        message('error', `Could not create temporary library ${tempLibrary}: ${createdTempLib.stderr}`);
+        return false;
       }
     }
 
-    return tempLibrarySet;
+    return true;
   }
 
-  private async ensureTempDirectory() {
+  private async checkOrCreateTempDirectory() {
     let tempDirSet: boolean = false;
 
     if (!this.config) {
@@ -1206,6 +1191,10 @@ export default class IBMi {
 
   public sqlRunnerAvailable() {
     return this.sqlJob !== undefined;
+  }
+
+  public getSqlJobId() {
+    return this.sqlJob?.id;
   }
 
   /**

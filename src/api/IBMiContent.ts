@@ -557,7 +557,7 @@ export default class IBMiContent {
         `  where t.FILE_TYPE = 'S'`,
         `), SRCPF as (`,
         `SELECT replace(replace(replace(NAME, '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}') NAME, IS_SOURCE, SOURCE_LENGTH FROM SRCFILES as f`,
-        `  where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
+        `  where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
@@ -633,14 +633,12 @@ export default class IBMiContent {
     if (!['*PGM', '*SRVPGM'].includes(type)) {
       return [];
     }
-    const results = await this.ibmi.runSQL(
-      [
-        `select PROGRAM_LIBRARY, PROGRAM_NAME, OBJECT_TYPE, SYMBOL_NAME, SYMBOL_USAGE,`,
-        `  ARGUMENT_OPTIMIZATION, DATA_ITEM_SIZE`,
-        `from qsys2.program_export_import_info`,
-        `where program_library = '${library}' and program_name = '${name}' `,
-        `and object_type = '${type}'`
-      ].join("\n")
+
+    //We use the table function - it's faster than using the view
+    const results = await this.ibmi.runSQL( /*sql*/
+        `select PROGRAM_LIBRARY, PROGRAM_NAME, OBJECT_TYPE, SYMBOL_NAME, SYMBOL_USAGE,
+                ARGUMENT_OPTIMIZATION, DATA_ITEM_SIZE
+        from table(qsys2.program_export_import_info('${library}', '${name}', '${type}'))`
     );
     return results.map(result => ({
       programLibrary: result.PROGRAM_LIBRARY,
@@ -694,7 +692,8 @@ export default class IBMiContent {
     const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? this.ibmi.upperCaseName(filter.extensions).replace(/[*]/g, `%`) : undefined;
 
     const statement =
-      `with MEMBERS as (
+      /* sql */ `
+      with MEMBERS as (
         select
           rtrim(cast(a.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,
           b.AVGROWSIZE as RECORD_LENGTH,
@@ -712,8 +711,8 @@ export default class IBMiContent {
       )
       select * from MEMBERS
       where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
-        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
-        ${singleMember ? `and NAME like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
+        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${sourceFile}'` : ``}
+        ${singleMember ? `and NAME like '${singleMember}'` : ''}
         ${singleMemberExtension ? `and TYPE like '${singleMemberExtension}'` : ''}
       order by ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
@@ -940,7 +939,7 @@ export default class IBMiContent {
 
   async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
-      command: this.toCl(`CHKOBJ`, {
+      command: this.toCl(`QSYS/CHKOBJ`, {
         obj: `${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`,
         objtype: object.type.toLocaleUpperCase(),
         aut: authorities.join(" "),
@@ -1110,7 +1109,7 @@ export default class IBMiContent {
     paths = Array.isArray(paths) ? paths : [paths];
     const toPathIsDir = await this.isDirectory(Tools.escapePath(toPath));
     for (const path of paths) {
-      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ('}'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
+      const result = await this.ibmi.runCommand({ command: `QSYS/COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ('}'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
       if (result.code !== 0) {
         return result;
       }
@@ -1130,21 +1129,16 @@ export default class IBMiContent {
   }
 
   /**
-   * Returns signature and version of an SQL component, assuming its description follows the pattern '<version> - <text>' 
+   * Returns the signature of an SQL component
    * @param library 
    * @param name 
    * @param type 
    * @returns 
    */
-  async getSQLComponentInfo(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
-    const row = (await this.ibmi.runSQL( /* sql */
-      `select hash(RTNNAME concat ROUTINEDEF) SIGNATURE, trim(substr(REMARKS, 1, locate('-', REMARKS) - 1)) VERSION 
-       from qsys2.sysroutines where routine_type = '${type}' and rtnschema = '${library}' and RTNNAME = '${name}' fetch first row only`
-    )).at(0);
-
-    if (row) {
-      return { version: row.VERSION as string, signature: row.SIGNATURE as string }
-    }
+  async getSQLRoutineSignature(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
+    return (await this.ibmi.runSQL(
+      /* sql */`select hash(ROUTINEDEF) SIGNATURE from qsys2.sysroutines where routine_type = '${type}' and rtnschema = '${library}' and RTNNAME = '${name}' fetch first row only`
+    )).at(0)?.SIGNATURE as string;
   }
 
   async getSHA256FileHash(remoteFile: string) {
@@ -1157,5 +1151,31 @@ export default class IBMiContent {
         throw new Error(`Call to sha256sum failed: ${sha256Sum.stderr || sha256Sum.stdout}`);
       }
     }
+  }
+
+  async getLibraryListFromCommand(command: string) {
+    const libraryList = await this.ibmi.runSQL([
+      `@${command.replace(new RegExp(`'`, 'g'), `''`)}`,
+      `SELECT ORDINAL_POSITION, TYPE as PORTION, SYSTEM_SCHEMA_NAME FROM QSYS2.LIBRARY_LIST_INFO`
+    ]);
+
+    const result = {
+      currentLibrary: `QGPL`,
+      libraryList: [] as string[]
+    };
+
+    libraryList?.forEach(row => {
+      const libraryName = String(row.SYSTEM_SCHEMA_NAME);
+      switch (row.PORTION) {
+        case `CURRENT`:
+          result.currentLibrary = libraryName;
+          break;
+        case `USER`:
+          result.libraryList.push(libraryName);
+          break;
+      }
+    })
+
+    return result;
   }
 }

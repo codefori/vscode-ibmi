@@ -1,6 +1,6 @@
 
 import IBMi, { ConnectionErrorCode } from "../IBMi";
-import { ComponentIdentification, ComponentInstallState, ComponentState, IBMiComponent } from "./component";
+import { ComponentIdentification, ComponentInstallState, IBMiComponent, SecureComponentState } from "./component";
 import { IBMiComponentRuntime } from "./runtime";
 
 interface ExtensionContextI {
@@ -75,7 +75,7 @@ export class ComponentManager {
       throw new Error(`Component ${key} not defined.`);
     }
 
-    if (existingComponent.getState() === `Installed`) {
+    if (existingComponent.getState().status === `Installed`) {
       throw new Error(`Component ${key} already installed.`);
     }
 
@@ -96,12 +96,12 @@ export class ComponentManager {
       throw new Error(`Component ${key} not registered.`);
     }
 
-    if (installed.getState() !== `Installed`) {
+    if (installed.getState().status !== `Installed`) {
       throw new Error(`Component ${key} not installed.`);
     }
 
     await installed.component.uninstall?.(this.connection);
-    await installed.overrideState(`NotInstalled`);
+    await installed.overrideState({ status: `NotInstalled`, remoteSignature: "" });
 
     return {
       id: installed.component.getIdentification(),
@@ -109,12 +109,12 @@ export class ComponentManager {
     };
   }
 
-  async getRemoteState(key: string): Promise<ComponentState | undefined> {
+  async getRemoteState(key: string): Promise<SecureComponentState | undefined> {
     const component = this.registered.find(c => c.component.getIdentification().name === key && c.component.getIdentification().userManaged);
     if (component) {
       component.component.reset?.();
 
-      const state = await component.component.getRemoteState(this.connection, await component.getInstallDirectory());
+      const state = component.handleState(await component.component.getRemoteState(this.connection, await component.getInstallDirectory()));
       await component.overrideState(state);
       return state;
     }
@@ -123,41 +123,40 @@ export class ComponentManager {
   public async startup(lastInstalled: ComponentInstallState[] = []) {
     const components = this.getAllAvailableComponents();
     for (const component of components) {
-      await this.startupComponent(component.getIdentification().name, lastInstalled);
+      await this.startupComponent(component, lastInstalled);
     }
   }
 
-  public async startupComponent(key: string, lastInstalled: ComponentInstallState[] = []) {
-    const component = this.getAllAvailableComponents().find(c => c.getIdentification().name === key);
-
+  public async startupComponent(key: string | IBMiComponent, lastInstalled: ComponentInstallState[] = []) {
+    const component = typeof key === "string" ? this.getAllAvailableComponents().find(c => c.getIdentification().name === key) : key;
     if (!component) {
       throw new Error(`Component ${key} not found.`);
     }
 
-    if (this.registered.find(c => c.component.getIdentification().name === component.getIdentification().name)) {
+    const componentId = component.getIdentification();
+    if (this.registered.find(c => c.component.getIdentification().name === componentId.name)) {
       return;
     }
 
     await component.reset?.();
     const newComponent = new IBMiComponentRuntime(this.connection, component);
 
-    const installedBefore = lastInstalled.find(i => i.id.name === component.getIdentification().name);
-    const sameVersion = installedBefore && (installedBefore.id.version === component.getIdentification().version);
-    const isUserManaged = component.getIdentification().userManaged;
-
     // Always check non-user-managed components to ensure they're actually installed
-    if ((!installedBefore || !sameVersion || installedBefore.state === `NotChecked` || !isUserManaged)) {
+    const installedBefore = componentId.userManaged && lastInstalled.find(i => i.id.name === componentId.name);
+    const sameVersion = installedBefore && (installedBefore.id.version === componentId.version);    
+    if ((!installedBefore || !sameVersion || installedBefore.state.status === `NotChecked`)) {
       await newComponent.startupCheck();
     } else if (installedBefore) {
       await newComponent.overrideState(installedBefore.state);
     }
 
-    if (newComponent.getState() === "HashMismatch") {
-      const identification = newComponent.component.getIdentification();
-      throw new Error(`Component ${identification.name} version ${identification.version} local signature doesn't match its remote signature. It may have been tampered with and may not be safe to use. Clear your temporary folder and library and reconnect.`, { cause: "component_signature_mismatch" as ConnectionErrorCode });
+    const newState = newComponent.getState();
+    if (newState.status === "Installed" && componentId.signature && componentId.signature !== newState.remoteSignature) {      
+      throw new Error(`Component ${componentId.name} version ${componentId.version} local signature doesn't match its remote signature. It may have been tampered with and may not be safe to use. Clear your temporary folder and library and reconnect.`, { cause: "component_signature_mismatch" as ConnectionErrorCode });
     }
 
     this.registered.push(newComponent);
+    return newComponent.getState();
   }
 
   /**
@@ -166,10 +165,11 @@ export class ComponentManager {
   get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): T | undefined {
     const componentEngine = this.registered.find(c => c.component.getIdentification().name === id);
 
-    if (componentEngine && (options.ignoreState || componentEngine.getState() === `Installed`)) {
+    if (componentEngine && (options.ignoreState || componentEngine.getState().status === `Installed`)) {
       return componentEngine.component as T;
     }
   }
 }
 
 export { IBMiComponentRuntime };
+

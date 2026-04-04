@@ -1,59 +1,45 @@
 import { posix } from "path";
 import IBMi from "../IBMi";
 import { Tools } from "../Tools";
-import { ComponentState, IBMiComponent } from "../components/component";
+import { IBMiComponent, SecureComponentState } from "../components/component";
 import { IBMiMember } from "../types";
 
 export class GetMemberInfo implements IBMiComponent {
-  static ID = 'GetMemberInfo';
-  private readonly procedureName = 'GETMBRINFO';
-  private readonly currentVersion = 3;
-  private installedVersion = 0;
-
-  reset() {
-    this.installedVersion = 0;
-  }
+  static ID = "GetMemberInfo";
+  private static readonly VERSION = 4;
+  private static readonly SIGNATURE = "8522C401AF65D345C8417CFF089CD3E2";
+  private static readonly FUNCTION_NAME = `MBRINF${GetMemberInfo.VERSION.toString().padStart(4, '0')}`;
 
   getIdentification() {
-    return { name: GetMemberInfo.ID, version: this.currentVersion };
+    return { name: GetMemberInfo.ID, version: GetMemberInfo.VERSION, signature: GetMemberInfo.SIGNATURE };
   }
 
-  async getRemoteState(connection: IBMi): Promise<ComponentState> {
-    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysroutines where routine_schema = '${connection.getConfig().tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
-    if (result?.LONG_COMMENT) {
-      const comment = result.LONG_COMMENT as string;
-      const dash = comment.indexOf('-');
-      if (dash > -1) {
-        this.installedVersion = Number(comment.substring(0, dash).trim());
-      }
-    }
-    if (this.installedVersion < this.currentVersion) {
-      return `NeedsUpdate`;
-    }
-
-    return `Installed`;
+  async getRemoteState(connection: IBMi): Promise<SecureComponentState> {
+    const remoteSignature = await connection.getContent().getSQLRoutineSignature(connection.getConfig().tempLibrary.toUpperCase(), GetMemberInfo.FUNCTION_NAME, "FUNCTION");
+    return { status: remoteSignature ? "Installed" : "NotInstalled", remoteSignature };
   }
 
-  async update(connection: IBMi): Promise<ComponentState> {
+  async update(connection: IBMi): Promise<SecureComponentState> {
     return connection.withTempDirectory(async tempDir => {
+      const library = connection.getConfig().tempLibrary;
       const tempSourcePath = posix.join(tempDir, `getMemberInfo.sql`);
-      await connection.getContent().writeStreamfileRaw(tempSourcePath, getSource(connection.getConfig().tempLibrary, this.procedureName, this.currentVersion));
+      await connection.getContent().writeStreamfileRaw(tempSourcePath, getSource(library, GetMemberInfo.FUNCTION_NAME, GetMemberInfo.VERSION));
       const result = await connection.runCommand({
-        command: `QSYS/RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
+        command: `QSYS/RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL) DFTRDBCOL(${library})`,
         cwd: `/`,
-        noLibList: true
+        noLibList: true,
+        getSpooledFiles: true
       });
 
-      if (result.code) {
-        return `Error`;
-      } else {
-        this.installedVersion = this.currentVersion;
-        return `Installed`;
+      if (result.code !== 0) {
+        throw Error(result.stderr || result.stdout);
       }
+
+      return this.getRemoteState(connection);
     });
   }
 
-  private static parseDateString(tsString: string|undefined): Date | undefined {
+  private static parseDateString(tsString: string | undefined): Date | undefined {
     if (!tsString) {
       return undefined;
     }
@@ -62,7 +48,7 @@ export class GetMemberInfo implements IBMiComponent {
     if (!isNaN(possibleDate.getTime())) {
       return possibleDate;
     }
-    
+
     const dateParts = tsString.split('-');
     const timeParts = dateParts[3].split('.');
 
@@ -79,7 +65,7 @@ export class GetMemberInfo implements IBMiComponent {
   async getMemberInfo(connection: IBMi, library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
     const config = connection.getConfig();
     const tempLib = config.tempLibrary;
-    const statement = `select * from table(${tempLib}.${this.procedureName}('${connection.upperCaseName(library)}', '${connection.upperCaseName(sourceFile)}', '${connection.upperCaseName(member)}'))`;
+    const statement = `select * from table(${tempLib}.${GetMemberInfo.FUNCTION_NAME}('${connection.upperCaseName(library)}', '${connection.upperCaseName(sourceFile)}', '${connection.upperCaseName(member)}'))`;
 
     let results: Tools.DB2Row[] = [];
     if (connection.enableSQL) {
@@ -111,7 +97,7 @@ export class GetMemberInfo implements IBMiComponent {
     const config = connection.getConfig();
     const tempLib = config.tempLibrary;
     const statement = members
-      .map(member => `select * from table(${tempLib}.${this.procedureName}('${member.library}', '${member.file}', '${member.name}'))`)
+      .map(member => `select * from table(${tempLib}.${GetMemberInfo.FUNCTION_NAME}('${member.library}', '${member.file}', '${member.name}'))`)
       .join(' union all ');
 
     let results: Tools.DB2Row[] = [];
@@ -140,66 +126,66 @@ export class GetMemberInfo implements IBMiComponent {
   }
 }
 
-function getSource(library: string, name: string, version: number) {
-  return Buffer.from([
-    `create or replace procedure ${library}.QUSRMBRD(`,
-    `  inout Buf     char( 135 )`,
-    `, in    BufLen  integer`,
-    `, in    Format  char(   8 )`,
-    `, in    QObj    char(  20 )`,
-    `, in    Mbr     char(  10 )`,
-    `, in    Ovr     char(   1 )`,
-    `)`,
-    `language CL`,
-    `parameter style general`,
-    `program type main`,
-    `external name 'QSYS/QUSRMBRD'`,
-    `;`,
-    `create or replace function ${library}.${name}( inLib char(10), inFil char(10), inMbr char(10) )`,
-    `returns table (`,
-    `  Library      varchar( 10 )`,
-    `, File         varchar( 10 )`,
-    `, Member       varchar( 10 )`,
-    `, Attr         varchar( 10 )`,
-    `, Extension    varchar( 10 )`,
-    `, created      timestamp(0)`,
-    `, changed      timestamp(0)`,
-    `, Description  varchar( 50 )`,
-    `, isSource     char( 1 )`,
-    `)`,
-    `specific ${name}`,
-    `modifies sql data`,
-    `begin`,
-    `  declare  buffer  char( 135 ) not null default '';`,
-    `  declare  BUFLEN  integer     constant 135 ;`,
-    `  declare  FORMAT  char(   8 ) constant 'MBRD0100' ;`,
-    `  declare  OVR     char(   1 ) constant '0' ;`,
-    ``,
-    `  call ${library}.QUSRMBRD( buffer, BUFLEN, FORMAT, inFil concat inLib, inMbr, OVR );`,
-    ``,
-    `  pipe ( rtrim( substr( Buffer, 19, 10 ) )`,
-    `       , rtrim( substr( Buffer,  9, 10 ) )`,
-    `       , rtrim( substr( Buffer, 29, 10 ) )`,
-    `       , rtrim( substr( Buffer, 39, 10 ) )`,
-    `       , rtrim( substr( Buffer, 49, 10 ) )`,
-    `       , timestamp_format( case substr( Buffer, 59, 1 )`,
-    `                             when '1' then '20' concat substr( Buffer, 60, 12 )`,
-    `                             when '0' then '19' concat substr( Buffer, 60, 12 )`,
-    `                             else '19700101000000'`,
-    `                           end, 'YYYYMMDDHH24MISS')`,
-    `       , timestamp_format( case substr( Buffer, 72, 1 )`,
-    `                             when '1' then '20' concat substr( Buffer, 73, 12 )`,
-    `                             when '0' then '19' concat substr( Buffer, 73, 12 )`,
-    `                             else '19700101000000'`,
-    `                           end, 'YYYYMMDDHH24MISS')`,
-    `       , rtrim( substr( Buffer, 85, 50 ) )`,
-    `       , case substr( Buffer, 135, 1 ) when '1' then 'Y' else 'N' end`,
-    `       );`,
-    `  return;`,
-    `end;`,
-    ``,
-    `comment on function ${library}.${name} is '${version} - Validate member information';`,
-    ``,
-    `call QSYS2.QCMDEXC( 'grtobjaut ${library}/${name} *SRVPGM *PUBLIC *ALL' );`
-  ].join(`\n`));
+function getSource(library:string, name: string, version: number) {
+  return Buffer.from(/* sql */`
+    create or replace procedure QUSRMBRD(
+      inout Buf     char( 135 ),
+      in    BufLen  integer,
+      in    Format  char(   8 ),
+      in    QObj    char(  20 ),
+      in    Mbr     char(  10 ),
+      in    Ovr     char(   1 )
+    )
+    language CL
+    parameter style general
+    program type main
+    external name 'QSYS/QUSRMBRD';
+    
+    create or replace function ${name}( inLib char(10), inFil char(10), inMbr char(10) )
+    returns table (
+      Library      varchar( 10 ),
+      File         varchar( 10 ),
+      Member       varchar( 10 ),
+      Attr         varchar( 10 ),
+      Extension    varchar( 10 ),
+      created      timestamp(0),
+      changed      timestamp(0),
+      Description  varchar( 50 ),
+      isSource     char( 1 )
+    )
+    modifies sql data
+    set option usrprf=*user, dynusrprf=*user
+    begin
+      declare  buffer  char( 135 ) not null default '';
+      declare  BUFLEN  integer     constant 135 ;
+      declare  FORMAT  char(   8 ) constant 'MBRD0100' ;
+      declare  OVR     char(   1 ) constant '0' ;
+    
+      call ${library}.QUSRMBRD( buffer, BUFLEN, FORMAT, inFil concat inLib, inMbr, OVR );
+    
+      pipe (rtrim( substr( Buffer, 19, 10 ) ),
+            rtrim( substr( Buffer,  9, 10 ) ),
+            rtrim( substr( Buffer, 29, 10 ) ),
+            rtrim( substr( Buffer, 39, 10 ) ),
+            rtrim( substr( Buffer, 49, 10 ) ),
+            timestamp_format( case substr( Buffer, 59, 1 )
+                                 when '1' then '20' concat substr( Buffer, 60, 12 )
+                                 when '0' then '19' concat substr( Buffer, 60, 12 )
+                                 else '19700101000000'
+                               end, 'YYYYMMDDHH24MISS'),
+            timestamp_format( case substr( Buffer, 72, 1 )
+                                 when '1' then '20' concat substr( Buffer, 73, 12 )
+                                 when '0' then '19' concat substr( Buffer, 73, 12 )
+                                 else '19700101000000'
+                               end, 'YYYYMMDDHH24MISS'),
+           rtrim( substr( Buffer, 85, 50 ) ),
+           case substr( Buffer, 135, 1 ) when '1' then 'Y' else 'N' end
+           );
+      return;
+    end;
+    
+    comment on function ${name} is '${version} - Validate member information';
+    grant execute on function ${name} to public;
+    call QSYS2.QCMDEXC('CHGOBJOWN OBJ(${library}/${name}) OBJTYPE(*SRVPGM) NEWOWN(QUSER)');`,
+    "utf-8");
 }

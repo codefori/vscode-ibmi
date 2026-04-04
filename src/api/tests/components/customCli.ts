@@ -1,15 +1,16 @@
 
 import path from "path";
 import IBMi from "../../IBMi";
-import { ComponentIdentification, ComponentState, IBMiComponent } from "../../components/component";
+import { ComponentIdentification, IBMiComponent, SecureComponentState } from "../../components/component";
 
 export class CustomCLI implements IBMiComponent {
   static ID = "customCli";
+  static SIGNATURE = "ForTests";
 
   installPath = "";
 
   getIdentification(): ComponentIdentification {
-    return { name: CustomCLI.ID, version: 1, userManaged: true, signature: "forTests" };
+    return { name: CustomCLI.ID, version: 1, userManaged: true, signature: CustomCLI.SIGNATURE };
   }
 
   getFileName() {
@@ -21,27 +22,26 @@ export class CustomCLI implements IBMiComponent {
     this.installPath = path.posix.join(installDirectory, this.getFileName());
   }
 
-  async getRemoteState(connection: IBMi, installDirectory: string): Promise<ComponentState> {
+  async getRemoteState(connection: IBMi, installDirectory: string): Promise<SecureComponentState> {
     this.installPath = path.posix.join(installDirectory, this.getFileName());
     const result = await connection.getContent().testStreamFile(this.installPath, "r");
 
     if (!result) {
-      return `NotInstalled`;
+      return { status: `NotInstalled` };
     }
 
     const testResult = await connection.getContent().testStreamFile(this.installPath, "r");
 
     if (!testResult) {
-      return `Error`;
+      return { status: `Error` };
     }
 
-    return `Installed`;
+    return { status: `Installed`, remoteSignature: CustomCLI.SIGNATURE };
   }
 
-  async update(connection: IBMi): Promise<ComponentState> {
+  async update(connection: IBMi): Promise<SecureComponentState> {
     await connection.getContent().writeStreamfileRaw(this.installPath, JSON.stringify(this.getIdentification()));
-
-    return `Installed`;
+    return { status: `Installed`, remoteSignature: CustomCLI.SIGNATURE };
   }
 
   async uninstall(connection: IBMi): Promise<void> {

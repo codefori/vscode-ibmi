@@ -285,7 +285,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
       try {
         for (const uri of uris) {
           const member = connection.parserMemberPath(uri.path);
-          const command: string = `CPYTOSTMF FROMMBR('${Tools.qualifyPath(member.library, member.file, member.name, member.asp)}') TOSTMF('${toDirectory.path}/${member.basename.toLocaleLowerCase()}') STMFCCSID(1208) ENDLINFMT(*LF)`;
+          const command: string = `QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath(member.library, member.file, member.name, member.asp)}') TOSTMF('${toDirectory.path}/${member.basename.toLocaleLowerCase()}') STMFCCSID(1208) ENDLINFMT(*LF)`;
           const result = await connection.runCommand({
             command: command,
             noLibList: true
@@ -853,7 +853,7 @@ Please type "{0}" to confirm deletion.`, dirName);
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = items.length ? [...items, ...clearListArray] : [];
           quickPick.placeholder = items.length ? l10n.t(`Enter find term or select one of the previous find terms.`) : l10n.t("Enter find term.");
-          quickPick.title = l10n.t(`Find {0}`, findPaths);
+          quickPick.title = l10n.t(`Find {0}`, findPaths.join(', '));
 
           quickPick.onDidChangeValue(() => {
             if (!quickPick.value) {

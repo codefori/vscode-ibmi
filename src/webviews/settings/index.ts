@@ -246,12 +246,12 @@ export class SettingsUI {
             componentsTab.addParagraph(`<p>
               <h3 style="padding-bottom: 1em;">${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
               <ul>
-              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.id.name === component.getIdentification().name)?.state} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
+              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.id.name === component.getIdentification().name)?.state.status} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
               </ul>
               </p>`);
           });
 
-          const userInstallableComponents = states.filter(c => c.id.userManaged && c.state !== `Installed`);
+          const userInstallableComponents = states.filter(c => c.id.userManaged && c.state.status !== `Installed`);
           if (userInstallableComponents.length) {
             componentsTab.addButtons({ id: `installComponent`, label: `Install component` })
           }
@@ -485,7 +485,7 @@ export class SettingsUI {
 
 function installComponentsQuickPick(connection: IBMi) {
   const components = connection.getComponentManager().getComponentStates();
-  const installable = components.filter(c => c.id.userManaged && c.state !== `Installed`);
+  const installable = components.filter(c => c.id.userManaged && c.state.status !== `Installed`);
 
   if (installable.length === 0) {
     return;
@@ -494,7 +494,7 @@ function installComponentsQuickPick(connection: IBMi) {
   const withS = installable.length > 1 ? `s` : ``;
   window.showQuickPick(installable.map(c => ({
     label: c.id.name,
-    description: c.state,
+    description: c.state.status,
     id: c.id.name
   })), {
     title: `Install component${withS}`,

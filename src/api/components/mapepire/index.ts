@@ -5,7 +5,7 @@ import path from "path";
 import { SemanticVersion } from "../../../typings";
 import { getJavaHome } from "../../configuration/DebugConfiguration";
 import IBMi from "../../IBMi";
-import { ComponentState, IBMiComponent } from "../component";
+import { IBMiComponent, SecureComponentState } from "../component";
 import { sshSqlJob } from "./sqlJob";
 import { SERVER_FILE_PREFIX, SERVER_VERSION_FILE, VERSION } from "./version";
 
@@ -38,7 +38,7 @@ export class Mapepire implements IBMiComponent {
     this.installPath = path.posix.join(installDirectory, path.basename(this.localAssetPath));
   }
 
-  async getRemoteState(connection: IBMi, installDirectory: string, signature: string): Promise<ComponentState> {
+  async getRemoteState(connection: IBMi, installDirectory: string): Promise<SecureComponentState> {
     this.setInstallDirectory(installDirectory);
     const remoteVersions = (await connection.sendCommand({ command: `stat --printf="%n\n" ${SERVER_FILE_PREFIX}*`, directory: installDirectory }))
       .stdout.split("\n")
@@ -47,19 +47,17 @@ export class Mapepire implements IBMiComponent {
       .filter(Boolean)
       .map(version => ({ major: Number(version![1]), minor: Number(version![2]), patch: Number(version![3]) } as SemanticVersion));
     if (!remoteVersions) {
-      return "NotInstalled";
+      return { status: "NotInstalled" };
     }
     else if (remoteVersions.every(remoteVersion => remoteVersion.major < this.version.major || (remoteVersion.major === this.version.major && remoteVersion.minor < this.version.minor) || (remoteVersion.major === this.version.major && remoteVersion.minor === this.version.minor && remoteVersion.patch < this.version.patch))) {
-      return "NeedsUpdate";
+      return { status: "NeedsUpdate" };
     }
-    else if (await connection.getContent().getSHA256FileHash(this.installPath) !== signature) {
-      return "HashMismatch";
-    }
-    return "Installed";
+
+    return { status: "Installed", remoteSignature: await connection.getContent().getSHA256FileHash(this.installPath) };
   }
 
 
-  async update(connection: IBMi, signature?: string): Promise<ComponentState> {
+  async update(connection: IBMi): Promise<SecureComponentState> {
     try {
       if (!this.localAssetPath) {
         throw "Local Mapepire asset not set!";
@@ -70,24 +68,18 @@ export class Mapepire implements IBMiComponent {
         throw `Local Mapepire asset not found at ${this.localAssetPath}!`;
       }
 
-      let result = await connection.sendCommand({ command: `rm -f ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*.jar` });
-      if (result.code !== 0) {
-        throw `Failed to clear previous Mapepire installation: ${result.stderr}`;
-      }
-
       await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
-
-      result = await connection.sendCommand({ command: `chmod +x ${this.installPath}` });
+      const result = await connection.sendCommand({ command: `chmod +x ${this.installPath}` });
       if (result.code !== 0) {
         throw `Failed to make Mapepire jar file executable: ${result.stderr}`;
       }
     }
     catch (error: any) {
       connection.appendOutput(String(error));
-      return "Error";
+      return { status: "Error" };
     }
 
-    return await connection.getContent().getSHA256FileHash(this.installPath) === signature ? `Installed` : 'HashMismatch';
+    return { status: "Installed", remoteSignature: await connection.getContent().getSHA256FileHash(this.installPath) };
   }
 
   getInitCommand(javaHome: string): string | undefined {

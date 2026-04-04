@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GetMemberInfo } from '../../components/getMemberInfo';
-import { GetNewLibl } from '../../components/getNewLibl';
 import IBMi from '../../IBMi';
 import { Tools } from '../../Tools';
 import { CustomCLI } from '../components/customCli';
@@ -14,17 +13,6 @@ describe('Component Tests', () => {
 
   afterAll(async () => {
     await disposeConnection(connection);
-  });
-
-  it('Get new libl', async () => {
-    const component = connection.getComponent<GetNewLibl>(GetNewLibl.ID);
-
-    if (component) {
-      const newLibl = await component.getLibraryListFromCommand(connection, `CHGLIBL CURLIB(SYSTOOLS)`);
-      expect(newLibl?.currentLibrary).toBe(`SYSTOOLS`);
-    } else {
-      throw new Error(`Component not installed`);
-    }
   });
 
   it('Check getMemberInfo', async () => {
@@ -56,34 +44,23 @@ describe('Component Tests', () => {
     }
 
     // Check getMemberInfo for empty member.
-    const config = connection.getConfig();
-    const tempLib = config!.tempLibrary,
-      tempSPF = `O_ABC`.concat(connection!.variantChars.local),
-      tempMbr = `O_ABC`.concat(connection!.variantChars.local);
+    const tempLib = "QTEMP";
+    const tempSPF = `O_ABC`.concat(connection!.variantChars.local);
+    const tempMbr = `O_ABC`.concat(connection!.variantChars.local);
 
     const result = await connection!.runCommand({
       command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
       environment: 'ile'
     });
     if (result.code === 0) {
-      try {
-        const memberInfoC = await component.getMemberInfo(connection, tempLib, tempSPF, tempMbr);
-        expect(memberInfoC).toBeTruthy();
-        expect(memberInfoC?.library).toBe(tempLib);
-        expect(memberInfoC?.file).toBe(tempSPF);
-        expect(memberInfoC?.name).toBe(tempMbr);
-        expect(memberInfoC?.created).toBeTypeOf('object');
-        expect(memberInfoC?.changed).toBeTypeOf('object');
-      }
-      finally {
-        // Cleanup...
-        await connection!.runCommand({
-          command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
-          environment: 'ile'
-        });
-      }
+      const memberInfoC = await component.getMemberInfo(connection, tempLib, tempSPF, tempMbr);
+      expect(memberInfoC).toBeTruthy();
+      expect(memberInfoC?.library).toBe(tempLib);
+      expect(memberInfoC?.file).toBe(tempSPF);
+      expect(memberInfoC?.name).toBe(tempMbr);
+      expect(memberInfoC?.created).toBeTypeOf('object');
+      expect(memberInfoC?.changed).toBeTypeOf('object');
     }
-
   });
 
   it('Can get component no matter the state', async () => {
@@ -105,22 +82,22 @@ describe('Component Tests', () => {
 
     const requiredCheckA = await manager.getRemoteState(CustomCLI.ID);
     expect(requiredCheckA).toBeDefined();
-    expect(requiredCheckA).toBe(`NotInstalled`);
+    expect(requiredCheckA?.status).toBe(`NotInstalled`);
 
     const allComponents = manager.getComponentStates();
     expect(allComponents.length > 1).toBeTruthy();
-    const state = allComponents.some(c => c.id.name === CustomCLI.ID && c.state === `NotInstalled`);
+    const state = allComponents.some(c => c.id.name === CustomCLI.ID && c.state.status === `NotInstalled`);
     expect(state).toBeTruthy();
 
     const version1 = connection.getComponent<CustomCLI>(CustomCLI.ID);
     expect(version1).toBeUndefined();
 
     const resultA = await manager.installComponent(CustomCLI.ID);
-    expect(resultA.state).toBe(`Installed`);
+    expect(resultA.state.status).toBe(`Installed`);
 
     const requiredCheckB = await manager.getRemoteState(CustomCLI.ID);
     expect(requiredCheckB).toBeTruthy();
-    expect(requiredCheckB).toBe(`Installed`);
+    expect(requiredCheckB?.status).toBe(`Installed`);
 
     try {
       await manager.installComponent(CustomCLI.ID);

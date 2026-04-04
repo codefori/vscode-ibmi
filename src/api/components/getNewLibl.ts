@@ -1,61 +1,46 @@
 import { posix } from "path";
 import IBMi from "../IBMi";
-import { ComponentState, IBMiComponent } from "./component";
+import { IBMiComponent, SecureComponentState } from "./component";
 
 export class GetNewLibl implements IBMiComponent {
-  static ID = "GetNewLibl";
-  private readonly procedureName = 'GETNEWLIBL';
-  private readonly currentVersion = 1;
-  private installedVersion = 0;
-
-  reset() {
-    this.installedVersion = 0;
-  }
+  static readonly ID = "GetNewLibl";
+  private static readonly VERSION = 2;
+  private static readonly SIGNATURE = "";
+  private static readonly PROCEDURE_NAME = `NWLIBL${this.VERSION.toString().padStart(4, '0')}`;
 
   getIdentification() {
-    return { name: GetNewLibl.ID, version: this.currentVersion };
+    return { name: GetNewLibl.ID, version: GetNewLibl.VERSION, signature: GetNewLibl.SIGNATURE };
   }
 
-  async getRemoteState(connection: IBMi): Promise<ComponentState> {
-    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysprocs where routine_schema = '${connection.getConfig().tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
-    if (result?.LONG_COMMENT) {
-      const comment = result.LONG_COMMENT as string;
-      const dash = comment.indexOf('-');
-      if (dash > -1) {
-        this.installedVersion = Number(comment.substring(0, dash).trim());
-      }
-    }
-    if (this.installedVersion < this.currentVersion) {
-      return `NeedsUpdate`;
-    }
-
-    return `Installed`;
+  async getRemoteState(connection: IBMi): Promise<SecureComponentState> {
+    const remoteSignature = await connection.getContent().getSQLRoutineSignature(connection.getConfig().tempLibrary.toUpperCase(), GetNewLibl.PROCEDURE_NAME, "PROCEDURE");
+    return { status: remoteSignature ? "Installed" : "NotInstalled", remoteSignature };
   }
 
-  update(connection: IBMi): Promise<ComponentState> {
+  update(connection: IBMi): Promise<SecureComponentState> {
     const config = connection.getConfig();
-    return connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {
+    return connection.withTempDirectory(async (tempDir): Promise<SecureComponentState> => {
       const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
 
       await connection.getContent().writeStreamfileRaw(tempSourcePath, this.getSource(config.tempLibrary));
       const result = await connection.runCommand({
         command: `QSYS/RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
-        noLibList: true
+        noLibList: true,
+        getSpooledFiles: true
       });
 
-      if (!result.code) {
-        this.installedVersion = this.currentVersion;
-        return `Installed`;
-      } else {
-        return `Error`;
+      if (result.code !== 0) {
+        throw Error(result.stderr || result.stdout);
       }
+
+      return this.getRemoteState(connection);
     });
   }
 
   async getLibraryListFromCommand(connection: IBMi, ileCommand: string) {
     const tempLib = connection.getConfig().tempLibrary;
-    const resultSet = await connection.runSQL(`CALL ${tempLib}.${this.procedureName}('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
+    const resultSet = await connection.runSQL(`CALL ${tempLib}.${GetNewLibl.PROCEDURE_NAME}('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
 
     const result = {
       currentLibrary: `QGPL`,
@@ -78,20 +63,22 @@ export class GetNewLibl implements IBMiComponent {
   }
 
   private getSource(library: string) {
-    return Buffer.from([
-      `CREATE OR REPLACE PROCEDURE ${library}.${this.procedureName}(IN COMMAND VARCHAR(2000))`,
-      `DYNAMIC RESULT SETS 1 `,
-      `BEGIN`,
-      `  DECLARE clibl CURSOR FOR `,
-      `    SELECT ORDINAL_POSITION, TYPE as PORTION, SYSTEM_SCHEMA_NAME`,
-      `    FROM QSYS2.LIBRARY_LIST_INFO;`,
-      `  CALL QSYS2.QCMDEXC(COMMAND);`,
-      `  OPEN clibl;`,
-      `END;`,
-      ``,
-      `comment on procedure ${library}.${this.procedureName} is '${this.currentVersion} - Validate member information';`,
-      ``,
-      `call QSYS2.QCMDEXC( 'grtobjaut ${library}/${this.procedureName} *PGM *PUBLIC *ALL' );`
-    ].join(`\n`), "utf8");
+    return Buffer.from(
+      /* sql */ `
+      CREATE OR REPLACE PROCEDURE ${library}.${GetNewLibl.PROCEDURE_NAME}(IN COMMAND VARCHAR(2000))
+      DYNAMIC RESULT SETS 1
+      SET OPTION USRPRF=*USER, DYNUSRPRF=*USER
+      BEGIN
+        DECLARE clibl CURSOR FOR 
+          SELECT ORDINAL_POSITION, TYPE as PORTION, SYSTEM_SCHEMA_NAME
+          FROM QSYS2.LIBRARY_LIST_INFO;
+        CALL QSYS2.QCMDEXC(COMMAND);
+        OPEN clibl;
+      END;
+      
+      comment on procedure ${library}.${GetNewLibl.PROCEDURE_NAME} is '${GetNewLibl.VERSION} - Validate member information';
+      grant execute on procedure ${library}.${GetNewLibl.PROCEDURE_NAME} to public;
+      call QSYS2.QCMDEXC('CHGOBJOWN OBJ(${library}/${GetNewLibl.PROCEDURE_NAME}) OBJTYPE(*PGM) NEWOWN(QUSER)');`,
+      "utf8");
   }
 }

@@ -4,7 +4,9 @@ import { Config } from "../configuration/config/VirtualConfig";
 import { BaseStorage } from "../configuration/storage/BaseStorage";
 
 class JSONMap extends Map<string, any> {
-  constructor(private readonly filePath: string) {
+  private readonly filePath: string;
+
+  constructor(filePath: string) {
     if (existsSync(filePath)) {
       const data = JSON.parse(readFileSync(filePath).toString("utf-8"));
       super(Object.entries(data));
@@ -12,6 +14,7 @@ class JSONMap extends Map<string, any> {
     else {
       super();
     }
+    this.filePath = filePath;
   }
 
   save() {
