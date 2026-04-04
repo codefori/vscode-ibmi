@@ -4,6 +4,7 @@ import path, { parse as parsePath } from 'path';
 import { ClientErrorExtensions } from "ssh2";
 import { EventEmitter } from 'stream';
 import { CompileTools } from "./CompileTools";
+import { createDedicatedJob, DedicatedJob } from "./DedicatedJob";
 import IBMiContent from "./IBMiContent";
 import { Tools } from './Tools';
 import { IBMiComponent } from "./components/component";
@@ -108,6 +109,9 @@ export default class IBMi {
 
   private sqlJob: sshSqlJob | undefined;
   splfUserData: string | undefined;
+
+  private dedicatedJobs: DedicatedJob[] = [];
+  private dedicatedSaveJob: DedicatedJob | undefined;
 
   /**
    * Used to store ASP numbers and their names
@@ -1171,10 +1175,47 @@ export default class IBMi {
     }
   }
 
+  /**
+   * Creates a new dedicated SQL job for use by companion extensions.
+   * The returned DedicatedJob provides an isolated IBM i job with its own
+   * job-scoped state (locks, library list, temporary tables, etc.).
+   * The job is automatically cleaned up on disconnect, but should be explicitly
+   * closed when no longer needed to free IBM i resources.
+   */
+  async createDedicatedJob(): Promise<DedicatedJob> {
+    const job = await createDedicatedJob(this);
+    this.dedicatedJobs.push(job);
+    return job;
+  }
+
+  /**
+   * Sets a dedicated job to be used for member save operations.
+   * When set, QSysFs will route member saves through this job instead of the
+   * shared connection job. Pass `undefined` to clear and revert to normal saves.
+   *
+   * This allows companion extensions to lock a member in a dedicated job and
+   * ensure saves go through the same job that holds the lock.
+   */
+  setDedicatedSaveJob(job: DedicatedJob | undefined) {
+    this.dedicatedSaveJob = job;
+  }
+
+  /**
+   * Returns the dedicated save job, if one is set.
+   */
+  getDedicatedSaveJob(): DedicatedJob | undefined {
+    return this.dedicatedSaveJob;
+  }
+
   private async dispose() {
     CompileTools.reset();
 
-    //Clear connected resources
+    for (const job of this.dedicatedJobs) {
+      try { await job.close(); } catch { }
+    }
+    this.dedicatedJobs = [];
+    this.dedicatedSaveJob = undefined;
+
     if (this.sqlJob) {
       delete this.sqlJob;
       delete this.splfUserData;

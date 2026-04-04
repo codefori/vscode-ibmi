@@ -6,6 +6,7 @@ import tmp from 'tmp';
 import util from 'util';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
+import { DedicatedJob } from './DedicatedJob';
 import { Tools } from './Tools';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { ObjectTypes } from './import/Objects';
@@ -209,7 +210,7 @@ export default class IBMiContent {
    * @param member
    * @param content
    */
-  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean> {
+  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array, dedicatedJob?: DedicatedJob): Promise<boolean> {
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
@@ -233,22 +234,31 @@ export default class IBMiContent {
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
         try {
-          await this.ibmi.runSQL([
+          const sqlStatements = [
             `Drop table if exists QTEMP.QTEMPSRC`,
             `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
             `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
             `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`
-          ]);
+          ];
+          if (dedicatedJob) {
+            await dedicatedJob.runSQL(sqlStatements);
+          } else {
+            await this.ibmi.runSQL(sqlStatements);
+          }
         } catch (error: any) {
           copyResult.code = -1;
           copyResult.stderr = String(error);
         }
       }
       else {
-        copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-          noLibList: true
-        });
+        if (dedicatedJob) {
+          copyResult = await dedicatedJob.runCommand(`QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`);
+        } else {
+          copyResult = await this.ibmi.runCommand({
+            command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            noLibList: true
+          });
+        }
       }
 
       if (copyResult.code === 0) {

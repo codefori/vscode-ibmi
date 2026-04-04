@@ -2,6 +2,7 @@ import fs from "fs";
 import tmp from "tmp";
 import util from "util";
 import vscode from "vscode";
+import { DedicatedJob } from "../../api/DedicatedJob";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
 
@@ -99,7 +100,7 @@ export class ExtendedIBMiContent {
    * @param {vscode.Uri} uri
    * @param {string} body 
    */
-  async uploadMemberContentWithDates(uri: vscode.Uri, body: string) {
+  async uploadMemberContentWithDates(uri: vscode.Uri, body: string, dedicatedJob?: DedicatedJob) {
     const connection = instance.getConnection();
     if (connection) {
       const config = connection.getConfig();
@@ -171,13 +172,20 @@ export class ExtendedIBMiContent {
           await connection.sendCommand({ command: `${setccsid} 1208 ${tempRmt}` });
         }
 
-        const insertResult = await connection.runCommand({
-          command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
-          noLibList: true
-        });
+        if (dedicatedJob) {
+          const insertResult = await dedicatedJob.runCommand(`QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`);
+          if (insertResult.code !== 0) {
+            throw new Error(`Failed to save member: ` + insertResult.stderr);
+          }
+        } else {
+          const insertResult = await connection.runCommand({
+            command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
+            noLibList: true
+          });
 
-        if (insertResult.code !== 0) {
-          throw new Error(`Failed to save member: ` + insertResult.stderr);
+          if (insertResult.code !== 0) {
+            throw new Error(`Failed to save member: ` + insertResult.stderr);
+          }
         }
 
         this.sourceDateHandler.baseSource.set(alias, body);

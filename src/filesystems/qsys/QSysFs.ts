@@ -218,11 +218,12 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
             else {
                 this.savedAsMembers.delete(uri.path);
+                const dedicatedSaveJob = connection.getDedicatedSaveJob();
                 if (this.extendedMemberSupport) {
-                    await this.extendedContent.uploadMemberContentWithDates(uri, content.toString());
+                    await this.extendedContent.uploadMemberContentWithDates(uri, content.toString(), dedicatedSaveJob);
                 } else {
                     await warnAboutSourceDates();
-                    await contentApi.uploadMemberContent(library, file, member, content);
+                    await contentApi.uploadMemberContent(library, file, member, content, dedicatedSaveJob);
                 }
             }
         }
