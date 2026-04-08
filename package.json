@@ -1227,7 +1227,7 @@
 			{
 				"command": "code-for-ibmi.downloadMemberAsFile",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Download...",
+				"title": "Member",
 				"category": "IBM i"
 			},
 			{
@@ -2003,16 +2003,22 @@
 			},
 			{
 				"id": "code-for-ibmi.structuredDownload",
-				"label": "Structured Download..."
+				"label": "Download..."
 			}
 		],
 		"menus": {
 			"code-for-ibmi.structuredDownload": [
 				{
-					"command": "code-for-ibmi.downloadMembersStructured"
+					"command": "code-for-ibmi.downloadMemberAsFile",
+					"group": "1_download@1"
 				},
 				{
-					"command": "code-for-ibmi.downloadMembersStructuredFlat"
+					"command": "code-for-ibmi.downloadMembersStructuredFlat",
+					"group": "1_download@2"
+				},
+				{
+					"command": "code-for-ibmi.downloadMembersStructured",
+					"group": "1_download@3"
 				}
 			],
 			"code-for-ibmi.sortIFSFiles": [
@@ -2946,19 +2952,14 @@
 					"group": "2_memberStuff@3"
 				},
 				{
-					"command": "code-for-ibmi.downloadMemberAsFile",
+					"submenu": "code-for-ibmi.structuredDownload",
 					"when": "view == objectBrowser && viewItem =~ /^(member|SPF).*$/",
 					"group": "3_memberTransfer@1"
 				},
 				{
-					"submenu": "code-for-ibmi.structuredDownload",
-					"when": "view == objectBrowser && viewItem =~ /^(member|SPF).*$/",
-					"group": "3_memberTransfer@2"
-				},
-				{
 					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
 					"when": "view == objectBrowser && !listMultiSelection && viewItem == member",
-					"group": "3_memberTransfer@3"
+					"group": "3_memberTransfer@2"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowserItem",
