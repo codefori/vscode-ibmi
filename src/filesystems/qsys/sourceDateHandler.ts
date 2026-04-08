@@ -235,6 +235,7 @@ export class SourceDateHandler {
           const activeEditor = vscode.window.activeTextEditor;
           if (activeEditor && activeEditor.document.uri.fsPath === document.uri.fsPath) {
             activeEditor.setDecorations(annotationDecoration, lineGutters);
+            activeEditor.setDecorations(lineDecor, []);
           }
 
         } else if (sourceDates) {
@@ -315,6 +316,12 @@ export class SourceDateHandler {
             activeEditor.setDecorations(lineDecor, changedLined);
           }
         }
+      } else {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor && activeEditor.document.uri.fsPath === document.uri.fsPath) {
+          activeEditor.setDecorations(annotationDecoration, []);
+          activeEditor.setDecorations(lineDecor, []);
+        }
       }
     }
   }
@@ -370,6 +377,10 @@ export class SourceDateHandler {
       const editor = vscode.window.activeTextEditor;
       if (editor) {
         this._diffRefreshGutter(editor.document);
+        // Reassigning the selection fires onDidChangeTextEditorSelection, which
+        // causes other extensions (e.g. the RPGLE fixed-format ruler) to redraw
+        // in the updated decoration context rather than bleeding into the gutter.
+        editor.selection = editor.selection;
       }
     }
   }
