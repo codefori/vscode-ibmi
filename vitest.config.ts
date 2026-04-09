@@ -1,11 +1,11 @@
-/// <reference types="vitest" />
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
-  test: { 
+  test: {
     // ... Specify options here.
     root: './src/api/tests',
-    globalSetup: [`setup.ts`],
+    globalSetup: ['./setup.ts'],
     testTimeout: 120000,
+    include: ['suites/**/*.test.ts'],
   },
 })
