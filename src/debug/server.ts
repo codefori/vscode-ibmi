@@ -22,6 +22,14 @@ export async function isDebugSupported(connection: IBMi) {
 }
 
 export async function startService(connection: IBMi) {
+  // Check if debug engine jobs are already running
+  const existingJobs = await getDebugEngineJobs();
+  if (existingJobs.service) {
+    window.showInformationMessage(l10n.t(`Debug service is already started.`));
+    refreshDebugSensitiveItems();
+    return true;
+  }
+
   const checkAuthority = async (user?: string) => {
     if (user && !await connection.getContent().checkObject({ library: "QSYS", name: user, type: "*USRPRF" }, ["*USE"])) {
       throw new Error(`You don't have *USE authority on user profile ${user}`);
@@ -208,11 +216,7 @@ export async function startService(connection: IBMi) {
               else {
                 reason = "job has ended";
               }
-              window.showErrorMessage(`Debug Service starter job ${job} failed: ${reason}.`, 'Open output').then(choice => {
-                if (choice === 'Open output') {
-                  commands.executeCommand('code-for-ibmi.browse', { path: debugConfig.getNavigatorLogFile() });
-                }
-              });
+              window.showErrorMessage(`Debug Service starter job ${job} failed: ${reason}.`, 'Open output').then(() => openQPRINT(connection, job));
               done(false);
             }
           }
