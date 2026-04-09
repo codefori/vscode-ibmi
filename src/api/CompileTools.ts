@@ -25,7 +25,7 @@ export namespace CompileTools {
     updateProgress?: (message: string) => void
   }
 
-  export function reset(){
+  export function reset() {
     ileQueue.clear();
     jobLogOrdinal = 0;
   }
@@ -159,11 +159,9 @@ export namespace CompileTools {
                   commandResult.code = 2;
                   callbacks.onStderr?.(Buffer.from(`Failed to get spool output: ${JSON.stringify(e, undefined, 2)}`));
                 }
-                finally {
-                  if (!connection.getConfig().keepActionSpooledFiles) {
-                    await connection.runSQL(`@DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${connection.splfUserData})`);
-                  }
-                }
+              }
+              if (!start || !connection.getConfig().keepActionSpooledFiles) {
+                await connection.runSQL(`@DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${connection.splfUserData})`);
               }
             });
 
