@@ -275,6 +275,53 @@ export const ActionSuite: TestSuite = {
         const success = await runAction(instance, uris, action, `compare`);
         assert.ok(success);
       }
+    },
+    {
+      name: "Grandparent variable expansion for local file action", test: async () => {
+        const localRoot = helloWorldProject.localPath!;
+        const grandparent = `gp${Tools.makeid(4).toLowerCase()}`;
+        const parent = `pa${Tools.makeid(4).toLowerCase()}`;
+
+        const parentFolder = vscode.Uri.joinPath(localRoot, grandparent, parent);
+        const nestedFile = vscode.Uri.joinPath(parentFolder, `grandparent_local.txt`);
+
+        await vscode.workspace.fs.createDirectory(parentFolder);
+        await vscode.workspace.fs.writeFile(nestedFile, Buffer.from("grandparent test", "utf8"));
+
+        const success = await runAction(instance, nestedFile, {
+          name: "Check local &GRANDPARENT",
+          command: `test "&GRANDPARENT" = "${grandparent}"`,
+          type: "file",
+          environment: "pase"
+        }, "all");
+
+        assert.ok(success);
+      }
+    },
+    {
+      name: "Grandparent variable expansion for streamfile action", test: async () => {
+        const connection = instance.getConnection()!;
+        const content = connection.getContent();
+
+        await connection.withTempDirectory(async directory => {
+          const grandparent = `gp${Tools.makeid(4).toLowerCase()}`;
+          const parent = `pa${Tools.makeid(4).toLowerCase()}`;
+          const remoteFolder = `${directory}/${grandparent}/${parent}`;
+          const remoteFile = `${remoteFolder}/grandparent_stream.txt`;
+
+          await connection.sendCommand({ command: `mkdir -p ${remoteFolder}` });
+          await content.writeStreamfileRaw(remoteFile, "grandparent test");
+
+          const success = await runAction(instance, vscode.Uri.parse(`streamfile:${remoteFile}`), {
+            name: "Check streamfile &GRANDPARENT",
+            command: `test "&GRANDPARENT" = "${grandparent}"`,
+            type: "streamfile",
+            environment: "pase"
+          }, "all");
+
+          assert.ok(success);
+        });
+      }
     }
   ]
 };
