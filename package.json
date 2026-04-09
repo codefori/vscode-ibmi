@@ -1318,6 +1318,13 @@
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly && workspaceFolderCount >= 1"
 			},
 			{
+				"command": "code-for-ibmi.deploySelected",
+				"title": "Deploy Selected Files",
+				"category": "IBM i",
+				"icon": "$(cloud-upload)",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly"
+			},
+			{
 				"command": "code-for-ibmi.setDeployLocation",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Set Deploy Workspace Location",
@@ -3226,6 +3233,11 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "code-for-ibmi:connected && !explorerResourceIsFolder && code-for-ibmi:hasLocalActions",
 					"group": "1_localactions@01"
+				},
+				{
+					"command": "code-for-ibmi.deploySelected",
+					"when": "code-for-ibmi:connected && resource",
+					"group": "1_localactions@02"
 				}
 			]
 		},
@@ -3268,7 +3280,8 @@
 		"vite": "^8.0.8",
 		"vitest": "^4.1.2",
 		"webpack": "^5.94.0",
-		"webpack-cli": "^4.5.0"
+		"webpack-cli": "^4.5.0",
+		"@vscode/vsce": "^3.7.1"
 	},
 	"dependencies": {
 		"@ibm/ibmi-eventf-parser": "2.0.1",
