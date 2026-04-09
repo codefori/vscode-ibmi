@@ -175,6 +175,7 @@ export function getVariablesInfo(): VariableInfoList {
       { name: `&amp;FULLPATH`, text: vscode.l10n.t(`Full path of the file on the remote system`) },
       { name: `&amp;FILEDIR`, text: vscode.l10n.t(`Directory of the file on the remote system`) },
       { name: `&amp;RELATIVEPATH`, text: vscode.l10n.t(`Relative path of the streamfile from the working directory or workspace`) },
+      { name: `&amp;GRANDPARENT`, text: vscode.l10n.t(`Name of the grandparent directory (two levels up from the file)`) },
       { name: `&amp;PARENT`, text: vscode.l10n.t(`Name of the parent directory or source file`) },
       { name: `&amp;BASENAME`, text: vscode.l10n.t(`Name of the file, including the extension`) },
       { name: `&amp;NAME`, text: vscode.l10n.t(`Name of the file (<code>&amp;NAMEL</code> for lowercase)`) },

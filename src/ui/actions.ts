@@ -205,6 +205,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 const basename = pathData.base;
                 const ext = pathData.ext ? (pathData.ext.startsWith(`.`) ? pathData.ext.substring(1) : pathData.ext) : ``;
                 const parent = path.parse(pathData.dir).base;
+                const grandparent = path.parse(path.parse(pathData.dir).dir).base;
                 let name = pathData.name;
 
                 // Logic to handle second extension, caused by TOBi.
@@ -260,7 +261,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                     break;
                 }
 
-                variables.set(`&PARENT`, parent)
+                variables.set(`&GRANDPARENT`, grandparent)
+                  .set(`&PARENT`, parent)
                   .set(`&BASENAME`, basename)
                   .set(`{filename}`, basename)
 
