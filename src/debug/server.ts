@@ -113,7 +113,7 @@ export async function startService(connection: IBMi) {
 
       // Wait for content (first 7 lines is Java information)
       // Need to wait for the lines after start and any Debugger lines to see if there are errors
-      while ((numLines < 8) || debugLine) {
+      while ((numLines < 8) || !debugLine) {
         if ((Date.now() - startTime) > timeout) {
           // Timeout - read remaining lines and throw error
           try {
@@ -207,6 +207,7 @@ export async function startService(connection: IBMi) {
               setTimeout(() => checkJob(done), 1000);
             } else {
               let reason;
+              let openLogFile = false;
               if (typeof jobDetail === "object") {
                 reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
               }
@@ -215,8 +216,15 @@ export async function startService(connection: IBMi) {
               }
               else {
                 reason = "job has ended";
+                openLogFile = true;
               }
-              window.showErrorMessage(`Debug Service starter job ${job} failed: ${reason}.`, 'Open output').then(() => openQPRINT(connection, job));
+              window.showErrorMessage(`Debug Service starter job ${job} failed: ${reason}.`, 'Open output').then(() => {
+                if (openLogFile) {
+                  commands.executeCommand('code-for-ibmi.browse', { path: logFilePath });
+                } else {
+                  openQPRINT(connection, job);
+                }
+              });
               done(false);
             }
           }
