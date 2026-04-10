@@ -68,7 +68,7 @@ describe(`variables tests`, { concurrent: true }, () => {
       expect(connectionVariables.get("&HOST")).toBe(connection.currentHost);
       expect(connectionVariables.get("{host}")).toBe(connectionVariables.get("&HOST"));
       expect(connectionVariables.get("&HOME")).toBe(config.homeDirectory);
-      expect(connectionVariables.get("&WORKDIR")).toBe(connectionVariables.get("/home/MYUSER/my-work-dir"));
+      expect(connectionVariables.get("&WORKDIR")).toBe("/home/MYUSER/my-work-dir");
 
       expect(connectionVariables.get("&CUSTOM")).toBe("value");
       expect(connectionVariables.get("&WARCRY")).toBe("Fus Roh Dah!");
