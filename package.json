@@ -1903,51 +1903,60 @@
 				{
 					"id": "helpView",
 					"name": "Help and Support",
-					"when": "!code-for-ibmi:helpViewDisabled"
+					"when": "!code-for-ibmi:helpViewDisabled",
+					"icon": ""
 				},
 				{
 					"id": "connectionBrowser",
 					"name": "Servers",
-					"when": "!code-for-ibmi:connecting && !code-for-ibmi:connected && !code-for-ibmi:connectionBrowserDisabled"
+					"when": "!code-for-ibmi:connecting && !code-for-ibmi:connected && !code-for-ibmi:connectionBrowserDisabled",
+					"icon": ""
 				},
 				{
 					"id": "environmentView",
 					"name": "Environment",
 					"when": "code-for-ibmi:connected && !code-for-ibmi:environmentViewDisabled",
+					"icon": "",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "libraryListView",
 					"name": "User Library List",
-					"when": "code-for-ibmi:connected && !code-for-ibmi:libraryListDisabled"
+					"when": "code-for-ibmi:connected && !code-for-ibmi:libraryListDisabled",
+					"icon": ""
 				},
 				{
 					"id": "libraryListViewDisabled",
 					"name": "User Library List",
 					"when": "code-for-ibmi:connected && code-for-ibmi:libraryListDisabled",
+					"icon": "",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
-					"when": "code-for-ibmi:connected && !code-for-ibmi:objectBrowserDisabled"
+					"when": "code-for-ibmi:connected && !code-for-ibmi:objectBrowserDisabled",
+					"icon": ""
 				},
 				{
 					"id": "ifsBrowser",
 					"name": "IFS Browser",
-					"when": "code-for-ibmi:connected && !code-for-ibmi:ifsBrowserDisabled"
+					"when": "code-for-ibmi:connected && !code-for-ibmi:ifsBrowserDisabled",
+					"icon": ""
 				},
 				{
 					"id": "testingView",
 					"name": "Test cases",
-					"when": "code-for-ibmi:connected && code-for-ibmi:testing"
+					"when": "code-for-ibmi:connected && code-for-ibmi:testing",
+					"icon": ""
 				}
 			],
 			"ibmi-search": [
 				{
 					"id": "searchView",
 					"name": "Results",
-					"when": "code-for-ibmi:searchViewVisible"
+					"when": "code-for-ibmi:searchViewVisible",
+					"icon": ""
 				}
 			],
 			"debug": [
@@ -1955,7 +1964,8 @@
 					"id": "ibmiDebugBrowser",
 					"name": "IBM i debugger",
 					"when": "code-for-ibmi:connected && code-for-ibmi:debug && !code-for-ibmi:debugManaged",
-					"visibility": "collapsed"
+					"visibility": "collapsed",
+					"icon": ""
 				}
 			]
 		},
@@ -3261,13 +3271,14 @@
 		"@types/tar": "6.1.13",
 		"@types/tmp": "0.2.5",
 		"@types/vscode": "^1.90.0",
-		"esbuild": "^0.25.0",
+		"esbuild": "^0.27.0",
 		"esbuild-loader": "^4.4.2",
 		"eslint": "7.19.0",
 		"ssh2-streams": "^0.4.10",
 		"ts-loader": "^9.3.1",
 		"typescript": "5.9.3",
-		"vitest": "4.0.18",
+		"vite": "^8.0.8",
+		"vitest": "^4.1.2",
 		"webpack": "^5.94.0",
 		"webpack-cli": "^4.5.0",
 		"@vscode/vsce": "^3.7.1"
@@ -3282,7 +3293,7 @@
 		"escape-string-regexp": "5.0.0",
 		"ignore": "7.0.5",
 		"node-ssh": "13.2.1",
-		"tar": "7.5.9",
+		"tar": "^7.5.13",
 		"tmp": "0.2.5",
 		"vscode-diff": "3.0.1"
 	},

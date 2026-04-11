@@ -853,7 +853,7 @@ Please type "{0}" to confirm deletion.`, dirName);
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = items.length ? [...items, ...clearListArray] : [];
           quickPick.placeholder = items.length ? l10n.t(`Enter find term or select one of the previous find terms.`) : l10n.t("Enter find term.");
-          quickPick.title = l10n.t(`Find {0}`, findPaths);
+          quickPick.title = l10n.t(`Find {0}`, findPaths.join(', '));
 
           quickPick.onDidChangeValue(() => {
             if (!quickPick.value) {
