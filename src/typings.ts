@@ -1,5 +1,5 @@
 import { Ignore } from "ignore";
-import { WorkspaceFolder } from "vscode";
+import { Uri, WorkspaceFolder } from "vscode";
 import Instance from "./Instance";
 import { ComponentRegistry } from './api/components/manager';
 import { ConnectionManager } from "./api/configuration/config/ConnectionManager";
@@ -27,6 +27,7 @@ export interface DeploymentParameters {
   workspaceFolder: WorkspaceFolder
   remotePath: string
   ignoreRules?: Ignore
+  selectedFiles?: Uri[]
 }
 
 export * from "./api/types";

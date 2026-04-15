@@ -2,7 +2,7 @@
 import path from 'path';
 import { create as tarCreate, t as tarT } from 'tar';
 import tmp from 'tmp';
-import vscode from 'vscode';
+import vscode, { Uri } from 'vscode';
 import { getActions, getLocalActionsFiles } from '../../api/actions';
 import IBMi from '../../api/IBMi';
 import IBMiContent from '../../api/IBMiContent';
@@ -38,6 +38,27 @@ export namespace Deployment {
       deploymentLog,
       vscode.commands.registerCommand(`code-for-ibmi.launchActionsSetup`, DeployTools.launchActionsSetup),
       vscode.commands.registerCommand(`code-for-ibmi.launchDeploy`, DeployTools.launchDeploy),
+      vscode.commands.registerCommand(`code-for-ibmi.deploySelected`, async (item?: Uri, items?: Uri[]) => {
+        if(!(item instanceof Uri)) {
+          vscode.window.showErrorMessage(`No files selected for deployment.`);
+          return;
+        }
+        const selectedItems = Array.isArray(items) && items.length > 0 ? items : [item];
+        const itemsByWorkspace: Uri[][] = [];
+        selectedItems.forEach(uri => {
+          const workspace = vscode.workspace.getWorkspaceFolder(uri);
+          if (workspace) {
+            let uris = itemsByWorkspace[workspace.index];
+            if (!uris) uris = [];
+            uris.push(uri);
+            itemsByWorkspace[workspace.index] = uris;
+          }
+        });
+
+        await Promise.all(
+          itemsByWorkspace.map((workspaceItems, workspaceIndex) => DeployTools.launchDeploy(workspaceIndex, "selected", workspaceItems))
+        );
+      }),
       vscode.commands.registerCommand(`code-for-ibmi.setDeployLocation`, DeployTools.setDeployLocation)
     );
 

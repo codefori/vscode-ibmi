@@ -1,6 +1,6 @@
 import { Variables } from "./variables";
 
-export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
+export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare" | "selected";
 
 export interface StandardIO {
   onStdout?: (data: Buffer) => void;
@@ -133,6 +133,7 @@ export interface FileError {
 
 export interface QsysFsOptions {
   readonly?: boolean
+  libraries?: string
 }
 
 export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
