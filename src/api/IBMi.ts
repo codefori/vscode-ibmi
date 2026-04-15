@@ -1523,48 +1523,49 @@ export default class IBMi {
   }
 
   async getFileCcsid(path: string | QsysPath): Promise<number> {
-    const minute = 60 * 1000;
-    const timeToLive = 10 * minute;
+    const CCSID_CACHE_TTL = 600000; // 10 minutes in milliseconds
 
+    // Generate normalized cache key
     const isQsysPath = typeof path === `object`;
-    let fileObjPath: string;
+    let cacheKey: string;
+    let lookupPath: string | QsysPath;
 
     if (isQsysPath) {
-      const localPath: QsysPath = path;
+      
+      const localPath: QsysPath = { ...path };
       localPath.asp = localPath.asp ? this.sysNameInAmerican(localPath.asp) : undefined;
       localPath.library = this.sysNameInAmerican(localPath.library);
       localPath.name = this.sysNameInAmerican(localPath.name);
-      fileObjPath = Tools.qualifyPath(localPath.library, localPath.name, '', localPath.asp || '', true);
+      cacheKey = Tools.qualifyPath(localPath.library, localPath.name, '', localPath.asp || '', true);
+      // Strip member for lookup (getAttributes expects file-level path)
+      lookupPath = { library: localPath.library, name: localPath.name, asp: localPath.asp };
     } else {
-      fileObjPath = path.replace(/\/[^/]+\.MBR$/i, ''); // strip the member from path
+      // Strip member from string path
+      cacheKey = path.replace(/\/[^/]+\.MBR$/i, '');
+      lookupPath = cacheKey;
     }
 
-    const cached = this.ccsidCache.get(fileObjPath);
+    // Check cache
+    const cached = this.ccsidCache.get(cacheKey);
     if (cached) {
-      if (!cached.createdAt || cached.createdAt + timeToLive >= Date.now()) {
+      if (!cached.createdAt || cached.createdAt + CCSID_CACHE_TTL >= Date.now()) {
         // cached ccsid still valid
         return cached.value;
       }
       // clear the stale cached ccsid
-      this.ccsidCache.delete(fileObjPath);
+      this.ccsidCache.delete(cacheKey);
     }
 
-    // Take {DOES_THIS_WORK: `YESITDOES`} away, and all of a sudden names with # aren't found.
-    const result = await this.sendCommand({ command: `${this.remoteFeatures.attr} -p "${fileObjPath}" CCSID`, env: { DOES_THIS_WORK: `YESITDOES` } });
+    // Call getAttributes to fetch CCSID 
+    const attrs = await this.getContent().getAttributes(lookupPath, 'CCSID');
+    const ccsid = Number(attrs?.CCSID) || 0;
 
-    if (result.code === 0) {
-      const pieces = result.stdout.split('=');
-      if (pieces.length === 2) {
-        const ccsid = Number(pieces[1]) || 0;
-        if (ccsid !== 0) {
-          // save result to cache
-          this.ccsidCache.set(fileObjPath, { value: ccsid, createdAt: Date.now() })
-          return ccsid;
-        }
-      }
+    // Save to cache if valid
+    if (ccsid !== 0) {
+      this.ccsidCache.set(cacheKey, { value: ccsid, createdAt: Date.now() });
     }
 
-    return 0;
+    return ccsid;
   }
 
   getLibraryIAsp(library: string) {
