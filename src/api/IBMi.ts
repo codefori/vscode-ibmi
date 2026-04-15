@@ -704,11 +704,8 @@ export default class IBMi {
 
           if (!commandShellResult.stderr) {
             let usesBash = this.shell === IBMi.bashShellPath;
-            if (!usesBash) {
-              // make sure chsh is installed
-              if (this.remoteFeatures[`chsh`]) {
-                callbacks.uiErrorHandler(this, `default_not_bash`);
-              }
+            if (!usesBash) {              
+              callbacks.uiErrorHandler(this, `default_not_bash`);
             }
 
             if (usesBash) {
