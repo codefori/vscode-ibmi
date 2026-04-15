@@ -28,16 +28,15 @@ const TERMINAL_TYPES = [
   { key: `IBM-5292-2`, text: `IBM-5292-2 (24x80 color)` },
 ];
 
+const INVALID_TARGET_CCSIDS = ["65534", "65535"]; // invalid target CCSIDs for conversion
+
 /**
  * Helper function to convert CCSID data to SelectItem format
  * @param selected The currently selected CCSID value
  * @returns Array of SelectItem objects with the selected item marked
  */
 const getCCSIDItems = (selected: string): SelectItem[] => {
-  return [
-    { ccsid: "0", description: "Select CCSID" },
-    ...CCSIDS
-  ].map(e => ({
+  return CCSIDS.map(e => ({
     value: e.ccsid,
     description: e.description,
     text: "",
@@ -131,8 +130,15 @@ export class SettingsUI {
 
         setFieldsReadOnly(tempDataTab);  
 
-        const sourceCcsidOptions = getCCSIDItems(config.ccsidConvertFrom).filter(option => ENCODINGS.includes(option.value));
-        const targetCcsidOptions = getCCSIDItems(config.ccsidConvertTo).filter(option => !ENCODINGS.includes(option.value));
+        const sourceCcsidOptions = getCCSIDItems(
+          config.ccsidConvertFrom,
+        ).filter((option) => ENCODINGS.includes(option.value));
+        
+        const targetCcsidOptions = getCCSIDItems(config.ccsidConvertTo).filter(
+          (option) =>
+            !ENCODINGS.includes(option.value) &&
+            !INVALID_TARGET_CCSIDS.includes(option.value),
+        );
 
         const sourceTab =  new Section();
         sourceTab
