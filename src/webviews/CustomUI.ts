@@ -166,7 +166,7 @@ export class CustomHTML extends Section {
   }
 
   protected getHTML(panel: vscode.WebviewPanel, title: string) {
-    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`, 'browser'] as FieldType[];
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`, 'browser', 'heading'] as FieldType[];
     const trees = this.fields.filter(field => [`tree`, 'browser'].includes(field.type));
 
     const complexTabFields = this.fields.filter(field => field.type === `complexTabs`).map(tabs => tabs.complexTabItems?.map(tab => tab.fields));
@@ -175,12 +175,12 @@ export class CustomHTML extends Section {
     return /*html*/`
     <!DOCTYPE html>
     <html lang="en">
-    
+
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${title}</title>
-    
+
         <script type="module">${vscodeweb}</script>
         <style>
             @media only screen and (min-width: 750px) {
@@ -216,24 +216,24 @@ export class CustomHTML extends Section {
               overflow: auto;
             }
 
-            pre{              
+            pre{
               background-color: var(--vscode-textPreformat-background);
             }
             ${this.options?.css || ""}
         </style>
     </head>
-    
+
     <body>
     ${this.options?.fullPage ?
         this.fields.map(field => field.getHTML()).join(``) :
       /* html */ `
-      <vscode-form-container id="laforma">
+      <form id="laforma">
         ${this.fields.map(field => field.getHTML()).join(``)}
-      </vscode-form-container>
+      </form>
         `
-      }        
+      }
     </body>
-    
+
     <script>
         (function () {
             const vscode = acquireVsCodeApi();
@@ -272,7 +272,7 @@ export class CustomHTML extends Section {
                     }
                   }
                   validateInputs(response.field);
-                }              
+                }
               }
             });
 
@@ -310,13 +310,13 @@ export class CustomHTML extends Section {
                 }
               }
 
-              // If not validating a specific field, 
+              // If not validating a specific field,
               // then we can enable/disable certain buttons
               if (!optionalId) {
                 for (const fieldData of groupButtons) {
                   if (fieldData.requiresValidation) {
                     const field = fieldData.id;
-                    
+
                     let button = document.getElementById(field);
                     if (isValid) {
                       button.removeAttribute("disabled");
@@ -328,7 +328,7 @@ export class CustomHTML extends Section {
               }
 
               return isValid;
-            }            
+            }
 
             const treeItemClick = (treeId, type, value) => {
               if(type === "browse"){
@@ -337,7 +337,7 @@ export class CustomHTML extends Section {
               }
               else{
                 vscode.postMessage({ type, data: {treeId, value} });
-              }              
+              }
             }
 
             const doFileRequest = (event, fieldId) => {
@@ -351,7 +351,7 @@ export class CustomHTML extends Section {
             for (const field of inputFields) {
               const fieldElement = document.getElementById(field.id);
               fieldElement.addEventListener("change", (e) => validateInputs());
-            }            
+            }
 
             // This is used to read the file in order to get the real path.
             for (const field of filefields) {
@@ -362,15 +362,15 @@ export class CustomHTML extends Section {
             }
 
             document.addEventListener('DOMContentLoaded', () => {
-              validateInputs(); 
+              validateInputs();
               var currentTree;
-              ${trees.map(tree => /*js*/`
+              ${trees.map(tree => /* javascript */`
                 currentTree = document.getElementById('${tree.id}');
                 currentTree.data = ${JSON.stringify(tree.treeList)};
                 currentTree.addEventListener('vsc-tree-select', (event) => {
                   console.log(JSON.stringify(event.detail));
                   if (event.detail.itemType === 'leaf') {
-                    treeItemClick('${tree.id}', '${tree.treeLeafAction}', event.detail.value);                      
+                    treeItemClick('${tree.id}', '${tree.treeLeafAction}', event.detail.value);
                   }
                 });`
       )}
@@ -378,7 +378,7 @@ export class CustomHTML extends Section {
             ${this.getSpecificScript()}
         }())
     </script>
-    
+
     </html>`;
   }
 }
@@ -387,7 +387,7 @@ export class CustomUI extends CustomHTML {
   /**
    * If no callback is provided, a Promise will be returned.
    * If the page is already opened, it grabs the focus and return no Promise (as it's alreay handled by the first call).
-   * 
+   *
    * @param title the title displayed in the webview tab
    * @param checkData an optional function that can check and updates the data before they are returned. If it returns `false`, the view will stay open.
    * @returns a Promise<Page<T>> if no callback is provided
@@ -464,65 +464,32 @@ export class CustomUI extends CustomHTML {
 
   protected getSpecificScript() {
     return /* javascript */ `
-      const doDone = (event, buttonId) => {
-        console.log('submit now!!', buttonId)
-        if (event)
-            event.preventDefault();
-            
-        var data = document.querySelector('#laforma').data;
+      const theForm = document.querySelector('#laforma');
 
-        if (buttonId) {
-          data['buttons'] = buttonId;
+      const doDone = (event, button) => {
+        console.log('submit now!!', button || 'enter pressed')
+        event?.preventDefault();
+        const isValid = (!button || button.requiresValidation) ? validateInputs() : true;
+        if (isValid) {
+          const data = { buttons: button?.id };
+          new FormData(theForm).entries().forEach(([key, value]) => data[key] = value);
+
+          // Convert checkboxes value to actual boolean
+          checkboxes.forEach(checkbox => data[checkbox] = (data[checkbox] === 'on'));
+
+          vscode.postMessage({ type: 'submit', data });
         }
-
-        // Convert the weird array value of checkboxes to boolean
-        for (const checkbox of checkboxes) {
-          data[checkbox] = (data[checkbox] && data[checkbox].length >= 1);
-        }
-
-        vscode.postMessage({ type: 'submit', data });
       };
+
+      //Pressing enter will submit the form
+      theForm.addEventListener("submit", doDone);
 
       // Now many buttons can be pressed to submit
       for (const fieldData of groupButtons) {
-        const field = fieldData.id;
-        
-        console.log('group button', fieldData, document.getElementById(field));
-        var button = document.getElementById(field);
+        const button = document.getElementById(fieldData.id);
 
-        const submitButtonAction = (event) => {
-          const isValid = fieldData.requiresValidation ? validateInputs() : true;
-          console.log({requiresValidation: fieldData.requiresValidation, isValid});
-          if (isValid) doDone(event, field);
-        }
-
-        button.onclick = submitButtonAction;
-        button.onKeyDown = submitButtonAction;
-      }
-
-      for (const field of submitfields) {
-          const currentElement = document.getElementById(field);
-          if (currentElement.hasAttribute('rows')) {
-            currentElement
-              .addEventListener('keyup', function(event) {
-                  event.preventDefault();
-                  if (event.keyCode === 13 && event.altKey) {
-                    if (validateInputs()) {
-                      doDone();
-                    }
-                  }
-              });
-          } else {
-            currentElement
-              .addEventListener('keyup', function(event) {
-                  event.preventDefault();
-                  if (event.keyCode === 13) {
-                    if (validateInputs()) {
-                      doDone();
-                    }
-                  }
-              });
-          }
+        button.onclick = () => doDone(event, fieldData);
+        button.onKeyDown = () => doDone(event, fieldData);
       }
     `;
   }
@@ -629,13 +596,13 @@ export class Field {
         return /* html */`
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
-              ${this.renderDescription()}              
-              <${tag} class="long-input" id="${this.id}" name="${this.id}" 
-                ${this.inputType ? `type="${this.inputType}"` : ``} 
-                ${this.default ? `value="${this.default}"` : ``} 
-                ${this.readonly ? `readonly` : ``} 
+              ${this.renderDescription()}
+              <${tag} class="long-input" id="${this.id}" name="${this.id}"
+                ${this.inputType ? `type="${this.inputType}"` : ``}
+                ${this.default ? `value="${this.default}"` : ``}
+                ${this.readonly ? `readonly` : ``}
                 ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}
-                ${this.minlength ? `minlength="${this.minlength}"` : ``} 
+                ${this.minlength ? `minlength="${this.minlength}"` : ``}
                 ${this.maxlength ? `maxlength="${this.maxlength}"` : ``}
                 ${this.min ? `min="${this.min}"` : ``}
                 ${this.max ? `max="${this.max}"` : ``}
@@ -683,7 +650,7 @@ export class Field {
               ${this.renderLabel()}
               ${this.renderDescription()}
               <vscode-single-select id="${this.id}" name="${this.id}" ${this.readonly ? `disabled` : ``}>
-                  ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
+                  ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`).join('')}
               </vscode-single-select>
           </vscode-form-group>`;
 

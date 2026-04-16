@@ -175,10 +175,10 @@ export namespace Terminal {
           }
         },
       });
-      emulatorTerminal.show();
     })
 
     if (emulatorTerminal) {
+      emulatorTerminal!.show(false);
       channel.on(`close`, () => {
         channel.destroy();
         writeEmitter.dispose();

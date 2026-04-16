@@ -1,5 +1,5 @@
 import { Ignore } from "ignore";
-import { WorkspaceFolder } from "vscode";
+import { Uri, WorkspaceFolder } from "vscode";
 import Instance from "./Instance";
 import { ComponentRegistry } from './api/components/manager';
 import { ConnectionManager } from "./api/configuration/config/ConnectionManager";
@@ -8,6 +8,7 @@ import { CustomEditor } from "./editors/customEditorProvider";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { ActionTools } from "./api/actions";
 import { VscodeTools } from "./ui/Tools";
+import { SearchTools } from "./api/SearchTools";
 import { CustomUI } from "./webviews/CustomUI";
 
 export interface CodeForIBMi {
@@ -19,7 +20,8 @@ export interface CodeForIBMi {
   deployTools: typeof DeployTools,
   actionTools: typeof ActionTools,
   componentRegistry: ComponentRegistry,
-  connectionManager: ConnectionManager
+  connectionManager: ConnectionManager,
+  searchTools: typeof SearchTools
 }
 
 export interface DeploymentParameters {
@@ -27,6 +29,7 @@ export interface DeploymentParameters {
   workspaceFolder: WorkspaceFolder
   remotePath: string
   ignoreRules?: Ignore
+  selectedFiles?: Uri[]
 }
 
 export * from "./api/types";

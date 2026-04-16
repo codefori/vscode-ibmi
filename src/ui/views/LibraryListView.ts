@@ -389,7 +389,7 @@ async function changeCurrentLibrary(library: string) {
   const storage = instance.getStorage();
   if (connection && storage) {
     const config = connection.getConfig();
-    const commandResult = await connection.runCommand({ command: `CHGCURLIB ${library}`, noLibList: true });
+    const commandResult = await connection.runCommand({ command: `QSYS/CHGCURLIB ${library}`, noLibList: true });
     if (commandResult.code === 0) {
       const currentLibrary = connection.upperCaseName(config.currentLibrary);
       config.currentLibrary = library;

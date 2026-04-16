@@ -314,7 +314,7 @@ export default class IBMiContent {
       if (this.config.autoClearTempData) {
         Promise.allSettled([
           this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` }),
-          deleteTable ? this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
+          deleteTable ? this.ibmi.runCommand({ command: `QSYS/DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
         ]);
       }
 
@@ -467,7 +467,7 @@ export default class IBMiContent {
         .filter(lib => !libraries.find(l => l.name === lib.name))
         .forEach(lib => libraries.push(lib));
     }
-    return libraries;
+    return libraries.sort((a, b) => { return a.name.localeCompare(b.name) });
   }
 
   /**
@@ -507,7 +507,7 @@ export default class IBMiContent {
     const localVariants = this.ibmi.variantChars.local;
     let translateName = false;
     if (sourceFilesOnly) {
-      //DSPFD only      
+      //DSPFD only
       createOBJLIST = [
         `with SRCFILES as (`,
         `  select `,
@@ -541,7 +541,7 @@ export default class IBMiContent {
         `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `  OBJOWNER         as OWNER,`,
         `  OBJDEFINER       as CREATED_BY`,
-        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary !== 'QSYS' ? localLibrary : localLibrary.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`,
       ];
     }
     else {

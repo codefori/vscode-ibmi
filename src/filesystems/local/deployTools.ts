@@ -85,9 +85,10 @@ export namespace DeployTools {
    * @param workspaceIndex if no index is provided, a prompt will be shown to pick one if there are multiple workspaces,
    * otherwise the current workspace will be used.
    * @param method if no method is provided, a prompt will be shown to pick the deployment method.
+   * @param selectedFiles if the "selected" deployment method is used, these files will be deployed.
    * @returns the index of the deployed workspace or `undefined` if the deployment failed
    */
-  export async function launchDeploy(workspaceIndex?: number, method?: DeploymentMethod): Promise<{ remoteDirectory: string, workspaceId: number } | undefined> {
+  export async function launchDeploy(workspaceIndex?: number, method?: DeploymentMethod, selectedFiles?: Uri[]): Promise<{ remoteDirectory: string, workspaceId: number } | undefined> {
     const folder = await Deployment.getWorkspaceFolder(workspaceIndex);
     if (folder) {
       const remotePath = getRemoteDeployDirectory(folder);
@@ -131,7 +132,8 @@ export namespace DeployTools {
           const parameters: DeploymentParameters = {
             workspaceFolder: folder,
             remotePath,
-            method
+            method,
+            selectedFiles
           };
 
           if (await deploy(parameters)) {
@@ -144,7 +146,7 @@ export namespace DeployTools {
         }
       } else {
         if (await vscode.window.showErrorMessage(`Chosen location (${folder.uri.fsPath}) is not configured for deployment.`, 'Set deploy location')) {
-          setDeployLocation(undefined, folder, buildPossibleDeploymentDirectory(folder));
+          setDeployLocation(undefined, folder, buildPossibleDeploymentDirectory(folder), method, selectedFiles);
         }
       }
     }
@@ -189,6 +191,10 @@ export namespace DeployTools {
               const { uploads, relativeRemoteDeletes } = await getDeployCompareFiles(parameters, progress)
               files.push(...uploads);
               deletes.push(...relativeRemoteDeletes);
+              break;
+
+            case "selected":
+              files.push(...parameters.selectedFiles || []);
               break;
 
             case "all":
@@ -337,7 +343,7 @@ export namespace DeployTools {
     return (await Deployment.findFiles(parameters, "**/*", "**/.git*"));
   }
 
-  export async function setDeployLocation(node: any, workspaceFolder?: WorkspaceFolder, value?: string) {
+  export async function setDeployLocation(node: any, workspaceFolder?: WorkspaceFolder, value?: string, method?: DeploymentMethod, selectedFiles?: Uri[]) {
     const path = node?.path || await vscode.window.showInputBox({
       prompt: `Enter IFS directory to deploy to`,
       value
@@ -357,7 +363,7 @@ export namespace DeployTools {
         instance.fire(`deployLocation`);
 
         if (await vscode.window.showInformationMessage(`Deployment location set to ${path}`, `Deploy now`)) {
-          vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, chosenWorkspaceFolder.index);
+          vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, chosenWorkspaceFolder.index, method, selectedFiles);
         }
       }
     }

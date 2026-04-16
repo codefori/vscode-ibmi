@@ -34,7 +34,7 @@ export type ActionTarget = {
 }
 
 const actionUsed: Map<string, number> = new Map;
-const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE|FILE|MENU)\((?<object>.+?)\)/;
+const PARM_REGEX = / (PNLGRP|OBJ|PGM|MODULE|FILE|MENU)\((?<object>.+?)\)/;
 
 export function registerActionTools(context: vscode.ExtensionContext) {
   context.subscriptions.push(
@@ -421,7 +421,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           }
                           else if (evfeventInfo.object && evfeventInfo.library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
-                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfo.library}/${evfeventInfo.object}.`) + CompileTools.NEWLINE);
+                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfos[0].library}/${evfeventInfos[0].object}.`) + CompileTools.NEWLINE);
                               await refreshDiagnosticsFromServer(instance, evfeventInfos);
                               problemsFetched = true;
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
@@ -676,10 +676,10 @@ function getObjectsFromJoblog(stderr: string): CommandObject[] | undefined {
   const objects: CommandObject[] = [];
 
   // Filter lines with EVFEVENT info from server.
-  const joblogLines = stderr.split(`\n`).filter(line => line.match(/:  EVFEVENT:/i));
+  const joblogLines = stderr.split(`\n`).filter(line => line.match(/:[ ]+EVFEVENT:/i));
 
   for (const joblogLine of joblogLines) {
-    const evfevent = joblogLine.match(/:  EVFEVENT:(.*)/i) || '';
+    const evfevent = joblogLine.match(/:[ ]+EVFEVENT:(.*)/i) || '';
     if (evfevent.length) {
       const object = evfevent[1].trim().split(/[,\|/]/);
       if (object) {

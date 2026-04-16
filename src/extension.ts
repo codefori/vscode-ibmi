@@ -6,6 +6,7 @@ import { commands, ExtensionContext, languages, window, workspace } from "vscode
 
 import path from "path";
 import IBMi from "./api/IBMi";
+import { SearchTools } from "./api/SearchTools";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
@@ -147,7 +148,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     deployTools: DeployTools,
     actionTools: ActionTools,
     componentRegistry: extensionComponentRegistry,
-    connectionManager: IBMi.connectionManager
+    connectionManager: IBMi.connectionManager,
+    searchTools: SearchTools
   };
 }
 

@@ -28,6 +28,7 @@ export interface ConnectionOptions {
 
 export default class Instance {
   private connection: IBMi | undefined;
+  connected?: Promise<ConnectionResult>;
 
   private output = {
     channel: vscode.window.createOutputChannel(`Code for IBM i`),
@@ -99,7 +100,7 @@ export default class Instance {
             });
           }
 
-          this.disconnect();
+          this.disconnect(reconnect);
 
           if (reconnect) {
             await this.connect({ ...options, reconnecting: true });
@@ -111,7 +112,7 @@ export default class Instance {
       }
     };
 
-    return VscodeTools.withContext("code-for-ibmi:connecting", async () => {
+    this.connected = VscodeTools.withContext("code-for-ibmi:connecting", async () => {
       while (true) {
         let customError: string | undefined;
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: options.data.name, cancellable: true }, async (p, cancelToken) => {
@@ -145,7 +146,7 @@ export default class Instance {
           await this.setConnection(connection);
           break;
         } else {
-          await this.disconnect();
+          await this.disconnect(options.reconnecting);
           if (options.reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
             modal: true,
             detail: `Reconnection has failed. Would you like to try again?\n\n${customError || `No error provided.`}`
@@ -162,9 +163,20 @@ export default class Instance {
 
       return result;
     });
+
+    return this.connected;
   }
 
-  async disconnect() {
+  async disconnect(keepTabsOpened?: boolean) {
+    delete this.connected;
+    if (!keepTabsOpened) {
+      vscode.window.tabGroups.close(
+        vscode.window.tabGroups.all
+          .flatMap(group => group.tabs)
+          .filter(tab => tab.input instanceof vscode.TabInputText && ["member", "streamfile", "object"].includes(tab.input.uri.scheme))
+      );
+    }
+
     await this.setConnection();
 
     await Promise.all([

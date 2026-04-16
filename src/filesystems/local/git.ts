@@ -85,7 +85,7 @@ function setupBranchLibrary(currentBranch: string, content: IBMiContent, connect
       window.showInformationMessage(`Would you like to create a new library ${newBranchLib} for this branch?`, `Yes`, `No`).then(answer => {
         if (answer === `Yes`) {
           const escapedText = currentBranch.replace(/'/g, `''`);
-          connection.runCommand({ command: `CRTLIB LIB(${newBranchLib}) TEXT('${escapedText}') TYPE(*TEST)`, noLibList: true })
+          connection.runCommand({ command: `QSYS/CRTLIB LIB(${newBranchLib}) TEXT('${escapedText}') TYPE(*TEST)`, noLibList: true })
             .then((createResult) => {
               if (createResult && createResult.code === 0) {
                 window.showInformationMessage(`Library ${newBranchLib} created. Use '&BRANCHLIB' as a reference to it.`, `Create filter`).then(answer => {

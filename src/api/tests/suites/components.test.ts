@@ -62,7 +62,7 @@ describe('Component Tests', () => {
       tempMbr = `O_ABC`.concat(connection!.variantChars.local);
 
     const result = await connection!.runCommand({
-      command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+      command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
       environment: 'ile'
     });
     if (result.code === 0) {
@@ -78,7 +78,7 @@ describe('Component Tests', () => {
       finally {
         // Cleanup...
         await connection!.runCommand({
-          command: `DLTF ${tempLib}/${tempSPF}`,
+          command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
           environment: 'ile'
         });
       }

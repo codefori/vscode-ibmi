@@ -3,7 +3,7 @@ import IBMi from './IBMi';
 import { Tools } from './Tools';
 import { IBMiMember, SearchHit, SearchResults, CommandResult } from './types';
 
-export namespace Search {
+export namespace SearchTools {
 
   function parseHitPath(hit: SearchHit): IBMiMember {
     const parts = hit.path.split('/');
@@ -122,12 +122,13 @@ export namespace Search {
           stdin: searchTerm
         });
 
-        if (grepRes.code == 0) {
+        if (grepRes.code == 0 || grepRes.stdout) {
           return {
             term: searchTerm,
             hits: parseGrepOutput(grepRes.stdout)
           }
         }
+
       } else {
         throw new Error(`Grep must be installed on the remote system.`);
       }

@@ -8,12 +8,15 @@ import { runAction } from "../ui/actions";
 import { refreshDiagnosticsFromServer } from "../ui/diagnostics";
 import { BrowserItem } from "../ui/types";
 
-type CommandOrigin = "editor" | "objectBrowser" | "ifsBrowser";
+type CommandOrigin = "editor" | "objectBrowser" | "ifsBrowser" | "commandPalette";
 
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [
     commands.registerCommand(`code-for-ibmi.runAction`, async (item: (CommandOrigin | TreeItem | BrowserItem | Uri), items?: (TreeItem | BrowserItem | Uri)[], action?: Action, method?: DeploymentMethod, workspaceFolder?: WorkspaceFolder) => {
       let actionMessage: string;
+      if (!item && !items && !action && !method && !workspaceFolder) {
+        item = "commandPalette";
+      }
       const connection = instance.getConnection()!;
       if (connection) {
         const editor = window.activeTextEditor;

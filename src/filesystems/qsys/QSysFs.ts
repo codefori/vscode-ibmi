@@ -35,7 +35,8 @@ export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
 export function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
     const parameters = parse(uri.query);
     return {
-        readonly: parameters.readonly === `true`
+        readonly: parameters.readonly === `true`,
+        libraries: parameters.libraries as string | undefined
     };
 }
 
@@ -205,7 +206,7 @@ export class QSysFS implements vscode.FileSystemProvider {
 
             if (!content.length) { //Coming from "Save as"
                 const addMember = await connection.runCommand({
-                    command: `ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
+                    command: `QSYS/ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
                     noLibList: true
                 });
                 if (addMember.code === 0) {
@@ -252,7 +253,26 @@ export class QSysFS implements vscode.FileSystemProvider {
                     .map(srcPF => [srcPF.name, vscode.FileType.Directory]);
             }
             else if (uri.path === '/') {
-                return (await connection.runSQL(`select OBJNAME from table (QSYS2.OBJECT_STATISTICS ('*ALLSIMPLE', 'LIB', '*ALLSIMPLE'))`))
+                let statement = `select OBJNAME from table (QSYS2.OBJECT_STATISTICS ('*ALLSIMPLE', 'LIB', '*ALLSIMPLE'))`;
+                
+                const fsOptions = parseFSOptions(uri);
+                if (fsOptions.libraries) {
+                    let libraries: string[];
+                    
+                    // Check if it's a reference to the library list
+                    if (fsOptions.libraries.toLowerCase() === 'librarylist') {
+                        libraries = connection.getConfig().libraryList;
+                    } else {
+                        // Parse comma-separated library names
+                        libraries = fsOptions.libraries.split(',').map(lib => lib.trim()).filter(Boolean);
+                    }
+                    
+                    if (libraries.length > 0) {
+                        statement += ` where OBJNAME in (${libraries.map(entry => `'${connection.upperCaseName(entry)}'`).join(`, `)})`;
+                    }
+                }
+
+                return (await connection.runSQL(statement))
                     .map(row => [row.OBJNAME as string, vscode.FileType.Directory]);
             }
         }
@@ -265,7 +285,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             const qsysPath = Tools.parseQSysPath(uri.path);
             if (qsysPath.library && !await connection.getContent().checkObject({ library: "QSYS", name: qsysPath.library, type: "*LIB" })) {
                 const createLibrary = await connection.runCommand({
-                    command: `CRTLIB LIB(${qsysPath.library})`,
+                    command: `QSYS/CRTLIB LIB(${qsysPath.library})`,
                     noLibList: true
                 });
                 if (createLibrary.code !== 0) {
@@ -274,7 +294,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
             if (qsysPath.name) {
                 const createFile = await connection.runCommand({
-                    command: `CRTSRCPF FILE(${qsysPath.library}/${qsysPath.name}) RCDLEN(112)`,
+                    command: `QSYS/CRTSRCPF FILE(${qsysPath.library}/${qsysPath.name}) RCDLEN(112)`,
                     noLibList: true
                 });
                 if (createFile.code !== 0) {
