@@ -115,6 +115,9 @@ async function updateConnectedBar() {
     const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.environment.actions.focus)`;
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
+    const sqlJobId = connection.getSqlJobId();
+    const sqlJobInfo = sqlJobId ? `$(database) Job: ${sqlJobId}` : `$(database) Job: Not available`;
+    
     connectedBarItemTooltips.push(
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       terminalMenuItem,
@@ -123,7 +126,8 @@ async function updateConnectedBar() {
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
         :
-        `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
+        `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`,
+      sqlJobInfo
     );
     connectedBarItem.tooltip = new vscode.MarkdownString(connectedBarItemTooltips.join(`\n\n---\n\n`), true);
     connectedBarItem.tooltip.isTrusted = true;
