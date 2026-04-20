@@ -116,7 +116,7 @@ async function updateConnectedBar() {
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
     const sqlJobId = connection.getSqlJobId();
-    const sqlJobInfo = sqlJobId ? `$(database) Job: ${sqlJobId}` : `$(database) Job: Not available`;
+    const sqlJobInfo = sqlJobId ? `[$(database) Job: ${sqlJobId}](command:code-for-ibmi.copyJobId)` : `$(database) Job: Not available`;
     
     connectedBarItemTooltips.push(
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
