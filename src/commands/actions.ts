@@ -1,5 +1,5 @@
 import path from "path";
-import { commands, Disposable, l10n, TreeItem, Uri, window, WorkspaceFolder } from "vscode";
+import { commands, Disposable, env, l10n, TreeItem, Uri, window, WorkspaceFolder } from "vscode";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import Instance from "../Instance";
@@ -174,6 +174,17 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
           const nameDetail = path.parse(object);
           refreshDiagnosticsFromServer(instance, [{ library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }], options.keepDiagnostics);
         }
+      }
+    }),
+
+    commands.registerCommand(`code-for-ibmi.copyJobId`, async () => {
+      const connection = instance.getConnection();
+      const sqlJobId = connection?.getSqlJobId();
+      if (sqlJobId) {
+        await env.clipboard.writeText(sqlJobId);
+        window.showInformationMessage(`Job ID copied: ${sqlJobId}`);
+      } else {
+        window.showWarningMessage(`No job ID available`);
       }
     }),
   ]

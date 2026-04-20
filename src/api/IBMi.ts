@@ -1195,6 +1195,10 @@ export default class IBMi {
     return this.sqlJob !== undefined;
   }
 
+  public getSqlJobId() {
+    return this.sqlJob?.id;
+  }
+
   /**
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used
