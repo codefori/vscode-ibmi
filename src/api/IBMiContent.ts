@@ -940,7 +940,7 @@ export default class IBMiContent {
 
   async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
-      command: this.toCl(`CHKOBJ`, {
+      command: this.toCl(`QSYS/CHKOBJ`, {
         obj: `${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`,
         objtype: object.type.toLocaleUpperCase(),
         aut: authorities.join(" "),
@@ -1110,7 +1110,7 @@ export default class IBMiContent {
     paths = Array.isArray(paths) ? paths : [paths];
     const toPathIsDir = await this.isDirectory(Tools.escapePath(toPath));
     for (const path of paths) {
-      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ('}'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
+      const result = await this.ibmi.runCommand({ command: `QSYS/COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ('}'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
       if (result.code !== 0) {
         return result;
       }
