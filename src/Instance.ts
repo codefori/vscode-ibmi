@@ -69,12 +69,28 @@ export default class Instance {
 
     this.resetOutput();
     connection.appendOutput = (message) => {
-      if (this.output.writeCount > 150) {
+      const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
+      const persistOutput = config.get<boolean>(`persistOutputOnConnect`);
+      
+      if (!persistOutput && this.output.writeCount > 150) {
         this.resetOutput();
       }
 
-      this.output.channel.append(message);
-      this.output.content += message;
+      const now = new Date();
+      const timestamp = now.toLocaleString('en-US', {
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        fractionalSecondDigits: 3
+      });
+      const timestampedMessage = `[${timestamp}] ${message}`;
+      
+      this.output.channel.append(timestampedMessage);
+      this.output.content += timestampedMessage;
       this.output.writeCount++;
     }
 

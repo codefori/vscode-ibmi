@@ -148,7 +148,18 @@ export default class IBMi {
   maximumArgsLength = 0;
 
   public appendOutput: (text: string) => void = (text) => {
-    process.stdout.write(text);
+    const now = new Date();
+    const timestamp = now.toLocaleString('en-US', {
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      fractionalSecondDigits: 3
+    });
+    process.stdout.write(`[${timestamp}] ${text}`);
   };
 
   /**
