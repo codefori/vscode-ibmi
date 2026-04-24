@@ -519,7 +519,7 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
-      callbacks.progress({ message: `Checking Code for IBM i components.` });
+      callbacks.progress({ message: `Checking Mapepire component.` });
 
       // We always start up Mapepire first
       await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
@@ -553,7 +553,7 @@ export default class IBMi {
       }
 
       // Then check the remaining components
-
+      callbacks.progress({ message: `Checking Code for IBM i components.` });
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
       const componentStates = this.componentManager.getComponentStates();
