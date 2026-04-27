@@ -1137,7 +1137,7 @@ export default class IBMiContent {
    */
   async getSQLRoutineSignature(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
     return (await this.ibmi.runSQL(
-      /* sql */`select hash(ROUTINEDEF) SIGNATURE from qsys2.sysroutines where routine_type = '${type}' and rtnschema = '${library}' and RTNNAME = '${name}' fetch first row only`
+      /* sql */`select hash_value(ROUTINEDEF) SIGNATURE from qsys2.sysroutines where routine_type = '${type}' and rtnschema = '${library}' and RTNNAME = '${name}' fetch first row only`
     )).at(0)?.SIGNATURE as string;
   }
 
