@@ -124,7 +124,7 @@ export async function newConnection(reloadSettings?: boolean) {
 
 export async function disposeConnection(connection?: IBMi) {
   if (connection) {
-    connection.disconnect();
+    await connection.disconnect();
     testStorage.save();
     testConfig.save();
   }

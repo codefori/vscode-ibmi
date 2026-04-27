@@ -258,9 +258,9 @@ export default class IBMi {
       });
 
       if (callbacks.cancelEmitter) {
-        callbacks.cancelEmitter.once('cancel', () => {
+        callbacks.cancelEmitter.once('cancel', async () => {
           wasCancelled = true;
-          this.disconnect();
+          await this.disconnect();
         });
       }
 
@@ -969,7 +969,7 @@ export default class IBMi {
       };
 
     } catch (e: any) {
-      this.disconnect();
+      await this.disconnect();
 
       let error = e.message;
       if (wasCancelled) {
@@ -1158,8 +1158,9 @@ export default class IBMi {
     };
   }
 
-  disconnect() {
+  async disconnect() {
     if (this.client?.connection) {
+      await (await this.getComponent<Mapepire>(Mapepire.ID))?.endJobs();
       //Close the connection and triggers its 'end' event
       this.client.dispose();
     }
@@ -1177,7 +1178,6 @@ export default class IBMi {
       delete this.sqlJob;
       delete this.splfUserData;
     }
-    await (await this.getComponent<Mapepire>(Mapepire.ID))?.endJobs();
     delete this.client;
   }
 
