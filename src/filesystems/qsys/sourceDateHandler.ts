@@ -123,7 +123,15 @@ export class SourceDateHandler {
       if (document.uri.scheme === `member`) {
         clearTimeout(this.timeout);
         this.timeout = setTimeout(() => this._diffChangeTimeout(document), this.timeoutDelay);
-        this._diffOnDidChange(event);
+        if (document.isDirty) {
+          this._diffOnDidChange(event);
+        } else if (event.contentChanges.length > 0) {
+          // Document is clean but has content changes — this is an external reload
+          // (e.g. the member was edited on the host via SEU while open in VS Code).
+          // readFile() already re-downloaded the source dates, so we just need to
+          // redraw the gutter with the fresh baseDates.
+          this._deferredRefreshGutter(document);
+        }
       }
     }
   }
@@ -235,6 +243,7 @@ export class SourceDateHandler {
           const activeEditor = vscode.window.activeTextEditor;
           if (activeEditor && activeEditor.document.uri.fsPath === document.uri.fsPath) {
             activeEditor.setDecorations(annotationDecoration, lineGutters);
+            activeEditor.setDecorations(lineDecor, []);
           }
 
         } else if (sourceDates) {
@@ -315,6 +324,12 @@ export class SourceDateHandler {
             activeEditor.setDecorations(lineDecor, changedLined);
           }
         }
+      } else {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor && activeEditor.document.uri.fsPath === document.uri.fsPath) {
+          activeEditor.setDecorations(annotationDecoration, []);
+          activeEditor.setDecorations(lineDecor, []);
+        }
       }
     }
   }
@@ -370,6 +385,10 @@ export class SourceDateHandler {
       const editor = vscode.window.activeTextEditor;
       if (editor) {
         this._diffRefreshGutter(editor.document);
+        // Reassigning the selection fires onDidChangeTextEditorSelection, which
+        // causes other extensions (e.g. the RPGLE fixed-format ruler) to redraw
+        // in the updated decoration context rather than bleeding into the gutter.
+        editor.selection = editor.selection;
       }
     }
   }
