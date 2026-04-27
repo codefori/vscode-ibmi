@@ -77,16 +77,14 @@ export default class Instance {
       }
 
       const now = new Date();
-      const timestamp = now.toLocaleString('en-US', {
-        hour12: false,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        fractionalSecondDigits: 3
-      });
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hour = String(now.getHours()).padStart(2, '0');
+      const minute = String(now.getMinutes()).padStart(2, '0');
+      const second = String(now.getSeconds()).padStart(2, '0');
+      const millisecond = String(now.getMilliseconds()).padStart(3, '0');
+      const timestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
       const timestampedMessage = `[${timestamp}] ${message}`;
       
       this.output.channel.append(timestampedMessage);
