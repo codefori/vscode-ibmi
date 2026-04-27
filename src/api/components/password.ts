@@ -53,7 +53,7 @@ export class PasswordManager implements IBMiComponent {
           call QSYS2.QCMDEXC('grtobjaut ${connection.getConfig().tempLibrary}/${PasswordManager.ID} *PGM *PUBLIC *ALL');
         `);
         const compile = await connection.runCommand({
-          command: `RUNSQLSTM SRCSTMF('${source}') COMMIT(*NONE) NAMING(*SQL) OPTION(*NOSRC)`,
+          command: `QSYS/RUNSQLSTM SRCSTMF('${source}') COMMIT(*NONE) NAMING(*SQL) OPTION(*NOSRC)`,
           noLibList: true
         });
         if (compile.code !== 0) {
