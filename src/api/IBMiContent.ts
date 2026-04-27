@@ -718,9 +718,7 @@ export default class IBMiContent {
         ${singleMemberExtension ? `${singleMember ? `AND` : `WHERE`} RTRIM(CAST(b.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
-    const start = Date.now();
     const results = await this.ibmi.runSQL(statement);
-    console.log(`getMemberList ${library}/${sourceFile}: ${results.length} members in ${Date.now() - start}ms`);
     if (results.length) {
       const asp = this.ibmi.getIAspName(Number(results[0]?.ASP));
       return results.map(result => ({
