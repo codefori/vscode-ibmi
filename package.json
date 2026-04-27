@@ -418,6 +418,11 @@
 					"default": true,
 					"description": "If enabled, will clear the IBM i Output before an Action is run."
 				},
+				"code-for-ibmi.persistOutputOnConnect": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, will not clear the IBM i Output when connecting to a system. Useful for tracking connection history and timing."
+				},
 				"code-for-ibmi.defaultOpenMode": {
 					"type": "string",
 					"default": "edit",
