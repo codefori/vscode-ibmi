@@ -712,7 +712,7 @@ export default class IBMiContent {
                  FROM TABLE (
                      qsys2.PARTITION_STATISTICS(
                        RPAD(A.OBJLIB, 10), RPAD(A.OBJNAME, 10))
-                   ) OD
+                   ) ML
              ) B
         ${singleMember ? `WHERE RTRIM(b.SYSTEM_TABLE_MEMBER) like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ``}
         ${singleMemberExtension ? `${singleMember ? `AND` : `WHERE`} RTRIM(CAST(b.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
