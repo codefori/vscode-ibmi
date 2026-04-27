@@ -81,7 +81,7 @@ export class ComponentManager {
 
     component.reset?.();
 
-    await existingComponent.update(await existingComponent.getInstallDirectory());
+    await existingComponent.update();
 
     return {
       id: component.getIdentification(),
@@ -162,10 +162,14 @@ export class ComponentManager {
   /**
    * Returns the latest version of an installed component, or fetch a specific version
    */
-  get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): T | undefined {
+  async get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): Promise<T | undefined> {
     const componentEngine = this.registered.find(c => c.component.getIdentification().name === id);
-
     if (componentEngine && (options.ignoreState || componentEngine.getState().status === `Installed`)) {
+      const currentState = await componentEngine.getCurrentState();
+      if(currentState.remoteSignature !== componentEngine.getState().remoteSignature) {      
+        const identification = componentEngine.component.getIdentification();
+        throw new Error(`Component ${identification.name} version ${identification.version} local signature doesn't match its remote signature. It may have been tampered with and may not be safe to use. Clear your temporary folder and library and reconnect.`, { cause: "component_signature_mismatch" as ConnectionErrorCode });
+      }
       return componentEngine.component as T;
     }
   }

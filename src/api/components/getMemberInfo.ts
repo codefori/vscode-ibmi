@@ -7,7 +7,7 @@ import { IBMiMember } from "../types";
 export class GetMemberInfo implements IBMiComponent {
   static ID = "GetMemberInfo";
   private static readonly VERSION = 4;
-  private static readonly SIGNATURE = "8522C401AF65D345C8417CFF089CD3E2";
+  private static readonly SIGNATURE = "D94305996679982EA232458A89C45EC5BE60DA9E17D138CF44981E002A95F7E5";
   private static readonly FUNCTION_NAME = `MBRINF${GetMemberInfo.VERSION.toString().padStart(4, '0')}`;
 
   getIdentification() {

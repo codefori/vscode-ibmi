@@ -16,11 +16,11 @@ describe('Component Tests', () => {
   });
 
   it('Check getMemberInfo', async () => {
-    const component = connection?.getComponent<GetMemberInfo>(GetMemberInfo.ID)!;
+    const component = await connection?.getComponent<GetMemberInfo>(GetMemberInfo.ID)!;
 
-    expect(component).toBeTruthy();
+    expect(component).toBeDefined();
 
-    const memberInfoA = await component.getMemberInfo(connection, `QSYSINC`, `H`, `MATH`);
+    const memberInfoA = await component!.getMemberInfo(connection, `QSYSINC`, `H`, `MATH`);
     expect(memberInfoA).toBeTruthy();
     expect(memberInfoA?.library).toBe(`QSYSINC`);
     expect(memberInfoA?.file).toBe(`H`);
@@ -28,7 +28,7 @@ describe('Component Tests', () => {
     expect(memberInfoA?.extension).toBe(`C`);
     expect(memberInfoA?.text).toBe(`STANDARD HEADER FILE MATH`);
 
-    const memberInfoB = await component.getMemberInfo(connection, `QSYSINC`, `H`, `MEMORY`);
+    const memberInfoB = await component!.getMemberInfo(connection, `QSYSINC`, `H`, `MEMORY`);
     expect(memberInfoB).toBeTruthy();
     expect(memberInfoB?.library).toBe(`QSYSINC`);
     expect(memberInfoB?.file).toBe(`H`);
@@ -37,7 +37,7 @@ describe('Component Tests', () => {
     expect(memberInfoB?.text).toBe(`C++ HEADER`);
 
     try {
-      await component.getMemberInfo(connection, `QSYSINC`, `H`, `OH_NONO`);
+      await component!.getMemberInfo(connection, `QSYSINC`, `H`, `OH_NONO`);
     } catch (error: any) {
       expect(error).toBeInstanceOf(Tools.SqlError);
       expect(error.sqlstate).toBe("38501");
@@ -53,7 +53,7 @@ describe('Component Tests', () => {
       environment: 'ile'
     });
     if (result.code === 0) {
-      const memberInfoC = await component.getMemberInfo(connection, tempLib, tempSPF, tempMbr);
+      const memberInfoC = await component!.getMemberInfo(connection, tempLib, tempSPF, tempMbr);
       expect(memberInfoC).toBeTruthy();
       expect(memberInfoC?.library).toBe(tempLib);
       expect(memberInfoC?.file).toBe(tempSPF);
@@ -64,7 +64,7 @@ describe('Component Tests', () => {
   });
 
   it('Can get component no matter the state', async () => {
-    const componentA = connection.getComponent<CustomCLI>(CustomCLI.ID, { ignoreState: true });
+    const componentA = await connection.getComponent<CustomCLI>(CustomCLI.ID, { ignoreState: true });
     expect(componentA).toBeDefined();
     expect(componentA?.getIdentification().version).toBe(1);
     expect(componentA?.getIdentification().userManaged).toBe(true);

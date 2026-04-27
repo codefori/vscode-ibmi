@@ -528,7 +528,7 @@ export default class IBMi {
       // Check Mapepire state after startup
       this.appendOutput(`Mapepire state after startup: ${mapepireState?.status || 'not found'}\n`);
 
-      const mapepire = this.getComponent<Mapepire>(Mapepire.ID);
+      const mapepire = await this.getComponent<Mapepire>(Mapepire.ID);
       if (mapepire) {
         const hasJavaInstalled = (this.remoteFeatures.jdk21 || this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
         if (hasJavaInstalled) {
@@ -1177,7 +1177,7 @@ export default class IBMi {
       delete this.sqlJob;
       delete this.splfUserData;
     }
-    await this.getComponent<Mapepire>(Mapepire.ID)?.endJobs();
+    await (await this.getComponent<Mapepire>(Mapepire.ID))?.endJobs();
     delete this.client;
   }
 
@@ -1348,7 +1348,7 @@ export default class IBMi {
     return this.componentManager;
   }
 
-  getComponent<T extends IBMiComponent>(name: string, options?: ComponentSearchProps) {
+  async getComponent<T extends IBMiComponent>(name: string, options?: ComponentSearchProps) {
     return this.componentManager.get<T>(name, options);
   }
 

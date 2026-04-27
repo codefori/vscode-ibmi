@@ -35,8 +35,8 @@ export class IBMiComponentRuntime {
     await this.setState(newState);
   }
 
-  async update(installDirectory: string) {
-    const newState = this.handleState(await this.component.update(this.connection, installDirectory));
+  async update() {
+    const newState = this.handleState(await this.component.update(this.connection, await this.getInstallDirectory()));
     await this.setState(newState);
   }
 
@@ -47,12 +47,10 @@ export class IBMiComponentRuntime {
         this.deprecationWarning();
       }
 
-      const installDirectory = await this.getInstallDirectory();
-      const newState = this.handleState(await this.component.getRemoteState(this.connection, installDirectory));
+      const newState = await this.getCurrentState();
       await this.setState(newState);
-
       if (newState.status !== `Installed` && !identification.userManaged) {
-        await this.update(installDirectory);
+        await this.update();
       }
     }
     catch (error) {
@@ -64,6 +62,10 @@ export class IBMiComponentRuntime {
     }
 
     return this;
+  }
+
+  async getCurrentState(){
+    return this.handleState(await this.component.getRemoteState(this.connection, await this.getInstallDirectory()));
   }
 
   /**
