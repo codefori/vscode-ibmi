@@ -17,7 +17,7 @@ export namespace Password {
 
   export async function changePassword(connection: IBMi, oldPassword: string, newPassword: string) {
       //Use client.execCommand directly so nothing get logged in the output
-      const result = await connection.client?.execCommand(`CALL PGM(QSYS/QSYCHGPW) PARM(('*CURRENT  ') ('${oldPassword}') ('${newPassword}') (X'00000000') (${oldPassword.length} (*INT 4)) (0 (*INT 4)) (${oldPassword.length} (*INT 4)) (0 (*INT 4)))`);
+      const result = await connection.client?.execCommand(`system "CALL PGM(QSYS/QSYCHGPW) PARM(('*CURRENT  ') ('${oldPassword}') ('${newPassword}') (X'00000000') (${oldPassword.length} (*INT 4)) (0 (*INT 4)) (${oldPassword.length} (*INT 4)) (0 (*INT 4)))"`);
       if(result?.code !== 0){
         throw new Error(result?.stderr);
       }
