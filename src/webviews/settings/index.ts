@@ -1,5 +1,6 @@
 import { existsSync } from "fs";
 import vscode, { window } from "vscode";
+import { CCSIDS } from "../../api/CCSIDs";
 import { extensionComponentRegistry } from "../../api/components/manager";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
@@ -9,7 +10,7 @@ import * as certificates from "../../debug/certificates";
 import { instance } from "../../instantiate";
 import { ConnectionConfig, ConnectionData, RemoteConfigFile, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
-import { ComplexTab, CustomUI, Section } from "../CustomUI";
+import { ComplexTab, CustomUI, Section, SelectItem } from "../CustomUI";
 import { checkLoginForm } from "../login";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
@@ -26,6 +27,23 @@ const TERMINAL_TYPES = [
   { key: `IBM-5291-1`, text: `IBM-5291-1 (24x80 monochrome)` },
   { key: `IBM-5292-2`, text: `IBM-5292-2 (24x80 color)` },
 ];
+
+const INVALID_TARGET_CCSIDS = ["65534", "65535"]; // invalid target CCSIDs for conversion
+
+/**
+ * Helper function to convert CCSID data to SelectItem format
+ * @param selected The currently selected CCSID value
+ * @returns Array of SelectItem objects with the selected item marked
+ */
+const getCCSIDItems = (selected: string): SelectItem[] => {
+  return CCSIDS.map(e => ({
+    value: e.ccsid,
+    description: e.description,
+    text: "",
+    selected: selected === e.ccsid
+  }));
+};
+
 
 type LoginSettings = ConnectionData & {
   buttons?: 'submitButton'
@@ -110,12 +128,26 @@ export class SettingsUI {
           .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir, minlength: 1 })
           .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData);
 
-        setFieldsReadOnly(tempDataTab);
+        setFieldsReadOnly(tempDataTab);  
 
-        const sourceTab = new Section();
+        const sourceCcsidOptions = getCCSIDItems(
+          config.ccsidConvertFrom,
+        ).filter((option) => ENCODINGS.includes(option.value));
+        
+        const targetCcsidOptions = getCCSIDItems(config.ccsidConvertTo).filter(
+          (option) =>
+            !ENCODINGS.includes(option.value) &&
+            !INVALID_TARGET_CCSIDS.includes(option.value),
+        );
+
+        const sourceTab =  new Section();
         sourceTab
           .addInput(`sourceASP`, `Source ASP`, `Current ASP is based on the user profile job description and cannot be changed here.`, { default: connection?.getCurrentIAspName() || `*SYSBAS`, readonly: true })
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
+          .addHorizontalRule()
+          .addCheckbox(`ccsidConversionEnabled`,`Automatic Conversion for non UTF compatible CCSIDs`, `When enabled, members with selected source CCSID will be converted to target CCSID`  ,config.ccsidConversionEnabled )
+          .addSelect(`ccsidConvertFrom`, `Source CCSID`, sourceCcsidOptions)
+          .addSelect(`ccsidConvertTo`, `Target CCSID`, targetCcsidOptions)
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter. This also enables date search and sequence view.`, config.sourceDateGutter)
