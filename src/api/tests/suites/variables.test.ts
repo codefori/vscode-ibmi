@@ -62,13 +62,13 @@ describe(`variables tests`, { concurrent: true }, () => {
         { name: "WARCRY", value: "Fus Roh Dah!" },
         { name: "EXPANDED", value: `I am &USERNAME!` }
       );
-      const connectionVariables = new Variables(connection);
+      const connectionVariables = new Variables(connection, { "&WORKDIR": "/home/MYUSER/my-work-dir" });
       expect(connectionVariables.get("&USERNAME")).toBe(connection.currentUser);
       expect(connectionVariables.get("{usrprf}")).toBe(connectionVariables.get("&USERNAME"));
       expect(connectionVariables.get("&HOST")).toBe(connection.currentHost);
       expect(connectionVariables.get("{host}")).toBe(connectionVariables.get("&HOST"));
       expect(connectionVariables.get("&HOME")).toBe(config.homeDirectory);
-      expect(connectionVariables.get("&WORKDIR")).toBe(connectionVariables.get("&HOME"));
+      expect(connectionVariables.get("&WORKDIR")).toBe("/home/MYUSER/my-work-dir");
 
       expect(connectionVariables.get("&CUSTOM")).toBe("value");
       expect(connectionVariables.get("&WARCRY")).toBe("Fus Roh Dah!");
