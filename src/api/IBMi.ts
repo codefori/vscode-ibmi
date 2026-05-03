@@ -148,7 +148,16 @@ export default class IBMi {
   maximumArgsLength = 0;
 
   public appendOutput: (text: string) => void = (text) => {
-    process.stdout.write(text);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    const second = String(now.getSeconds()).padStart(2, '0');
+    const millisecond = String(now.getMilliseconds()).padStart(3, '0');
+    const timestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
+    process.stdout.write(`[${timestamp}] ${text}`);
   };
 
   /**
@@ -519,7 +528,7 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
-      callbacks.progress({ message: `Checking Code for IBM i components.` });
+      callbacks.progress({ message: `Checking Mapepire component.` });
 
       // We always start up Mapepire first
       await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
@@ -553,7 +562,7 @@ export default class IBMi {
       }
 
       // Then check the remaining components
-
+      callbacks.progress({ message: `Checking Code for IBM i components.` });
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
       const componentStates = this.componentManager.getComponentStates();
