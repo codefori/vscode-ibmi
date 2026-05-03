@@ -418,6 +418,11 @@
 					"default": true,
 					"description": "If enabled, will clear the IBM i Output before an Action is run."
 				},
+				"code-for-ibmi.persistOutputOnConnect": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, will not clear the IBM i Output when connecting to a system. Useful for tracking connection history and timing."
+				},
 				"code-for-ibmi.defaultOpenMode": {
 					"type": "string",
 					"default": "edit",
@@ -648,8 +653,7 @@
 						{
 							"type": "member",
 							"extensions": [
-								"RPGLE",
-								"RPG"
+								"RPGLE"
 							],
 							"name": "Create Bound RPG Program (CRTBNDRPG)",
 							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
@@ -661,6 +665,14 @@
 							],
 							"name": "Create Service Program (CRTSRVPGM)",
 							"command": "?CRTSRVPGM SRVPGM(&OPENLIB/&OPENMBR) EXPORT(*ALL) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"RPG"
+							],
+							"name": "Create RPG Program (CRTRPGPGM)",
+							"command": "CRTRPGPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) REPLACE(*NO)"
 						},
 						{
 							"type": "member",
@@ -681,8 +693,7 @@
 						{
 							"type": "member",
 							"extensions": [
-								"RPGLE",
-								"RPG"
+								"RPGLE"
 							],
 							"name": "Create RPG Module (CRTRPGMOD)",
 							"command": "?CRTRPGMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
