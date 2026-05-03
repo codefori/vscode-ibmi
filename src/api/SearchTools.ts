@@ -76,7 +76,7 @@ export namespace SearchTools {
 
         } else {
           // Else, we need to fetch the member info for each hit so we can display the correct extension
-          detailedMembers = await connection.getContent().getMembersInfo(library, sourceFile, hits.map(parseHitPath).map(m => m.name));
+          detailedMembers = await connection.getContent().getMemberList({ library, sourceFile, members: hits.map(parseHitPath).map(m => m.name) });
         }
 
         // Then fix the extensions in the hit

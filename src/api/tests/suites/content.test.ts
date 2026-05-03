@@ -504,7 +504,7 @@ describe('Content Tests', { concurrent: true }, () => {
 
   it('Test member details', async () => {
     const content = connection.getContent()
-    const [memberInfoA] = await content.getMembersInfo(`QSYSINC`, `H`, `MATH`);
+    const [memberInfoA] = await content.getMemberList({ library: `QSYSINC`, sourceFile: `H`, members: `MATH` });
     expect(memberInfoA).toBeTruthy();
     expect(memberInfoA.library).toBe(`QSYSINC`);
     expect(memberInfoA.file).toBe(`H`);
@@ -512,7 +512,7 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(memberInfoA.extension).toBe(`C`);
     expect(memberInfoA.text).toBe(`STANDARD HEADER FILE MATH`);
 
-    const [memberInfoB] = await content.getMembersInfo(`QSYSINC`, `H`, `MEMORY`);
+    const [memberInfoB] = await content.getMemberList({ library: `QSYSINC`, sourceFile: `H`, members: `MEMORY` });
     expect(memberInfoB).toBeTruthy();
     expect(memberInfoB.library).toBe(`QSYSINC`);
     expect(memberInfoB.file).toBe(`H`);
@@ -520,24 +520,24 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(memberInfoB.extension).toBe(`CPP`);
     expect(memberInfoB.text).toBe(`C++ HEADER`);
 
-    const [ohnono] = await content.getMembersInfo(`QSYSINC`, `H`, `OH_NONO`);
+    const [ohnono] = await content.getMemberList({ library: `QSYSINC`, sourceFile: `H`, members: `OH_NONO` });
     expect(ohnono).toBe(undefined);
 
     // Check getMemberInfo for empty member.
-    const tempLib = "QTEMP";
-    const tempSPF = `O_ABC`.concat(connection!.variantChars.local);
-    const tempMbr = `O_ABC`.concat(connection!.variantChars.local);
+    const library = "QTEMP";
+    const sourceFile = `O_ABC`.concat(connection!.variantChars.local);
+    const member = `O_ABC`.concat(connection!.variantChars.local);
 
     const result = await connection!.runCommand({
-      command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+      command: `QSYS/CRTSRCPF ${library}/${sourceFile} MBR(${member})`,
       environment: 'ile'
     });
     if (result.code === 0) {
-      const [memberInfoC] = await content.getMembersInfo(tempLib, tempSPF, tempMbr);
+      const [memberInfoC] = await content.getMemberList({ library, sourceFile, members: member });
       expect(memberInfoC).toBeTruthy();
-      expect(memberInfoC.library).toBe(tempLib);
-      expect(memberInfoC.file).toBe(tempSPF);
-      expect(memberInfoC.name).toBe(tempMbr);
+      expect(memberInfoC.library).toBe(library);
+      expect(memberInfoC.file).toBe(sourceFile);
+      expect(memberInfoC.name).toBe(member);
       expect(memberInfoC.created).toBeTypeOf('object');
       expect(memberInfoC.changed).toBeTypeOf('object');
     }

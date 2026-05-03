@@ -372,20 +372,20 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                   selectionSplit.shift();
                 }
                 const library = selectionSplit[0];
-                const file = selectionSplit[1];
+                const sourceFile = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
-                const [memberInfo] = await connection.getContent().getMembersInfo(library, file, member.name);
+                const [memberInfo] = await connection.getContent().getMemberList({ library, sourceFile, members: member.name });
                 if (!memberInfo) {
-                  window.showWarningMessage(`Source member ${library}/${file}/${member.base} does not exist.`);
+                  window.showWarningMessage(`Source member ${library}/${sourceFile}/${member.base} does not exist.`);
                   return;
                 } else if (memberInfo.name !== member.name || (member.ext && memberInfo.extension !== member.ext)) {
-                  window.showWarningMessage(`Member ${library}/${file}/${member.name} of type ${member.ext} does not exist.`);
+                  window.showWarningMessage(`Member ${library}/${sourceFile}/${member.name} of type ${member.ext} does not exist.`);
                   return;
                 }
 
                 member.base = `${member.name}.${member.ext || memberInfo.extension}`;
-                selection = `${library}/${file}/${member.base}`;
+                selection = `${library}/${sourceFile}/${member.base}`;
               };
 
               // When select is IFS path

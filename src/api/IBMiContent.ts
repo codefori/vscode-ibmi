@@ -679,40 +679,32 @@ export default class IBMiContent {
    * @param filter: the criterias used to list the members
    * @returns
    */
-  async getMemberList(filter: { library: string, sourceFile: string, members?: string, extensions?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
+  async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
     const sort = filter.sort || { order: 'name' };
     const library = this.ibmi.upperCaseName(filter.library);
     const sourceFile = this.ibmi.upperCaseName(filter.sourceFile);
 
-    const memberFilter = parseFilter(filter.members, filter.filterType);
-    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ? this.ibmi.upperCaseName(filter.members).replace(/[*]/g, `%`) : undefined;
+    const members = Array.isArray(filter.members) ? filter.members.join(",") : filter.members;
+    const memberFilter = parseFilter(members, filter.filterType);
+    const singleMember = memberFilter.noFilter && members && !members.includes(",") ? this.ibmi.upperCaseName(members).replace(/[*]/g, `%`) : undefined;
 
     const memberExtensionFilter = parseFilter(filter.extensions, filter.filterType);
     const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? this.ibmi.upperCaseName(filter.extensions).replace(/[*]/g, `%`) : undefined;
 
     const statement = /* sql */
-      `SELECT RTRIM(a.OBJLIB) AS LIBRARY,
-             RTRIM(a.OBJNAME) AS SOURCE_FILE,
-             RTRIM(b.SYSTEM_TABLE_MEMBER) AS NAME,
-             B.AVGROWSIZE AS RECORD_LENGTH,
-             a.IASP_NUMBER AS ASP,
-             COALESCE(RTRIM(CAST(b.SOURCE_TYPE AS VARCHAR(10))), '') AS TYPE,
-             COALESCE(RTRIM(VARCHAR(b.TEXT)), '') AS TEXT,
-             b.NUMBER_ROWS AS LINES,
-             EXTRACT(EPOCH FROM (b.CREATE_TIMESTAMP)) * 1000 AS CREATED,
-             EXTRACT(EPOCH FROM (b.LAST_SOURCE_UPDATE_TIMESTAMP)) * 1000 AS CHANGED
-        FROM TABLE (
-               qsys2.object_statistics('${this.ibmi.sysNameInAmerican(library)}', '*FILE', '${this.ibmi.sysNameInAmerican(sourceFile)}')
-             ) A,
-             LATERAL (
-               SELECT *
-                 FROM TABLE (
-                     qsys2.PARTITION_STATISTICS(
-                       RPAD(A.OBJLIB, 10), RPAD(A.OBJNAME, 10))
-                   ) ML
-             ) B
-        ${singleMember ? `WHERE RTRIM(b.SYSTEM_TABLE_MEMBER) like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ``}
-        ${singleMemberExtension ? `${singleMember ? `AND` : `WHERE`} RTRIM(CAST(b.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
+      `SELECT RTRIM(OBJ_STAT.OBJNAME) AS SOURCE_FILE,
+             RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) AS NAME,
+             PART_STAT.AVGROWSIZE AS RECORD_LENGTH,
+             OBJ_STAT.IASP_NUMBER AS ASP,
+             COALESCE(RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))), '') AS TYPE,
+             COALESCE(RTRIM(VARCHAR(PART_STAT.TEXT)), '') AS TEXT,
+             PART_STAT.NUMBER_ROWS AS LINES,
+             EXTRACT(EPOCH FROM (PART_STAT.CREATE_TIMESTAMP)) * 1000 AS CREATED,
+             EXTRACT(EPOCH FROM (PART_STAT.LAST_SOURCE_UPDATE_TIMESTAMP)) * 1000 AS CHANGED
+        FROM TABLE (qsys2.object_statistics('${library}', '*FILE', '${sourceFile}')) OBJ_STAT,
+        LATERAL (SELECT * FROM TABLE (qsys2.PARTITION_STATISTICS(RPAD(OBJ_STAT.OBJLIB, 10), RPAD(OBJ_STAT.OBJNAME, 10)))) PART_STAT
+        ${singleMember ? `WHERE RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember}'` : ``}
+        ${singleMemberExtension ? `${singleMember ? `AND` : `WHERE`} RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
@@ -721,9 +713,9 @@ export default class IBMiContent {
       return results.map(result => ({
         asp,
         library,
-        file: this.ibmi.sysNameInLocal(String(result.SOURCE_FILE)),
-        name: this.ibmi.sysNameInLocal(String(result.NAME)),
-        extension: this.ibmi.sysNameInLocal(String(result.TYPE)),
+        file: String(result.SOURCE_FILE),
+        name: String(result.NAME),
+        extension: String(result.TYPE),
         recordLength: Number(result.RECORD_LENGTH) - 12,
         text: `${result.TEXT || ``}${sourceFile === `*ALL` ? ` (${result.SOURCE_FILE})` : ``}`.trim(),
         lines: Number(result.LINES),
@@ -736,36 +728,6 @@ export default class IBMiContent {
     else {
       return [];
     }
-  }
-
-  /**
-   *
-   * @param filter: the criterias used to list the members
-   * @returns
-   */
-  async getMembersInfo(library: string, sourceFile: string, members: string | string[]) {
-    const membersList = (Array.isArray(members) ? members : [members])
-      .map(member => `'${member.padEnd(10, ' ')}'`);
-    
-      return (await this.ibmi.runSQL(/* sql */`
-      SELECT 
-        SYSTEM_TABLE_MEMBER NAME,
-        SOURCE_TYPE TYPE,
-        TEXT,
-        EXTRACT(EPOCH FROM (CREATE_TIMESTAMP)) * 1000 AS CREATED,
-        EXTRACT(EPOCH FROM (LAST_SOURCE_UPDATE_TIMESTAMP)) * 1000 AS CHANGED
-      FROM TABLE (qsys2.PARTITION_STATISTICS(RPAD('${library}', 10), RPAD('${sourceFile}', 10)))
-      WHERE SYSTEM_TABLE_MEMBER in (${membersList.join(',')});
-      `))
-      .map(row => ({
-        library,
-        file: sourceFile,
-        name: row.NAME as string,
-        extension: row.TYPE as string,
-        text: row.TEXT as string,
-        created: new Date(row.CREATED ? Number(row.CREATED) : 0),
-        changed: new Date(row.CHANGED ? Number(row.CHANGED) : 0)
-      }) as IBMiMember);
   }
 
   /**
