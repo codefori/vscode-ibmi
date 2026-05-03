@@ -84,13 +84,13 @@ export class CodeForIStorage {
     const stateId = componentCache.findIndex(c => c.id.name === component.id.name);
 
     if (stateId >= 0) {
-      if (component.state === `Installed`) {
+      if (component.state.status === `Installed`) {
         componentCache[stateId] = component;
       } else {
         componentCache.splice(stateId, 1);
       }
     } else {
-      if (component.state === `Installed`) {
+      if (component.state.status === `Installed`) {
         componentCache.push(component);
       }
     }
