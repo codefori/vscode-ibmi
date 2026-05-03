@@ -353,10 +353,7 @@ export default class IBMiContent {
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
     let objects: IBMiObject[];
     if (this.ibmi.enableSQL) {
-      // Build VALUES clause from the libraries array
-      const valuesClause = libraries.map(lib => `('${lib.trim()}')`).join(',\n          ');
-
-      const statement = `
+      const statement = /*sql*/`
         SELECT
           os.OBJNAME AS NAME,
           os.OBJTYPE AS TYPE,
@@ -368,8 +365,9 @@ export default class IBMiContent {
           EXTRACT(EPOCH FROM (os.CHANGE_TIMESTAMP)) * 1000 AS CHANGED,
           os.OBJOWNER AS OWNER,
           os.OBJDEFINER AS CREATED_BY
-        FROM TABLE(VALUES
-          ${valuesClause}
+        FROM TABLE(
+          -- Build VALUES clause from the libraries array
+          VALUES ${libraries.map(lib => `'${lib.trim()}'`).join(',')}
         ) AS libs(ELEMENT),
         TABLE(QSYS2.OBJECT_STATISTICS(
           OBJECT_SCHEMA => 'QSYS',
