@@ -19,7 +19,9 @@ export class Variables extends Map<string, string> {
         .set(`&HOST`, connection.currentHost)
         .set(`{host}`, connection.currentHost)
         .set(`&HOME`, config.homeDirectory)
-        .set(`&WORKDIR`, config.homeDirectory);
+      if (!this.get(`&WORKDIR`)) {
+        this.set(`&WORKDIR`, config.homeDirectory);
+      }
 
       for (const variable of config.customVariables) {
         this.set(`&${variable.name.toUpperCase()}`, variable.value || '');
