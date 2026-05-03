@@ -39,7 +39,7 @@ describe('Component Tests', () => {
     const state = allComponents.some(c => c.id.name === CustomCLI.ID && c.state.status === `NotInstalled`);
     expect(state).toBeTruthy();
 
-    const version1 = connection.getComponent<CustomCLI>(CustomCLI.ID);
+    const version1 = await connection.getComponent<CustomCLI>(CustomCLI.ID);
     expect(version1).toBeUndefined();
 
     const resultA = await manager.installComponent(CustomCLI.ID);
