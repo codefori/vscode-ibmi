@@ -508,84 +508,87 @@ export default class IBMiContent {
     if (sourceFilesOnly) {
       //DSPFD only
       createOBJLIST = [
-        `with SRCFILES as (`,
-        `  select `,
-        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,`,
-        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,`,
-        `    '*FILE'             as TYPE,`,
-        `    'PF'                as ATTRIBUTE,`,
-        `    t.TABLE_TEXT        as TEXT,`,
-        `    1                   as IS_SOURCE,`,
-        `    t.ROW_LENGTH        as SOURCE_LENGTH,`,
-        `    t.IASP_NUMBER       as IASP_NUMBER`,
-        `  from QSYS2.SYSTABLES as t`,
-        `  where t.FILE_TYPE = 'S'`,
-        `)`,
-        `SELECT * FROM SRCFILES as f`,
-        `where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`,
+        /* sql */
+        `with SRCFILES as (
+          select 
+            rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,
+            rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,
+            '*FILE'             as TYPE,
+            'PF'                as ATTRIBUTE,
+            t.TABLE_TEXT        as TEXT,
+            1                   as IS_SOURCE,
+            t.ROW_LENGTH        as SOURCE_LENGTH,
+            t.IASP_NUMBER       as IASP_NUMBER
+          from QSYS2.SYSTABLES as t
+          where t.FILE_TYPE = 'S'
+        )
+        SELECT * FROM SRCFILES as f
+        where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`
       ];
       translateName = true;
     } else if (!withSourceFiles) {
       //DSPOBJD only
       createOBJLIST = [
-        `select `,
-        `  OBJNAME          as NAME,`,
-        `  OBJTYPE          as TYPE,`,
-        `  OBJATTRIBUTE     as ATTRIBUTE,`,
-        `  OBJTEXT          as TEXT,`,
-        `  0                as IS_SOURCE,`,
-        `  IASP_NUMBER      as IASP_NUMBER,`,
-        `  OBJSIZE          as SIZE,`,
-        `  extract(epoch from (OBJCREATED))*1000       as CREATED,`,
-        `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
-        `  OBJOWNER         as OWNER,`,
-        `  OBJDEFINER       as CREATED_BY`,
-        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary !== 'QSYS' ? localLibrary : localLibrary.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`,
+        /* sql */
+        `select 
+          OBJNAME          as NAME,
+          OBJTYPE          as TYPE,
+          OBJATTRIBUTE     as ATTRIBUTE,
+          OBJTEXT          as TEXT,
+          0                as IS_SOURCE,
+          IASP_NUMBER      as IASP_NUMBER,
+          OBJSIZE          as SIZE,
+          extract(epoch from (OBJCREATED))*1000       as CREATED,
+          extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,
+          OBJOWNER         as OWNER,
+          OBJDEFINER       as CREATED_BY
+        from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary !== 'QSYS' ? localLibrary : localLibrary.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`
       ];
     }
     else {
       //Both DSPOBJD and DSPFD
       createOBJLIST = [
-        `with SRCFILES as (`,
-        `  select `,
-        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,`,
-        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,`,
-        `    1                   as IS_SOURCE,`,
-        `    t.ROW_LENGTH        as SOURCE_LENGTH`,
-        `  from QSYS2.SYSTABLES as t`,
-        `  where t.FILE_TYPE = 'S'`,
-        `), SRCPF as (`,
-        `SELECT replace(replace(replace(NAME, '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}') NAME, IS_SOURCE, SOURCE_LENGTH FROM SRCFILES as f`,
-        `  where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}`,
-        `), OBJD as (`,
-        `  select `,
-        `    OBJNAME           as NAME,`,
-        `    OBJTYPE           as TYPE,`,
-        `    OBJATTRIBUTE      as ATTRIBUTE,`,
-        `    OBJTEXT           as TEXT,`,
-        `    0                 as IS_SOURCE,`,
-        `    IASP_NUMBER       as IASP_NUMBER,`,
-        `    OBJSIZE           as SIZE,`,
-        `    extract(epoch from (OBJCREATED))*1000       as CREATED,`,
-        `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
-        `    OBJOWNER          as OWNER,`,
-        `    OBJDEFINER        as CREATED_BY`,
-        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
-        `  )`,
-        `select`,
-        `  o.NAME,`,
-        `  o.TYPE,`,
-        `  o.ATTRIBUTE,`,
-        `  o.TEXT,`,
-        `  case when s.IS_SOURCE is not null then s.IS_SOURCE else o.IS_SOURCE end as IS_SOURCE,`,
-        `  s.SOURCE_LENGTH,`,
-        `  o.IASP_NUMBER,`,
-        `  o.SIZE,`,
-        `  o.CREATED,`,
-        `  o.CHANGED,`,
-        `  o.OWNER,`,
-        `  o.CREATED_BY`,
-        `from OBJD o left join SRCPF s on o.NAME = s.NAME`,
+        /* sql */
+        `with SRCFILES as (
+          select 
+            rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,
+            rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,
+            1                   as IS_SOURCE,
+            t.ROW_LENGTH        as SOURCE_LENGTH
+          from QSYS2.SYSTABLES as t
+          where t.FILE_TYPE = 'S'
+        ), SRCPF as (
+        SELECT replace(replace(replace(NAME, '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}') NAME, IS_SOURCE, SOURCE_LENGTH FROM SRCFILES as f
+          where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}
+        ), OBJD as (
+          select 
+            OBJNAME           as NAME,
+            OBJTYPE           as TYPE,
+            OBJATTRIBUTE      as ATTRIBUTE,
+            OBJTEXT           as TEXT,
+            0                 as IS_SOURCE,
+            IASP_NUMBER       as IASP_NUMBER,
+            OBJSIZE           as SIZE,
+            extract(epoch from (OBJCREATED))*1000       as CREATED,
+            extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,
+            OBJOWNER          as OWNER,
+            OBJDEFINER        as CREATED_BY
+          from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))
+          )
+        select
+          o.NAME,
+          o.TYPE,
+          o.ATTRIBUTE,
+          o.TEXT,
+          case when s.IS_SOURCE is not null then s.IS_SOURCE else o.IS_SOURCE end as IS_SOURCE,
+          s.SOURCE_LENGTH,
+          o.IASP_NUMBER,
+          o.SIZE,
+          o.CREATED,
+          o.CHANGED,
+          o.OWNER,
+          o.CREATED_BY
+        from OBJD o left join SRCPF s on o.NAME = s.NAME`
       ];
     }
 
