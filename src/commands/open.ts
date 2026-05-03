@@ -1,5 +1,5 @@
 import path from "path";
-import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
+import { commands, Disposable, l10n, ProgressLocation, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
 import Instance from "../Instance";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
@@ -171,19 +171,16 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       quickPick.show();
 
       // Create a cache for Schema if autosuggest enabled
-      if (schemaItems.length === 0 && connection?.enableSQL) {
-        connection.runSQL(/* sql */`
-          select trim(cast( SYSTEM_SCHEMA_NAME as char( 10 ) )) as SYSTEM_SCHEMA_NAME
-               , ifnull( cast( SCHEMA_TEXT as char( 50 ) ), '' ) as SCHEMA_TEXT
-            from QSYS2.SYSSCHEMAS
-           order by 1`
-        ).then(resultSetLibrary => {
-          schemaItems = resultSetLibrary.map(row => ({
-            label: String(row.SYSTEM_SCHEMA_NAME),
-            description: String(row.SCHEMA_TEXT)
-          }))
-        });
-      }
+      const libraryLoading = connection.runSQL(/* sql */`
+          select OBJNAME NAME, ifNull(OBJTEXT, '') TEXT
+          from table(QSYS2.object_statistics(OBJECT_SCHEMA => '*ALL', OBJTYPELIST => '*LIB'))
+          order by OBJNAME`
+      ).then(resultSetLibrary => {
+        schemaItems = resultSetLibrary.map(row => ({
+          label: String(row.NAME),
+          description: String(row.TEXT)
+        }))
+      });
 
       let filteredItems: QuickPickItem[] = [];
 
@@ -217,6 +214,9 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
 
           switch (selectionSplit.length) {
             case 1:
+              if (!schemaItems.length) {
+                await window.withProgress({ title: l10n.t('Loading libraries list...'), location: ProgressLocation.Window }, async () => await libraryLoading);
+              }
               filteredItems = schemaItems.filter(schema => schema.label.startsWith(filterText));
 
               // Using `kind` didn't make any difference because it's sorted alphabetically on label
@@ -243,18 +243,18 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
               ]
 
               resultSet = await connection.runSQL(/* sql */`
-                select trim(ifnull( cast( SYSTEM_TABLE_NAME as char( 10 ) ), '' )) as SYSTEM_TABLE_NAME
-                     , ifnull( TABLE_TEXT, '' ) as TABLE_TEXT
-                  from QSYS2.SYSTABLES
-                 where SYSTEM_TABLE_SCHEMA = '${connection.sysNameInAmerican(selectionSplit[0])}'
-                       and FILE_TYPE = 'S'
-                  ${filterText ? `and SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
-                 order by 1
+                select trim(ifnull(DBXFIL, '')) NAME,
+                       trim(ifnull(DBXTXT, '')) TEXT
+                from QSYS.QADBXREF
+                where DBXLIB = '${connection.sysNameInAmerican(selectionSplit[0])}' and
+                      DBXTYP = 'S'
+                ${filterText ? `and DBXFIL like '${connection.sysNameInAmerican(filterText)}%'` : ``}
+                order by 1
               `);
 
               const listFile: QuickPickItem[] = resultSet.map(row => ({
-                label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
-                description: String(row.TABLE_TEXT)
+                label: selectionSplit[0] + '/' + connection.sysNameInLocal(String(row.NAME)),
+                description: String(row.TEXT)
               }))
 
               filteredItems = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
@@ -288,8 +288,8 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                 select trim(cast( SYSTEM_TABLE_MEMBER as char( 10 ) )) as SYSTEM_TABLE_MEMBER
                      , ifnull( TEXT, '' ) as PARTITION_TEXT
                      , ifnull( SOURCE_TYPE, '' ) as SOURCE_TYPE
-                  from TABLE(qsys2.PARTITION_STATISTICS(RPAD('${connection.sysNameInAmerican(selectionSplit[0])}', 10), RPAD('${connection.sysNameInAmerican(selectionSplit[1])}', 10)))
-                  ${filterText ? `where SYSTEM_TABLE_MEMBER like '${connection.sysNameInAmerican(filterText)}%'` : ``}
+                  from TABLE(qsys2.PARTITION_STATISTICS(RPAD('${selectionSplit[0]}', 10), RPAD('${selectionSplit[1]}', 10)))
+                  ${filterText ? `where SYSTEM_TABLE_MEMBER like '${filterText}%'` : ``}
                  order by 1
               `);
 

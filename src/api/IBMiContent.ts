@@ -494,40 +494,31 @@ export default class IBMiContent {
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     // Here's the downlow on CCSIDs here.
-    // SYSTABLES takes the name in CCSID 37 format
+    // QADBXREF takes the name in CCSID 37 format
     // OBJECT_STATISTICS takes the name in the connection CCSID format
 
-    const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
+    const sourceFileNameLike = () => objectFilter ? ` and DBXFIL ${(objectFilter.includes('*') ? `like` : `=`)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
 
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
     let createOBJLIST: string[];
     const usVariants = this.ibmi.variantChars.american;
     const localVariants = this.ibmi.variantChars.local;
-    let translateName = false;
+    const translate = (usVariants !== localVariants);
     if (sourceFilesOnly) {
-      //DSPFD only
       createOBJLIST = [
         /* sql */
-        `with SRCFILES as (
-          select 
-            rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,
-            rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,
-            '*FILE'             as TYPE,
-            'PF'                as ATTRIBUTE,
-            t.TABLE_TEXT        as TEXT,
-            1                   as IS_SOURCE,
-            t.ROW_LENGTH        as SOURCE_LENGTH,
-            t.IASP_NUMBER       as IASP_NUMBER
-          from QSYS2.SYSTABLES as t
-          where t.FILE_TYPE = 'S'
-        )
-        SELECT * FROM SRCFILES as f
-        where f.LIBRARY = '${usLocalLibrary}'${sourceFileNameLike()}`
+        `select
+            ${translate ? `replace(replace(replace(trim(DBXFIL), '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}')` : 'trim(DBXFIL)'} NAME,
+            1 as IS_SOURCE,
+            DBXRDL as SOURCE_LENGTH,
+            DBXTXT2 as TEXT,
+            DBXATR as ATTRIBUTE,
+            '*FILE' as TYPE            
+          from QSYS.QADBXREF
+          where DBXTYP = 'S' And DBXLIB = '${usLocalLibrary}'${sourceFileNameLike()}`
       ];
-      translateName = true;
     } else if (!withSourceFiles) {
-      //DSPOBJD only
       createOBJLIST = [
         /* sql */
         `select 
@@ -536,7 +527,6 @@ export default class IBMiContent {
           OBJATTRIBUTE     as ATTRIBUTE,
           OBJTEXT          as TEXT,
           0                as IS_SOURCE,
-          IASP_NUMBER      as IASP_NUMBER,
           OBJSIZE          as SIZE,
           extract(epoch from (OBJCREATED))*1000       as CREATED,
           extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,
@@ -546,28 +536,23 @@ export default class IBMiContent {
       ];
     }
     else {
-      //Both DSPOBJD and DSPFD
       createOBJLIST = [
         /* sql */
         `with SRCFILES as (
-          select 
-            rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,
-            rtrim(cast(t.SYSTEM_TABLE_NAME as char(10))) as NAME,
-            1                   as IS_SOURCE,
-            t.ROW_LENGTH        as SOURCE_LENGTH
-          from QSYS2.SYSTABLES as t
-          where t.FILE_TYPE = 'S'
-        ), SRCPF as (
-        SELECT replace(replace(replace(NAME, '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}') NAME, IS_SOURCE, SOURCE_LENGTH FROM SRCFILES as f
-          where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}
-        ), OBJD as (
+          select
+            ${translate ? `replace(replace(replace(trim(DBXFIL), '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}')` : 'trim(DBXFIL)'} NAME,
+            1 as IS_SOURCE,
+            DBXRDL as SOURCE_LENGTH
+          from QSYS.QADBXREF
+          where DBXTYP = 'S' And DBXLIB = '${usLocalLibrary}'
+        ),
+         OBJD as (
           select 
             OBJNAME           as NAME,
             OBJTYPE           as TYPE,
             OBJATTRIBUTE      as ATTRIBUTE,
             OBJTEXT           as TEXT,
             0                 as IS_SOURCE,
-            IASP_NUMBER       as IASP_NUMBER,
             OBJSIZE           as SIZE,
             extract(epoch from (OBJCREATED))*1000       as CREATED,
             extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,
@@ -580,15 +565,15 @@ export default class IBMiContent {
           o.TYPE,
           o.ATTRIBUTE,
           o.TEXT,
-          case when s.IS_SOURCE is not null then s.IS_SOURCE else o.IS_SOURCE end as IS_SOURCE,
+          ifNull(s.IS_SOURCE, o.IS_SOURCE) IS_SOURCE,
           s.SOURCE_LENGTH,
-          o.IASP_NUMBER,
           o.SIZE,
           o.CREATED,
           o.CHANGED,
           o.OWNER,
           o.CREATED_BY
-        from OBJD o left join SRCPF s on o.NAME = s.NAME`
+        from OBJD o
+        left join SRCFILES s on o.NAME = s.NAME`
       ];
     }
 
@@ -596,7 +581,7 @@ export default class IBMiContent {
 
     return objects.map(object => ({
       library: localLibrary,
-      name: translateName ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
+      name: String(object.NAME),
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
       text: String(object.TEXT || ""),
@@ -607,7 +592,7 @@ export default class IBMiContent {
       changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
-      asp: this.ibmi.getIAspName(Number(object.IASP_NUMBER))
+      asp: this.ibmi.getLibraryIAsp(localLibrary)
     } as IBMiObject))
       .filter(object => !filters.types || filters.types.length < 1
         || filters.types.includes('*ALL')

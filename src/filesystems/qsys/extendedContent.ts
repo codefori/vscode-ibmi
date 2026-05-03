@@ -76,16 +76,13 @@ export class ExtendedIBMiContent {
     let recordLength: number = DEFAULT_RECORD_LENGTH;
 
     if (connection) {
-      const result = await connection.runSQL(`select length(SRCDTA) as LENGTH from ${aliasPath} limit 1`);
-      if (result.length > 0) {
-        recordLength = Number(result[0].LENGTH);
+      const [result] = await connection.runSQL(`select length(SRCDTA) as LENGTH from ${aliasPath} limit 1`);
+      if (result) {
+        recordLength = Number(result.LENGTH);
       } else {
-        const result = await connection.runSQL(`select row_length-12 as LENGTH
-                                               from QSYS2.SYSTABLES
-                                              where SYSTEM_TABLE_SCHEMA = '${connection.sysNameInAmerican(lib)}' and SYSTEM_TABLE_NAME = '${connection.sysNameInAmerican(spf)}'
-                                              limit 1`);
-        if (result.length > 0) {
-          recordLength = Number(result[0].LENGTH);
+        const [result] = await connection.runSQL(`select DBXRDL - 12 as LENGTH from QSYS.QADBXREF where DBXLIB = '${connection.sysNameInAmerican(lib)}' and DBXFIL = '${connection.sysNameInAmerican(spf)}' limit 1`);
+        if (result) {
+          recordLength = Number(result.LENGTH);
         }
       }
     }

@@ -143,7 +143,7 @@ export class ComponentManager {
 
     // Always check non-user-managed components to ensure they're actually installed
     const installedBefore = componentId.userManaged && lastInstalled.find(i => i.id.name === componentId.name);
-    const sameVersion = installedBefore && (installedBefore.id.version === componentId.version);    
+    const sameVersion = installedBefore && (installedBefore.id.version === componentId.version);
     if ((!installedBefore || !sameVersion || installedBefore.state.status === `NotChecked`)) {
       await newComponent.startupCheck();
     } else if (installedBefore) {
@@ -151,7 +151,7 @@ export class ComponentManager {
     }
 
     const newState = newComponent.getState();
-    if (newState.status === "Installed" && componentId.signature && componentId.signature !== newState.remoteSignature) {      
+    if (newState.status === "Installed" && componentId.signature && componentId.signature !== newState.remoteSignature) {
       throw new Error(`Component ${componentId.name} version ${componentId.version} local signature doesn't match its remote signature. It may have been tampered with and may not be safe to use. Clear your temporary folder and library and reconnect.`, { cause: "component_signature_mismatch" as ConnectionErrorCode });
     }
 
@@ -165,10 +165,12 @@ export class ComponentManager {
   async get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): Promise<T | undefined> {
     const componentEngine = this.registered.find(c => c.component.getIdentification().name === id);
     if (componentEngine && (options.ignoreState || componentEngine.getState().status === `Installed`)) {
-      const currentState = await componentEngine.getCurrentState();
-      if(currentState.remoteSignature !== componentEngine.getState().remoteSignature) {      
-        const identification = componentEngine.component.getIdentification();
-        throw new Error(`Component ${identification.name} version ${identification.version} local signature doesn't match its remote signature. It may have been tampered with and may not be safe to use. Clear your temporary folder and library and reconnect.`, { cause: "component_signature_mismatch" as ConnectionErrorCode });
+      if (componentEngine.getState().status === `Installed`) {
+        const currentState = await componentEngine.getCurrentState();
+        if (currentState.remoteSignature !== componentEngine.getState().remoteSignature) {
+          const identification = componentEngine.component.getIdentification();
+          throw new Error(`Component ${identification.name} version ${identification.version} local signature doesn't match its remote signature. It may have been tampered with and may not be safe to use. Clear your temporary folder and library and reconnect.`, { cause: "component_signature_mismatch" as ConnectionErrorCode });
+        }
       }
       return componentEngine.component as T;
     }
