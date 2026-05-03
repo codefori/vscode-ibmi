@@ -502,30 +502,44 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(exists).toBeTruthy();
   });
 
-  it('Check getMemberInfo', async () => {
-    const content = connection.getContent();
-
-    const memberInfoA = await content?.getMemberInfo('QSYSINC', 'H', 'MATH');
+  it('Test member details', async () => {
+    const content = connection.getContent()
+    const [memberInfoA] = await content.getMembersInfo(`QSYSINC`, `H`, `MATH`);
     expect(memberInfoA).toBeTruthy();
-    expect(memberInfoA?.library).toBe('QSYSINC');
-    expect(memberInfoA?.file).toBe('H');
-    expect(memberInfoA?.name).toBe('MATH');
-    expect(memberInfoA?.extension).toBe('C');
-    expect(memberInfoA?.text).toBe('STANDARD HEADER FILE MATH');
+    expect(memberInfoA.library).toBe(`QSYSINC`);
+    expect(memberInfoA.file).toBe(`H`);
+    expect(memberInfoA.name).toBe(`MATH`);
+    expect(memberInfoA.extension).toBe(`C`);
+    expect(memberInfoA.text).toBe(`STANDARD HEADER FILE MATH`);
 
-    const memberInfoB = await content?.getMemberInfo('QSYSINC', 'H', 'MEMORY');
+    const [memberInfoB] = await content.getMembersInfo(`QSYSINC`, `H`, `MEMORY`);
     expect(memberInfoB).toBeTruthy();
-    expect(memberInfoB?.library).toBe('QSYSINC');
-    expect(memberInfoB?.file).toBe('H');
-    expect(memberInfoB?.name).toBe('MEMORY');
-    expect(memberInfoB?.extension).toBe('CPP');
-    expect(memberInfoB?.text).toBe('C++ HEADER');
+    expect(memberInfoB.library).toBe(`QSYSINC`);
+    expect(memberInfoB.file).toBe(`H`);
+    expect(memberInfoB.name).toBe(`MEMORY`);
+    expect(memberInfoB.extension).toBe(`CPP`);
+    expect(memberInfoB.text).toBe(`C++ HEADER`);
 
-    try {
-      await content?.getMemberInfo('QSYSINC', 'H', 'OH_NONO');
-    } catch (error: any) {
-      expect(error).toBeInstanceOf(Tools.SqlError);
-      expect(error.sqlstate).toBe('38501');
+    const [ohnono] = await content.getMembersInfo(`QSYSINC`, `H`, `OH_NONO`);
+    expect(ohnono).toBe(undefined);
+
+    // Check getMemberInfo for empty member.
+    const tempLib = "QTEMP";
+    const tempSPF = `O_ABC`.concat(connection!.variantChars.local);
+    const tempMbr = `O_ABC`.concat(connection!.variantChars.local);
+
+    const result = await connection!.runCommand({
+      command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+      environment: 'ile'
+    });
+    if (result.code === 0) {
+      const [memberInfoC] = await content.getMembersInfo(tempLib, tempSPF, tempMbr);
+      expect(memberInfoC).toBeTruthy();
+      expect(memberInfoC.library).toBe(tempLib);
+      expect(memberInfoC.file).toBe(tempSPF);
+      expect(memberInfoC.name).toBe(tempMbr);
+      expect(memberInfoC.created).toBeTypeOf('object');
+      expect(memberInfoC.changed).toBeTypeOf('object');
     }
   });
 

@@ -7,7 +7,6 @@ import { commands, ExtensionContext, languages, window, workspace } from "vscode
 import path from "path";
 import IBMi from "./api/IBMi";
 import { SearchTools } from "./api/SearchTools";
-import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { extensionComponentRegistry } from "./api/components/manager";
 import { Mapepire } from "./api/components/mapepire";
 import { sshSqlJob } from "./api/components/mapepire/sqlJob";
@@ -123,7 +122,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
 
   const mapepire = new Mapepire(path.join(context.extensionPath, `dist`));
   extensionComponentRegistry.registerComponent(context, mapepire);
-  extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
 
   registerURIHandler(context,
     sandboxURIHandler,

@@ -7,7 +7,6 @@ import util from 'util';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
-import { GetMemberInfo } from './components/getMemberInfo';
 import { ObjectTypes } from './import/Objects';
 import { AttrOperands, CommandResult, EditorPath, IBMiError, IBMiMember, IBMiObject, IFSFile, ModuleExport, ProgramExportImportInfo, QsysPath, SpecialAuthorities } from './types';
 const tmpFile = util.promisify(tmp.file);
@@ -636,7 +635,7 @@ export default class IBMiContent {
 
     //We use the table function - it's faster than using the view
     const results = await this.ibmi.runSQL( /*sql*/
-        `select PROGRAM_LIBRARY, PROGRAM_NAME, OBJECT_TYPE, SYMBOL_NAME, SYMBOL_USAGE,
+      `select PROGRAM_LIBRARY, PROGRAM_NAME, OBJECT_TYPE, SYMBOL_NAME, SYMBOL_USAGE,
                 ARGUMENT_OPTIMIZATION, DATA_ITEM_SIZE
         from table(qsys2.program_export_import_info('${library}', '${name}', '${type}'))`
     );
@@ -744,14 +743,29 @@ export default class IBMiContent {
    * @param filter: the criterias used to list the members
    * @returns
    */
-  async getMemberInfo(library: string, sourceFile: string, member: string) {
-    const component = await this.ibmi.getComponent<GetMemberInfo>(GetMemberInfo.ID)!;
-
-    if (component) {
-      return component.getMemberInfo(this.ibmi, library, sourceFile, member);
-    } else {
-      return Promise.resolve(undefined);
-    }
+  async getMembersInfo(library: string, sourceFile: string, members: string | string[]) {
+    const membersList = (Array.isArray(members) ? members : [members])
+      .map(member => `'${member.padEnd(10, ' ')}'`);
+    
+      return (await this.ibmi.runSQL(/* sql */`
+      SELECT 
+        SYSTEM_TABLE_MEMBER NAME,
+        SOURCE_TYPE TYPE,
+        TEXT,
+        EXTRACT(EPOCH FROM (CREATE_TIMESTAMP)) * 1000 AS CREATED,
+        EXTRACT(EPOCH FROM (LAST_SOURCE_UPDATE_TIMESTAMP)) * 1000 AS CHANGED
+      FROM TABLE (qsys2.PARTITION_STATISTICS(RPAD('${library}', 10), RPAD('${sourceFile}', 10)))
+      WHERE SYSTEM_TABLE_MEMBER in (${membersList.join(',')});
+      `))
+      .map(row => ({
+        library,
+        file: sourceFile,
+        name: row.NAME as string,
+        extension: row.TYPE as string,
+        text: row.TEXT as string,
+        created: new Date(row.CREATED ? Number(row.CREATED) : 0),
+        changed: new Date(row.CHANGED ? Number(row.CHANGED) : 0)
+      }) as IBMiMember);
   }
 
   /**

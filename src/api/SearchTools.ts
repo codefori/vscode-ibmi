@@ -1,4 +1,3 @@
-import { GetMemberInfo } from './components/getMemberInfo';
 import IBMi from './IBMi';
 import { Tools } from './Tools';
 import { CommandResult, IBMiMember, SearchHit, SearchResults } from './types';
@@ -77,8 +76,7 @@ export namespace SearchTools {
 
         } else {
           // Else, we need to fetch the member info for each hit so we can display the correct extension
-          const infoComponent = await connection?.getComponent<GetMemberInfo>(GetMemberInfo.ID);
-          detailedMembers = await infoComponent?.getMultipleMemberInfo(connection, hits.map(parseHitPath));
+          detailedMembers = await connection.getContent().getMembersInfo(library, sourceFile, hits.map(parseHitPath).map(m => m.name));
         }
 
         // Then fix the extensions in the hit

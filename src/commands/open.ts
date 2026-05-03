@@ -379,7 +379,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
-                const memberInfo = await connection.getContent().getMemberInfo(library, file, member.name);
+                const [memberInfo] = await connection.getContent().getMembersInfo(library, file, member.name);
                 if (!memberInfo) {
                   window.showWarningMessage(`Source member ${library}/${file}/${member.base} does not exist.`);
                   return;

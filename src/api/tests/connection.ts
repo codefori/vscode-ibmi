@@ -1,6 +1,5 @@
 import path from "path";
 import IBMi from "../IBMi";
-import { GetMemberInfo } from "../components/getMemberInfo";
 import { extensionComponentRegistry } from "../components/manager";
 import { Mapepire } from "../components/mapepire";
 import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
@@ -70,7 +69,6 @@ export async function newConnection(reloadSettings?: boolean) {
 
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);
-  extensionComponentRegistry.registerComponent(testingId, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(testingId, new CustomCLI());
 
   const creds: ConnectionData = {
