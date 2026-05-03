@@ -537,6 +537,7 @@ export default class IBMi {
       // Check Mapepire state after startup
       this.appendOutput(`Mapepire state after startup: ${mapepireState?.status || 'not found'}\n`);
 
+      callbacks.progress({ message: `Starting Mapepire.` });
       const mapepire = await this.getComponent<Mapepire>(Mapepire.ID);
       if (mapepire) {
         const hasJavaInstalled = (this.remoteFeatures.jdk21 || this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
