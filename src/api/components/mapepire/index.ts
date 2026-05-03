@@ -31,7 +31,7 @@ export class Mapepire implements IBMiComponent {
   }
 
   getIdentification() {
-    return { name: Mapepire.ID, version: VERSION, signature: "9e3eb0a93a0cf38ec23b601c8008cb625b8ae50c29f89c70da27b5e65edd1707" };
+    return { name: Mapepire.ID, version: VERSION, signature: "41b1cfa67778ac204426f1dda0b51bd3f45fe3b89c91121d968660140acc0876" };
   }
 
   async setInstallDirectory(installDirectory: string): Promise<void> {
@@ -40,9 +40,9 @@ export class Mapepire implements IBMiComponent {
 
   async getRemoteState(connection: IBMi, installDirectory: string): Promise<SecureComponentState> {
     this.setInstallDirectory(installDirectory);
-    const remoteVersions = (await connection.sendCommand({ command: `stat --printf="%n\n" ${SERVER_FILE_PREFIX}*`, directory: installDirectory }))
+    const remoteVersions = (await connection.sendCommand({ command: `find . -type f -name ${SERVER_FILE_PREFIX}\\*`, directory: installDirectory }))
       .stdout.split("\n")
-      .map(line => line.trim())
+      .map(line => line.trim().substring(2))
       .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\\.(\\d+)\\.(\\d+)\\.jar$`).exec(line))
       .filter(Boolean)
       .map(version => ({ major: Number(version![1]), minor: Number(version![2]), patch: Number(version![3]) } as SemanticVersion));

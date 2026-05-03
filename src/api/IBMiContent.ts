@@ -1113,8 +1113,8 @@ export default class IBMiContent {
   }
 
   async getSHA256FileHash(remoteFile: string) {
-    if (this.ibmi.remoteFeatures.md5sum) {
-      const sha256Sum = await this.ibmi.sendCommand({ command: `/QOpenSys/pkgs/bin/sha256sum ${remoteFile}` });
+    if (this.ibmi.remoteFeatures.sha256sum) {
+      const sha256Sum = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.sha256sum} ${remoteFile}` });
       if (sha256Sum.code === 0) {
         return sha256Sum.stdout.split(' ')[0];
       }
