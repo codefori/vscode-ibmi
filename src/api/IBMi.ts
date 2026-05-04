@@ -16,7 +16,7 @@ import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/serverFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand } from './types';
+import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, QsysPath, CacheItem } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -146,6 +146,8 @@ export default class IBMi {
 
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
+
+  ccsidCache: Map<string, CacheItem<number>> = new Map();
 
   public appendOutput: (text: string) => void = (text) => {
     const now = new Date();
@@ -1528,6 +1530,52 @@ export default class IBMi {
     if (foundNumber) {
       return this.getIAspName(foundNumber);
     }
+  }
+
+  async getFileCcsid(path: string | QsysPath): Promise<number> {
+    const CCSID_CACHE_TTL = 600000; // 10 minutes in milliseconds
+
+    // Generate normalized cache key
+    const isQsysPath = typeof path === `object`;
+    let cacheKey: string;
+    let lookupPath: string | QsysPath;
+
+    if (isQsysPath) {
+      
+      const localPath: QsysPath = { ...path };
+      localPath.asp = localPath.asp ? this.sysNameInAmerican(localPath.asp) : undefined;
+      localPath.library = this.sysNameInAmerican(localPath.library);
+      localPath.name = this.sysNameInAmerican(localPath.name);
+      cacheKey = Tools.qualifyPath(localPath.library, localPath.name, '', localPath.asp || '', true);
+      // Strip member for lookup (getAttributes expects file-level path)
+      lookupPath = { library: localPath.library, name: localPath.name, asp: localPath.asp };
+    } else {
+      // Strip member from string path
+      cacheKey = path.replace(/\/[^/]+\.MBR$/i, '');
+      lookupPath = cacheKey;
+    }
+
+    // Check cache
+    const cached = this.ccsidCache.get(cacheKey);
+    if (cached) {
+      if (!cached.createdAt || cached.createdAt + CCSID_CACHE_TTL >= Date.now()) {
+        // cached ccsid still valid
+        return cached.value;
+      }
+      // clear the stale cached ccsid
+      this.ccsidCache.delete(cacheKey);
+    }
+
+    // Call getAttributes to fetch CCSID 
+    const attrs = await this.getContent().getAttributes(lookupPath, 'CCSID');
+    const ccsid = Number(attrs?.CCSID) || 0;
+
+    // Save to cache if valid
+    if (ccsid !== 0) {
+      this.ccsidCache.set(cacheKey, { value: ccsid, createdAt: Date.now() });
+    }
+
+    return ccsid;
   }
 
   getLibraryIAsp(library: string) {
