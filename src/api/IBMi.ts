@@ -571,7 +571,7 @@ export default class IBMi {
       let currentLibrary = `QGPL`;
       this.defaultUserLibraries = [];
 
-      const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME, IASP_NUMBER FROM QSYS2.LIBRARY_LIST_INFO`);
+      const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL())`);
       for (const row of liblRows) {
         switch (row.TYPE) {
           case `USER`:

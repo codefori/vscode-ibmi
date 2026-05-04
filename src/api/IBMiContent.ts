@@ -352,8 +352,7 @@ export default class IBMiContent {
    */
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
     let objects: IBMiObject[];
-    if (this.ibmi.enableSQL) {
-      const statement = /*sql*/`
+    const statement = /*sql*/`
         SELECT
           os.OBJNAME AS NAME,
           os.OBJTYPE AS TYPE,
@@ -375,38 +374,23 @@ export default class IBMiContent {
           OBJECT_NAME => libs.ELEMENT
         )) AS os
       `;
-      const results = await this.ibmi.runSQL(statement);
+    const results = await this.ibmi.runSQL(statement);
 
-      objects = results.map(object => ({
-        library: 'QSYS',
-        name: this.ibmi.sysNameInLocal(String(object.NAME)),
-        type: String(object.TYPE),
-        attribute: String(object.ATTRIBUTE),
-        text: String(object.TEXT || ""),
-        sourceFile: Boolean(object.IS_SOURCE),
-        sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
-        size: Number(object.SIZE),
-        created: new Date(Number(object.CREATED)),
-        changed: new Date(Number(object.CHANGED)),
-        created_by: object.CREATED_BY,
-        owner: object.OWNER,
-        asp: this.ibmi.getIAspName(Number(object.IASP_NUMBER))
-      } as IBMiObject));
-    } else {
-      let results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
-      if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
-        return [];
-      }
-      results = results.filter(object => libraries.includes(this.ibmi.sysNameInLocal(String(object.ODOBNM))));
-
-      objects = results.map(object => ({
-        library: 'QSYS',
-        type: '*LIB',
-        name: this.ibmi.sysNameInLocal(String(object.ODOBNM)),
-        attribute: object.ODOBAT,
-        text: object.ODOBTX
-      } as IBMiObject));
-    };
+    objects = results.map(object => ({
+      library: 'QSYS',
+      name: this.ibmi.sysNameInLocal(String(object.NAME)),
+      type: String(object.TYPE),
+      attribute: String(object.ATTRIBUTE),
+      text: String(object.TEXT || ""),
+      sourceFile: Boolean(object.IS_SOURCE),
+      sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
+      size: Number(object.SIZE),
+      created: new Date(Number(object.CREATED)),
+      changed: new Date(Number(object.CHANGED)),
+      created_by: object.CREATED_BY,
+      owner: object.OWNER,
+      asp: this.ibmi.getIAspName(Number(object.IASP_NUMBER))
+    } as IBMiObject));
 
     return libraries.map(library => {
       return objects.find(info => info.name === library) ||
@@ -1121,28 +1105,37 @@ export default class IBMiContent {
   }
 
   async getLibraryListFromCommand(command: string) {
-    const libraryList = await this.ibmi.runSQL([
-      `@${command.replace(new RegExp(`'`, 'g'), `''`)}`,
-      `SELECT ORDINAL_POSITION, TYPE as PORTION, SYSTEM_SCHEMA_NAME FROM QSYS2.LIBRARY_LIST_INFO`
-    ]);
-
-    const result = {
-      currentLibrary: `QGPL`,
-      libraryList: [] as string[]
-    };
-
-    libraryList?.forEach(row => {
+    //Run the command in the same query as QSQLIBL so there is no concurrency issues with other pending statements
+    const libraryList = await this.ibmi.runSQL(
+      `With CHGLIBL(SYSTEM_SCHEMA_NAME, TYPE, ORDINAL_POSITION) as ( values (cast(QSYS2.qcmdexc('${command.replace(new RegExp(`'`, 'g'), `''`)}') as Char(1)), 'RESULT', 0 ) )
+      SELECT SYSTEM_SCHEMA_NAME, TYPE, ORDINAL_POSITION From CHGLIBL
+      union all
+      SELECT SYSTEM_SCHEMA_NAME, TYPE, ORDINAL_POSITION FROM TABLE(QSYS2.QSQLIBL())
+      ORDER BY ORDINAL_POSITION
+    `);
+    return libraryList.reduce((result, row) => {
       const libraryName = String(row.SYSTEM_SCHEMA_NAME);
-      switch (row.PORTION) {
-        case `CURRENT`:
+      switch (row.TYPE) {
+        case 'RESULT':
+          if (libraryName !== '1') {
+            throw new Error(`Failed to run Library List Command ${command}`);
+          }
+        case 'CURRENT':
           result.currentLibrary = libraryName;
           break;
-        case `USER`:
+
+        case 'USER':
           result.libraryList.push(libraryName);
           break;
-      }
-    })
 
-    return result;
+        default:
+        //nothing
+      }
+
+      return result;
+    }, {
+      currentLibrary: '',
+      libraryList: [] as string[]
+    });
   }
 }
