@@ -1238,7 +1238,19 @@
 			{
 				"command": "code-for-ibmi.downloadMemberAsFile",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Download...",
+				"title": "Member",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.downloadMembersStructured",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Library \u2192 File \u2192 Member",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.downloadMembersStructuredFlat",
+				"enablement": "code-for-ibmi:connected",
+				"title": "File \u2192 Member",
 				"category": "IBM i"
 			},
 			{
@@ -2009,9 +2021,27 @@
 			{
 				"id": "code-for-ibmi.compareWithLocal",
 				"label": "Compare with"
+			},
+			{
+				"id": "code-for-ibmi.structuredDownload",
+				"label": "Download..."
 			}
 		],
 		"menus": {
+			"code-for-ibmi.structuredDownload": [
+				{
+					"command": "code-for-ibmi.downloadMemberAsFile",
+					"group": "1_download@1"
+				},
+				{
+					"command": "code-for-ibmi.downloadMembersStructuredFlat",
+					"group": "1_download@2"
+				},
+				{
+					"command": "code-for-ibmi.downloadMembersStructured",
+					"group": "1_download@3"
+				}
+			],
 			"code-for-ibmi.sortIFSFiles": [
 				{
 					"command": "code-for-ibmi.sortIFSFilesByName"
@@ -2290,6 +2320,14 @@
 				},
 				{
 					"command": "code-for-ibmi.downloadMemberAsFile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadMembersStructured",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadMembersStructuredFlat",
 					"when": "never"
 				},
 				{
@@ -2935,7 +2973,7 @@
 					"group": "2_memberStuff@3"
 				},
 				{
-					"command": "code-for-ibmi.downloadMemberAsFile",
+					"submenu": "code-for-ibmi.structuredDownload",
 					"when": "view == objectBrowser && viewItem =~ /^(member|SPF).*$/",
 					"group": "3_memberTransfer@1"
 				},
