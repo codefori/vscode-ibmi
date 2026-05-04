@@ -80,7 +80,11 @@ export class ExtendedIBMiContent {
       if (result) {
         recordLength = Number(result.LENGTH);
       } else {
-        const [result] = await connection.runSQL(`select DBXRDL - 12 as LENGTH from QSYS.QADBXREF where DBXLIB = '${connection.sysNameInAmerican(lib)}' and DBXFIL = '${connection.sysNameInAmerican(spf)}' limit 1`);
+        const [result] = await connection.runSQL([
+          `@DSPFD FILE(${lib}/${spf}) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
+          /* sql */
+          `select PHMXRL - 12 as LENGTH from QTEMP.PFS limit 1`
+        ]);
         if (result) {
           recordLength = Number(result.LENGTH);
         }

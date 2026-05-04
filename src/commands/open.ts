@@ -1,5 +1,5 @@
 import path from "path";
-import { commands, Disposable, l10n, ProgressLocation, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
+import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
 import Instance from "../Instance";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
@@ -7,8 +7,8 @@ import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
 import { DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 
-const CLEAR_RECENT = `$(trash) Clear recently opened`;
-const CLEAR_CACHED = `$(trash) Clear cached`;
+const CLEAR_RECENT = `$(trash) ${l10n.t('Clear recently opened')}`;
+const CLEAR_CACHED = `$(trash) ${l10n.t('Clear cached')}`;
 
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };
 
@@ -40,7 +40,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       if (existingUri) {
         const existingOptions = parseFSOptions(existingUri);
         if (existingOptions.readonly !== options.readonly) {
-          window.showWarningMessage(`The file is already opened in another mode.`);
+          window.showWarningMessage(l10n.t(`The file is already opened in another mode.`));
           window.showTextDocument(existingUri);
           return false;
         }
@@ -118,7 +118,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
         tooltip: l10n.t(`Compare with Active File`)
       };
 
-      const LOADING_LABEL = `Please wait`;
+      const LOADING_LABEL = l10n.t(`Please wait`);
       const connection = instance.getConnection();
       const storage = instance.getStorage();
       const content = connection?.getContent();
@@ -159,14 +159,14 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       quickPick.items = await createQuickPickItemsList(
         ``,
         [],
-        `Recent`,
+        l10n.t(`Recent`),
         recentItems,
-        `Cached`,
+        l10n.t(`Cached`),
         listItems
       );
       quickPick.canSelectMany = false;
       (quickPick as any).sortByLabel = false; // https://github.com/microsoft/vscode/issues/73904#issuecomment-680298036
-      quickPick.placeholder = `Enter file path (format: LIB/SPF/NAME.ext (type '*' to search server) or /home/xx/file.txt)`;
+      quickPick.placeholder = l10n.t(`Enter file path (format: LIB/SPF/NAME.ext (type '*' to search server) or /home/xx/file.txt)`);
 
       quickPick.show();
 
@@ -189,9 +189,9 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
           quickPick.items = await createQuickPickItemsList(
             ``,
             [],
-            `Recent`,
+            l10n.t(`Recent`),
             recentItems,
-            `Cached`,
+            l10n.t(`Cached`),
             listItems
           );
           filteredItems = [];
@@ -215,17 +215,27 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
           switch (selectionSplit.length) {
             case 1:
               if (!schemaItems.length) {
-                await window.withProgress({ title: l10n.t('Loading libraries list...'), location: ProgressLocation.Window }, async () => await libraryLoading);
+                quickPick.busy = true;
+                quickPick.items = [
+                  {
+                    label: LOADING_LABEL,
+                    alwaysShow: true,
+                    description: l10n.t('Loading libraries...')
+                  },
+                ]
+                await libraryLoading;
+                quickPick.busy = false;
               }
+
               filteredItems = schemaItems.filter(schema => schema.label.startsWith(filterText));
 
               // Using `kind` didn't make any difference because it's sorted alphabetically on label
               quickPick.items = await createQuickPickItemsList(
-                `Libraries`,
+                l10n.t(`Libraries`),
                 filteredItems,
-                `Recent`,
+                l10n.t(`Recent`),
                 recentItems,
-                `Cached`,
+                l10n.t(`Cached`),
                 listItems
               );
 
@@ -238,19 +248,19 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                 {
                   label: LOADING_LABEL,
                   alwaysShow: true,
-                  description: 'Searching files..',
+                  description: l10n.t('Searching files..'),
                 },
               ]
 
-              resultSet = await connection.runSQL(/* sql */`
-                select trim(ifnull(DBXFIL, '')) NAME,
-                       trim(ifnull(DBXTXT, '')) TEXT
-                from QSYS.QADBXREF
-                where DBXLIB = '${connection.sysNameInAmerican(selectionSplit[0])}' and
-                      DBXTYP = 'S'
-                ${filterText ? `and DBXFIL like '${connection.sysNameInAmerican(filterText)}%'` : ``}
-                order by 1
-              `);
+              resultSet = await connection.runSQL([
+                `@DSPFD FILE(${selectionSplit[0]}/${filterText ? `${filterText}*` : `*ALL`}) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
+                /* sql */
+                `select trim(PHFILE) NAME,
+                        trim(ifnull(PHTXT, '')) TEXT
+                from QTEMP.PFS
+                where PHDTAT = 'S'
+                order by 1`
+              ]);
 
               const listFile: QuickPickItem[] = resultSet.map(row => ({
                 label: selectionSplit[0] + '/' + connection.sysNameInLocal(String(row.NAME)),
@@ -260,11 +270,11 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
               filteredItems = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
 
               quickPick.items = await createQuickPickItemsList(
-                `Source files`,
+                l10n.t(`Source files`),
                 filteredItems,
-                `Recent`,
+                l10n.t(`Recent`),
                 recentItems,
-                `Cached`,
+                l10n.t(`Cached`),
                 listItems
               );
               quickPick.busy = false;
@@ -278,7 +288,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                 {
                   label: LOADING_LABEL,
                   alwaysShow: true,
-                  description: 'Searching members..',
+                  description: l10n.t('Searching members..'),
                 },
               ]
 
@@ -301,11 +311,11 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
               filteredItems = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
 
               quickPick.items = await createQuickPickItemsList(
-                `Members`,
+                l10n.t(`Members`),
                 filteredItems,
-                `Recent`,
+                l10n.t(`Recent`),
                 recentItems,
-                `Cached`,
+                l10n.t(`Cached`),
                 listItems
               );
               quickPick.busy = false;
@@ -343,24 +353,24 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
             recentItems.length = 0;
             storage.clearRecentlyOpenedFiles();
             quickPick.items = await createQuickPickItemsList(
-              `Filter`,
+              l10n.t(`Filter`),
               filteredItems,
               ``,
               [],
-              `Cached`,
+              l10n.t(`Cached`),
               listItems
             );
-            window.showInformationMessage(`Cleared previously opened files.`);
+            window.showInformationMessage(l10n.t(`Cleared previously opened files.`));
           } else if (selection === CLEAR_CACHED) {
             listItems.length = 0;
             storage.setSourceList({});
             quickPick.items = await createQuickPickItemsList(
-              `Filter`,
+              l10n.t(`Filter`),
               filteredItems,
-              `Recent`,
+              l10n.t(`Recent`),
               recentItems,
             );
-            window.showInformationMessage(`Cleared cached files.`);
+            window.showInformationMessage(l10n.t(`Cleared cached files.`));
           } else {
             const selectionSplit = connection.upperCaseName(selection).split('/')
             if ([3, 4].includes(selectionSplit.length) || selection.startsWith(`/`)) {
@@ -377,10 +387,10 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                 member.ext = member.ext.substring(1);
                 const [memberInfo] = await connection.getContent().getMemberList({ library, sourceFile, members: member.name });
                 if (!memberInfo) {
-                  window.showWarningMessage(`Source member ${library}/${sourceFile}/${member.base} does not exist.`);
+                  window.showWarningMessage(l10n.t('Source member {0}/{1}/{2} does not exist.', library, sourceFile, member.base));
                   return;
                 } else if (memberInfo.name !== member.name || (member.ext && memberInfo.extension !== member.ext)) {
-                  window.showWarningMessage(`Member ${library}/${sourceFile}/${member.name} of type ${member.ext} does not exist.`);
+                  window.showWarningMessage(l10n.t(`Member {0}/{1}/{2} of type {3} does not exist.`, library, sourceFile, member.name, member.ext));
                   return;
                 }
 
@@ -392,7 +402,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
               if (selection.startsWith(`/`)) {
                 const streamFile = await content!.streamfileResolve([selection.substring(1)], [`/`]);
                 if (!streamFile) {
-                  window.showWarningMessage(`${selection} does not exist or is not a file.`);
+                  window.showWarningMessage(l10n.t('{0} does not exist or is not a file.', selection));
                   return;
                 }
                 selection = connection.upperCaseName(selection) === connection.upperCaseName(quickPick.value) ? quickPick.value : selection;

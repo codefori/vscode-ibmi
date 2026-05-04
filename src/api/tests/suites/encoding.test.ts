@@ -39,7 +39,7 @@ describe('Encoding tests', { concurrent: true }, () => {
   });
 
   it('Compare Unicode to EBCDIC successfully', async () => {
-    const sql = `select DBXFIL, DBXOWN from QSYS.QADBXREF where DBXLIB = ? and DBXFIL = ?`;
+    const sql = `select table_name, table_owner from qsys2.systables where table_schema = ? and table_name = ?`;
     const result = await connection?.runSQL(sql, { bindings: [`QSYS2`, `SYSCOLUMNS`] });
     expect(result?.length).toBeTruthy();
   });

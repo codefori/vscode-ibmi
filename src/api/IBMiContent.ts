@@ -500,30 +500,25 @@ export default class IBMiContent {
     const sourceFilesOnly = filters.types && filters.types.length === 1 && filters.types.includes(`*SRCPF`);
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
-    // Here's the downlow on CCSIDs here.
-    // QADBXREF takes the name in CCSID 37 format
-    // OBJECT_STATISTICS takes the name in the connection CCSID format
-
-    const sourceFileNameLike = () => objectFilter ? ` and DBXFIL ${(objectFilter.includes('*') ? `like` : `=`)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
-
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
+    const sourceFileNameLike = () => objectFilter ? ` and PHFILE ${(objectFilter.includes('*') ? `like` : `=`)} '${objectFilter.replace('*', '%')}'` : '';
 
     let createOBJLIST: string[];
-    const usVariants = this.ibmi.variantChars.american;
-    const localVariants = this.ibmi.variantChars.local;
-    const translate = (usVariants !== localVariants);
+
     if (sourceFilesOnly) {
       createOBJLIST = [
+        `@DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
         /* sql */
         `select
-            ${translate ? `replace(replace(replace(trim(DBXFIL), '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}')` : 'trim(DBXFIL)'} NAME,
+            trim(PHFILE) NAME,
+            PHFATR ATTRIBUTE,
+            trim(PHTXT) TEXT,
+            PHMXRL SOURCE_LENGTH,
             1 as IS_SOURCE,
-            DBXRDL as SOURCE_LENGTH,
-            DBXTXT2 as TEXT,
-            DBXATR as ATTRIBUTE,
-            '*FILE' as TYPE            
-          from QSYS.QADBXREF
-          where DBXTYP = 'S' And DBXLIB = '${usLocalLibrary}'${sourceFileNameLike()}`
+            '*FILE' as TYPE
+            from QTEMP.PFS
+            where PHDTAT = 'S'
+            ${sourceFileNameLike()}`
       ];
     } else if (!withSourceFiles) {
       createOBJLIST = [
@@ -544,14 +539,15 @@ export default class IBMiContent {
     }
     else {
       createOBJLIST = [
+        `@DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
         /* sql */
         `with SRCFILES as (
           select
-            ${translate ? `replace(replace(replace(trim(DBXFIL), '${usVariants[0]}', '${localVariants[0]}'), '${usVariants[1]}', '${localVariants[1]}'), '${usVariants[2]}', '${localVariants[2]}')` : 'trim(DBXFIL)'} NAME,
+            trim(PHFILE) NAME,
             1 as IS_SOURCE,
-            DBXRDL as SOURCE_LENGTH
-          from QSYS.QADBXREF
-          where DBXTYP = 'S' And DBXLIB = '${usLocalLibrary}'
+            PHMXRL as SOURCE_LENGTH
+          from QTEMP.PFS
+          where PHDTAT = 'S'
         ),
          OBJD as (
           select 
@@ -584,7 +580,7 @@ export default class IBMiContent {
       ];
     }
 
-    const objects = (await this.runStatements(createOBJLIST.join(`\n`)));
+    const objects = (await this.ibmi.runSQL(createOBJLIST));
 
     return objects.map(object => ({
       library: localLibrary,
