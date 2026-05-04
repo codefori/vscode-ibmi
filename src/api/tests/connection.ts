@@ -76,6 +76,12 @@ export async function newConnection(reloadSettings?: boolean) {
     name: `${ENV_CREDS.host}_${ENV_CREDS.username}_test`
   };
 
+  const config = await IBMi.connectionManager.load(creds.name);
+  if (config.tempLibrary !== ENV_CREDS.tempLibrary) {
+    config.tempLibrary = ENV_CREDS.tempLibrary;
+    await IBMi.connectionManager.update(config);
+  }
+
   // Override this so not to spam the console.
   conn.appendOutput = (data) => { };
 
@@ -107,14 +113,6 @@ export async function newConnection(reloadSettings?: boolean) {
 
   if (!result.success) {
     throw new Error(`Failed to connect to IBMi${result.error ? `: ${result.error}` : '!'}`);
-  }
-
-  if (reloadSettings) {
-    const config = conn.getConfig();
-    if (config.tempLibrary !== ENV_CREDS.tempLibrary) {
-      config.tempLibrary = ENV_CREDS.tempLibrary;
-      await IBMi.connectionManager.update(config);
-    }
   }
 
   return conn;
