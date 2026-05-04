@@ -94,7 +94,7 @@ export class SettingsUI {
           }
         }
 
-        const restartFields = [`readOnlyMode`, `showDescInLibList`, `tempDir`, `debugCertDirectory`, 'secureSQL', 'mapepireJavaVersion'];
+        const restartFields = [`readOnlyMode`, `showDescInLibList`, `tempDir`, 'secureSQL', 'mapepireJavaVersion'];
         let restart = false;
 
         const featuresTab = new Section();
