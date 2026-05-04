@@ -105,16 +105,16 @@ export async function newConnection(reloadSettings?: boolean) {
     }
   );
 
+  if (!result.success) {
+    throw new Error(`Failed to connect to IBMi${result.error ? `: ${result.error}` : '!'}`);
+  }
+
   if (reloadSettings) {
     const config = conn.getConfig();
     if (config.tempLibrary !== ENV_CREDS.tempLibrary) {
       config.tempLibrary = ENV_CREDS.tempLibrary;
       await IBMi.connectionManager.update(config);
     }
-  }
-
-  if (!result.success) {
-    throw new Error(`Failed to connect to IBMi${result.error ? `: ${result.error}` : '!'}`);
   }
 
   return conn;
