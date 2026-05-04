@@ -40,7 +40,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   },
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `pfgrep`, `md5sum`, 'sha256sum',`bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
+    names: [`git`, `grep`, `tn5250`, `pfgrep`, `md5sum`, 'sha256sum', `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
   },
   {
     path: `/QIBM/ProdData/IBMiDebugService/bin/`,
@@ -709,7 +709,7 @@ export default class IBMi {
 
           if (!commandShellResult.stderr) {
             let usesBash = this.shell === IBMi.bashShellPath;
-            if (!usesBash) {              
+            if (!usesBash) {
               callbacks.uiErrorHandler(this, `default_not_bash`);
             }
 
@@ -1030,7 +1030,12 @@ export default class IBMi {
 
       if (!libraryAttributes.USER_DEFINED_ATTRIBUTE) {
         //Set CODE4ITEMP as the user-defined attribute to easily locate Code for i temp libraries
-        await setLibraryUDA();
+        try {
+          await setLibraryUDA();
+        }
+        catch (error: any) {
+          message('warning', `Could not create update library ${tempLibrary} attribute: ${error instanceof Tools.SqlError ? error.message : String(error)}`);
+        }
       }
     }
     else {
