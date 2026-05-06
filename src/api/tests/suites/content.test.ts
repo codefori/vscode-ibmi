@@ -253,6 +253,33 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(rows?.length).toBe(1);
   });
 
+  it('Test runSQL (with rows parameter)', async () => {
+    // First, get all rows to know the total count
+    const allRows = await connection.runSQL('select * from qiws.qcustcdt');
+    expect(allRows?.length).toBeGreaterThan(5);
+    
+    // Test with rows parameter set to 3
+    const limitedRows = await connection.runSQL('select * from qiws.qcustcdt', { rows: 3 });
+    expect(limitedRows?.length).toBe(3);
+    
+    // Verify row structure is still correct
+    const firstRow = limitedRows[0];
+    expect(typeof firstRow['BALDUE']).toBe('number');
+    expect(typeof firstRow['CITY']).toBe('string');
+    
+    // Test with rows parameter set to 1
+    const singleRow = await connection.runSQL('select * from qiws.qcustcdt', { rows: 1 });
+    expect(singleRow?.length).toBe(1);
+    
+    // Test without rows parameter (should default to 99999)
+    const defaultRows = await connection.runSQL('select * from qiws.qcustcdt');
+    expect(defaultRows?.length).toBe(allRows.length);
+    
+    // // Test with rows parameter greater than actual row count
+    const moreRowsThanAvailable = await connection.runSQL('select * from qiws.qcustcdt', { rows: 99999 });
+    expect(moreRowsThanAvailable?.length).toBe(allRows.length);
+  });
+
   it('Test getTable', async () => {
     const content = connection.getContent();
 
