@@ -56,36 +56,38 @@ describe('Content Tests', { concurrent: true }, () => {
 
   it('memberResolve with variants', async () => {
     const content = connection.getContent();
-    const config = connection.getConfig();
-    const tempLib = config!.tempLibrary,
-      tempSPF = `O_ABC`.concat(connection!.variantChars.local),
-      tempMbr = `O_ABC`.concat(connection!.variantChars.local);
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempSPF = `O_ABC`.concat(connection!.variantChars.local);
+    const tempMbr = `O_ABC`.concat(connection!.variantChars.local);
 
-    const result = await connection!.runCommand({
-      command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
-      environment: 'ile'
-    });
+    try {
+      const result = await connection!.runCommand({
+        command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+        environment: 'ile'
+      });
 
-    const member = await content?.memberResolve(tempMbr, [
-      { library: 'QSYSINC', name: 'MIH' }, // Doesn't exist here
-      { library: 'NOEXIST', name: 'SUP' }, // Doesn't exist here
-      { library: tempLib, name: tempSPF } // Does exist here
-    ]);
+      const member = await content?.memberResolve(tempMbr, [
+        { library: 'QSYSINC', name: 'MIH' }, // Doesn't exist here
+        { library: 'NOEXIST', name: 'SUP' }, // Doesn't exist here
+        { library: tempLib, name: tempSPF } // Does exist here
+      ]);
 
-    expect(member).toEqual({
-      asp: undefined,
-      library: tempLib,
-      file: tempSPF,
-      name: tempMbr,
-      extension: 'MBR',
-      basename: `${tempMbr}.MBR`
-    });
-
-    // Cleanup...
-    await connection!.runCommand({
-      command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
-      environment: 'ile'
-    });
+      expect(member).toEqual({
+        asp: undefined,
+        library: tempLib,
+        file: tempSPF,
+        name: tempMbr,
+        extension: 'MBR',
+        basename: `${tempMbr}.MBR`
+      });
+    }
+    finally {
+      // Cleanup...
+      await connection!.runCommand({
+        command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
+        environment: 'ile'
+      });
+    }
   });
 
   it('memberResolve with bad name', async () => {
@@ -124,28 +126,30 @@ describe('Content Tests', { concurrent: true }, () => {
 
   it('objectResolve .DTAARA with variants', async () => {
     const content = connection.getContent();
-    const config = connection.getConfig();
-    const tempLib = config!.tempLibrary,
-      tempObj = `O_ABC`.concat(connection!.variantChars.local);
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempObj = `O_ABC`.concat(connection!.variantChars.local);
 
-    await connection!.runCommand({
-      command: `QSYS/CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
-      environment: 'ile'
-    });
+    try {
+      await connection!.runCommand({
+        command: `QSYS/CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+        environment: 'ile'
+      });
 
-    const lib = await content?.objectResolve(tempObj, [
-      'QSYSINC', // Doesn't exist here
-      'QSYS2', // Doesn't exist here
-      tempLib // Does exist here
-    ]);
+      const lib = await content?.objectResolve(tempObj, [
+        'QSYSINC', // Doesn't exist here
+        'QSYS2', // Doesn't exist here
+        tempLib // Does exist here
+      ]);
 
-    expect(lib).toBe(tempLib);
-
-    // Cleanup...
-    await connection!.runCommand({
-      command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
-      environment: 'ile'
-    });
+      expect(lib).toBe(tempLib);
+    }
+    finally {
+      // Cleanup...
+      await connection!.runCommand({
+        command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
+        environment: 'ile'
+      });
+    }
   });
 
   it('objectResolve with bad name', async () => {
@@ -525,30 +529,44 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(exists).toBeTruthy();
   });
 
-  it('Check getMemberInfo', async () => {
-    const content = connection.getContent();
-
-    const memberInfoA = await content?.getMemberInfo('QSYSINC', 'H', 'MATH');
+  it('Test member details', async () => {
+    const content = connection.getContent()
+    const [memberInfoA] = await content.getMemberList({ library: `QSYSINC`, sourceFile: `H`, members: `MATH` });
     expect(memberInfoA).toBeTruthy();
-    expect(memberInfoA?.library).toBe('QSYSINC');
-    expect(memberInfoA?.file).toBe('H');
-    expect(memberInfoA?.name).toBe('MATH');
-    expect(memberInfoA?.extension).toBe('C');
-    expect(memberInfoA?.text).toBe('STANDARD HEADER FILE MATH');
+    expect(memberInfoA.library).toBe(`QSYSINC`);
+    expect(memberInfoA.file).toBe(`H`);
+    expect(memberInfoA.name).toBe(`MATH`);
+    expect(memberInfoA.extension).toBe(`C`);
+    expect(memberInfoA.text).toBe(`STANDARD HEADER FILE MATH`);
 
-    const memberInfoB = await content?.getMemberInfo('QSYSINC', 'H', 'MEMORY');
+    const [memberInfoB] = await content.getMemberList({ library: `QSYSINC`, sourceFile: `H`, members: `MEMORY` });
     expect(memberInfoB).toBeTruthy();
-    expect(memberInfoB?.library).toBe('QSYSINC');
-    expect(memberInfoB?.file).toBe('H');
-    expect(memberInfoB?.name).toBe('MEMORY');
-    expect(memberInfoB?.extension).toBe('CPP');
-    expect(memberInfoB?.text).toBe('C++ HEADER');
+    expect(memberInfoB.library).toBe(`QSYSINC`);
+    expect(memberInfoB.file).toBe(`H`);
+    expect(memberInfoB.name).toBe(`MEMORY`);
+    expect(memberInfoB.extension).toBe(`CPP`);
+    expect(memberInfoB.text).toBe(`C++ HEADER`);
 
-    try {
-      await content?.getMemberInfo('QSYSINC', 'H', 'OH_NONO');
-    } catch (error: any) {
-      expect(error).toBeInstanceOf(Tools.SqlError);
-      expect(error.sqlstate).toBe('38501');
+    const [ohnono] = await content.getMemberList({ library: `QSYSINC`, sourceFile: `H`, members: `OH_NONO` });
+    expect(ohnono).toBe(undefined);
+
+    // Check getMemberInfo for empty member.
+    const library = "QTEMP";
+    const sourceFile = `O_ABC`.concat(connection!.variantChars.local);
+    const member = `O_ABC`.concat(connection!.variantChars.local);
+
+    const result = await connection!.runCommand({
+      command: `QSYS/CRTSRCPF ${library}/${sourceFile} MBR(${member})`,
+      environment: 'ile'
+    });
+    if (result.code === 0) {
+      const [memberInfoC] = await content.getMemberList({ library, sourceFile, members: member });
+      expect(memberInfoC).toBeTruthy();
+      expect(memberInfoC.library).toBe(library);
+      expect(memberInfoC.file).toBe(sourceFile);
+      expect(memberInfoC.name).toBe(member);
+      expect(memberInfoC.created).toBeTypeOf('object');
+      expect(memberInfoC.changed).toBeTypeOf('object');
     }
   });
 
@@ -674,17 +692,17 @@ describe('Content Tests', { concurrent: true }, () => {
       finally {
         // The job goes into MSGW (message waiting) status with message CPA7025 "Receiver QSQJRN0001 in <name> never fully saved. (I C)"
         // We need to add a reply list entry and change the job to use the system reply list
-        
+
         // Add reply list entry to automatically reply to CPA7025 with 'I'
         await connection.runCommand({
           command: `QSYS/ADDRPYLE SEQNBR(9999) MSGID(CPA7025) RPY('I')`,
         });
-        
+
         // Change job to use system reply list
         await connection.runCommand({
           command: `QSYS/CHGJOB INQMSGRPY(*SYSRPYL)`,
         });
-        
+
         try {
           // Now drop the schema - it will automatically reply to CPA7025
           await connection.runCommand({
@@ -696,7 +714,7 @@ describe('Content Tests', { concurrent: true }, () => {
           await connection.runCommand({
             command: `QSYS/CHGJOB INQMSGRPY(*RQD)`,
           });
-          
+
           // Clean up the reply list entry
           await connection.runCommand({
             command: `QSYS/RMVRPYLE SEQNBR(9999)`,
@@ -710,8 +728,7 @@ describe('Content Tests', { concurrent: true }, () => {
 
   it('getModuleExport', async () => {
     const content = connection.getContent();
-    const config = connection.getConfig();
-    const tempLib = config!.tempLibrary;
+    const tempLib = "QTEMP";
     const id = `${Tools.makeid().toUpperCase()}`;
     await connection.withTempDirectory(async directory => {
       const source = `${directory}/vscodetemp-${id}.clle`;
@@ -727,7 +744,7 @@ describe('Content Tests', { concurrent: true }, () => {
                            END_OF_LINE => 'CRLF')`,
         );
 
-        await connection.runCommand({environment: `ile`, command: `QSYS/CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`})
+        await connection.runCommand({ environment: `ile`, command: `QSYS/CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')` })
 
         let exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
 
@@ -744,41 +761,28 @@ describe('Content Tests', { concurrent: true }, () => {
 
   it('getProgramExportImportInfo', async () => {
     const content = connection.getContent();
-    const config = connection.getConfig();
-    const tempLib = config!.tempLibrary;
+    const tempLib = "QTEMP";
     const id = `${Tools.makeid().toUpperCase()}`;
     await connection.withTempDirectory(async directory => {
       const source = `${directory}/vscodetemp-${id}.clle`;
-      try {
-        await content.runStatements(
-          `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+      const createSRVPGM = await connection.runSQL([
+        `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
                            LINE => 'PGM', 
                            OVERWRITE => 'NONE', 
                            END_OF_LINE => 'CRLF')`,
-          `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
+        `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
                            LINE => 'ENDPGM', 
                            OVERWRITE => 'APPEND', 
                            END_OF_LINE => 'CRLF')`,
-          `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
-          `@CRTSRVPGM SRVPGM(${tempLib}/${id}) MODULE(${tempLib}/${id}) EXPORT(*ALL)`,
-          `select 1 from sysibm.sysdummy1`
-        );
+        `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
+        `@CRTSRVPGM SRVPGM(${tempLib}/${id}) MODULE(${tempLib}/${id}) EXPORT(*ALL)`
+      ]);
 
-        const info: ProgramExportImportInfo[] = (await content.getProgramExportImportInfo(tempLib, id, '*SRVPGM'))
-          .filter(info => info.symbolUsage === '*PROCEXP');
+      const info: ProgramExportImportInfo[] = (await content.getProgramExportImportInfo(tempLib, id, '*SRVPGM'))
+        .filter(info => info.symbolUsage === '*PROCEXP');
 
-        expect(info.length).toBe(1);
-        expect(info.at(0)?.symbolName).toBe(id);
-      } finally {
-        await connection!.runCommand({
-          command: `QSYS/DLTSRVPGM SRVPGM(${tempLib}/${id})`,
-          environment: 'ile'
-        });
-        await connection!.runCommand({
-          command: `QSYS/DLTMOD MODULE(${tempLib}/${id})`,
-          environment: 'ile'
-        });
-      }
+      expect(info.length).toBe(1);
+      expect(info.at(0)?.symbolName).toBe(id);
     });
   });
 
@@ -816,5 +820,10 @@ describe('Content Tests', { concurrent: true }, () => {
       await checkFile(`${directory}/move/${unicodeFile}`, 1208);
       await checkFile(`${directory}/move/${ccsid37File}`, 37);
     });
+  });
+
+  it('Get new libl', async () => {
+    const newLibl = await connection.getContent().getLibraryListFromCommand(`CHGLIBL CURLIB(SYSTOOLS)`);
+    expect(newLibl?.currentLibrary).toBe(`SYSTOOLS`);
   });
 });
