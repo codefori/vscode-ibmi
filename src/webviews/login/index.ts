@@ -42,7 +42,7 @@ export class Login {
       .addCheckbox(`sshDebug`, l10n.t(`Turn on SSH debug output`), l10n.t(`Enable this to output debug traces in the Code for i and help diagnose SSH connection issues.`));
     const tempTab = new Section()
       .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: `ILEDITOR`, minlength: 1, maxlength: 10 })
-      .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: '/tmp', minlength: 1 });
+      .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: '.vscode/tmp', minlength: 1 });
 
     const page = await new CustomUI()
       .addComplexTabs([

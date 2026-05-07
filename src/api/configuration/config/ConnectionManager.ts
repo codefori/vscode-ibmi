@@ -18,7 +18,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     homeDirectory: parameters.homeDirectory || `.`,
     /** Undefined means not created, so default to on */
     tempLibrary: parameters.tempLibrary || `ILEDITOR`,
-    tempDir: parameters.tempDir || `/tmp`,
+    tempDir: parameters.tempDir || `.vscode/tmp`,
     currentLibrary: parameters.currentLibrary || ``,
     sourceFileCCSID: parameters.sourceFileCCSID || `*FILE`,
     autoConvertIFSccsid: (parameters.autoConvertIFSccsid === true),
@@ -138,6 +138,12 @@ export class ConnectionManager {
     let config: ConnectionConfig;
     if (existingConfig) {
       config = initialize(existingConfig);
+      
+      // Migration: Update old default tempDir (/tmp) to new default (.vscode/tmp)
+      if (config.tempDir === '/tmp') {
+        config.tempDir = '.vscode/tmp';
+        await this.update(config);
+      }
     } else {
       config = initialize({ name: name, enableSourceDates: true });
       connections.push(config);

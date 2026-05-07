@@ -979,7 +979,7 @@ export default class IBMiContent {
   }
 
   async streamfileResolve(names: string[], directories: string[]): Promise<string | undefined> {
-    const command = `for f in ${directories.flatMap(dir => names.map(name => `"${Tools.escapePath(path.posix.join(dir, name), true)}"`)).join(` `)}; do if [ -f "$f" ]; then echo $f; break; fi; done`;
+    const command = `for f in ${directories.flatMap(dir => names.map(name => `"${Tools.escapePath(Tools.ensureFullPath(path.posix.join(dir, name), this.config.homeDirectory), true)}"`)).join(` `)}; do if [ -f "$f" ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -1155,6 +1155,7 @@ export default class IBMiContent {
    */
   async createStreamFile(path: string) {
     path = Tools.escapePath(path);
+    path = Tools.ensureFullPath(path, this.config.homeDirectory);
     const result = (await this.ibmi.sendCommand({ command: `echo "" > ${path} && ${this.ibmi.remoteFeatures.attr} ${path} CCSID=1208` }));
     if (result.code !== 0) {
       throw new Error(result.stderr);
