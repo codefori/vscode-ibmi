@@ -105,7 +105,7 @@ export const ActionSuite: TestSuite = {
 
         const success = await runAction(instance, uri, action, `all`);
         console.log(success);
-        assert.ok(success);
+        assert.ok(success.success);
       }
     },
     {
@@ -166,8 +166,8 @@ export const ActionSuite: TestSuite = {
           ],
         };
         const uri = getMemberUri({ library: tempLib, file: 'QRPGLESRC', name: 'THEBADONE', extension: 'RPGLE' })
-        const success = await runAction(instance, uri, action, `all`);
-        assert.strictEqual(success, false);
+        const result = await runAction(instance, uri, action, `all`);
+        assert.strictEqual(result.success, false);
       }
     },
     {
@@ -224,11 +224,11 @@ export const ActionSuite: TestSuite = {
           vscode.Uri.parse("member:///QTEMP/SOMETHING.RPGLE"),
           vscode.Uri.parse("file://loca/youwish.txt")
         ];
-        assert.strictEqual(await runAction(instance, uris, {
+        assert.strictEqual((await runAction(instance, uris, {
           name: "It won't run",
           command: "wont run",
           environment: "ile",
-        }), false);
+        })).success, false);
       }
     },
     {
@@ -241,7 +241,7 @@ export const ActionSuite: TestSuite = {
           environment: "ile"
         });
 
-        assert.ok(result);
+        assert.ok(result.success);
       }
     },
     {
@@ -273,7 +273,7 @@ export const ActionSuite: TestSuite = {
             environment: "ile"
           });
 
-          assert.ok(result);
+          assert.ok(result.success);
         }
         finally {
           await connection.runCommand({ command: `DLTF FILE(${testlib}/${file})`, noLibList: true });
@@ -306,7 +306,7 @@ export const ActionSuite: TestSuite = {
               environment: "ile"
             });
 
-            assert.ok(result);
+            assert.ok(result.success);
 
             const rows = await connection.runSQL(`Select key, value from ${testLib}.${table}`);
             assert.strictEqual(rows.length, 5);
@@ -328,7 +328,7 @@ export const ActionSuite: TestSuite = {
         };
 
         const success = await runAction(instance, uris, action, `compare`);
-        assert.ok(success);
+        assert.ok(success.success);
       }
     }
   ]
@@ -341,7 +341,7 @@ export const ActionSuite: TestSuite = {
 
 async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: string, srcType: string = 'RPGLE') {
   const actionRan = await runAction(instance, uri, action, `all`);
-  assert.ok(actionRan);
+  assert.ok(actionRan.success);
 
   const keysToCompare = [`library`, `name`, `type`, `text`, `attribute`, `sourceFile`, `memberCount`];
   const toJSON = (obj: Object) => JSON.stringify(obj, (key, value) => {
