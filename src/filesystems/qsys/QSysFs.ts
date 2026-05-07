@@ -198,7 +198,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         if (connection) {
             const readonly = connection.getConfig().readOnlyMode;
             if (readonly) {
-              throw new FileSystemError("Connection is in readonly mode");
+                throw new FileSystemError("Connection is in readonly mode");
             }
             const contentApi = connection.getContent();
             let { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
@@ -213,7 +213,10 @@ export class QSysFS implements vscode.FileSystemProvider {
                     this.savedAsMembers.add(uri.path);
                     vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
                 } else {
-                    throw new FileSystemError(addMember.stderr);
+                    const copyMessages = Tools.parseMessages(addMember.stderr);
+                    if (!copyMessages.findId(`CPF5812`)) { // CPF5812 - Member already exists
+                        throw new FileSystemError(addMember.stderr);
+                    }
                 }
             }
             else {
@@ -254,11 +257,11 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
             else if (uri.path === '/') {
                 let statement = `select OBJNAME from table (QSYS2.OBJECT_STATISTICS ('*ALLSIMPLE', 'LIB', '*ALLSIMPLE'))`;
-                
+
                 const fsOptions = parseFSOptions(uri);
                 if (fsOptions.libraries) {
                     let libraries: string[];
-                    
+
                     // Check if it's a reference to the library list
                     if (fsOptions.libraries.toLowerCase() === 'librarylist') {
                         libraries = connection.getConfig().libraryList;
@@ -266,7 +269,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                         // Parse comma-separated library names
                         libraries = fsOptions.libraries.split(',').map(lib => lib.trim()).filter(Boolean);
                     }
-                    
+
                     if (libraries.length > 0) {
                         statement += ` where OBJNAME in (${libraries.map(entry => `'${connection.upperCaseName(entry)}'`).join(`, `)})`;
                     }

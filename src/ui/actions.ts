@@ -34,7 +34,7 @@ export type ActionTarget = {
 }
 
 const actionUsed: Map<string, number> = new Map;
-const PARM_REGEX = / (PNLGRP|OBJ|PGM|MODULE|FILE|MENU)\((?<object>.+?)\)/;
+const PARM_REGEX = /(^|\s+)(PNLGRP|OBJ|PGM|MODULE|FILE|MENU)\((?<object>.+?)\)/;
 
 export function registerActionTools(context: vscode.ExtensionContext) {
   context.subscriptions.push(
@@ -348,7 +348,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             file: `${lib}/${srcpf}`,
                           });
 
-                          const copyFromStreamfile = content.toCl(`CPYFRMSTMF`, {
+                          const copyFromStreamfile = content.toCl(`QSYS/CPYFRMSTMF`, {
                             fromstmf: fullPath,
                             tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
                             mbropt: `*REPLACE`,

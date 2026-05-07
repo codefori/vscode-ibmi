@@ -22,6 +22,14 @@ export async function isDebugSupported(connection: IBMi) {
 }
 
 export async function startService(connection: IBMi) {
+  // Check if debug engine jobs are already running
+  const existingJobs = await getDebugEngineJobs();
+  if (existingJobs.service) {
+    window.showInformationMessage(l10n.t(`Debug service is already started.`));
+    refreshDebugSensitiveItems();
+    return true;
+  }
+
   const checkAuthority = async (user?: string) => {
     if (user && !await connection.getContent().checkObject({ library: "QSYS", name: user, type: "*USRPRF" }, ["*USE"])) {
       throw new Error(`You don't have *USE authority on user profile ${user}`);
@@ -77,69 +85,156 @@ export async function startService(connection: IBMi) {
       // Change the permissions to 777
       await connection.sendCommand({ command: `chmod 777 ${debugConfig.getRemoteServiceWorkspace()}` });
 
-      const command = `QSYS/SBMJOB JOB(QDBGSRV) SYSLIBL(*SYSVAL) CURLIB(*USRPRF) INLLIBL(*JOBD) ${submitOptions} CMD(QSH CMD('export JAVA_HOME=${javaHome};${debugConfig.getRemoteServiceBin()}/startDebugService.sh > ${debugConfig.getNavigatorLogFile()} 2>&1'))`
-      const submitResult = await connection.runCommand({ command, noLibList: true });
-      if (submitResult.code === 0) {
-        const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
-        if (submitMessage) {
-          const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
-          if (job) {
-            let tries = 0;
-            let debugServiceJob: string | undefined;
-            const debugPort = Number(debugConfig.getRemoteServiceSecuredPort());
-            const checkJob = async (done: (started: boolean) => void) => {
-              if (tries++ < 40) {
-                if (debugServiceJob) {
-                  if ((await getDebugEngineJobs()).service) {
-                    //Debug service job running Java is still alive
-                    if (await checkPort(connection, debugPort)) {
-                      window.showInformationMessage(l10n.t(`Debug service started.`));
-                      refreshDebugSensitiveItems();
-                      done(true);
-                    }
-                    else {
-                      //Job is alive but ports are not opened yet
-                      setTimeout(() => checkJob(done), 1000);
-                    }
-                  }
-                  else {
-                    //Debug service job died
-                    window.showErrorMessage(`Debug Service job ${debugServiceJob} failed.`, 'Open logs')
-                      .then(() => commands.executeCommand('code-for-ibmi.browse', { path: `${debugConfig.getRemoteServiceWorkDir()}/DebugService_log.txt` }));
-                    done(false);
-                  }
-                }
-                else {
-                  const jobDetail = await readActiveJob(connection, job);
-                  if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
-                    debugServiceJob = (await getDebugEngineJobs()).service;
-                    setTimeout(() => checkJob(done), 1000);
-                  } else {
-                    let reason;
-                    if (typeof jobDetail === "object") {
-                      reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
-                    }
-                    else if (jobDetail) {
-                      reason = jobDetail;
-                    }
-                    else {
-                      reason = "job has ended";
-                    }
-                    window.showErrorMessage(`Debug Service starter job ${job} failed: ${reason}.`, 'Open output').then(() => openQPRINT(connection, job));
-                    done(false);
-                  }
-                }
-              }
-              else {
-                done(false);
-              }
-            };
+      // Clear the log file before starting the service
+      await connection.sendCommand({ command: `rm -f ${debugConfig.getNavigatorLogFile()}` });
 
-            return await new Promise<boolean>(checkJob);
+      const navigatorLogFile = debugConfig.getNavigatorLogFile();
+      const command = `QSYS/SBMJOB JOB(QDBGSRV) SYSLIBL(*SYSVAL) CURLIB(*USRPRF) INLLIBL(*JOBD) ${submitOptions} CMD(QSH CMD('touch ${navigatorLogFile};attr ${navigatorLogFile} CCSID=1208;export JAVA_HOME=${javaHome};${debugConfig.getRemoteServiceBin()}/startDebugService.sh > ${navigatorLogFile} 2>&1'))`
+      const submitResult = await connection.runCommand({ command, noLibList: true });
+      
+      // Note: The submit command will always return success (code 0)
+      // We need to read the log file to check for actual errors
+      const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
+      if (!submitMessage) {
+        throw new Error(`Failed to submit Debug Service job: ${submitResult.stderr || submitResult.stdout}`);
+      }
+
+      const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
+      if (!job) {
+        throw new Error(`Could not parse job name from submit message: ${submitMessage}`);
+      }
+
+      // Read and parse the log file to check for errors (based on Java DebugServiceManager.readLogger)
+      const logFilePath = debugConfig.getNavigatorLogFile();
+      const startTime = Date.now();
+      const timeout = 95000; // 95 seconds timeout like Java implementation
+      let numLines = 0;
+      let debugLine = false;
+
+      // Wait for content (first 7 lines is Java information)
+      // Need to wait for the lines after start and any Debugger lines to see if there are errors
+      while ((numLines < 8) || !debugLine) {
+        if ((Date.now() - startTime) > timeout) {
+          // Timeout - read remaining lines and throw error
+          try {
+            const logContent = await connection.getContent().downloadStreamfileRaw(logFilePath);
+            const lines = logContent.toString('utf-8').split('\n');
+            throw new Error(`Reading Debug Service logger for starting timed out. Last lines:\n${lines.slice(-10).join('\n')}`);
+          } catch (error) {
+            throw new Error(`Reading Debug Service logger for starting timed out: ${error}`);
+          }
+        }
+
+        // Read the log file
+        try {
+          const logContent = await connection.getContent().downloadStreamfileRaw(logFilePath);
+          const lines = logContent.toString('utf-8').split('\n');
+          numLines = lines.length;
+
+          // Check if there are any non-[Debugger] lines after line 7
+          debugLine = false;
+          for (let i = 7; i < lines.length; i++) {
+            const line = lines[i];
+            // If we find a non-empty line that doesn't start with [Debugger], we have content to process
+            if (line.trim() && !line.startsWith('[Debugger]')) {
+              debugLine = true;
+              break;
+            }
+          }
+        } catch (error) {
+          // Log file might not exist yet, wait and retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          continue;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Now read again and find out what is after the first 7 lines and [Debugger] output
+      const logContent = await connection.getContent().downloadStreamfileRaw(logFilePath);
+      const lines = logContent.toString('utf-8').split('\n');
+      const errors: string[] = [];
+      const successes: string[] = [];
+
+      for (let i = 7; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.startsWith('[Debugger]')) {
+          // Check for success messages (EQARD1007I and EQARD1053I indicate success)
+          if (line.includes('EQARD1007I') || line.includes('EQARD1053I')) {
+            successes.push(line);
+          } else if (line.trim()) {
+            // Any other non-empty line is considered an error
+            errors.push(line);
           }
         }
       }
-      throw new Error(`Failed to submit Debug Service job: ${submitResult.stderr || submitResult.stdout}`)
+
+      if (errors.length > 0) {
+        const errorMessage = [...successes, ...errors].join('\n');
+        throw new Error(`Debug Service failed to start:\n${errorMessage}`);
+      }
+
+      // Success - now wait for the debug service to be fully operational
+      let tries = 0;
+      let debugServiceJob: string | undefined;
+      const debugPort = Number(debugConfig.getRemoteServiceSecuredPort());
+      const checkJob = async (done: (started: boolean) => void) => {
+        if (tries++ < 40) {
+          if (debugServiceJob) {
+            if ((await getDebugEngineJobs()).service) {
+              //Debug service job running Java is still alive
+              if (await checkPort(connection, debugPort)) {
+                window.showInformationMessage(l10n.t(`Debug service started.`));
+                refreshDebugSensitiveItems();
+                done(true);
+              }
+              else {
+                //Job is alive but ports are not opened yet
+                setTimeout(() => checkJob(done), 1000);
+              }
+            }
+            else {
+              //Debug service job died
+              window.showErrorMessage(`Debug Service job ${debugServiceJob} failed.`, 'Open logs')
+                .then(() => commands.executeCommand('code-for-ibmi.browse', { path: logFilePath }));
+              done(false);
+            }
+          }
+          else {
+            const jobDetail = await readActiveJob(connection, job);
+            if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
+              debugServiceJob = (await getDebugEngineJobs()).service;
+              setTimeout(() => checkJob(done), 1000);
+            } else {
+              let reason;
+              let openLogFile = false;
+              if (typeof jobDetail === "object") {
+                reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
+              }
+              else if (jobDetail) {
+                reason = jobDetail;
+              }
+              else {
+                reason = "job has ended";
+                openLogFile = true;
+              }
+              window.showErrorMessage(`Debug Service starter job ${job} failed: ${reason}.`, 'Open output').then(() => {
+                if (openLogFile) {
+                  commands.executeCommand('code-for-ibmi.browse', { path: logFilePath });
+                } else {
+                  openQPRINT(connection, job);
+                }
+              });
+              done(false);
+            }
+          }
+        }
+        else {
+          done(false);
+        }
+      };
+
+      return await new Promise<boolean>(checkJob);
     }
   }
   catch (error) {

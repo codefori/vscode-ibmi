@@ -16,7 +16,7 @@ import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/serverFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand } from './types';
+import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, QsysPath, CacheItem } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -147,8 +147,19 @@ export default class IBMi {
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
 
+  ccsidCache: Map<string, CacheItem<number>> = new Map();
+
   public appendOutput: (text: string) => void = (text) => {
-    process.stdout.write(text);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    const second = String(now.getSeconds()).padStart(2, '0');
+    const millisecond = String(now.getMilliseconds()).padStart(3, '0');
+    const timestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
+    process.stdout.write(`[${timestamp}] ${text}`);
   };
 
   /**
@@ -519,7 +530,7 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
-      callbacks.progress({ message: `Checking Code for IBM i components.` });
+      callbacks.progress({ message: `Checking Mapepire component.` });
 
       // We always start up Mapepire first
       await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
@@ -553,7 +564,7 @@ export default class IBMi {
       }
 
       // Then check the remaining components
-
+      callbacks.progress({ message: `Checking Code for IBM i components.` });
       await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
 
       const componentStates = this.componentManager.getComponentStates();
@@ -704,11 +715,8 @@ export default class IBMi {
 
           if (!commandShellResult.stderr) {
             let usesBash = this.shell === IBMi.bashShellPath;
-            if (!usesBash) {
-              // make sure chsh is installed
-              if (this.remoteFeatures[`chsh`]) {
-                callbacks.uiErrorHandler(this, `default_not_bash`);
-              }
+            if (!usesBash) {              
+              callbacks.uiErrorHandler(this, `default_not_bash`);
             }
 
             if (usesBash) {
@@ -1195,6 +1203,10 @@ export default class IBMi {
     return this.sqlJob !== undefined;
   }
 
+  public getSqlJobId() {
+    return this.sqlJob?.id;
+  }
+
   /**
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used
@@ -1358,7 +1370,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string | string[], options: { bindings?: BindingValue[] } = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string | string[], options: { bindings?: BindingValue[], rows?: number } = {}): Promise<Tools.DB2Row[]> {
     if (this.sqlJob) {
       let list = Array.isArray(statements) ? statements : statements.split(`;`).filter(x => x.trim().length > 0);
 
@@ -1401,7 +1413,7 @@ export default class IBMi {
           const log = `Running SQL query: ${statement}\n`;
           try {
             query = this.sqlJob.query<Tools.DB2Row>(statement, { parameters: options.bindings });
-            const rs = await query.execute(99999);
+            const rs = await query.execute(options.rows ?? 99999);
             if (rs.has_results) {
               lastResultSet.push(...rs.data);
               this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'}`);
@@ -1518,6 +1530,52 @@ export default class IBMi {
     if (foundNumber) {
       return this.getIAspName(foundNumber);
     }
+  }
+
+  async getFileCcsid(path: string | QsysPath): Promise<number> {
+    const CCSID_CACHE_TTL = 600000; // 10 minutes in milliseconds
+
+    // Generate normalized cache key
+    const isQsysPath = typeof path === `object`;
+    let cacheKey: string;
+    let lookupPath: string | QsysPath;
+
+    if (isQsysPath) {
+      
+      const localPath: QsysPath = { ...path };
+      localPath.asp = localPath.asp ? this.sysNameInAmerican(localPath.asp) : undefined;
+      localPath.library = this.sysNameInAmerican(localPath.library);
+      localPath.name = this.sysNameInAmerican(localPath.name);
+      cacheKey = Tools.qualifyPath(localPath.library, localPath.name, '', localPath.asp || '', true);
+      // Strip member for lookup (getAttributes expects file-level path)
+      lookupPath = { library: localPath.library, name: localPath.name, asp: localPath.asp };
+    } else {
+      // Strip member from string path
+      cacheKey = path.replace(/\/[^/]+\.MBR$/i, '');
+      lookupPath = cacheKey;
+    }
+
+    // Check cache
+    const cached = this.ccsidCache.get(cacheKey);
+    if (cached) {
+      if (!cached.createdAt || cached.createdAt + CCSID_CACHE_TTL >= Date.now()) {
+        // cached ccsid still valid
+        return cached.value;
+      }
+      // clear the stale cached ccsid
+      this.ccsidCache.delete(cacheKey);
+    }
+
+    // Call getAttributes to fetch CCSID 
+    const attrs = await this.getContent().getAttributes(lookupPath, 'CCSID');
+    const ccsid = Number(attrs?.CCSID) || 0;
+
+    // Save to cache if valid
+    if (ccsid !== 0) {
+      this.ccsidCache.set(cacheKey, { value: ccsid, createdAt: Date.now() });
+    }
+
+    return ccsid;
   }
 
   getLibraryIAsp(library: string) {

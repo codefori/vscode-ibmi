@@ -163,7 +163,7 @@ export class ActionItem extends EnvironmentItem {
 
     this.iconPath = new vscode.ThemeIcon("github-action", this.context.matched ? new vscode.ThemeColor(ActionItem.matchedColor) : undefined);
     this.description = this.context.matched ? l10n.t("search match") : undefined;
-    this.tooltip = this.action.command;
+    this.tooltip = `${ this.action.command }\nExtensions: ${this.action.extensions?.join(`, `)}`;
     this.resourceUri = vscode.Uri.from({
       scheme: ActionItem.context,
       authority: this.action.name,

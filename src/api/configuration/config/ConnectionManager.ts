@@ -44,6 +44,9 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     secureSQL: (parameters.secureSQL === true),
     keepActionSpooledFiles: (parameters.keepActionSpooledFiles === true),
     mapepireJavaVersion: (parameters.mapepireJavaVersion || "default"),
+    ccsidConversionEnabled: (parameters.ccsidConversionEnabled === true),
+    ccsidConvertFrom: parameters.ccsidConvertFrom || ``,
+    ccsidConvertTo: parameters.ccsidConvertTo || ``,
   }
 }
 

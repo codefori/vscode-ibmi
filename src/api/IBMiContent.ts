@@ -152,10 +152,27 @@ export default class IBMiContent {
     const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
     const tempRmt = this.getTempRemote(path);
     let retry = false;
-    while (true) {
+    
+    // Fetch source file CCSID and determine if conversion is needed
+    const sourceCcsid = await this.ibmi.getFileCcsid(path);
+    const {requiresConversion, targetCcsid} = Tools.determineCcsidConversion(sourceCcsid, this.config);
+  
+  while (true) {
       let copyResult: CommandResult;
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
+        if (requiresConversion) {
+          await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => {}); // ignore error
+          await this.ibmi.runSQL([
+            `Drop table if exists QTEMP.QTEMPSRC`,
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
+          ].join("\n")).catch(e => {
+            copyResult.code = -1;
+            copyResult.stderr = String(e);
+          });
+        } else {
         try {
           await this.ibmi.runSQL([
             `Drop table if exists QTEMP.QTEMPSRC`,
@@ -165,12 +182,28 @@ export default class IBMiContent {
           copyResult.code = -1;
           copyResult.stderr = String(error);
         }
+        }
       }
       else {
-        copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-          noLibList: true
-        });
+        if (requiresConversion) {
+          copyResult = { code: 0, stdout: '', stderr: '' };
+
+          await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => {}); // ignore error
+          try {
+            await this.ibmi.runSQL([
+              `@QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
+              `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
+            ]);
+          } catch (e: any) {
+            copyResult.code = -1;
+            copyResult.stderr = String(e);
+          }
+        } else {
+          copyResult = await this.ibmi.runCommand({
+            command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            noLibList: true
+          });
+        }
       }
 
       if (copyResult.code === 0) {
@@ -221,6 +254,10 @@ export default class IBMiContent {
     try {
       await writeFileAsync(tmpobj, content, `utf8`);
       const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
+      // Fetch source file CCSID and determine if conversion is needed
+      const sourceCcsid = await this.ibmi.getFileCcsid(path);
+      const {requiresConversion, targetCcsid} = Tools.determineCcsidConversion(sourceCcsid, this.config);
+      
       const tempRmt = this.getTempRemote(path);
 
       const touchUnicode = await this.ibmi.sendCommand({ command: `touch ${tempRmt} && attr ${tempRmt} CCSID=1208` });
@@ -232,6 +269,21 @@ export default class IBMiContent {
       let copyResult: CommandResult;
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
+
+        if (requiresConversion) {
+          try {
+          await this.ibmi.runSQL([
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
+            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`,
+            `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
+            ].join("\n"));
+          } catch (e: any) {
+            copyResult.code = -1;
+            copyResult.stderr = String(e);
+          }
+        } else {
         try {
           await this.ibmi.runSQL([
             `Drop table if exists QTEMP.QTEMPSRC`,
@@ -244,11 +296,26 @@ export default class IBMiContent {
           copyResult.stderr = String(error);
         }
       }
+      }
       else {
+         if (requiresConversion) {
+          copyResult = { code: 0, stdout: '', stderr: '' };
+          try {
+            await this.ibmi.runSQL([
+            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
+            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
+            `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
+            ]);
+          } catch (e: any) {
+            copyResult.code = -1;
+            copyResult.stderr = String(e);
+          }
+        } else {
         copyResult = await this.ibmi.runCommand({
           command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
           noLibList: true
         });
+      }
       }
 
       if (copyResult.code === 0) {
@@ -354,6 +421,9 @@ export default class IBMiContent {
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
     let objects: IBMiObject[];
     if (this.ibmi.enableSQL) {
+      // Build VALUES clause from the libraries array
+      const valuesClause = libraries.map(lib => `('${lib.trim()}')`).join(',\n          ');
+
       const statement = `
         SELECT
           os.OBJNAME AS NAME,
@@ -366,8 +436,14 @@ export default class IBMiContent {
           EXTRACT(EPOCH FROM (os.CHANGE_TIMESTAMP)) * 1000 AS CHANGED,
           os.OBJOWNER AS OWNER,
           os.OBJDEFINER AS CREATED_BY
-        from table( SYSTOOLS.SPLIT( INPUT_LIST => '${libraries.toString()}', DELIMITER => ',' ) ) libs,
-        table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
+        FROM TABLE(VALUES
+          ${valuesClause}
+        ) AS libs(ELEMENT),
+        TABLE(QSYS2.OBJECT_STATISTICS(
+          OBJECT_SCHEMA => 'QSYS',
+          OBJTYPELIST => '*LIB',
+          OBJECT_NAME => libs.ELEMENT
+        )) AS os
       `;
       const results = await this.ibmi.runSQL(statement);
 
@@ -694,28 +770,29 @@ export default class IBMiContent {
     const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? this.ibmi.upperCaseName(filter.extensions).replace(/[*]/g, `%`) : undefined;
 
     const statement =
-      `with MEMBERS as (
-        select
-          rtrim(cast(a.SYSTEM_TABLE_SCHEMA as char(10))) as LIBRARY,
-          b.AVGROWSIZE as RECORD_LENGTH,
-          a.IASP_NUMBER as ASP,
-          rtrim(cast(a.SYSTEM_TABLE_NAME as char(10))) AS SOURCE_FILE,
-          rtrim(cast(b.SYSTEM_TABLE_MEMBER as char(10))) as NAME,
-          coalesce(rtrim(cast(b.SOURCE_TYPE as varchar(10))), '') as TYPE,
-          coalesce(rtrim(varchar(b.PARTITION_TEXT)), '') as TEXT,
-          b.NUMBER_ROWS as LINES,
-          extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
-          extract(epoch from (b.LAST_SOURCE_UPDATE_TIMESTAMP))*1000 as CHANGED
-        from QSYS2.SYSTABLES as a
-          join QSYS2.SYSPARTITIONSTAT as b
-            on ( b.SYSTEM_TABLE_SCHEMA, b.SYSTEM_TABLE_NAME ) = ( a.SYSTEM_TABLE_SCHEMA, a.SYSTEM_TABLE_NAME )
-      )
-      select * from MEMBERS
-      where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
-        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
-        ${singleMember ? `and NAME like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
-        ${singleMemberExtension ? `and TYPE like '${singleMemberExtension}'` : ''}
-      order by ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
+      `SELECT RTRIM(a.OBJLIB) AS LIBRARY,
+             RTRIM(a.OBJNAME) AS SOURCE_FILE,
+             RTRIM(b.SYSTEM_TABLE_MEMBER) AS NAME,
+             B.AVGROWSIZE AS RECORD_LENGTH,
+             a.IASP_NUMBER AS ASP,
+             COALESCE(RTRIM(CAST(b.SOURCE_TYPE AS VARCHAR(10))), '') AS TYPE,
+             COALESCE(RTRIM(VARCHAR(b.TEXT)), '') AS TEXT,
+             b.NUMBER_ROWS AS LINES,
+             EXTRACT(EPOCH FROM (b.CREATE_TIMESTAMP)) * 1000 AS CREATED,
+             EXTRACT(EPOCH FROM (b.LAST_SOURCE_UPDATE_TIMESTAMP)) * 1000 AS CHANGED
+        FROM TABLE (
+               qsys2.object_statistics('${this.ibmi.sysNameInAmerican(library)}', '*FILE', '${this.ibmi.sysNameInAmerican(sourceFile)}')
+             ) A,
+             LATERAL (
+               SELECT *
+                 FROM TABLE (
+                     qsys2.PARTITION_STATISTICS(
+                       RPAD(A.OBJLIB, 10), RPAD(A.OBJNAME, 10))
+                   ) ML
+             ) B
+        ${singleMember ? `WHERE RTRIM(b.SYSTEM_TABLE_MEMBER) like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ``}
+        ${singleMemberExtension ? `${singleMember ? `AND` : `WHERE`} RTRIM(CAST(b.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
+        ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
     if (results.length) {
@@ -940,7 +1017,7 @@ export default class IBMiContent {
 
   async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
-      command: this.toCl(`CHKOBJ`, {
+      command: this.toCl(`QSYS/CHKOBJ`, {
         obj: `${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`,
         objtype: object.type.toLocaleUpperCase(),
         aut: authorities.join(" "),
@@ -1110,7 +1187,7 @@ export default class IBMiContent {
     paths = Array.isArray(paths) ? paths : [paths];
     const toPathIsDir = await this.isDirectory(Tools.escapePath(toPath));
     for (const path of paths) {
-      const result = await this.ibmi.runCommand({ command: `COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ('}'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
+      const result = await this.ibmi.runCommand({ command: `QSYS/COPY OBJ('${path}') ${toPathIsDir ? 'TODIR(' : 'TOOBJ('}'${toPath}') SUBTREE(*ALL) REPLACE(*YES)`, environment: "ile" });
       if (result.code !== 0) {
         return result;
       }
