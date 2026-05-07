@@ -202,7 +202,7 @@ export default class Instance {
 
   private async setConnection(connection?: IBMi) {
     if (this.connection) {
-      this.connection.disconnect();
+      await this.connection.disconnect();
     }
 
     if (connection) {

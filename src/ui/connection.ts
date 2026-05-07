@@ -210,6 +210,9 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
         }
       });
       break;
+
+    case 'component_signature_mismatch':
+      return window.showErrorMessage(data, { modal: true }, "Connect anyway").then(Boolean);
   }
 
   return false;

@@ -5,7 +5,7 @@ import path from "path";
 import { SemanticVersion } from "../../../typings";
 import { getJavaHome } from "../../configuration/DebugConfiguration";
 import IBMi from "../../IBMi";
-import { ComponentState, IBMiComponent } from "../component";
+import { IBMiComponent, SecureComponentState } from "../component";
 import { sshSqlJob } from "./sqlJob";
 import { SERVER_FILE_PREFIX, SERVER_VERSION_FILE, VERSION } from "./version";
 
@@ -31,34 +31,33 @@ export class Mapepire implements IBMiComponent {
   }
 
   getIdentification() {
-    return { name: Mapepire.ID, version: VERSION };
+    return { name: Mapepire.ID, version: VERSION, signature: "41b1cfa67778ac204426f1dda0b51bd3f45fe3b89c91121d968660140acc0876" };
   }
 
   async setInstallDirectory(installDirectory: string): Promise<void> {
     this.installPath = path.posix.join(installDirectory, path.basename(this.localAssetPath));
   }
 
-  async getRemoteState(connection: IBMi, installDirectory: string): Promise<ComponentState> {
+  async getRemoteState(connection: IBMi, installDirectory: string): Promise<SecureComponentState> {
     this.setInstallDirectory(installDirectory);
-    const remoteVersions = (await connection.sendCommand({ command: `stat --printf="%n\n" ${SERVER_FILE_PREFIX}*`, directory: installDirectory }))
+    const remoteVersions = (await connection.sendCommand({ command: `find . -type f -name ${SERVER_FILE_PREFIX}\\*`, directory: installDirectory }))
       .stdout.split("\n")
-      .map(line => line.trim())
+      .map(line => line.trim().substring(2))
       .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\\.(\\d+)\\.(\\d+)\\.jar$`).exec(line))
       .filter(Boolean)
       .map(version => ({ major: Number(version![1]), minor: Number(version![2]), patch: Number(version![3]) } as SemanticVersion));
     if (!remoteVersions) {
-      return `NotInstalled`;
+      return { status: "NotInstalled" };
     }
     else if (remoteVersions.every(remoteVersion => remoteVersion.major < this.version.major || (remoteVersion.major === this.version.major && remoteVersion.minor < this.version.minor) || (remoteVersion.major === this.version.major && remoteVersion.minor === this.version.minor && remoteVersion.patch < this.version.patch))) {
-      return "NeedsUpdate";
+      return { status: "NeedsUpdate" };
     }
-    else {
-      return "Installed";
-    }
+
+    return { status: "Installed", remoteSignature: await connection.getContent().getSHA256FileHash(this.installPath) };
   }
 
 
-  async update(connection: IBMi): Promise<ComponentState> {
+  async update(connection: IBMi): Promise<SecureComponentState> {
     try {
       if (!this.localAssetPath) {
         throw "Local Mapepire asset not set!";
@@ -69,24 +68,18 @@ export class Mapepire implements IBMiComponent {
         throw `Local Mapepire asset not found at ${this.localAssetPath}!`;
       }
 
-      let result = await connection.sendCommand({ command: `rm -f ${this.installPath.substring(0, this.installPath.lastIndexOf('-'))}*.jar` });
-      if (result.code !== 0) {
-        throw `Failed to clear previous Mapepire installation: ${result.stderr}`;
-      }
-
       await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
-
-      result = await connection.sendCommand({ command: `chmod +x ${this.installPath}` });
+      const result = await connection.sendCommand({ command: `chmod +x ${this.installPath}` });
       if (result.code !== 0) {
         throw `Failed to make Mapepire jar file executable: ${result.stderr}`;
       }
     }
     catch (error: any) {
       connection.appendOutput(String(error));
-      return "Error";
+      return { status: "Error" };
     }
 
-    return `Installed`;
+    return { status: "Installed", remoteSignature: await connection.getContent().getSHA256FileHash(this.installPath) };
   }
 
   getInitCommand(javaHome: string): string | undefined {

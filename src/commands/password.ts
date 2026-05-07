@@ -1,6 +1,6 @@
 import { commands, Disposable, ExtensionContext, extensions, l10n, ProgressLocation, window } from "vscode";
 import Instance from "../Instance";
-import { PasswordManager } from "../api/components/password";
+import { Password } from "../api/password";
 import { getStoredPassword, setStoredPassword } from "../config/passwords";
 import { CustomUI } from "../webviews/CustomUI";
 
@@ -136,7 +136,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
             }
             else {
               try {
-                await window.withProgress({ title: l10n.t("Changing password..."), location: ProgressLocation.Notification }, async () => await connection.getComponent<PasswordManager>(PasswordManager.ID)?.changePassword(connection, currentPassword, newPassword));
+                await window.withProgress({ title: l10n.t("Changing password..."), location: ProgressLocation.Notification }, async () => await Password.changePassword(connection, currentPassword, newPassword));
                 if (await getStoredPassword(context, connection.currentConnectionName)) {
                   //Only save the new password if one was already stored
                   await setStoredPassword(context, connection.currentConnectionName, newPassword);
@@ -166,7 +166,7 @@ async function updateNextPasswordCheck(instance: Instance) {
   const connection = instance.getConnection();
   if (connection) {
     const today = new Date();
-    const daysLeft = (await connection?.getComponent<PasswordManager>(PasswordManager.ID)?.getPasswordExpiration(connection))?.daysLeft || 24;
+    const daysLeft = (await Password.getPasswordExpiration(connection))?.daysLeft || 24;
     let whenNextDay = 14; //Next check in two weeks by default
     if (daysLeft <= 7) {
       //Less than a week left: check every day
