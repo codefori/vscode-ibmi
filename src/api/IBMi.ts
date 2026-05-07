@@ -1370,7 +1370,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string | string[], options: { bindings?: BindingValue[] } = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string | string[], options: { bindings?: BindingValue[], rows?: number } = {}): Promise<Tools.DB2Row[]> {
     if (this.sqlJob) {
       let list = Array.isArray(statements) ? statements : statements.split(`;`).filter(x => x.trim().length > 0);
 
@@ -1413,7 +1413,7 @@ export default class IBMi {
           const log = `Running SQL query: ${statement}\n`;
           try {
             query = this.sqlJob.query<Tools.DB2Row>(statement, { parameters: options.bindings });
-            const rs = await query.execute(99999);
+            const rs = await query.execute(options.rows ?? 99999);
             if (rs.has_results) {
               lastResultSet.push(...rs.data);
               this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'}`);
