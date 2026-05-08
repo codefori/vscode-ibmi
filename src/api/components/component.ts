@@ -1,16 +1,20 @@
 import IBMi from "../IBMi";
 
-export type ComponentState = `NotChecked` | `NotInstalled` | `Installed` | `NeedsUpdate` | `Error`;
+type ComponentStatus = `NotChecked` | `NotInstalled` | `NeedsUpdate` | `Installed` | `Error`;
+/** @deprecated use {@link SecureComponentState} instead */
+export type ComponentState = ComponentStatus;
+export type SecureComponentState = { status: ComponentStatus, remoteSignature?: string };
 
 export type ComponentIdentification = {
   name: string
-  version: number|string,
-  userManaged?: boolean;
+  version: number | string
+  signature: string
+  userManaged?: boolean
 }
 
 export type ComponentInstallState = {
   id: ComponentIdentification
-  state: ComponentState
+  state: SecureComponentState
 }
 
 /**
@@ -21,7 +25,7 @@ export type ComponentInstallState = {
  * For example, this class:
  * ```
  * class MyIBMIComponent implements IBMiComponent {
- *  //implements getName, getRemoteState and update
+ *  //implements getIdentification, getRemoteState and update
  * }
  * ```
  * Must be registered like this, when the extension providing the component gets activated:
@@ -38,32 +42,39 @@ export type ComponentInstallState = {
  */
 export type IBMiComponent = {
   /**
-   * The identification of this component; name must be unique
+   * The identification of this component: a unique name and a signature
    * 
-   * @returns a human-readable name
+   * @returns a {@link ComponentIdentification}
    */
   getIdentification(): ComponentIdentification;
 
   setInstallDirectory?(installDirectory: string): Promise<void>;
 
   /**
-   * @returns the component's {@link ComponentState state} on the IBM i
+   * Check and retrieve the Component's state from the remote system.
+   * 
+   * @param connection 
+   * @param installDirectory 
+   * @param signature a unique identifier (i.e. a hash), part of the component's identification. It should be compared against a hash retrieved from the remote system.
+   * @returns the component's {@link SecureComponentState state} on the IBM i
    */
-  getRemoteState(connection: IBMi, installDirectory:string): ComponentState | Promise<ComponentState>;
+  getRemoteState(connection: IBMi, installDirectory: string): ComponentState | SecureComponentState | Promise<ComponentState | SecureComponentState>;
 
   /**
-   * Called whenever the components needs to be installed or updated, depending on its {@link ComponentState state}.
+   * Called whenever the components needs to be installed or updated, depending on its {@link SecureComponentState state}.
    * 
-   * The Component Manager is responsible for calling this, so the {@link ComponentState state} doesn't need to be checked here.
-   * 
-   * @returns the component's {@link ComponentState state} after the update is done
+   * The Component Manager is responsible for calling this, so the {@link SecureComponentState state} doesn't need to be checked here.
+   * @param connection 
+   * @param installDirectory 
+   * @param signature a unique identifier (i.e. a hash), part of the component's identification. It should be compared against a hash retrieved from the remote system.
+   * @returns the component's {@link SecureComponentState state} after the update is done
    */
-  update(connection: IBMi, installDirectory:string): ComponentState | Promise<ComponentState>
+  update(connection: IBMi, installDirectory: string): ComponentState | SecureComponentState | Promise<ComponentState | SecureComponentState>
 
   /**
    * Called when connecting to clear every persitent information related to the previous connection
    */
-  reset?() : void | Promise<void>
+  reset?(): void | Promise<void>
 
   /**
    * Called when the component should be uninstalled. 

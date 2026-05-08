@@ -42,6 +42,7 @@ async function work() {
       await downloadFile(url, serverFile);
 
       console.log(`Asset downloaded: ${serverFile}`);
+      console.log(`Asset digest: ${newAsset.digest}`);
 
     } else {
       console.log(`Release found but no asset found.`);

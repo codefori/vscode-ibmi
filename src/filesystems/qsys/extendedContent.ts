@@ -26,9 +26,8 @@ export class ExtendedIBMiContent {
   async downloadMemberContentWithDates(uri: vscode.Uri) {
     const connection = instance.getConnection();
     if (connection) {
-      const content = connection.getContent();
       const config = connection.getConfig();
-      const tempLib = config.tempLibrary;
+      const tempLib = "QTEMP";
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
       const { library, file, name } = connection.parserMemberPath(uri.path);
@@ -80,16 +79,17 @@ export class ExtendedIBMiContent {
     let recordLength: number = DEFAULT_RECORD_LENGTH;
 
     if (connection) {
-      const result = await connection.runSQL(`select length(SRCDTA) as LENGTH from ${aliasPath} limit 1`);
-      if (result.length > 0) {
-        recordLength = Number(result[0].LENGTH);
+      const [result] = await connection.runSQL(`select length(SRCDTA) as LENGTH from ${aliasPath} limit 1`);
+      if (result) {
+        recordLength = Number(result.LENGTH);
       } else {
-        const result = await connection.runSQL(`select row_length-12 as LENGTH
-                                               from QSYS2.SYSTABLES
-                                              where SYSTEM_TABLE_SCHEMA = '${connection.sysNameInAmerican(lib)}' and SYSTEM_TABLE_NAME = '${connection.sysNameInAmerican(spf)}'
-                                              limit 1`);
-        if (result.length > 0) {
-          recordLength = Number(result[0].LENGTH);
+        const [result] = await connection.runSQL([
+          `@DSPFD FILE(${lib}/${spf}) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
+          /* sql */
+          `select PHMXRL - 12 as LENGTH from QTEMP.PFS limit 1`
+        ]);
+        if (result) {
+          recordLength = Number(result.LENGTH);
         }
       }
     }
@@ -108,7 +108,7 @@ export class ExtendedIBMiContent {
       const config = connection.getConfig();
       const setccsid = connection.remoteFeatures.setccsid;
 
-      const tempLib = config.tempLibrary;
+      const tempLib = "QTEMP";
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
 
