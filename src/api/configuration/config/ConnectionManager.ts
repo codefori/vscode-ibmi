@@ -1,3 +1,4 @@
+import { window } from "vscode";
 import { ConnectionData } from "../../types";
 import { ConnectionConfig } from "./types";
 import { Config, VirtualConfig } from "./VirtualConfig";
@@ -143,6 +144,7 @@ export class ConnectionManager {
       if (config.tempDir === '/tmp') {
         config.tempDir = '.vscode/tmp';
         await this.update(config);
+        window.showInformationMessage(`Temporary directory updated to /home/usr/.vscode/tmp`);
       }
     } else {
       config = initialize({ name: name, enableSourceDates: true });

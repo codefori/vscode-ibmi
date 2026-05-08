@@ -220,7 +220,8 @@ export namespace Tools {
 
   export function ensureFullPath(inputPath: string, remoteHomeDirectory: string | undefined): string {
     // Handle ~ expansion with remote home directory
-    if (inputPath.startsWith('~')) {
+    // Only expand ~ when it's followed by / or is the entire path
+    if (inputPath === '~' || inputPath.startsWith('~/')) {
       if (remoteHomeDirectory) {
         inputPath = inputPath.replace('~', remoteHomeDirectory);
       } else {
