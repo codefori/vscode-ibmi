@@ -1,7 +1,15 @@
-import { window } from "vscode";
 import { ConnectionData } from "../../types";
 import { ConnectionConfig } from "./types";
 import { Config, VirtualConfig } from "./VirtualConfig";
+
+// Conditionally import vscode to support test environments
+let vscodeWindow: typeof import("vscode").window | undefined;
+try {
+  vscodeWindow = require("vscode").window;
+} catch {
+  // Running in test environment without vscode
+  vscodeWindow = undefined;
+}
 
 function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
   return {
@@ -144,7 +152,7 @@ export class ConnectionManager {
       if (config.tempDir === '/tmp') {
         config.tempDir = '.vscode/tmp';
         await this.update(config);
-        window.showInformationMessage(`Temporary directory updated to /home/usr/.vscode/tmp`);
+        vscodeWindow?.showInformationMessage(`Temporary directory updated to /home/usr/.vscode/tmp`);
       }
     } else {
       config = initialize({ name: name, enableSourceDates: true });

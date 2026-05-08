@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Tools } from '../../Tools';
 
-describe('Tools.ensureFullPath tests', () => {
+describe('Tools.ensureFullPath tests', { concurrent: true }, () => {
   describe('Tilde expansion', () => {
     it('should expand ~ with home directory when provided', () => {
       const result = Tools.ensureFullPath('~/myfile.txt', '/home/user');
