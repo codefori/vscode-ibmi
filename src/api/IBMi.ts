@@ -318,6 +318,12 @@ export default class IBMi {
       //Load existing config
       this.config = await IBMi.connectionManager.load(this.currentConnectionName);
 
+      // Migration: update old default tempDir (/tmp) to new default (.vscode/tmp)
+      if (this.config.tempDir === `/tmp`) {
+        this.config.tempDir = `.vscode/tmp`;
+        callbacks.message(`info`, `Temporary directory updated to /home/usr/.vscode/tmp`);
+      }
+
       // Load cached server settings.
       const cachedServerSettings: CachedServerSettings = IBMi.GlobalStorage.getServerSettingsCache(this.currentConnectionName);
 
