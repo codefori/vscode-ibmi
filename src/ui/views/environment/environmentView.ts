@@ -2,7 +2,6 @@
 import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem } from 'vscode';
 import { ActionTools } from '../../../api/actions';
-import { GetNewLibl } from '../../../api/components/getNewLibl';
 import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
@@ -346,8 +345,8 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           if (command) {
             return await vscode.window.withProgress({ title: l10n.t("Running {0} profile's Library List Command...", profile.name), location: vscode.ProgressLocation.Notification }, async () => {
               try {
-                const component = connection.getComponent<GetNewLibl>(GetNewLibl.ID)
-                const newSettings = await component?.getLibraryListFromCommand(connection, command);
+
+                const newSettings = await connection.getContent().getLibraryListFromCommand(command);
 
                 if (newSettings) {
                   config.libraryList = newSettings.libraryList;

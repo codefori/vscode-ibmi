@@ -1,7 +1,5 @@
 import path from "path";
 import IBMi from "../IBMi";
-import { GetMemberInfo } from "../components/getMemberInfo";
-import { GetNewLibl } from "../components/getNewLibl";
 import { extensionComponentRegistry } from "../components/manager";
 import { Mapepire } from "../components/mapepire";
 import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
@@ -71,14 +69,18 @@ export async function newConnection(reloadSettings?: boolean) {
 
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);
-  extensionComponentRegistry.registerComponent(testingId, new GetNewLibl());
-  extensionComponentRegistry.registerComponent(testingId, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(testingId, new CustomCLI());
 
   const creds: ConnectionData = {
     ...ENV_CREDS,
     name: `${ENV_CREDS.host}_${ENV_CREDS.username}_test`
   };
+
+  const config = await IBMi.connectionManager.load(creds.name);
+  if (config.tempLibrary !== ENV_CREDS.tempLibrary) {
+    config.tempLibrary = ENV_CREDS.tempLibrary;
+    await IBMi.connectionManager.update(config);
+  }
 
   // Override this so not to spam the console.
   conn.appendOutput = (data) => { };
@@ -109,14 +111,6 @@ export async function newConnection(reloadSettings?: boolean) {
     }
   );
 
-  if (reloadSettings) {
-    const config = conn.getConfig();
-    if (config.tempLibrary !== ENV_CREDS.tempLibrary) {
-      config.tempLibrary = ENV_CREDS.tempLibrary;
-      await IBMi.connectionManager.update(config);
-    }
-  }
-
   if (!result.success) {
     throw new Error(`Failed to connect to IBMi${result.error ? `: ${result.error}` : '!'}`);
   }
@@ -126,7 +120,7 @@ export async function newConnection(reloadSettings?: boolean) {
 
 export async function disposeConnection(connection?: IBMi) {
   if (connection) {
-    connection.disconnect();
+    await connection.disconnect();
     testStorage.save();
     testConfig.save();
   }
