@@ -1,5 +1,5 @@
 import path from 'path';
-import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, l10n, tasks } from 'vscode';
+import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskPanelKind, TaskRevealKind, WorkspaceFolder, commands, l10n, tasks } from 'vscode';
 import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
@@ -307,11 +307,12 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             const exitCode = await new Promise<number>(resolve =>
               tasks.executeTask({
                 isBackground: true,
-                name: chosenAction.name,
-                definition: { type: `ibmi` },
+                name: `${path.basename(target.uri.path)} - ${chosenAction.name}`,
+                definition: { type: `ibmi`, path: target.uri.fsPath },
                 scope: workspaceFolder,
                 source: 'IBM i',
                 presentationOptions: {
+                  panel: TaskPanelKind.Dedicated,
                   showReuseMessage: true,
                   clear: IBMi.connectionManager.get<boolean>(`clearOutputEveryTime`),
                   focus: false,

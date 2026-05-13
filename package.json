@@ -41,7 +41,13 @@
 	"contributes": {
 		"taskDefinitions": [
 			{
-				"type": "ibmi"
+				"type": "ibmi",
+				"properties": {
+					"path": {
+						"type": "string",
+						"description": "The path to the target file being compiled"
+					}
+				}
 			}
 		],
 		"jsonValidation": [
