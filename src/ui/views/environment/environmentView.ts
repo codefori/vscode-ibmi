@@ -122,7 +122,6 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       }
       else if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
         await ActionTools.updateAction(node.action, node.workspace, { delete: true });
-        environmentView.actionsNode?.forceRefresh();
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.runOnEditor", (node: ActionItem) => {
