@@ -427,6 +427,12 @@ export default class IBMi {
         this.config.homeDirectory = `.`;
       }
 
+      // Migration: update old default tempDir (/tmp) to new default (.vscode/tmp)
+      if (this.config.tempDir === `/tmp`) {
+        this.config.tempDir = `.vscode/tmp`;
+        callbacks.message(`info`, `Temporary directory updated to ${this.getConfig().homeDirectory}/.vscode/tmp`);
+      }
+
       //Set a default IFS listing
       if (this.config.ifsShortcuts.length === 0) {
         if (defaultHomeDir) {
@@ -523,7 +529,7 @@ export default class IBMi {
       callbacks.progress({ message: `Checking Mapepire status.` });
       const tempDirSet = await this.checkOrCreateTempDirectory();
       if (!tempDirSet) {
-        this.config.tempDir = `/tmp`;
+        this.config.tempDir = `.vscode/tmp`;
       }
 
       // We always start up Mapepire first
@@ -616,14 +622,15 @@ export default class IBMi {
           })
 
         this.sendCommand({
-          command: `rm -rf ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
+          command: `rm -rf ${path.posix.join(this.getConfig().tempDir, `vscodetemp*`)}`
         })
           .then(result => {
             // All good!
           })
           .catch(e => {
             // CPF2125: No objects deleted.
-            callbacks.message(`error`, `Temporary data not cleared from ${this.config?.tempDir}.`);
+            // @ts-ignore We know the config exists.
+            callbacks.message(`error`, `Temporary data not cleared from ${this.getConfig().tempDir}.`);
           });
       }
 
@@ -1072,7 +1079,7 @@ export default class IBMi {
     }
 
     let result = await this.sendCommand({
-      command: `[ -d "${this.config.tempDir}" ]`
+      command: `[ -d "${this.getConfig().tempDir}" ]`
     });
 
     if (result.code === 0) {
@@ -1081,7 +1088,7 @@ export default class IBMi {
     } else {
       // Directory does not exist, try to create it
       let result = await this.sendCommand({
-        command: `mkdir -p ${this.config.tempDir}`
+        command: `mkdir -p ${this.getConfig().tempDir}`
       });
       if (result.code === 0) {
         // Directory created
@@ -1224,8 +1231,8 @@ export default class IBMi {
       // console.log(`Using existing temp: ${this.tempRemoteFiles[key]}`);
       return this.tempRemoteFiles[key];
     } else
-      if (this.config) {
-        let value = path.posix.join(this.config.tempDir, `vscodetemp-${Tools.makeid()}`);
+      if (this.getConfig()) {
+        let value = path.posix.join(this.getConfig().tempDir, `vscodetemp-${Tools.makeid()}`);
         // console.log(`Using new temp: ${value}`);
         this.tempRemoteFiles[key] = value;
         return value;
@@ -1324,7 +1331,7 @@ export default class IBMi {
    * @param process the process that will run on the empty directory
    */
   async withTempDirectory<T>(process: (directory: string) => Promise<T>) {
-    const tempDirectory = `${this.config?.tempDir || '/tmp'}/code4itemp${Tools.makeid(20)}`;
+    const tempDirectory = Tools.ensureFullPath(`${this.getConfig()?.tempDir || '.vscode/tmp'}/code4itemp${Tools.makeid(20)}`, this.config?.homeDirectory);
     const prepareDirectory = await this.sendCommand({ command: `rm -rf ${tempDirectory} && mkdir -p ${tempDirectory}` });
     if (prepareDirectory.code === 0) {
       try {

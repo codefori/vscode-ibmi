@@ -180,8 +180,8 @@ export namespace Tools {
    * Transforms a normalized path into an OS specific path.
    * - Replaces ~ with the current home directory
    * - Changes all / to \ on Windows
-   * @param path 
-   * @returns 
+   * @param path
+   * @returns
    */
   export function resolvePath(path: string) {
     path = path.replace("~", os.homedir());
@@ -216,5 +216,37 @@ export namespace Tools {
     }
 
     return { requiresConversion: true, targetCcsid: configuredTargetCcsid };
+  }
+
+  export function ensureFullPath(inputPath: string, remoteHomeDirectory: string | undefined): string {
+    // Handle ~ expansion with remote home directory
+    // Only expand ~ when it's followed by / or is the entire path
+    if (inputPath === '~' || inputPath.startsWith('~/')) {
+      if (remoteHomeDirectory) {
+        inputPath = inputPath.replace('~', remoteHomeDirectory);
+      } else {
+        // If no home directory is provided, just remove the ~ and treat as relative
+        inputPath = inputPath.substring(1);
+        // Remove leading slash if present after removing ~
+        if (inputPath.startsWith('/')) {
+          inputPath = inputPath.substring(1);
+        }
+      }
+    }
+
+    // Check if the path is already absolute (starts with /)
+    if (inputPath.startsWith('/')) {
+      return inputPath;
+    }
+
+    // If not absolute, prepend the remote home directory if available
+    if (remoteHomeDirectory) {
+      // Use path.posix.join to ensure forward slashes for IFS paths
+      return path.posix.join(remoteHomeDirectory, inputPath);
+    }
+
+    // If no home directory is provided, return the path as-is
+    // (it will remain relative)
+    return inputPath;
   }
 }
