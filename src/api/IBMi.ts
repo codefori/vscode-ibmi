@@ -318,12 +318,6 @@ export default class IBMi {
       //Load existing config
       this.config = await IBMi.connectionManager.load(this.currentConnectionName);
 
-      // Migration: update old default tempDir (/tmp) to new default (.vscode/tmp)
-      if (this.config.tempDir === `/tmp`) {
-        this.config.tempDir = `.vscode/tmp`;
-        callbacks.message(`info`, `Temporary directory updated to /home/usr/.vscode/tmp`);
-      }
-
       // Load cached server settings.
       const cachedServerSettings: CachedServerSettings = IBMi.GlobalStorage.getServerSettingsCache(this.currentConnectionName);
 
@@ -431,6 +425,12 @@ export default class IBMi {
         // If we can't find a usable home directory, just reset it to
         // the initial default.
         this.config.homeDirectory = `.`;
+      }
+
+      // Migration: update old default tempDir (/tmp) to new default (.vscode/tmp)
+      if (this.config.tempDir === `/tmp`) {
+        this.config.tempDir = `.vscode/tmp`;
+        callbacks.message(`info`, `Temporary directory updated to ${this.getConfig().homeDirectory}/.vscode/tmp`);
       }
 
       //Set a default IFS listing
