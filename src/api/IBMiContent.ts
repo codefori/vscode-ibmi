@@ -536,8 +536,8 @@ export default class IBMiContent {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
 
     // Libraries (*LIB) can only be listed from QSYS
-    const isListingLibraries = filters.types && filters.types.length > 0 && filters.types.some(type => type === '*LIB');
-    
+    const isListingLibraries = !!filters?.types?.some(type => type === '*LIB'); 
+     
     if (isListingLibraries && localLibrary !== `QSYS`) {
       // Return empty array when trying to list libraries from non-QSYS library
       return [];
