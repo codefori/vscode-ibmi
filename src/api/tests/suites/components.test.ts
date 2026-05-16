@@ -55,5 +55,15 @@ describe('Component Tests', () => {
     } catch (e) {
       expect(e).toBeInstanceOf(Error);
     }
+
+    // Let's check we can disable it.
+
+    const requiredCheckC = await manager.getRemoteState(CustomCLI.ID);
+    expect(requiredCheckC).toBeTruthy();
+    expect(requiredCheckC).toBe(`Installed`);
+
+    manager.disable(CustomCLI.ID);
+    const requiredCheckD = await manager.getRemoteState(CustomCLI.ID);
+    expect(requiredCheckD).toBeUndefined();
   });
 });
