@@ -60,7 +60,7 @@ describe('Component Tests', () => {
 
     const requiredCheckC = await manager.getRemoteState(CustomCLI.ID);
     expect(requiredCheckC).toBeTruthy();
-    expect(requiredCheckC).toBe(`Installed`);
+    expect(requiredCheckC?.status).toBe(`Installed`);
 
     manager.disable(CustomCLI.ID);
     const requiredCheckD = await manager.getRemoteState(CustomCLI.ID);
