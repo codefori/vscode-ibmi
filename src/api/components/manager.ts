@@ -39,6 +39,7 @@ export const extensionComponentRegistry = new ComponentRegistry();
 
 export class ComponentManager {
   private readonly registered: IBMiComponentRuntime[] = [];
+  private readonly disabled: string[] = [];
 
   constructor(private readonly connection: IBMi) { }
 
@@ -55,11 +56,23 @@ export class ComponentManager {
     });
   }
 
+  disable(id: string) {
+    if (!this.disabled.includes(id)) {
+      this.disabled.push(id);
+    }
+
+    const registeredIndex = this.registered.findIndex(c => c.component.getIdentification().name === id);
+
+    if (registeredIndex >= 0) {
+      this.registered.splice(registeredIndex, 1);
+    }
+  }
+
   /**
    * Returns all components, user managed or not
    */
   getAllAvailableComponents() {
-    return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
+    return Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat()).filter(c => !this.disabled.includes(c.getIdentification().name));
   }
 
   public async installComponent(key: string): Promise<ComponentInstallState> {
