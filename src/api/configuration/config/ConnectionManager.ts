@@ -18,7 +18,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     homeDirectory: parameters.homeDirectory || `.`,
     /** Undefined means not created, so default to on */
     tempLibrary: parameters.tempLibrary || `ILEDITOR`,
-    tempDir: parameters.tempDir || `.vscode/tmp`,
+    tempDir: parameters.tempDir || `~/.vscode/tmp`,
     currentLibrary: parameters.currentLibrary || ``,
     sourceFileCCSID: parameters.sourceFileCCSID || `*FILE`,
     autoConvertIFSccsid: (parameters.autoConvertIFSccsid === true),

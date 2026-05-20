@@ -218,7 +218,11 @@ export namespace Tools {
     return { requiresConversion: true, targetCcsid: configuredTargetCcsid };
   }
 
-  export function ensureFullPath(inputPath: string, remoteHomeDirectory: string | undefined): string {
+  export function ensureFullPath(inputPath: string | undefined, remoteHomeDirectory: string | undefined): string {
+    if (inputPath == undefined) {
+      return '';
+    }
+
     // Handle ~ expansion with remote home directory
     // Only expand ~ when it's followed by / or is the entire path
     if (inputPath === '~' || inputPath.startsWith('~/')) {

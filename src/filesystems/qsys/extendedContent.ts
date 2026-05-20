@@ -122,7 +122,7 @@ export class ExtendedIBMiContent {
       const client = connection.client!;
 
       const { library, file, name } = connection.parserMemberPath(uri.path);
-      const tempRmt = connection.getTempRemote(library + file + name);
+      const tempRmt = Tools.ensureFullPath(connection.getTempRemote(library + file + name), config.homeDirectory);
       if (tempRmt) {
         const tmpobj = await tmpFile();
 

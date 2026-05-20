@@ -427,10 +427,10 @@ export default class IBMi {
         this.config.homeDirectory = `.`;
       }
 
-      // Migration: update old default tempDir (/tmp) to new default (.vscode/tmp)
+      // Migration: update old default tempDir (/tmp) to new default (~/.vscode/tmp)
       if (this.config.tempDir === `/tmp`) {
-        this.config.tempDir = `.vscode/tmp`;
-        callbacks.message(`info`, `Temporary directory updated to ${this.getConfig().homeDirectory}/.vscode/tmp`);
+        this.config.tempDir = `~/.vscode/tmp`;
+        callbacks.message(`info`, `Temporary directory updated to ~/.vscode/tmp`);
       }
 
       //Set a default IFS listing
@@ -529,7 +529,7 @@ export default class IBMi {
       callbacks.progress({ message: `Checking Mapepire status.` });
       const tempDirSet = await this.checkOrCreateTempDirectory();
       if (!tempDirSet) {
-        this.config.tempDir = `.vscode/tmp`;
+        this.config.tempDir = `~/.vscode/tmp`;
       }
 
       // We always start up Mapepire first
@@ -1331,7 +1331,7 @@ export default class IBMi {
    * @param process the process that will run on the empty directory
    */
   async withTempDirectory<T>(process: (directory: string) => Promise<T>) {
-    const tempDirectory = Tools.ensureFullPath(`${this.getConfig()?.tempDir || '.vscode/tmp'}/code4itemp${Tools.makeid(20)}`, this.config?.homeDirectory);
+    const tempDirectory = Tools.ensureFullPath(`${this.getConfig()?.tempDir || '~/.vscode/tmp'}/code4itemp${Tools.makeid(20)}`, this.config?.homeDirectory);
     const prepareDirectory = await this.sendCommand({ command: `rm -rf ${tempDirectory} && mkdir -p ${tempDirectory}` });
     if (prepareDirectory.code === 0) {
       try {

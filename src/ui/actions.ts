@@ -102,7 +102,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
             if (deployResult !== undefined) {
               workspaceId = deployResult.workspaceId;
-              remoteCwd = deployResult.remoteDirectory;
+              remoteCwd = Tools.ensureFullPath(deployResult.remoteDirectory, config.homeDirectory);
             } else {
               vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
               return false;
@@ -111,7 +111,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             workspaceId = workspaceFolder.index;
             const deployPath = DeployTools.getRemoteDeployDirectory(workspaceFolder);
             if (deployPath) {
-              remoteCwd = deployPath;
+              remoteCwd = Tools.ensureFullPath(deployPath, config.homeDirectory);
             } else {
               vscode.window.showWarningMessage(`No deploy directory setup for this workspace. Cancelling Action.`);
               return false;
