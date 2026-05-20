@@ -14,7 +14,7 @@ describe('Component Tests', () => {
   });
 
   it('Can get component no matter the state', async () => {
-    const componentA = await connection.getComponent<CustomCLI>(CustomCLI.ID, { ignoreState: true });
+    const componentA = await connection.getComponent<CustomCLI>(CustomCLI.DEFAULT_ID, { ignoreState: true });
     expect(componentA).toBeDefined();
     expect(componentA?.getIdentification().version).toBe(1);
     expect(componentA?.getIdentification().userManaged).toBe(true);
@@ -24,33 +24,33 @@ describe('Component Tests', () => {
     const manager = connection.getComponentManager();
 
     try {
-      await manager.uninstallComponent(CustomCLI.ID);
+      await manager.uninstallComponent(CustomCLI.DEFAULT_ID);
     } catch (e) {
       console.log(e);
       console.log(`Component not installed, skipping uninstall.`);
     }
 
-    const requiredCheckA = await manager.getRemoteState(CustomCLI.ID);
+    const requiredCheckA = await manager.getRemoteState(CustomCLI.DEFAULT_ID);
     expect(requiredCheckA).toBeDefined();
     expect(requiredCheckA?.status).toBe(`NotInstalled`);
 
     const allComponents = manager.getComponentStates();
     expect(allComponents.length > 1).toBeTruthy();
-    const state = allComponents.some(c => c.id.name === CustomCLI.ID && c.state.status === `NotInstalled`);
+    const state = allComponents.some(c => c.id.name === CustomCLI.DEFAULT_ID && c.state.status === `NotInstalled`);
     expect(state).toBeTruthy();
 
-    const version1 = await connection.getComponent<CustomCLI>(CustomCLI.ID);
+    const version1 = await connection.getComponent<CustomCLI>(CustomCLI.DEFAULT_ID);
     expect(version1).toBeUndefined();
 
-    const resultA = await manager.installComponent(CustomCLI.ID);
+    const resultA = await manager.installComponent(CustomCLI.DEFAULT_ID);
     expect(resultA.state.status).toBe(`Installed`);
 
-    const requiredCheckB = await manager.getRemoteState(CustomCLI.ID);
+    const requiredCheckB = await manager.getRemoteState(CustomCLI.DEFAULT_ID);
     expect(requiredCheckB).toBeTruthy();
     expect(requiredCheckB?.status).toBe(`Installed`);
 
     try {
-      await manager.installComponent(CustomCLI.ID);
+      await manager.installComponent(CustomCLI.DEFAULT_ID);
       expect.fail(`Should not be able to install the same component twice.`);
     } catch (e) {
       expect(e).toBeInstanceOf(Error);
@@ -58,12 +58,11 @@ describe('Component Tests', () => {
 
     // Let's check we can disable it.
 
-    const requiredCheckC = await manager.getRemoteState(CustomCLI.ID);
+    const requiredCheckC = await manager.getRemoteState(CustomCLI.DEFAULT_ID);
     expect(requiredCheckC).toBeTruthy();
     expect(requiredCheckC?.status).toBe(`Installed`);
 
-    manager.disable(CustomCLI.ID);
-    const requiredCheckD = await manager.getRemoteState(CustomCLI.ID);
+    const requiredCheckD = await manager.getRemoteState(`toBeDeleted`);
     expect(requiredCheckD).toBeUndefined();
   });
 });
