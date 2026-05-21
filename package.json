@@ -3323,13 +3323,13 @@
 		"@vscode/vsce": "^3.9.1",
 		"esbuild": "^0.27.0",
 		"esbuild-loader": "^4.4.2",
-		"eslint": "7.19.0",
+		"eslint": "^8.57.1",
 		"ssh2-streams": "^0.4.10",
 		"ts-loader": "^9.3.1",
 		"typescript": "5.9.3",
 		"vite": "^8.0.8",
 		"vitest": "^4.1.2",
-		"webpack": "^5.94.0",
+		"webpack": "^5.106.2",
 		"webpack-cli": "^4.5.0"
 	},
 	"dependencies": {
