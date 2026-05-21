@@ -122,9 +122,12 @@ export class ExtendedIBMiContent {
       const client = connection.client!;
 
       const { library, file, name } = connection.parserMemberPath(uri.path);
-      const tempRmt = Tools.ensureFullPath(connection.getTempRemote(library + file + name), config.homeDirectory);
+      const tempKey = library + file + name;
+      const tempRmt = Tools.ensureFullPath(Tools.ensureFullPath(connection.getTempRemote(tempKey), config.homeDirectory), config.homeDirectory);
       if (tempRmt) {
         const tmpobj = await tmpFile();
+
+        try {
 
         const sourceData = body.split(`\n`);
         const recordLength = this.sourceDateHandler.recordLengths.get(alias) || await this.getRecordLength(aliasPath, library, file);
@@ -203,6 +206,10 @@ export class ExtendedIBMiContent {
         this.sourceDateHandler.baseSource.set(alias, body);
         this.sourceDateHandler.baseDates.set(alias, sourceDates);
         this.sourceDateHandler.baseSequences.delete(alias);
+        } finally {
+          // Clean up temporary file
+          await connection.clearTempRemote(tempKey);
+        }
       }
     }
   }

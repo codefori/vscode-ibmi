@@ -331,7 +331,18 @@ export const ActionSuite: TestSuite = {
         assert.ok(success);
       }
     }
-  ]
+  ],
+  after: async () => {
+    // Clean up local test directory
+    if (helloWorldProject.localPath && existsSync(helloWorldProject.localPath.fsPath)) {
+      await vscode.workspace.fs.delete(helloWorldProject.localPath, { recursive: true, useTrash: false });
+    }
+
+    // Clean up remote test directory
+    if (helloWorldProject.remotePath && await instance.getConnection()?.getContent().isDirectory(helloWorldProject.remotePath)) {
+      await instance.getConnection()?.sendCommand({ command: `rm -rf ${helloWorldProject.remotePath}` });
+    }
+  }
 };
 
 /**

@@ -1239,6 +1239,18 @@ export default class IBMi {
       }
   }
 
+  /**
+   * Cleans up a temp file and removes it from cache
+   * @param {string} key Key to the temp file to clean up
+   */
+  async clearTempRemote(key: string) {
+    const tempFile = this.tempRemoteFiles[key];
+    if (tempFile) {
+      await this.sendCommand({ command: `rm -rf ${tempFile}`, directory: `.` }).catch(() => {});
+      delete this.tempRemoteFiles[key];
+    }
+  }
+
   parserMemberPath(string: string, checkExtension?: boolean): MemberParts {
     // Remove leading slash
     const upperCasedString = this.upperCaseName(string);
