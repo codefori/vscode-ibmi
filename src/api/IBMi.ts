@@ -23,7 +23,7 @@ export interface MemberParts extends IBMiMember {
 }
 
 export type ConnectionMessageType = 'info' | 'warning' | 'error';
-export type ConnectionErrorCode = `shell_config` | `home_directory_creation` | `QCPTOIMPF_exists` | `QCPFRMIMPF_exists` | `default_not_bash` | `invalid_bashrc` | `invalid_temp_lib` | `no_auto_conv_ebcdic` | `not_loaded_debug_config` | `no_sql_runner` | `ccsid_warning` | `component_signature_mismatch`;
+export type ConnectionErrorCode = `shell_config` | `home_directory_creation` | `home_directory_permissions` | `QCPTOIMPF_exists` | `QCPFRMIMPF_exists` | `default_not_bash` | `invalid_bashrc` | `invalid_temp_lib` | `no_auto_conv_ebcdic` | `not_loaded_debug_config` | `no_sql_runner` | `ccsid_warning` | `component_signature_mismatch`;
 
 export interface ConnectionResult {
   success: boolean
@@ -419,6 +419,47 @@ export default class IBMi {
         if (this.config.homeDirectory !== defaultHomeDir) {
           this.config.homeDirectory = defaultHomeDir;
           callbacks.message(`info`, `Configured home directory reset to ${defaultHomeDir}.`);
+        }
+
+        // Check permissions on home directory and .vscode folder
+        callbacks.progress({
+          message: `Checking directory permissions.`
+        });
+
+        // Get home directory permissions (stat -c '%a' returns octal permissions)
+        const homePermResult = await this.sendCommand({
+          command: `stat -c '%a' ${defaultHomeDir} 2>/dev/null || echo "error"`
+        });
+        const homePerms = homePermResult.stdout.trim();
+
+        // Check if .vscode directory exists and get its permissions
+        const vscodeDir = `${defaultHomeDir}/.vscode`;
+        const vscodeExistsResult = await this.sendCommand({
+          command: `test -d ${vscodeDir} && echo "exists" || echo "notexists"`
+        });
+        const vscodeExists = vscodeExistsResult.stdout.trim() === 'exists';
+
+        let vscodePerms = '';
+        if (vscodeExists) {
+          const vscodePermResult = await this.sendCommand({
+            command: `stat -c '%a' ${vscodeDir} 2>/dev/null || echo "error"`
+          });
+          vscodePerms = vscodePermResult.stdout.trim();
+        }
+
+        // Check if permissions need updating
+        const needsPermissionUpdate =
+          (homePerms !== 'error' && homePerms !== '750') ||
+          !vscodeExists ||
+          (vscodeExists && vscodePerms !== 'error' && vscodePerms !== '700');
+
+        if (needsPermissionUpdate && !options.reconnecting) {
+          await callbacks.uiErrorHandler(this, `home_directory_permissions`, {
+            homeDir: defaultHomeDir,
+            homePerms: homePerms !== 'error' ? homePerms : undefined,
+            vscodeExists,
+            vscodePerms: vscodePerms !== 'error' ? vscodePerms : undefined
+          });
         }
       } else {
         // New connections always have `.` as the initial value.
