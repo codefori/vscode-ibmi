@@ -366,7 +366,7 @@ export default class IBMiContent {
   async getTable(library: string, file: string, member?: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
 
-    const tempRmt = this.getTempRemote(Tools.qualifyPath(library, file, member));
+    const tempRmt = Tools.ensureFullPath(this.getTempRemote(Tools.qualifyPath(library, file, member)), this.config.homeDirectory);
     const copyResult = await this.ibmi.runCommand({
       command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
         `TOSTMF('${tempRmt}') ` +
