@@ -4,13 +4,18 @@ import IBMi from "../../IBMi";
 import { ComponentIdentification, IBMiComponent, SecureComponentState } from "../../components/component";
 
 export class CustomCLI implements IBMiComponent {
-  static ID = "customCli";
+  static DEFAULT_ID = "customCli";
   static SIGNATURE = "ForTests";
+  id: string;
 
   installPath = "";
 
+  constructor(id: string = CustomCLI.DEFAULT_ID) {
+    this.id = id;
+  }
+
   getIdentification(): ComponentIdentification {
-    return { name: CustomCLI.ID, version: 1, userManaged: true, signature: CustomCLI.SIGNATURE };
+    return { name: this.id, version: 1, userManaged: true, signature: CustomCLI.SIGNATURE };
   }
 
   getFileName() {

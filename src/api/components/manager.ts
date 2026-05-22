@@ -13,6 +13,7 @@ export interface ComponentSearchProps { ignoreState?: boolean };
 
 export class ComponentRegistry {
   private readonly components: Map<string, IBMiComponent[]> = new Map;
+  private readonly disabled: Map<string, string[]> = new Map;
 
   public registerComponent(context: ExtensionContextI | string, component: IBMiComponent) {
     const key = typeof context === `object` ? context.extension.id : context;
@@ -31,7 +32,28 @@ export class ComponentRegistry {
   }
 
   public getComponents() {
-    return this.components;
+    const filtered = new Map<string, IBMiComponent[]>();
+    
+    for (const [key, components] of this.components) {
+      const disabledIds = this.disabled.get(key) || [];
+      const enabledComponents = components.filter(c => !disabledIds.includes(c.getIdentification().name));
+      if (enabledComponents.length > 0) {
+        filtered.set(key, enabledComponents);
+      }
+    }
+    
+    return filtered;
+  }
+
+  disableComponent(key: string, id: string) {
+    const disabledIds = this.disabled.get(key);
+    if (disabledIds) {
+      if (!disabledIds.includes(id)) {
+        disabledIds.push(id);
+      }
+    } else {
+      this.disabled.set(key, [id]);
+    }
   }
 }
 

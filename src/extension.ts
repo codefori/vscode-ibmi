@@ -47,6 +47,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
   sshSqlJob.application = `${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`;
+  commands.registerCommand(`code-for-ibmi.sshSqlJob.appendApplicationName`, (applicationName: string) => {
+    sshSqlJob.application =`${applicationName} | ${sshSqlJob.application}`;
+  });
 
   await loadAllofExtension(context);
 
