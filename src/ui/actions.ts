@@ -1,5 +1,5 @@
 import path from 'path';
-import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, l10n, tasks } from 'vscode';
+import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskPanelKind, TaskRevealKind, WorkspaceFolder, commands, l10n, tasks } from 'vscode';
 import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
@@ -9,12 +9,11 @@ import { getBranchLibraryName, getEnvConfig } from '../filesystems/local/env';
 import { getGitBranch } from '../filesystems/local/git';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import Instance from '../Instance';
-import { Action, DeploymentMethod } from '../typings';
+import { Action, ActionResult, DeploymentMethod } from '../typings';
 import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 import { VscodeTools } from './Tools';
-
-import { getActions } from '../api/actions';
+import { ActionTools } from '../api/actions';
 import { BrowserItem } from './types';
 
 type CommandObject = {
@@ -57,13 +56,15 @@ export function uriToActionTarget(uri: vscode.Uri, workspaceFolder?: WorkspaceFo
   };
 }
 
-export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Uri[], customAction?: Action, method?: DeploymentMethod, browserItems?: BrowserItem[], workspaceFolder?: WorkspaceFolder): Promise<boolean> {
+export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Uri[], customAction?: Action, method?: DeploymentMethod, browserItems?: BrowserItem[], workspaceFolder?: WorkspaceFolder): Promise<ActionResult> {
+  let actionMessage: string;
   uris = Array.isArray(uris) ? uris : [uris];
   //Global scheme: all URIs share the same
   const scheme = uris[0].scheme;
   if (!uris.every(uri => uri.scheme === scheme)) {
-    vscode.window.showWarningMessage(l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", ")));
-    return false;
+    actionMessage = l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", "));
+    vscode.window.showWarningMessage(actionMessage);
+    return { success: false, output: [], message: actionMessage };
   }
 
   const connection = instance.getConnection();
@@ -75,8 +76,9 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
     workspaceFolder = targets[0].workspaceFolder;
     if (!targets.every(target => target.workspaceFolder === workspaceFolder)) {
-      vscode.window.showErrorMessage(l10n.t("Actions can only be run on files from the same workspace"));
-      return false;
+      actionMessage = l10n.t("Actions can only be run on files from the same workspace");
+      vscode.window.showErrorMessage(actionMessage);
+      return { success: false, output: [], message: actionMessage };
     }
 
     let remoteCwd = config?.homeDirectory || `.`;
@@ -104,8 +106,9 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
               workspaceId = deployResult.workspaceId;
               remoteCwd = deployResult.remoteDirectory;
             } else {
-              vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
-              return false;
+              actionMessage = l10n.t("Action \"{0}\" was cancelled.", chosenAction.name);
+              vscode.window.showWarningMessage(actionMessage);
+              return { success: false, output: [], message: actionMessage };
             }
           } else {
             workspaceId = workspaceFolder.index;
@@ -113,8 +116,9 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             if (deployPath) {
               remoteCwd = deployPath;
             } else {
-              vscode.window.showWarningMessage(`No deploy directory setup for this workspace. Cancelling Action.`);
-              return false;
+              actionMessage = l10n.t("No deploy directory setup for this workspace. Cancelling Action.");
+              vscode.window.showWarningMessage(actionMessage);
+              return { success: false, output: [], message: actionMessage };
             }
           }
         }
@@ -144,7 +148,8 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         const promptOnce = targets.length > 1;
         const command = promptOnce ? await commandConfirm(chosenAction.command) : chosenAction.command;
         if (!command) {
-          return false;
+          actionMessage = l10n.t("Command not selected");
+          return { success: false, output: [], message: actionMessage };
         }
 
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, cancellable: true, title: l10n.t("Running action {0} on", chosenAction.name, targets.length) }, async (task, canceled) => {
@@ -302,11 +307,12 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             const exitCode = await new Promise<number>(resolve =>
               tasks.executeTask({
                 isBackground: true,
-                name: chosenAction.name,
-                definition: { type: `ibmi` },
+                name: `${path.basename(target.uri.path)} - ${chosenAction.name}`,
+                definition: { type: `ibmi`, path: target.uri.fsPath },
                 scope: workspaceFolder,
                 source: 'IBM i',
                 presentationOptions: {
+                  panel: TaskPanelKind.Dedicated,
                   showReuseMessage: true,
                   clear: IBMi.connectionManager.get<boolean>(`clearOutputEveryTime`),
                   focus: false,
@@ -549,13 +555,16 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
           const openOutputAction = l10n.t("Open output(s)");
           let uiPromise;
           if (cancelled) {
-            uiPromise = vscode.window.showWarningMessage(l10n.t(`Action {0} was cancelled; ({1} processed).`, chosenAction.name, targets.filter(target => target.processed).length), openOutputAction);
+            actionMessage = l10n.t(`Action {0} was cancelled; ({1} processed).`, chosenAction.name, targets.filter(target => target.processed).length);
+            uiPromise = vscode.window.showWarningMessage(actionMessage, openOutputAction);
           }
           else if (targets.every(target => target.executionOK)) {
-            uiPromise = vscode.window.showInformationMessage(l10n.t(`Action {0} was successful.`, chosenAction.name), openOutputAction);
+            actionMessage = l10n.t(`Action {0} was successful.`, chosenAction.name);
+            uiPromise = vscode.window.showInformationMessage(actionMessage, openOutputAction);
           }
           else {
-            uiPromise = vscode.window.showErrorMessage(l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length), openOutputAction);
+            actionMessage = l10n.t(`Action {0} was not successful ({1}/{2} failed).`, chosenAction.name, targets.filter(target => !target.executionOK).length, targets.length);
+            uiPromise = vscode.window.showErrorMessage(actionMessage, openOutputAction);
           }
 
           uiPromise.then(openOutput => {
@@ -594,13 +603,29 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
               resultsPanel.loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
             }
           })
+        } else {
+          actionMessage = l10n.t("Action {0} was not run.", chosenAction.name);
         }
+      } else {
+        actionMessage = l10n.t("Action was not chosen.");
       }
-      return targets.every(target => target.executionOK);
+
+      return {
+        success: targets.every(target => target.executionOK),
+        output: targets.map(target => ({
+          path: target.uri.path,
+          processed: target.processed,
+          hasRun: target.hasRun,
+          executionOK: target.executionOK,
+          output: target.output
+        })),
+        message: actionMessage
+      };
     }
     else {
-      vscode.window.showErrorMessage(l10n.t(`No suitable actions found for {0} - {1}`, scheme, targets.map(t => t.extension).filter(Tools.distinct).join(", ")));
-      return false;
+      actionMessage = l10n.t(`No suitable actions found for {0} - {1}`, scheme, targets.map(t => t.extension).filter(Tools.distinct).join(", "));
+      vscode.window.showErrorMessage(actionMessage);
+      return { success: false, output: [], message: actionMessage };
     }
   }
   else {
@@ -611,7 +636,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 export type AvailableAction = { label: string; action: Action; }
 
 export async function getAllAvailableActions(targets: ActionTarget[], scheme: string) {
-  const allActions = [...await getActions()];
+  const allActions = [...await ActionTools.getActions()];
 
   // Then, if we're being called from a local file
   // we fetch the Actions defined from the workspace.
@@ -623,7 +648,7 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     const allTargetsInOne = targets.every(t => t.workspaceFolder?.index === workspaceId);
 
     if (allTargetsInOne) {
-      const localActions = await getActions(firstWorkspace);
+      const localActions = await ActionTools.getActions(firstWorkspace);
       allActions.push(...localActions);
     }
   }

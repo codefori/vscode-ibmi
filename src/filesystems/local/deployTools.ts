@@ -2,7 +2,7 @@ import { existsSync } from 'fs';
 import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
 import vscode, { l10n, Uri, WorkspaceFolder } from 'vscode';
-import { getActions } from '../../api/actions';
+import { ActionTools } from '../../api/actions';
 import { DeploymentMethod } from '../../api/types';
 import { instance } from '../../instantiate';
 import { BrowserItem, DeploymentParameters } from '../../typings';
@@ -13,9 +13,10 @@ import { Deployment } from './deployment';
 type ServerFileChanges = { uploads: Uri[], relativeRemoteDeletes: string[] };
 
 export namespace DeployTools {
-  export async function launchActionsSetup(workspaceFolder?: WorkspaceFolder | BrowserItem) {
-    const chosenWorkspace = !workspaceFolder || workspaceFolder instanceof BrowserItem ? await Deployment.getWorkspaceFolder() : workspaceFolder;
+  export async function launchActionsSetup(workspaceFolder?: WorkspaceFolder | BrowserItem): Promise<boolean> {
+    let isSetupComplete: boolean = false;
 
+    const chosenWorkspace = !workspaceFolder || workspaceFolder instanceof BrowserItem ? await Deployment.getWorkspaceFolder() : workspaceFolder;
     if (chosenWorkspace) {
       const types = Object.entries(LocalLanguageActions).map(([type, actions]) => ({ label: type, actions }));
 
@@ -38,7 +39,7 @@ export namespace DeployTools {
               actions.push(...newActions);
             }
             else if (action === append) {
-              const existingActions = await getActions(chosenWorkspace);
+              const existingActions = await ActionTools.getActions(chosenWorkspace);
               const existingActionNames = existingActions.map(action => action.name);
               //Change names of new actions
               let toRename = [];
@@ -61,6 +62,7 @@ export namespace DeployTools {
               Buffer.from(JSON.stringify(actions, null, 2), `utf-8`)
             );
             vscode.workspace.openTextDocument(localActionsUri).then(doc => vscode.window.showTextDocument(doc));
+            isSetupComplete = true;
           } catch (e) {
             console.log(e);
             vscode.window.showErrorMessage(`Unable to create actions.json file.`);
@@ -68,6 +70,8 @@ export namespace DeployTools {
         }
       }
     }
+
+    return isSetupComplete;
   }
 
   export function getRemoteDeployDirectory(workspaceFolder: WorkspaceFolder): string | undefined {
