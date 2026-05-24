@@ -47,3 +47,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 (Made with [contrib.rocks](https://contrib.rocks)).
 
 View [our "contributing" page](CONTRIBUTING.md) for our contribution guidelines and a full list of contributors.  🕶️
+
+### Special Thanks
+
+* **Scooby Doo** — for always sniffing out the bugs 🐕

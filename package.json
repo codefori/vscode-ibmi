@@ -63,7 +63,7 @@
 			"properties": {
 				"code-for-ibmi.connectionSettings": {
 					"type": "array",
-					"markdownDescription": "Configurations for different connections.",
+					"markdownDescription": "SCOOBYDO!!!.",
 					"items": {
 						"type": "object",
 						"description": "Configuration for this connection",
