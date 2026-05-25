@@ -115,27 +115,28 @@ export default class IBMiContent {
     const client = this.ibmi.client!;
     const features = this.ibmi.remoteFeatures;
     const tmpobj = await tmpFile();
+    const fixedPath = Tools.ensureFullPath(originalPath, this.config.homeDirectory);
 
     let ccsid;
     if (this.config.autoConvertIFSccsid && features.attr) {
       // First, find the CCSID of the original file if not UTF-8
-      ccsid = await this.getNotUTF8CCSID(features.attr, originalPath);
+      ccsid = await this.getNotUTF8CCSID(features.attr, fixedPath);
     }
 
     await writeFileAsync(tmpobj, content, { encoding: encoding as BufferEncoding });
 
     if (ccsid && features.iconv) {
       // Upload our file to the same temp file, then write convert it back to the original ccsid
-      const tempFile = this.getTempRemote(originalPath);
+      const tempFile = this.getTempRemote(fixedPath);
       try {
         await client.putFile(tmpobj, tempFile); //TODO: replace with uploadFiles
-        return await this.convertToUTF8(features.iconv, tempFile, originalPath, ccsid);
+        return await this.convertToUTF8(features.iconv, tempFile, fixedPath, ccsid);
       } finally {
         // Clean up temporary file
-        await this.ibmi.clearTempRemote(originalPath);
+        await this.ibmi.clearTempRemote(fixedPath);
       }
     } else {
-      return client.putFile(tmpobj, originalPath);
+      return client.putFile(tmpobj, fixedPath);
     }
   }
 
