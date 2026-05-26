@@ -123,7 +123,11 @@ export class ExtendedIBMiContent {
 
       const { library, file, name } = connection.parserMemberPath(uri.path);
       const tempKey = library + file + name;
-      const tempRmt = Tools.ensureFullPath(Tools.ensureFullPath(connection.getTempRemote(tempKey), config.homeDirectory), config.homeDirectory);
+      const tempRemote = connection.getTempRemote(tempKey);
+      if (!tempRemote) {
+        throw new Error(`Could not compute temporary remote location for ${tempKey}`);
+      }
+      const tempRmt = Tools.ensureFullPath(tempRemote, config.homeDirectory);
       if (tempRmt) {
         const tmpobj = await tmpFile();
 
