@@ -17,7 +17,7 @@
         },
         "tempDir": {
           "type": "string",
-          "default": ".vscode/tmp",
+          "default": "~/.vscode/tmp",
           "description": "Temporary directory."
         },
         "autoClearTempData": {
