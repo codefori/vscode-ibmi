@@ -216,8 +216,8 @@ export const ActionSuite: TestSuite = {
           ],
         };
         const uri = getMemberUri({ library: tempLib, file: 'QRPGSRC', name: 'BADRPG', extension: srcType })
-        const success = await runAction(instance, uri, action, `all`);
-        assert.strictEqual(success, false);
+        const result = await runAction(instance, uri, action, `all`);
+        assert.strictEqual(result.success, false);
       }
     },
     {
