@@ -84,7 +84,7 @@ export class ExtendedIBMiContent {
         recordLength = Number(result.LENGTH);
       } else {
         const [result] = await connection.runSQL([
-          `@DSPFD FILE(${lib}/${spf}) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
+          `@QSYS/DSPFD FILE(${lib}/${spf}) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
           /* sql */
           `select PHMXRL - 12 as LENGTH from QTEMP.PFS limit 1`
         ]);

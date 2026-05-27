@@ -325,7 +325,7 @@ export default class IBMiContent {
             await this.ibmi.runSQL([
             `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
             `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
-            `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
+            `@QSYS/CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
             ]);
           } catch (e: any) {
             copyResult.code = -1;
@@ -584,7 +584,7 @@ export default class IBMiContent {
 
     if (sourceFilesOnly) {
       createOBJLIST = [
-        `@DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
+        `@QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
         /* sql */
         `select
             trim(PHFILE) NAME,
@@ -616,7 +616,7 @@ export default class IBMiContent {
     }
     else {
       createOBJLIST = [
-        `@DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
+        `@QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
         /* sql */
         `with SRCFILES as (
           select
@@ -725,7 +725,7 @@ export default class IBMiContent {
   async getModuleExports(library: string, name: string): Promise<ModuleExport[]> {
     const outfile: string = Tools.makeid().toUpperCase();
     const results = await this.runStatements(
-      `@DSPMOD MODULE(${library}/${name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${outfile})`,
+      `@QSYS/DSPMOD MODULE(${library}/${name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${outfile})`,
       [
         `select EXLBNM as MODULE_LIBRARY, EXMONM as MODULE_NAME, EXMOAT as MODULE_ATTR, EXSYNM as SYMBOL_NAME,`,
         `  case EXSYTY when '0' then 'PROCEDURE' when '1' then 'DATA' end as SYMBOL_TYPE, EXOPPP as ARGUMENT_OPTIMIZATION`,

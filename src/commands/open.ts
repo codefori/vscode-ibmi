@@ -253,7 +253,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
               ]
 
               resultSet = await connection.runSQL([
-                `@DSPFD FILE(${selectionSplit[0]}/${filterText ? `${filterText}*` : `*ALL`}) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
+                `@QSYS/DSPFD FILE(${selectionSplit[0]}/${filterText ? `${filterText}*` : `*ALL`}) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
                 /* sql */
                 `select trim(PHFILE) NAME,
                         trim(ifnull(PHTXT, '')) TEXT
