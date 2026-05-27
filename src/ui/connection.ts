@@ -128,7 +128,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
               window.showInformationMessage(`Directory permissions updated successfully.`);
               return true;
             } else {
-              await window.showWarningMessage(`Error updating permissions:\n${updateResult.stderr}`, { modal: true });
+              await window.showWarningMessage(`Error updating permissions`, { modal: true, detail: updateResult.stderr });
               return false;
             }
           }
