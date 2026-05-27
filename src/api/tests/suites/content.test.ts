@@ -584,7 +584,7 @@ describe('Content Tests', { concurrent: true }, () => {
     } catch (e: any) {
       expect(e).toBeInstanceOf(Tools.SqlError);
       expect(e.cause).toBeDefined();
-      expect(e.cause.command).toBe(`CRTBNDRPG BOOP('hello world')`);
+      expect(e.cause.command).toBe(`QSYS/CRTBNDRPG BOOP('hello world')`);
       expect(e.cause.jobLog).toBeDefined();
     }
   });
