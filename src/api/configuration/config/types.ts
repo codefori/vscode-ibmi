@@ -37,6 +37,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   showHiddenFiles: boolean;
   secureSQL: boolean;
   keepActionSpooledFiles: boolean;
+  autoUpdateDirectoryPermissions: string;
   mapepireJavaVersion: string
   currentProfile?: string
   [name: string]: any;
