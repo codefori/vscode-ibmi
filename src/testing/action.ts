@@ -52,7 +52,10 @@ export const ActionSuite: TestSuite = {
     assert.ok(workspaceFolder, "No workspace folder to work with");
     assert.ok(tempDir, "Cannot run deploy tools tests: no remote temp directory defined");
 
-    const tempDeployLocation = Tools.ensureFullPath(connection?.getTempRemote(`/some/dir`), config.homeDirectory);
+    const tempRemote = connection.getTempRemote(`/some/dir`);
+    assert.ok(tempRemote, "No temp remote");
+
+    const tempDeployLocation = Tools.ensureFullPath(tempRemote, config.homeDirectory);
     await createFolder(workspaceFolder.uri, tempDeployLocation!, helloWorldProject);
     assert.ok(helloWorldProject.localPath, "Project has no local path");
     assert.ok(existsSync(helloWorldProject.localPath.fsPath), "Project local directory does not exist");
