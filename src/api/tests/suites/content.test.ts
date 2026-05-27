@@ -571,7 +571,7 @@ describe('Content Tests', { concurrent: true }, () => {
   });
 
   it('Test @clCommand + select statement', async () => {
-    const [resultA] = await connection.runSQL(`@CRTSAVF FILE(QTEMP/UNITTESTA) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+    const [resultA] = await connection.runSQL(`@QSYS/CRTSAVF FILE(QTEMP/UNITTESTA) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
 
     expect(resultA.OBJNAME).toBe('UNITTESTA');
     expect(resultA.OBJTEXT).toBe('Code for i test');
@@ -579,7 +579,7 @@ describe('Content Tests', { concurrent: true }, () => {
 
   it('Test @clCommand with error', async () => {
     try {
-      const [resultA] = await connection.runSQL(`@CRTBNDRPG BOOP('hello world');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+      const [resultA] = await connection.runSQL(`@QSYS/CRTBNDRPG BOOP('hello world');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
       expect(resultA).toBeDefined(); // Never reaches here
     } catch (e: any) {
       expect(e).toBeInstanceOf(Tools.SqlError);
@@ -774,8 +774,8 @@ describe('Content Tests', { concurrent: true }, () => {
                            LINE => 'ENDPGM', 
                            OVERWRITE => 'APPEND', 
                            END_OF_LINE => 'CRLF')`,
-        `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
-        `@CRTSRVPGM SRVPGM(${tempLib}/${id}) MODULE(${tempLib}/${id}) EXPORT(*ALL)`
+        `@QSYS/CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
+        `@QSYS/CRTSRVPGM SRVPGM(${tempLib}/${id}) MODULE(${tempLib}/${id}) EXPORT(*ALL)`
       ]);
 
       const info: ProgramExportImportInfo[] = (await content.getProgramExportImportInfo(tempLib, id, '*SRVPGM'))
