@@ -73,10 +73,10 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       }
       
       if (vscodeExists && vscodePerms && vscodePerms !== '700') {
-        message += `• .vscode directory has permissions ${vscodePerms}, recommended: 700\n`;
+        message += `• ${homeDir}/.vscode directory has permissions ${vscodePerms}, recommended: 700\n`;
         needsUpdate = true;
       } else if (!vscodeExists) {
-        message += `• .vscode directory does not exist and will be created with permissions 700\n`;
+        message += `• ${homeDir}/.vscode directory does not exist and will be created with permissions 700\n`;
         needsUpdate = true;
       }
       
