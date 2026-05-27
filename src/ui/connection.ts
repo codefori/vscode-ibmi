@@ -100,7 +100,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
           if (updateCmd) {
             let updateResult = await connection.sendCommand({ command: updateCmd, directory: `.` });
             if (0 === updateResult.code) {
-              await window.showInformationMessage(`Directory permissions updated successfully.`);
+              window.showInformationMessage(`Directory permissions updated successfully.`);
               return true;
             } else {
               await window.showWarningMessage(`Error updating permissions:\n${updateResult.stderr}`, { modal: true });
