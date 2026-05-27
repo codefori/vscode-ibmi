@@ -1,4 +1,4 @@
-import { CancellationToken, commands, env, Uri, window } from "vscode";
+import { CancellationToken, commands, env, Uri, window, workspace } from "vscode";
 import IBMi, { ConnectionErrorCode, ConnectionMessageType } from "../api/IBMi";
 
 export function messageCallback(type: ConnectionMessageType, message: string) {
@@ -81,10 +81,35 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       }
       
       if (needsUpdate) {
-        if (await window.showWarningMessage(`Directory permissions`, {
-          modal: true,
-          detail: message + `\nWould you like to update these permissions for better security?`,
-        }, `Yes`, `No`)) {
+        const config = workspace.getConfiguration(`code-for-ibmi`);
+        const autoUpdateSetting = config.get<string>(`autoUpdateDirectoryPermissions`, `ask`);
+        
+        let shouldUpdate = false;
+        
+        if (autoUpdateSetting === `always`) {
+          shouldUpdate = true;
+        } else if (autoUpdateSetting === `never`) {
+          shouldUpdate = false;
+        } else {
+          // autoUpdateSetting === 'ask'
+          const response = await window.showWarningMessage(`Directory permissions`, {
+            modal: true,
+            detail: message + `\nWould you like to update these permissions for better security?`,
+          }, `Yes`, `No`, `Always`, `Never`);
+          
+          if (response === `Yes`) {
+            shouldUpdate = true;
+          } else if (response === `Always`) {
+            shouldUpdate = true;
+            await config.update(`autoUpdateDirectoryPermissions`, `always`, true);
+          } else if (response === `Never`) {
+            shouldUpdate = false;
+            await config.update(`autoUpdateDirectoryPermissions`, `never`, true);
+          }
+          // If response is 'No' or undefined (dialog closed), shouldUpdate remains false
+        }
+        
+        if (shouldUpdate) {
           let updateCmd = '';
           
           if (homePerms && homePerms !== '750') {
