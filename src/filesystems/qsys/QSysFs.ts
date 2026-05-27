@@ -207,11 +207,12 @@ export class QSysFS implements vscode.FileSystemProvider {
             const isSaveAs = !content.length; // Coming from "Save as"
 
             // Determine whether ADDPFM is needed
-            const needsAdd = isSaveAs || !(await contentApi.getMemberList({
+            const needsAdd = isSaveAs || !(await contentApi.checkObject({
                 library: library,
-                sourceFile: file,
-                members: member
-            }))?.length;
+                name: file,
+                type: '*FILE',
+                member: member
+            }));
 
             if (needsAdd) {
                 const addMember = await connection.runCommand({
