@@ -81,8 +81,8 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       }
       
       if (needsUpdate) {
-        const config = workspace.getConfiguration(`code-for-ibmi`);
-        const autoUpdateSetting = config.get<string>(`autoUpdateDirectoryPermissions`, `ask`);
+        const config = connection.getConfig();
+        const autoUpdateSetting = config.autoUpdateDirectoryPermissions || "ask";
         
         let shouldUpdate = false;
         
@@ -101,10 +101,12 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
             shouldUpdate = true;
           } else if (response === `Always`) {
             shouldUpdate = true;
-            await config.update(`autoUpdateDirectoryPermissions`, `always`, true);
+            config.autoUpdateDirectoryPermissions = `always`;
+            await IBMi.connectionManager.update(config);
           } else if (response === `Never`) {
             shouldUpdate = false;
-            await config.update(`autoUpdateDirectoryPermissions`, `never`, true);
+            config.autoUpdateDirectoryPermissions = `never`;
+            await IBMi.connectionManager.update(config);
           }
           // If response is 'No' or undefined (dialog closed), shouldUpdate remains false
         }
