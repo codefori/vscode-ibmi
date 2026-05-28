@@ -43,6 +43,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
     secureSQL: (parameters.secureSQL === true),
     keepActionSpooledFiles: (parameters.keepActionSpooledFiles === true),
+    autoUpdateDirectoryPermissions: (parameters.autoUpdateDirectoryPermissions || "ask"),
     mapepireJavaVersion: (parameters.mapepireJavaVersion || "default"),
     ccsidConversionEnabled: (parameters.ccsidConversionEnabled === true),
     ccsidConvertFrom: parameters.ccsidConvertFrom || ``,
