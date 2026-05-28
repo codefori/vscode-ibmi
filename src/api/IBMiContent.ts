@@ -1188,24 +1188,14 @@ export default class IBMiContent {
 
   async getSHA256FileHash(remoteFile: string) {
 
-    //We use OPENSSL that is already build in inside os
-    /*if (this.ibmi.remoteFeatures.sha256sum) {
-      const sha256Sum = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.sha256sum} ${remoteFile}` });
-      if (sha256Sum.code === 0) {
-        return sha256Sum.stdout.split(' ')[0];
-      }
-      else {
-        throw new Error(`Call to sha256sum failed: ${sha256Sum.stderr || sha256Sum.stdout}`);
-      }
-    }*/
-   
+    //We use OPENSSL that is already build in inside os   
     if (this.ibmi.remoteFeatures.openssl) {
-      const sha256Sum = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 ${remoteFile} ` });
-      if (sha256Sum.code === 0) {
-        return sha256Sum.stdout.split(' ')[1];
+      const objhash = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 ${remoteFile} ` });
+      if (objhash.code === 0) {
+        return objhash.stdout.split(' ').pop();
       }
       else {
-        throw new Error(`Call to openssl failed: ${sha256Sum.stderr || sha256Sum.stdout}`);
+        throw new Error(`Call to openssl failed: ${objhash.stderr || objhash.stdout}`);
       }
     }
   }
