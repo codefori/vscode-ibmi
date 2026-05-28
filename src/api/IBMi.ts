@@ -16,7 +16,7 @@ import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/serverFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, QsysPath, CacheItem } from './types';
+import { AspInfo, CacheItem, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, QsysPath, RemoteCommand } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -215,7 +215,7 @@ export default class IBMi {
 
   getConfig() {
     if (this.connected && this.config) {
-      return this.config!;
+      return this.config;
     } else {
       throw new Error(`Not connected to IBM i.`);
     }
@@ -223,6 +223,11 @@ export default class IBMi {
 
   setConfig(newConfig: ConnectionConfig) {
     this.config = newConfig;
+  }
+
+  getTempDirectory() {
+    const config = this.getConfig();
+    return Tools.ensureFullPath(config.tempDir, config.homeDirectory);
   }
 
   constructor() {
@@ -432,10 +437,14 @@ export default class IBMi {
         });
 
         // Get home directory permissions (stat -c '%a' returns octal permissions)
-        const homePermResult = await this.sendCommand({
-          command: `stat -c '%a' ${defaultHomeDir} 2>/dev/null || echo "error"`
-        });
-        const homePerms = homePermResult.stdout.trim();
+        const getPermissions = async (path: string) => {
+          let permissions = (await this.sendCommand({
+            command: `stat -c '%a' ${path} 2>/dev/null || echo "error"`
+          })).stdout.trim();
+          return permissions.length > 3 ? permissions.substring(1, 4) : permissions;
+        };
+
+        const homePerms = await getPermissions(defaultHomeDir);
 
         // Check if .vscode directory exists and get its permissions
         const vscodeDir = `${defaultHomeDir}/.vscode`;
@@ -443,14 +452,7 @@ export default class IBMi {
           command: `test -d ${vscodeDir} && echo "exists" || echo "notexists"`
         });
         const vscodeExists = vscodeExistsResult.stdout.trim() === 'exists';
-
-        let vscodePerms = '';
-        if (vscodeExists) {
-          const vscodePermResult = await this.sendCommand({
-            command: `stat -c '%a' ${vscodeDir} 2>/dev/null || echo "error"`
-          });
-          vscodePerms = vscodePermResult.stdout.trim();
-        }
+        const vscodePerms = vscodeExists ? await getPermissions(vscodeDir) : '';
 
         // Check if permissions need updating
         const needsPermissionUpdate =
@@ -668,7 +670,7 @@ export default class IBMi {
           })
 
         this.sendCommand({
-          command: `rm -rf ${path.posix.join(this.getConfig().tempDir, `vscodetemp*`)}`
+          command: `rm -rf ${path.posix.join(this.getTempDirectory(), `vscodetemp*`)}`
         })
           .then(result => {
             // All good!
@@ -676,7 +678,7 @@ export default class IBMi {
           .catch(e => {
             // CPF2125: No objects deleted.
             // @ts-ignore We know the config exists.
-            callbacks.message(`error`, `Temporary data not cleared from ${this.getConfig().tempDir}.`);
+            callbacks.message(`error`, `Temporary data not cleared from ${this.getTempDirectory()}.`);
           });
       }
 
@@ -1118,32 +1120,25 @@ export default class IBMi {
   }
 
   private async checkOrCreateTempDirectory() {
-    let tempDirSet: boolean = false;
-
-    if (!this.config) {
-      return false;
-    }
-
+    const tempDir = this.getTempDirectory();
     let result = await this.sendCommand({
-      command: `[ -d "${this.getConfig().tempDir}" ]`
+      command: `[ -d "${tempDir}" ]`
     });
 
     if (result.code === 0) {
       // Directory exists
-      tempDirSet = true;
+      return true;
     } else {
       // Directory does not exist, try to create it
-      let result = await this.sendCommand({
-        command: `mkdir -p ${this.getConfig().tempDir}`
+      result = await this.sendCommand({
+        command: `mkdir -p ${tempDir}`
       });
       if (result.code === 0) {
         // Directory created
-        tempDirSet = true;
-      } else {
-        // Directory not created
+        return true;
       }
     }
-    return tempDirSet;
+    return false;
   }
 
   /**
@@ -1278,7 +1273,7 @@ export default class IBMi {
       return this.tempRemoteFiles[key];
     } else
       if (this.getConfig()) {
-        let value = path.posix.join(this.getConfig().tempDir, `vscodetemp-${Tools.makeid()}`);
+        let value = path.posix.join(this.getTempDirectory(), `vscodetemp-${Tools.makeid()}`);
         // console.log(`Using new temp: ${value}`);
         this.tempRemoteFiles[key] = value;
         return value;
@@ -1292,7 +1287,7 @@ export default class IBMi {
   async clearTempRemote(key: string) {
     const tempFile = this.tempRemoteFiles[key];
     if (tempFile) {
-      await this.sendCommand({ command: `rm -rf ${tempFile}`, directory: `.` }).catch(() => {});
+      await this.sendCommand({ command: `rm -rf ${tempFile}`, directory: `.` }).catch(() => { });
       delete this.tempRemoteFiles[key];
     }
   }
@@ -1389,7 +1384,7 @@ export default class IBMi {
    * @param process the process that will run on the empty directory
    */
   async withTempDirectory<T>(process: (directory: string) => Promise<T>) {
-    const tempDirectory = Tools.ensureFullPath(`${this.getConfig()?.tempDir || '~/.vscode/tmp'}/code4itemp${Tools.makeid(20)}`, this.config?.homeDirectory);
+    const tempDirectory = path.posix.join(this.getTempDirectory(), `/code4itemp${Tools.makeid(20)}`);
     const prepareDirectory = await this.sendCommand({ command: `rm -rf ${tempDirectory} && mkdir -p ${tempDirectory}` });
     if (prepareDirectory.code === 0) {
       try {
@@ -1614,7 +1609,7 @@ export default class IBMi {
     let lookupPath: string | QsysPath;
 
     if (isQsysPath) {
-      
+
       const localPath: QsysPath = { ...path };
       localPath.asp = localPath.asp ? this.sysNameInAmerican(localPath.asp) : undefined;
       localPath.library = this.sysNameInAmerican(localPath.library);
