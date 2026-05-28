@@ -1,6 +1,10 @@
 on:
   release:
     types: [created]
+
+permissions:
+  id-token: write  # Required for OIDC
+  contents: read
     
 jobs:
   release:
@@ -9,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Use Node.js 20
+      - name: Use Node.js 24
         uses: actions/setup-node@v3
         with:
-          node-version: 22
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
 
       - uses: actions/checkout@v3
@@ -51,8 +55,6 @@ jobs:
 
       - name: Publish typings to npm
         run: cd types && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Commit changes and move release tag
         run: |
