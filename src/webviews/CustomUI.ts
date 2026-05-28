@@ -142,9 +142,6 @@ export class Section {
   addBrowser(id: string, items: TreeListItem[]) {
     const browser = new Field('browser', id, '');
     browser.treeList = items;
-    if (browser.treeList[0]) {
-      browser.treeList[0].selected = true;
-    }
     browser.treeLeafAction = 'browse';
     this.addField(browser);
     return this;
@@ -366,12 +363,9 @@ export class CustomHTML extends Section {
               var currentTree;
               ${trees.map(tree => /* javascript */`
                 currentTree = document.getElementById('${tree.id}');
-                currentTree.data = ${JSON.stringify(tree.treeList)};
                 currentTree.addEventListener('vsc-tree-select', (event) => {
-                  console.log(JSON.stringify(event.detail));
-                  if (event.detail.itemType === 'leaf') {
-                    treeItemClick('${tree.id}', '${tree.treeLeafAction}', event.detail.value);
-                  }
+                  const treeItem = event.detail[0];
+                  treeItemClick('${tree.id}', '${tree.treeLeafAction}', treeItem.dataset.value);
                 });`
       )}
             });
@@ -465,31 +459,32 @@ export class CustomUI extends CustomHTML {
   protected getSpecificScript() {
     return /* javascript */ `
       const theForm = document.querySelector('#laforma');
+      if(theForm) { //no form when fullpage is true
+        const doDone = (event, button) => {
+          console.log('submit now!!', button || 'enter pressed')
+          event?.preventDefault();
+          const isValid = (!button || button.requiresValidation) ? validateInputs() : true;
+          if (isValid) {
+            const data = { buttons: button?.id };
+            new FormData(theForm).entries().forEach(([key, value]) => data[key] = value);
 
-      const doDone = (event, button) => {
-        console.log('submit now!!', button || 'enter pressed')
-        event?.preventDefault();
-        const isValid = (!button || button.requiresValidation) ? validateInputs() : true;
-        if (isValid) {
-          const data = { buttons: button?.id };
-          new FormData(theForm).entries().forEach(([key, value]) => data[key] = value);
+            // Convert checkboxes value to actual boolean
+            checkboxes.forEach(checkbox => data[checkbox] = (data[checkbox] === 'on'));
 
-          // Convert checkboxes value to actual boolean
-          checkboxes.forEach(checkbox => data[checkbox] = (data[checkbox] === 'on'));
+            vscode.postMessage({ type: 'submit', data });
+          }
+        };
 
-          vscode.postMessage({ type: 'submit', data });
+        //Pressing enter will submit the form
+        theForm.addEventListener("submit", doDone);
+
+        // Now many buttons can be pressed to submit
+        for (const fieldData of groupButtons) {
+          const button = document.getElementById(fieldData.id);
+
+          button.onclick = () => doDone(event, fieldData);
+          button.onKeyDown = () => doDone(event, fieldData);
         }
-      };
-
-      //Pressing enter will submit the form
-      theForm.addEventListener("submit", doDone);
-
-      // Now many buttons can be pressed to submit
-      for (const fieldData of groupButtons) {
-        const button = document.getElementById(fieldData.id);
-
-        button.onclick = () => doDone(event, fieldData);
-        button.onKeyDown = () => doDone(event, fieldData);
       }
     `;
   }
@@ -508,7 +503,7 @@ export interface TreeListItem {
   subItems?: TreeListItem[];
   open?: boolean;
   selected?: boolean;
-  focused?: boolean;
+  active?: boolean;
   icons?: TreeListItemIcon;
   value?: string;
   path?: number[];
@@ -657,7 +652,7 @@ export class Field {
       case `browser`:
         return /* html */`
         <vscode-split-layout initial-handle-position="20%">
-          <div slot="start"><vscode-tree id="${this.id}"></vscode-tree></div>
+          <div slot="start"><vscode-tree id="${this.id}">${this.treeList?.map(t => this.renderTreeItem(t)).join("")}</vscode-tree></div>
           <div slot="end"><div id="browse_${this.id}">${this.treeList?.at(0)?.value}</div></div>
       </vscode-split-layout>`;
     }
@@ -669,5 +664,20 @@ export class Field {
 
   private renderDescription() {
     return this.description ? /* html */ `<vscode-form-helper>${this.description}</vscode-form-helper>` : ``;
+  }
+
+  private renderTreeItem(treeItem: TreeListItem) {
+    return /* html */ `<vscode-tree-item ${treeItem.active ? "active " : " "}${treeItem.open ? "open " : " "}${treeItem.selected ? "selected " : " "}${treeItem.value ? `data-value="${treeItem.value}"` : ""}>
+      ${treeItem.icons?.branch ? this.renderIcon("icon-branch", treeItem.icons?.branch) : ""}
+      ${treeItem.icons?.open ? this.renderIcon("icon-branch-opened", treeItem.icons?.open) : ""}
+      ${treeItem.icons?.leaf ? this.renderIcon("icon-leaf", treeItem.icons?.leaf) : ""}      
+      ${treeItem.label}
+    </vscode-tree-item>`;
+  }
+
+  private renderIcon(slot: string, name: string) {
+    return name.startsWith('/') ?
+      /* html */ `<vscode-icon name="${name}" slot="${slot}"></vscode-icon>` :
+      /* html */ `<img src="${name}" slot="${slot}" />`;
   }
 }

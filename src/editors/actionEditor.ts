@@ -146,15 +146,15 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
 
 async function save(targetAction: Action, actionData: ActionData, workspace?: vscode.WorkspaceFolder) {
   const oldType = targetAction.type;
-  const postDownload = actionData.postDownload.split(',').map(path => path.trim()).filter(Boolean);
-  const extensions = actionData.extensions.split(`,`).map(item => item.trim().toUpperCase()).filter(Boolean);
+  const postDownload = actionData.postDownload?.split(',').map(path => path.trim()).filter(Boolean);
+  const extensions = actionData.extensions?.split(`,`).map(item => item.trim().toUpperCase()).filter(Boolean);
   Object.assign(targetAction, actionData,
     //Fields that needs to be tranformed before saving
     {
       command: actionData.command.replace(new RegExp(`\\\r`, `g`), ``), // We don't want \r (Windows line endings)
-      extensions: extensions.length ? extensions : undefined,
+      extensions: extensions?.length ? extensions : undefined,
       outputToFile: actionData.outputToFile || undefined,
-      postDownload: postDownload.length ? postDownload : undefined
+      postDownload: postDownload?.length ? postDownload : undefined
     });
   const typeChanged = (oldType !== targetAction.type);
   if (typeChanged && (await ActionTools.getActions(workspace)).some(a => a.name === targetAction.name && a.type === targetAction.type)) {
