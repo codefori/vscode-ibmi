@@ -39,6 +39,10 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
     names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`, `uname`]
   },
   {
+    path: `/QOpenSys/usr/bin/`,
+    names: [`openssl`]
+  },
+  {
     path: `/QOpenSys/pkgs/bin/`,
     names: [`git`, `grep`, `tn5250`, `pfgrep`, `md5sum`, 'sha256sum', `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
   },
@@ -230,6 +234,7 @@ export default class IBMi {
       setccsid: undefined,
       md5sum: undefined,
       sha256sum: undefined,
+      openssl: undefined,
       bash: undefined,
       chsh: undefined,
       stat: undefined,
