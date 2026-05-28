@@ -48,7 +48,7 @@ export const ActionSuite: TestSuite = {
     const config = connection.getConfig();
 
     const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
-    const tempDir = config.tempDir;
+    const tempDir = connection.getTempDirectory();
     assert.ok(workspaceFolder, "No workspace folder to work with");
     assert.ok(tempDir, "Cannot run deploy tools tests: no remote temp directory defined");
 

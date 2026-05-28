@@ -92,7 +92,7 @@ export const DeployToolsSuite: TestSuite = {
         assert.ok(features?.md5sum, "md5sum is required to run deploy tools test suite");
 
         const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
-        const tempDir = Tools.ensureFullPath(config.tempDir, config.homeDirectory);
+        const tempDir = connection.getTempDirectory();
         assert.ok(workspaceFolder, "No workspace folder to work with");
         assert.ok(tempDir, "Cannot run deploy tools tests: no remote temp directory defined");
 
