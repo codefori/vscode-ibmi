@@ -16,7 +16,7 @@ import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/serverFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, QsysPath, CacheItem } from './types';
+import { AspInfo, CacheItem, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, QsysPath, RemoteCommand } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -427,10 +427,14 @@ export default class IBMi {
         });
 
         // Get home directory permissions (stat -c '%a' returns octal permissions)
-        const homePermResult = await this.sendCommand({
-          command: `stat -c '%a' ${defaultHomeDir} 2>/dev/null || echo "error"`
-        });
-        const homePerms = homePermResult.stdout.trim();
+        const getPermissions = async (path: string) => {
+          let permissions = (await this.sendCommand({
+            command: `stat -c '%a' ${path} 2>/dev/null || echo "error"`
+          })).stdout.trim();
+          return permissions.length > 3 ? permissions.substring(1, 4) : permissions;
+        };
+
+        const homePerms = await getPermissions(defaultHomeDir);
 
         // Check if .vscode directory exists and get its permissions
         const vscodeDir = `${defaultHomeDir}/.vscode`;
@@ -438,14 +442,7 @@ export default class IBMi {
           command: `test -d ${vscodeDir} && echo "exists" || echo "notexists"`
         });
         const vscodeExists = vscodeExistsResult.stdout.trim() === 'exists';
-
-        let vscodePerms = '';
-        if (vscodeExists) {
-          const vscodePermResult = await this.sendCommand({
-            command: `stat -c '%a' ${vscodeDir} 2>/dev/null || echo "error"`
-          });
-          vscodePerms = vscodePermResult.stdout.trim();
-        }
+        const vscodePerms = vscodeExists ? await getPermissions(vscodeDir) : '';
 
         // Check if permissions need updating
         const needsPermissionUpdate =
@@ -1287,7 +1284,7 @@ export default class IBMi {
   async clearTempRemote(key: string) {
     const tempFile = this.tempRemoteFiles[key];
     if (tempFile) {
-      await this.sendCommand({ command: `rm -rf ${tempFile}`, directory: `.` }).catch(() => {});
+      await this.sendCommand({ command: `rm -rf ${tempFile}`, directory: `.` }).catch(() => { });
       delete this.tempRemoteFiles[key];
     }
   }
@@ -1609,7 +1606,7 @@ export default class IBMi {
     let lookupPath: string | QsysPath;
 
     if (isQsysPath) {
-      
+
       const localPath: QsysPath = { ...path };
       localPath.asp = localPath.asp ? this.sysNameInAmerican(localPath.asp) : undefined;
       localPath.library = this.sysNameInAmerican(localPath.library);
