@@ -26,6 +26,8 @@ export type SortOptions = {
 export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
+  private dummyDSPF = false;
+
   private get config() {
     return this.ibmi.getConfig();
   }
@@ -167,18 +169,18 @@ export default class IBMiContent {
     const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
     const tempRmt = Tools.ensureFullPath(this.getTempRemote(path), this.config.homeDirectory);
     let retry = false;
-    
+
     // Fetch source file CCSID and determine if conversion is needed
     const sourceCcsid = await this.ibmi.getFileCcsid(path);
-    const {requiresConversion, targetCcsid} = Tools.determineCcsidConversion(sourceCcsid, this.config);
-  
+    const { requiresConversion, targetCcsid } = Tools.determineCcsidConversion(sourceCcsid, this.config);
+
     try {
       while (true) {
         let copyResult: CommandResult;
         if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
           copyResult = { code: 0, stdout: '', stderr: '' };
           if (requiresConversion) {
-            await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => {}); // ignore error
+            await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => { }); // ignore error
             await this.ibmi.runSQL([
               `Drop table if exists QTEMP.QTEMPSRC`,
               `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
@@ -189,22 +191,22 @@ export default class IBMiContent {
               copyResult.stderr = String(e);
             });
           } else {
-          try {
-            await this.ibmi.runSQL([
-              `Drop table if exists QTEMP.QTEMPSRC`,
-              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
-              `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`]);
-          } catch (error: any) {
-            copyResult.code = -1;
-            copyResult.stderr = String(error);
-          }
+            try {
+              await this.ibmi.runSQL([
+                `Drop table if exists QTEMP.QTEMPSRC`,
+                `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+                `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`]);
+            } catch (error: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(error);
+            }
           }
         }
         else {
           if (requiresConversion) {
             copyResult = { code: 0, stdout: '', stderr: '' };
 
-            await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => {}); // ignore error
+            await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => { }); // ignore error
             try {
               await this.ibmi.runSQL([
                 `@QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
@@ -276,8 +278,8 @@ export default class IBMiContent {
       const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       // Fetch source file CCSID and determine if conversion is needed
       const sourceCcsid = await this.ibmi.getFileCcsid(path);
-      const {requiresConversion, targetCcsid} = Tools.determineCcsidConversion(sourceCcsid, this.config);
-      
+      const { requiresConversion, targetCcsid } = Tools.determineCcsidConversion(sourceCcsid, this.config);
+
       const tempRmt = Tools.ensureFullPath(this.getTempRemote(path), this.config.homeDirectory);
 
       try {
@@ -287,57 +289,57 @@ export default class IBMiContent {
         }
         await client.putFile(tmpobj, tempRmt);
 
-      let copyResult: CommandResult;
-      if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-        copyResult = { code: 0, stdout: '', stderr: '' };
-
-        if (requiresConversion) {
-          try {
-          await this.ibmi.runSQL([
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
-            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
-            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`,
-            `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
-            ].join("\n"));
-          } catch (e: any) {
-            copyResult.code = -1;
-            copyResult.stderr = String(e);
-          }
-        } else {
-        try {
-          await this.ibmi.runSQL([
-            `Drop table if exists QTEMP.QTEMPSRC`,
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
-            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`
-          ]);
-        } catch (error: any) {
-          copyResult.code = -1;
-          copyResult.stderr = String(error);
-        }
-      }
-      }
-      else {
-         if (requiresConversion) {
+        let copyResult: CommandResult;
+        if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
           copyResult = { code: 0, stdout: '', stderr: '' };
-          try {
-            await this.ibmi.runSQL([
-            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
-            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
-            `@QSYS/CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
-            ]);
-          } catch (e: any) {
-            copyResult.code = -1;
-            copyResult.stderr = String(e);
+
+          if (requiresConversion) {
+            try {
+              await this.ibmi.runSQL([
+                `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+                `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
+                `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+                `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`,
+                `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
+              ].join("\n"));
+            } catch (e: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(e);
+            }
+          } else {
+            try {
+              await this.ibmi.runSQL([
+                `Drop table if exists QTEMP.QTEMPSRC`,
+                `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+                `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+                `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`
+              ]);
+            } catch (error: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(error);
+            }
           }
-        } else {
-        copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-          noLibList: true
-        });
-      }
-      }
+        }
+        else {
+          if (requiresConversion) {
+            copyResult = { code: 0, stdout: '', stderr: '' };
+            try {
+              await this.ibmi.runSQL([
+                `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
+                `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
+                `@QSYS/CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
+              ]);
+            } catch (e: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(e);
+            }
+          } else {
+            copyResult = await this.ibmi.runCommand({
+              command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+              noLibList: true
+            });
+          }
+        }
 
         if (copyResult.code === 0) {
           const messages = Tools.parseMessages(copyResult.stderr);
@@ -567,7 +569,6 @@ export default class IBMiContent {
       }
     }
 
-    const usLocalLibrary = this.ibmi.sysNameInAmerican(localLibrary);
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
     const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
@@ -582,9 +583,22 @@ export default class IBMiContent {
 
     let createOBJLIST: string[];
 
+    if (sourceFilesOnly || withSourceFiles) {
+      if (this.dummyDSPF) {
+        //Clear the PFS table
+        await this.ibmi.runSQL(`Delete from QTEMP.PFS`);
+      }
+      else {
+        //Create a dummy PFS table
+        await this.ibmi.runSQL('@DSPFD FILE(QSYSINC/H) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)');
+        this.dummyDSPF = true;
+      }
+      //Fill the PFs list - if the command crashes it won't break the queries below
+      await this.ibmi.runCommand({ command: `QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)` });
+    }
+
     if (sourceFilesOnly) {
       createOBJLIST = [
-        `@QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
         /* sql */
         `select
             trim(PHFILE) NAME,
@@ -616,7 +630,6 @@ export default class IBMiContent {
     }
     else {
       createOBJLIST = [
-        `@QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
         /* sql */
         `with SRCFILES as (
           select
