@@ -2,19 +2,14 @@ import IBMi from "../IBMi";
 import { ComponentState, IBMiComponent, SecureComponentState } from "./component";
 
 export class IBMiComponentRuntime {
-  public static readonly InstallDirectory = `$HOME/.vscode/`;
   private state: SecureComponentState = { status: `NotChecked`, remoteSignature: "" };
   private cachedInstallDirectory: string | undefined;
 
   constructor(protected readonly connection: IBMi, readonly component: IBMiComponent) { }
 
-  async getInstallDirectory() {
+  getInstallDirectory() {
     if (!this.cachedInstallDirectory) {
-      const result = await this.connection.sendCommand({
-        command: `echo "${IBMiComponentRuntime.InstallDirectory}"`,
-      });
-
-      this.cachedInstallDirectory = result.stdout.trim() || `/home/${this.connection.currentUser.toLowerCase()}/.vscode/`;
+      this.cachedInstallDirectory = `${this.connection.getConfig().homeDirectory}/.vscode`;
     }
 
     return this.cachedInstallDirectory;
@@ -29,14 +24,14 @@ export class IBMiComponentRuntime {
     return IBMi.GlobalStorage.storeComponentState(this.connection.currentConnectionName, { id: this.component.getIdentification(), state: newState });
   }
 
-  async overrideState(newState: SecureComponentState) {
-    const installDir = await this.getInstallDirectory();
-    await this.component.setInstallDirectory?.(installDir);
-    await this.setState(newState);
+  overrideState(newState: SecureComponentState) {
+    const installDir = this.getInstallDirectory();
+    this.component.setInstallDirectory?.(installDir);
+    this.setState(newState);
   }
 
   async update() {
-    const newState = this.handleState(await this.component.update(this.connection, await this.getInstallDirectory()));
+    const newState = this.handleState(await this.component.update(this.connection, this.getInstallDirectory()));
     await this.setState(newState);
   }
 

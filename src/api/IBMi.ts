@@ -384,14 +384,14 @@ export default class IBMi {
       //   - stdout contains the name of the home directory (even if it does not exist)
       //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
       //   - The 'test' command causes an error if the home directory is not writable (one can cd into a non-writable directory)
-      let isHomeUsable = (0 == echoHomeResult.code);
-      if (isHomeUsable) {
-        defaultHomeDir = echoHomeResult.stdout.trim();
+      const isHomeUsable = (0 == echoHomeResult.code);
+      const homeOutput = echoHomeResult.stdout.trim();
+      if (isHomeUsable && homeOutput && homeOutput !== "/") {
+        defaultHomeDir = homeOutput;
       } else {
         // Let's try to provide more valuable information to the user about why their home directory
         // is bad and maybe even provide the opportunity to create the home directory
-
-        let actualHomeDir = echoHomeResult.stdout.trim();
+        let actualHomeDir = homeOutput;
 
         // we _could_ just assume the home directory doesn't exist but maybe there's something more going on, namely mucked-up permissions
         let doesHomeExist = (0 === (await this.sendCommand({ command: `test -e ${actualHomeDir}` })).code);
@@ -421,6 +421,14 @@ export default class IBMi {
           if (homedirCreated) {
             defaultHomeDir = actualHomeDir;
           }
+        }
+      }
+
+      if(!defaultHomeDir || defaultHomeDir === "/"){
+        defaultHomeDir = `/home/${connectionObject.username}`;
+        //We'll warn only once
+        if(!this.config.homeDirectory || this.config.homeDirectory === "/"){
+          callbacks.message(`warning`, `Your home directory is set to '/' on your user profile. Code for IBM i will use ${defaultHomeDir} instead. Please contact a system administrator to fix this.`);
         }
       }
 
