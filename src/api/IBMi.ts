@@ -438,10 +438,12 @@ export default class IBMi {
 
         // Get home directory permissions (stat -c '%a' returns octal permissions)
         const getPermissions = async (path: string) => {
-          let permissions = (await this.sendCommand({
-            command: `stat -c '%a' ${path} 2>/dev/null || echo "error"`
-          })).stdout.trim();
-          return permissions.length > 3 ? permissions.substring(1, 4) : permissions;
+          const permissionString = (await this.sendCommand({ command: `ls -ld "${path}"` })).stdout.substring(1, 10);
+          const permissions : number[] = [];
+          for (let i = 0; i < 9; i += 3) {
+            permissions.push((permissionString[i] == "r" ? 4 : 0) + (permissionString[i+1] == "w" ? 2 : 0) + (["x", "s"].includes(permissionString[i+2]) ? 1 : 0));
+          }
+          return permissions.map(String).join("");
         };
 
         const homePerms = await getPermissions(defaultHomeDir);
