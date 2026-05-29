@@ -618,6 +618,131 @@ export default class IBMi {
         this.appendOutput(`Warning: Mapepire component not available\n`);
       }
 
+      if (this.sqlRunnerAvailable()) {
+        // Check for ASP information?
+        if (quickConnect() && cachedServerSettings?.iAspInfo) {
+          this.iAspInfo = cachedServerSettings.iAspInfo;
+        } else {
+          callbacks.progress({
+            message: `Checking for iASP information.`
+          });
+
+          //This is mostly a nice to have. We grab the ASP info so user's do
+          //not have to provide the ASP in the settings.
+          try {
+            const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+            resultSet.forEach(row => {
+              // Does not ever include SYSBAS/SYSTEM, only iASPs
+              if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                this.iAspInfo.push({
+                  id: Number(row.ASP_NUMBER),
+                  name: String(row.DEVICE_DESCRIPTION_NAME),
+                  type: String(row.ASP_TYPE),
+                  rdbName: String(row.RDB_NAME)
+                });
+              }
+            });
+          } catch (e) {
+            //Oh well
+            callbacks.progress({
+              message: `Failed to get ASP information.`
+            });
+          }
+        }
+
+        callbacks.progress({
+          message: `Fetching current iASP information.`
+        });
+
+        this.currentAsp = await this.getUserProfileAsp();
+
+        // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
+
+        // Fetch conversion values?
+        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.qccsid) {
+          this.qccsid = cachedServerSettings.qccsid;
+          this.userJobCcsid = cachedServerSettings.jobCcsid;
+        } else {
+          callbacks.progress({
+            message: `Fetching conversion values.`
+          });
+
+          // Next, we're going to see if we can get the CCSID from the user or the system.
+          // Some things don't work without it!!!
+          try {
+            // we need to grab the system CCSID (QCCSID) and the users default CCSID
+            const [ccsids] = await this.runSQL( /* sql */
+              `select CURRENT_NUMERIC_VALUE, CHARACTER_CODE_SET_ID
+              from QSYS2.SYSTEM_VALUE_INFO
+              cross join table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )
+              where SYSTEM_VALUE_NAME = 'QCCSID'`
+            );
+            
+            if (typeof ccsids.CURRENT_NUMERIC_VALUE === 'number') {
+              this.qccsid = ccsids.CURRENT_NUMERIC_VALUE;
+            }
+
+            if (ccsids.CHARACTER_CODE_SET_ID !== `null` && typeof ccsids.CHARACTER_CODE_SET_ID === 'number') {
+              this.userJobCcsid = ccsids.CHARACTER_CODE_SET_ID;
+            }
+
+            // if the job ccsid is *SYSVAL, then assign it to sysval
+            if (this.userJobCcsid === IBMi.CCSID_SYSVAL) {
+              this.userJobCcsid = this.qccsid;
+            }
+
+          } catch (e) {
+            // Oh well!
+            console.log(e);
+          }
+        }
+
+        const showCcsidWarning = (message: string) => {
+          callbacks.uiErrorHandler(this, `ccsid_warning`, message);
+        }
+
+        this.appendOutput(`\nCCSID information:\n`);
+        this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
+        this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
+
+        // We only do this check if we're on 7.3 or below.
+        if (this.systemVersion && this.systemVersion <= 7.3) {
+          callbacks.progress({
+            message: `Checking PASE locale environment variables.`
+          });
+
+          const systemEnvVars = await this.content.getSysEnvVars();
+
+          const paseLang = systemEnvVars.PASE_LANG;
+          const paseCcsid = systemEnvVars.QIBM_PASE_CCSID;
+
+          if (paseLang === undefined || paseCcsid === undefined) {
+            showCcsidWarning(`The PASE environment variables PASE_LANG and QIBM_PASE_CCSID are not set correctly and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+          } else if (paseCcsid !== `1208`) {
+            showCcsidWarning(`The PASE environment variable QIBM_PASE_CCSID is not set to 1208 and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+          }
+        }
+
+        // We always need to fetch the local variants because
+        // now we pickup CCSID changes faster due to cqsh
+        callbacks.progress({
+          message: `Fetching local encoding values.`
+        });
+
+        const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+          + `  values ( cast( x'7B' as varchar(1) )`
+          + `         , cast( x'7C' as varchar(1) )`
+          + `         , cast( x'5B' as varchar(1) ) )`
+          + `)`
+          + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+
+        if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
+          this.variantChars.local = variants.LOCAL;
+        }
+      } else {
+        callbacks.message(`warning`, `The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
+      }
+
       callbacks.progress({
         message: `Checking library list configuration.`
       });
@@ -887,129 +1012,7 @@ export default class IBMi {
       }
       else {
         this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
-      }
-
-      if (this.sqlRunnerAvailable()) {
-        // Check for ASP information?
-        if (quickConnect() && cachedServerSettings?.iAspInfo) {
-          this.iAspInfo = cachedServerSettings.iAspInfo;
-        } else {
-          callbacks.progress({
-            message: `Checking for iASP information.`
-          });
-
-          //This is mostly a nice to have. We grab the ASP info so user's do
-          //not have to provide the ASP in the settings.
-          try {
-            const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
-            resultSet.forEach(row => {
-              // Does not ever include SYSBAS/SYSTEM, only iASPs
-              if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                this.iAspInfo.push({
-                  id: Number(row.ASP_NUMBER),
-                  name: String(row.DEVICE_DESCRIPTION_NAME),
-                  type: String(row.ASP_TYPE),
-                  rdbName: String(row.RDB_NAME)
-                });
-              }
-            });
-          } catch (e) {
-            //Oh well
-            callbacks.progress({
-              message: `Failed to get ASP information.`
-            });
-          }
-        }
-
-        callbacks.progress({
-          message: `Fetching current iASP information.`
-        });
-
-        this.currentAsp = await this.getUserProfileAsp();
-
-        // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
-
-        // Fetch conversion values?
-        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.qccsid) {
-          this.qccsid = cachedServerSettings.qccsid;
-          this.userJobCcsid = cachedServerSettings.jobCcsid;
-        } else {
-          callbacks.progress({
-            message: `Fetching conversion values.`
-          });
-
-          // Next, we're going to see if we can get the CCSID from the user or the system.
-          // Some things don't work without it!!!
-          try {
-
-            // we need to grab the system CCSID (QCCSID)
-            const [systemCCSID] = await this.runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
-            if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
-              this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
-            }
-
-            // we grab the users default CCSID
-            const [userInfo] = await this.runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
-            if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-              this.userJobCcsid = userInfo.CHARACTER_CODE_SET_ID;
-            }
-
-            // if the job ccsid is *SYSVAL, then assign it to sysval
-            if (this.userJobCcsid === IBMi.CCSID_SYSVAL) {
-              this.userJobCcsid = this.qccsid;
-            }
-
-          } catch (e) {
-            // Oh well!
-            console.log(e);
-          }
-        }
-
-        const showCcsidWarning = (message: string) => {
-          callbacks.uiErrorHandler(this, `ccsid_warning`, message);
-        }
-
-        this.appendOutput(`\nCCSID information:\n`);
-        this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
-        this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
-
-        // We only do this check if we're on 7.3 or below.
-        if (this.systemVersion && this.systemVersion <= 7.3) {
-          callbacks.progress({
-            message: `Checking PASE locale environment variables.`
-          });
-
-          const systemEnvVars = await this.content.getSysEnvVars();
-
-          const paseLang = systemEnvVars.PASE_LANG;
-          const paseCcsid = systemEnvVars.QIBM_PASE_CCSID;
-
-          if (paseLang === undefined || paseCcsid === undefined) {
-            showCcsidWarning(`The PASE environment variables PASE_LANG and QIBM_PASE_CCSID are not set correctly and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
-          } else if (paseCcsid !== `1208`) {
-            showCcsidWarning(`The PASE environment variable QIBM_PASE_CCSID is not set to 1208 and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
-          }
-        }
-
-        // We always need to fetch the local variants because
-        // now we pickup CCSID changes faster due to cqsh
-        callbacks.progress({
-          message: `Fetching local encoding values.`
-        });
-
-        const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-          + `  values ( cast( x'7B' as varchar(1) )`
-          + `         , cast( x'7C' as varchar(1) )`
-          + `         , cast( x'5B' as varchar(1) ) )`
-          + `)`
-          + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
-
-        if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
-          this.variantChars.local = variants.LOCAL;
-        }
-      } else {
-        callbacks.message(`warning`, `The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
-      }
+      }      
 
       if (!options.reconnecting) {
         for (const operation of callbacks.onConnectedOperations || []) {
@@ -1073,7 +1076,7 @@ export default class IBMi {
       return false;
     }
 
-    const tempLibrary = this.config.tempLibrary;
+    const tempLibrary = this.config.tempLibrary = this.upperCaseName(this.config.tempLibrary);
 
     //Check if exists and get the user defined attribute
     const setLibraryUDA = () => this.runSQL(`call QSYS.QLICOBJD('', '${tempLibrary.padEnd(10)}QSYS      ', '*LIB      ', x'00000001' || x'00000009' || x'0000000A' || cast('CODE4ITEMP' as char(10) for bit data), x'0000000000000000')`);
