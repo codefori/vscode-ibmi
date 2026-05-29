@@ -123,7 +123,7 @@ export class ComponentManager {
     }
 
     await installed.component.uninstall?.(this.connection);
-    await installed.overrideState({ status: `NotInstalled`, remoteSignature: "" });
+    installed.overrideState({ status: `NotInstalled`, remoteSignature: "" });
 
     return {
       id: installed.component.getIdentification(),
@@ -137,7 +137,7 @@ export class ComponentManager {
       component.component.reset?.();
 
       const state = component.handleState(await component.component.getRemoteState(this.connection, await component.getInstallDirectory()));
-      await component.overrideState(state);
+      component.overrideState(state);
       return state;
     }
   }
@@ -169,7 +169,7 @@ export class ComponentManager {
     if ((!installedBefore || !sameVersion || installedBefore.state.status === `NotChecked`)) {
       await newComponent.startupCheck();
     } else if (installedBefore) {
-      await newComponent.overrideState(installedBefore.state);
+      newComponent.overrideState(installedBefore.state);
     }
 
     const newState = newComponent.getState();

@@ -40,7 +40,7 @@ export class Mapepire implements IBMiComponent {
 
   async getRemoteState(connection: IBMi, installDirectory: string): Promise<SecureComponentState> {
     this.setInstallDirectory(installDirectory);
-    const remoteVersions = (await connection.sendCommand({ command: `find . -type f -name ${SERVER_FILE_PREFIX}\\*`, directory: installDirectory }))
+    const remoteVersions = (await connection.sendCommand({ command: `/QOpenSys/usr/bin/find ${installDirectory} -type f -name ${SERVER_FILE_PREFIX}\\*` }))
       .stdout.split("\n")
       .map(line => line.trim().substring(2))
       .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\\.(\\d+)\\.(\\d+)\\.jar$`).exec(line))
