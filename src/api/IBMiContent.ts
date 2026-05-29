@@ -584,16 +584,13 @@ export default class IBMiContent {
     let createOBJLIST: string[];
 
     if (sourceFilesOnly || withSourceFiles) {
-      if (this.dummyDSPF) {
-        //Clear the PFS table
-        await this.ibmi.runSQL(`Delete from QTEMP.PFS`);
-      }
-      else {
+      if (!this.dummyDSPF) {
         //Create a dummy PFS table
         await this.ibmi.runSQL('@DSPFD FILE(QSYSINC/H) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)');
         this.dummyDSPF = true;
       }
-      //Fill the PFs list - if the command crashes it won't break the queries below
+      //Clear and fill the PFs list - if the command crashes it won't break the queries below
+      await this.ibmi.runSQL(`Delete from QTEMP.PFS`);
       await this.ibmi.runCommand({ command: `QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)` });
     }
 
