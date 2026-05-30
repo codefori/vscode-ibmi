@@ -585,12 +585,12 @@ export default class IBMiContent {
 
     if (sourceFilesOnly || withSourceFiles) {
       if (!this.dummyDSPF) {
-        //Create a dummy PFS table
-        await this.ibmi.runSQL('@DSPFD FILE(QSYSINC/H) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)');
+        //Create an empty PFS table
+        await this.ibmi.runSQL('declare global temporary table SESSION.PFS like QSYS.QAFDPHY rcdfmt QWHFDPHY');
         this.dummyDSPF = true;
       }
       //Clear and fill the PFs list - if the command crashes it won't break the queries below
-      await this.ibmi.runSQL(`Delete from QTEMP.PFS`);
+      await this.ibmi.runSQL(`delete from SESSION.PFS`);
       await this.ibmi.runCommand({ command: `QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)` });
     }
 
@@ -604,7 +604,7 @@ export default class IBMiContent {
             PHMXRL SOURCE_LENGTH,
             1 as IS_SOURCE,
             '*FILE' as TYPE
-            from QTEMP.PFS
+            from SESSION.PFS
             where PHDTAT = 'S'
             ${sourceFileNameLike()}`
       ];
@@ -633,7 +633,7 @@ export default class IBMiContent {
             trim(PHFILE) NAME,
             1 as IS_SOURCE,
             PHMXRL as SOURCE_LENGTH
-          from QTEMP.PFS
+          from SESSION.PFS
           where PHDTAT = 'S'
         ),
          OBJD as (
