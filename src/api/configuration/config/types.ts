@@ -39,6 +39,9 @@ export interface ConnectionConfig extends ConnectionProfile {
   keepActionSpooledFiles: boolean;
   autoUpdateDirectoryPermissions: string;
   mapepireJavaVersion: string
+  mapepireUseServer: boolean
+  mapepireServerPort: number
+  mapepireAllowSelfCert: boolean
   currentProfile?: string
   [name: string]: any;
 }
