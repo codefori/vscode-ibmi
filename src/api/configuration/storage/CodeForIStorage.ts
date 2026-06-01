@@ -80,7 +80,7 @@ export class CodeForIStorage {
       return;
     }
 
-    const componentCache = existingSettings.installedComponents;
+    const componentCache = existingSettings.installedComponents || [];
     const stateId = componentCache.findIndex(c => c.id.name === component.id.name);
 
     if (stateId >= 0) {
