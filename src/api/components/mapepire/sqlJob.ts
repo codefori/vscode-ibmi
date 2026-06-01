@@ -2,7 +2,6 @@ import type { ConnectionResult, JDBCOptions, ServerRequest, ServerResponse } fro
 import { SQLJob } from "@ibm/mapepire-js";
 import { ClientChannel } from "ssh2";
 import { Mapepire } from ".";
-import { instance } from "../../../instantiate";
 import IBMi from "../../IBMi";
 import { JobStatus } from "./types";
 
@@ -82,20 +81,20 @@ export class sshSqlJob extends SQLJob {
   /**
    * The same as mapepire-js#connect, but with SSH
    */
-  async connectSsh(channel: ClientChannel): Promise<ConnectionResult> {
+  async connectSsh(connection:IBMi, channel: ClientChannel): Promise<ConnectionResult> {
     // this.isTracingChannelData = true;
 
     this.channel = channel;
 
     this.channel.on(`error`, (err: any) => {
       console.warn(err);
-      instance.getConnection()?.appendOutput(`Mapepire channel error: ${err}\n`);
+      connection.appendOutput(`Mapepire channel error: ${err}\n`);
       this.end();
     })
 
     this.channel.on(`close`, (code: number) => {
       console.warn(`Mapepire exited with code ${code}.`);
-      instance.getConnection()?.appendOutput(`Mapepire exited with code ${code}.\n`);
+      connection.appendOutput(`Mapepire exited with code ${code}.\n`);
       this.end();
     })
 
