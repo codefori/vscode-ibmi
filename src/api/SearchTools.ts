@@ -40,7 +40,7 @@ export namespace SearchTools {
         }
 
       // First, let's fetch the ASP info
-      const asp = await connection.lookupLibraryIAsp(library);
+      const asp = await connection.getLibraryIAsp(library);
 
       // Then search the members
       var result: CommandResult | undefined = undefined;

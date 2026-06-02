@@ -3,7 +3,7 @@ import { commands, Disposable, env, l10n, TreeItem, Uri, window, WorkspaceFolder
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import Instance from "../Instance";
-import { Action, ActionResult, DeploymentMethod } from "../typings";
+import { Action, DeploymentMethod } from "../typings";
 import { runAction } from "../ui/actions";
 import { refreshDiagnosticsFromServer } from "../ui/diagnostics";
 import { BrowserItem } from "../ui/types";
@@ -157,7 +157,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
                 }
                 break;
               case `streamfile`:
-                detail.asp = connection.getCurrentIAspName();
+                detail.asp = await connection.getLibraryIAsp(config.currentLibrary);
                 detail.lib = config.currentLibrary;
                 break;
             }

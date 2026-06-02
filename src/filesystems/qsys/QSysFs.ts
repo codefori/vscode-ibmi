@@ -146,7 +146,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
-        path.asp = path.asp || await connection.lookupLibraryIAsp(path.library);
+        path.asp = path.asp || await connection.getLibraryIAsp(path.library);
         return await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
     }
 
@@ -161,7 +161,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         if (connection) {
             const contentApi = connection.getContent();
             let { asp, library, file, name: member } = this.parseMemberPath(connection, uri.path);
-            asp = asp || await connection.lookupLibraryIAsp(library);
+            asp = asp || await connection.getLibraryIAsp(library);
 
             let memberContent;
             try {
@@ -202,7 +202,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
             const contentApi = connection.getContent();
             let { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
-            asp = asp || await connection.lookupLibraryIAsp(library);
+            asp = asp || await connection.getLibraryIAsp(library);
 
             if (!content.length) { //Coming from "Save as"
                 const addMember = await connection.runCommand({

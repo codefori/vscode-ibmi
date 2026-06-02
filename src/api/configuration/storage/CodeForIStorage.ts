@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import os from "os";
 import { ComponentInstallState } from "../../components/component";
 import { Tools } from "../../Tools";
-import { AspInfo, ConnectionData } from "../../types";
+import { ConnectionData } from "../../types";
 import { BaseStorage } from "./BaseStorage";
 
 const SERVER_SETTINGS_CACHE_PREFIX = `serverSettingsCache_`;
@@ -22,7 +22,6 @@ export type LastConnection = {
 
 export type CachedServerSettings = {
   lastCheckedOnVersion: string | undefined;
-  iAspInfo: AspInfo[];
   qccsid: number | null;
   jobCcsid: number | null
   remoteFeatures: { [name: string]: string | undefined }
