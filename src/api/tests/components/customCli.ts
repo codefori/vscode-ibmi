@@ -32,13 +32,13 @@ export class CustomCLI implements IBMiComponent {
     const result = await connection.getContent().testStreamFile(this.installPath, "r");
 
     if (!result) {
-      return { status: `NotInstalled` };
+      return { status: `NotInstalled`, remoteSignature: CustomCLI.SIGNATURE  };
     }
 
     const testResult = await connection.getContent().testStreamFile(this.installPath, "r");
 
     if (!testResult) {
-      return { status: `Error` };
+      return { status: `Error`, remoteSignature: CustomCLI.SIGNATURE  };
     }
 
     return { status: `Installed`, remoteSignature: CustomCLI.SIGNATURE };
