@@ -37,14 +37,39 @@ export class ExtendedIBMiContent {
         console.log(e);
       }
 
+      // Check if the SRCDTA column has CCSID 65535 (binary/no conversion)
+      // Mapepire SQL cannot read columns with CCSID 65535, so we must cast to the job CCSID
+      // Note: We need to check the column-level CCSID and LENGTH, not just the file-level attributes
+      const memberPath = { library, name: file, member: name };
+
+      // Query the column-specific CCSID and LENGTH for SRCDTA from SYSCOLUMNS
+      const [columnInfo] = await connection.runSQL(
+        `SELECT CCSID, LENGTH FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = '${library}' AND TABLE_NAME = '${file}' AND COLUMN_NAME = 'SRCDTA'`
+      ) as { CCSID: number, LENGTH: number }[];
+
+      const columnCcsid = columnInfo?.CCSID || 0;
+      const columnLength = columnInfo?.LENGTH || DEFAULT_RECORD_LENGTH;
+
+      // Cache the record length for later use (e.g., in upload operations)
       if (!this.sourceDateHandler.recordLengths.has(alias)) {
-        let recordLength = await this.getRecordLength(aliasPath, library, file);
-        this.sourceDateHandler.recordLengths.set(alias, recordLength);
+        this.sourceDateHandler.recordLengths.set(alias, columnLength);
       }
 
-      let rows = await connection.runSQL(
-        `select case when locate('40',hex(srcdat)) > 0 then 0 else srcdat end as srcdat, srcseq, srcdta from ${aliasPath}`
-      ) as { SRCDAT: number, SRCDTA: string, SRCSEQ: number }[];
+      const recordLength = columnLength; // Use the defined column length from SYSCOLUMNS
+      const jobCcsid = connection.getCcsid();
+
+      // Build the SELECT statement with conditional CAST for CCSID 65535
+      let srcdtaColumn: string;
+      if (columnCcsid === IBMi.CCSID_NOCONVERSION) {
+        console.log(`[downloadMemberContentWithDates] CCSID 65535 detected for ${library}/${file}, using CAST to CCSID ${jobCcsid}`);
+        srcdtaColumn = `cast(srcdta as varchar(${recordLength}) CCSID ${jobCcsid}) as srcdta`;
+      } else {
+        srcdtaColumn = `srcdta`;
+      }
+
+      const sqlStatement = `select case when locate('40',hex(srcdat)) > 0 then 0 else srcdat end as srcdat, srcseq, ${srcdtaColumn} from ${aliasPath}`;
+
+      let rows = await connection.runSQL(sqlStatement) as { SRCDAT: number, SRCDTA: string, SRCSEQ: number }[];
 
       if (rows.length === 0) {
         rows.push({
@@ -69,7 +94,7 @@ export class ExtendedIBMiContent {
   }
 
   /**
-   * Determine the member record length 
+   * Determine the member record length
    * @param {string} aliasPath member sql alias path e.g. ILEDITOR.QGPL_QRPGLESC_MYRPGPGM
    * @param {string} lib
    * @param {string} spf
@@ -98,9 +123,9 @@ export class ExtendedIBMiContent {
   }
 
   /**
-   * Upload to a member with source dates 
+   * Upload to a member with source dates
    * @param {vscode.Uri} uri
-   * @param {string} body 
+   * @param {string} body
    */
   async uploadMemberContentWithDates(uri: vscode.Uri, body: string) {
     const connection = instance.getConnection();
