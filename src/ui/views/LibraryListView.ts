@@ -270,7 +270,7 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
 
         if (connection && storage) {
           const content = connection.getContent();
-          if (await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
+          if (await content.checkObjectExists({ library: "QSYS", name: library, type: "*LIB" })) {
             await changeCurrentLibrary(library);
             libraryListView.refresh();
           }

@@ -58,7 +58,7 @@ export function setupGitEventHandler(context: ExtensionContext) {
 function setupBranchLibrary(currentBranch: string, content: IBMiContent, connection: IBMi, config: ConnectionConfig) {
   const filters = config.objectFilters;
   const newBranchLib = getBranchLibraryName(currentBranch);
-  content.checkObject({ library: `QSYS`, name: newBranchLib, type: `*LIB` }).then(exists => {
+  content.checkObjectExists({ library: `QSYS`, name: newBranchLib, type: `*LIB` }).then(exists => {
     if (exists) {
       if (!filters.some(filter => filter.library.toUpperCase() === newBranchLib)) {
         window.showInformationMessage(`The branch library ${newBranchLib} exists for this branch. Do you want to create a filter?`, `Yes`, `No`).then(answer => {
@@ -100,7 +100,7 @@ function setupBranchLibrary(currentBranch: string, content: IBMiContent, connect
                       memberType: `*`,
                       protected: false
                     });
-  
+
                     config.objectFilters = filters;
                     IBMi.connectionManager.update(config).then(() => {
                       commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);

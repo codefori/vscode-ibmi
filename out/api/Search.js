@@ -1,0 +1,205 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.Search = void 0;
+const getMemberInfo_1 = require("./components/getMemberInfo");
+const IBMi_1 = __importDefault(require("./IBMi"));
+const Tools_1 = require("./Tools");
+var Search;
+(function (Search) {
+    function parseHitPath(hit) {
+        const parts = hit.path.split('/');
+        if (parts.length == 4) {
+            parts.shift();
+        }
+        return {
+            library: parts[0],
+            file: parts[1],
+            name: parts[2],
+            extension: ''
+        };
+    }
+    async function searchMembers(connection, library, sourceFile, searchTerm, members, readOnly) {
+        const config = connection.getConfig();
+        const content = connection.getContent();
+        if (connection && config && content) {
+            let detailedMembers;
+            let memberFilter;
+            const pfgrep = connection.remoteFeatures.pfgrep;
+            if (typeof members === `string`) {
+                memberFilter = connection.sysNameInAmerican(`${members}.MBR`);
+            }
+            else if (Array.isArray(members)) {
+                if (members.length > connection.maximumArgsLength) {
+                    detailedMembers = members;
+                    memberFilter = "*.MBR";
+                }
+                else {
+                    memberFilter = members.map(member => `${member.name}.MBR`).join(` `);
+                }
+            }
+            // First, let's fetch the ASP info
+            const asp = await connection.lookupLibraryIAsp(library);
+            // Then search the members
+            var result = undefined;
+            if (pfgrep) {
+                // pfgrep vs. qshell grep difference: uses -r for recursion instead of -R
+                // (GNU/BSD grep treat them the same); we don't use recursion yet though...
+                // older versions before 0.4 need -t to trim whitespace, 0.4 inverts the flag
+                const command = `${pfgrep} -inHr -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`;
+                result = await connection.sendCommand({
+                    command: command,
+                    directory: connection.sysNameInAmerican(`${asp ? `/${asp}` : ``}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
+                });
+            }
+            else {
+                const command = `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`;
+                result = await connection.sendQsh({
+                    command: command,
+                    directory: connection.sysNameInAmerican(`${asp ? `/${asp}` : ``}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
+                });
+            }
+            if (!result.stderr) {
+                let hits = parseGrepOutput(result.stdout || '', readOnly || content.isProtectedPath(library), path => connection.sysNameInLocal(`${library}/${sourceFile}/${path.replace(/\.MBR$/, '')}`));
+                if (detailedMembers) {
+                    // If the user provided a list of members, we need to filter the results to only include those members
+                    hits = hits.filter(hit => {
+                        const hitMember = parseHitPath(hit);
+                        return detailedMembers.some(member => member.name === hitMember.name && member.library === hitMember.library && member.file === hitMember.file);
+                    });
+                }
+                else {
+                    // Else, we need to fetch the member info for each hit so we can display the correct extension
+                    const infoComponent = connection?.getComponent(getMemberInfo_1.GetMemberInfo.ID);
+                    detailedMembers = await infoComponent?.getMultipleMemberInfo(connection, hits.map(parseHitPath));
+                }
+                // Then fix the extensions in the hit
+                for (const hit of hits) {
+                    const hitMember = parseHitPath(hit);
+                    const foundMember = detailedMembers?.find(member => member.name === hitMember.name && member.library === hitMember.library && member.file === hitMember.file);
+                    if (foundMember) {
+                        hit.path = connection.sysNameInLocal(`${asp ? `${asp}/` : ``}${foundMember.library}/${foundMember.file}/${foundMember.name}.${foundMember.extension}`);
+                    }
+                }
+                return {
+                    term: searchTerm,
+                    hits
+                };
+            }
+            else {
+                throw new Error(result.stderr);
+            }
+        }
+        else {
+            throw new Error("Please connect to an IBM i");
+        }
+    }
+    Search.searchMembers = searchMembers;
+    async function searchIFS(connection, path, searchTerm) {
+        if (connection) {
+            const grep = connection.remoteFeatures.grep;
+            if (grep) {
+                const dirsToIgnore = IBMi_1.default.connectionManager.get(`grepIgnoreDirs`) || [];
+                let ignoreString = ``;
+                if (dirsToIgnore.length > 0) {
+                    ignoreString = dirsToIgnore.map(dir => `--exclude-dir=${dir}`).join(` `);
+                }
+                const grepRes = await connection.sendCommand({
+                    command: `${grep} -inr -F -f - ${ignoreString} ${Tools_1.Tools.escapePath(path)}`,
+                    stdin: searchTerm
+                });
+                if (grepRes.code == 0) {
+                    return {
+                        term: searchTerm,
+                        hits: parseGrepOutput(grepRes.stdout)
+                    };
+                }
+            }
+            else {
+                throw new Error(`Grep must be installed on the remote system.`);
+            }
+        }
+        else {
+            throw new Error("Please connect to an IBM i");
+        }
+    }
+    Search.searchIFS = searchIFS;
+    async function findIFS(connection, path, findTerm) {
+        if (connection) {
+            const find = connection.remoteFeatures.find;
+            if (find) {
+                const dirsToIgnore = IBMi_1.default.connectionManager.get(`grepIgnoreDirs`) || [];
+                let ignoreString = ``;
+                if (dirsToIgnore.length > 0) {
+                    ignoreString = dirsToIgnore.map(dir => `-type d -path '*/${dir}' -prune -o`).join(` `);
+                }
+                const findRes = await connection.sendCommand({
+                    command: `${find} ${Tools_1.Tools.escapePath(path)} ${ignoreString} -type f -iname '*${findTerm}*' -print`
+                });
+                if (findRes.code == 0 && findRes.stdout) {
+                    return {
+                        term: findTerm,
+                        hits: parseFindOutput(findRes.stdout)
+                    };
+                }
+            }
+            else {
+                throw new Error(`Find must be installed on the remote system.`);
+            }
+        }
+        else {
+            throw new Error("Please connect to an IBM i");
+        }
+    }
+    Search.findIFS = findIFS;
+    function parseFindOutput(output, readonly, pathTransformer) {
+        const results = [];
+        for (const line of output.split('\n')) {
+            const path = pathTransformer?.(line) || line;
+            results.push(results.find(r => r.path === path) || { path, readonly, lines: [] });
+        }
+        return results;
+    }
+    function parseGrepOutput(output, readonly, pathTransformer) {
+        const results = [];
+        for (const line of output.split('\n')) {
+            if (line && !line.startsWith(`Binary`)) {
+                const parts = line.split(`:`); //path:line
+                const path = pathTransformer?.(parts[0]) || parts[0];
+                let result = results.find(r => r.path === path);
+                if (!result) {
+                    result = {
+                        path,
+                        lines: [],
+                        readonly,
+                    };
+                    results.push(result);
+                }
+                const contentIndex = nthIndex(line, `:`, 2);
+                if (contentIndex >= 0) {
+                    const curContent = line.substring(contentIndex + 1);
+                    result.lines.push({
+                        number: Number(parts[1]),
+                        content: curContent
+                    });
+                }
+            }
+        }
+        return results;
+    }
+    function sanitizeSearchTerm(searchTerm) {
+        return searchTerm.replace(/\\/g, `\\\\`).replace(/"/g, `\\"`);
+    }
+    function nthIndex(aString, pattern, n) {
+        let index = -1;
+        while (n-- && index++ < aString.length) {
+            index = aString.indexOf(pattern, index);
+            if (index < 0)
+                break;
+        }
+        return index;
+    }
+})(Search = exports.Search || (exports.Search = {}));
+//# sourceMappingURL=Search.js.map

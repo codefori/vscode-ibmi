@@ -51,7 +51,7 @@ async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
 
     data.currentLibrary = data.currentLibrary.trim();
     if (data.currentLibrary) {
-      if (await content.checkObject({ library: "QSYS", name: data.currentLibrary, type: "*LIB" })) {
+      if (await content.checkObjectExists({ library: "QSYS", name: data.currentLibrary, type: "*LIB" })) {
         profile.currentLibrary = data.currentLibrary;
       }
       else {

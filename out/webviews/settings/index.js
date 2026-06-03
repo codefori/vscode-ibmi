@@ -1,0 +1,460 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SettingsUI = void 0;
+const fs_1 = require("fs");
+const vscode_1 = __importStar(require("vscode"));
+const manager_1 = require("../../api/components/manager");
+const IBMi_1 = __importDefault(require("../../api/IBMi"));
+const Tools_1 = require("../../api/Tools");
+const passwords_1 = require("../../config/passwords");
+const debug_1 = require("../../debug");
+const certificates = __importStar(require("../../debug/certificates"));
+const instantiate_1 = require("../../instantiate");
+const Tools_2 = require("../../ui/Tools");
+const CustomUI_1 = require("../CustomUI");
+const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
+const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
+const TERMINAL_TYPES = [
+    { key: `IBM-3179-2`, text: `IBM-3179-2 (24x80 monochrome)` },
+    { key: `IBM-3180-2`, text: `IBM-3180-2 (27x132 monochrome)` },
+    { key: `IBM-3196-A1`, text: `IBM-3196-A1 (24x80 monochrome)` },
+    { key: `IBM-3477-FC`, text: `IBM-3477-FC (27x132 color)` },
+    { key: `IBM-3477-FG`, text: `IBM-3477-FG (27x132 monochrome)` },
+    { key: `IBM-5251-11`, text: `IBM-5251-11 (24x80 monochrome)` },
+    { key: `IBM-5291-1`, text: `IBM-5291-1 (24x80 monochrome)` },
+    { key: `IBM-5292-2`, text: `IBM-5292-2 (24x80 color)` },
+];
+class SettingsUI {
+    static init(context) {
+        context.subscriptions.push(vscode_1.default.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server, tab) => {
+            const connectionSettings = IBMi_1.default.connectionManager.getAll();
+            const connection = instantiate_1.instance.getConnection();
+            const passwordAuthorisedExtensions = instantiate_1.instance.getStorage()?.getAuthorisedExtensions() || [];
+            let config;
+            let serverConfig;
+            if (connectionSettings && server) {
+                config = await IBMi_1.default.connectionManager.load(server.name);
+            }
+            else if (connection) {
+                // Reload config to initialize any new config parameters.
+                config = await IBMi_1.default.connectionManager.load(connection.currentConnectionName);
+                const remoteConnectionConfig = connection.getConfigFile(`settings`);
+                const serverConfigOk = remoteConnectionConfig.getState() === `ok`;
+                if (serverConfigOk) {
+                    serverConfig = await remoteConnectionConfig.get();
+                }
+            }
+            else {
+                vscode_1.default.window.showErrorMessage(`No connection is active.`);
+                return;
+            }
+            const hasServerProperties = serverConfig && serverConfig.codefori && Object.keys(serverConfig.codefori).length > 0;
+            const setFieldsReadOnly = async (currentSection) => {
+                if (serverConfig && serverConfig.codefori) {
+                    for (const field of currentSection.fields) {
+                        if (!field.id)
+                            continue;
+                        if (serverConfig.codefori[field.id] !== undefined) {
+                            field.readonly = true;
+                        }
+                    }
+                }
+            };
+            const restartFields = [`readOnlyMode`, `showDescInLibList`, `tempDir`, `debugCertDirectory`];
+            let restart = false;
+            const featuresTab = new CustomUI_1.Section();
+            if (hasServerProperties) {
+                featuresTab
+                    .addParagraph(`Some of these settings have been set on the server and cannot be changed here.`)
+                    .addHorizontalRule();
+            }
+            featuresTab
+                .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, content on the server can not be changed. Requires restart when changed.`, config.readOnlyMode)
+                .addHorizontalRule()
+                .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect)
+                .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
+                .addCheckbox(`showHiddenFiles`, `Show hidden files and directories in IFS browser.`, `When disabled, hidden files and directories (i.e. names starting with '.') will not be shown in the IFS browser, except for special config files.`, config.showHiddenFiles)
+                .addCheckbox(`autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`, `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`, config.autoSortIFSShortcuts)
+                .addCheckbox(`autoConvertIFSccsid`, `Support EBCDIC streamfiles`, `Enable converting EBCDIC to UTF-8 when opening streamfiles. When disabled, assumes all streamfiles are in UTF8. When enabled, will open streamfiles regardless of encoding. May slow down open and save operations.<br><br>You can find supported CCSIDs with <code>/usr/bin/iconv -l</code>`, config.autoConvertIFSccsid)
+                .addHorizontalRule()
+                .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
+                .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) });
+            setFieldsReadOnly(featuresTab);
+            const tempDataTab = new CustomUI_1.Section();
+            tempDataTab
+                .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary, minlength: 1, maxlength: 10 })
+                .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir, minlength: 1 })
+                .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData);
+            setFieldsReadOnly(tempDataTab);
+            const sourceTab = new CustomUI_1.Section();
+            sourceTab
+                .addInput(`sourceASP`, `Source ASP`, `Current ASP is based on the user profile job description and cannot be changed here.`, { default: connection?.getCurrentIAspName() || `*SYSBAS`, readonly: true })
+                .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
+                .addHorizontalRule()
+                .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
+                .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter. This also enables date search and sequence view.`, config.sourceDateGutter)
+                .addHorizontalRule()
+                .addSelect(`defaultDeploymentMethod`, `Default Deployment Method`, [
+                {
+                    selected: config.defaultDeploymentMethod === undefined || config.defaultDeploymentMethod === ``,
+                    value: ``,
+                    description: `No Default`,
+                    text: `No default Deploy method`,
+                },
+                {
+                    selected: config.defaultDeploymentMethod === `compare`,
+                    value: `compare`,
+                    description: `Compare`,
+                    text: `Synchronizes using MD5 hash comparison`,
+                },
+                {
+                    selected: config.defaultDeploymentMethod === `changed`,
+                    value: `changed`,
+                    description: `Changes`,
+                    text: `Changes detected since last upload.`,
+                },
+                {
+                    selected: config.defaultDeploymentMethod === `unstaged`,
+                    value: `unstaged`,
+                    description: `Working Changes`,
+                    text: `Unstaged changes in Git`,
+                },
+                {
+                    selected: config.defaultDeploymentMethod === `staged`,
+                    value: `staged`,
+                    description: `Staged Changes`,
+                    text: `Staged changes in Git`,
+                },
+                {
+                    selected: config.defaultDeploymentMethod === `all`,
+                    value: `all`,
+                    description: `All`,
+                    text: `Every file in the local workspace`,
+                }
+            ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
+                .addHorizontalRule()
+                .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
+            setFieldsReadOnly(sourceTab);
+            const terminalsTab = new CustomUI_1.Section();
+            if (connection && connection.remoteFeatures.tn5250) {
+                terminalsTab
+                    .addSelect(`encodingFor5250`, `5250 encoding`, [{
+                        selected: config.encodingFor5250 === `default`,
+                        value: `default`,
+                        description: `Default`,
+                        text: `Default`,
+                    }, ...ENCODINGS.map(encoding => ({
+                        selected: config.encodingFor5250 === encoding,
+                        value: encoding,
+                        description: encoding,
+                        text: encoding,
+                    }))], `The encoding for the 5250 emulator.`)
+                    .addSelect(`terminalFor5250`, `5250 Terminal Type`, [
+                    {
+                        selected: config.terminalFor5250 === `default`,
+                        value: `default`,
+                        description: `Default`,
+                        text: `Default`,
+                    },
+                    ...TERMINAL_TYPES.map(terminal => ({
+                        selected: config.terminalFor5250 === terminal.key,
+                        value: terminal.key,
+                        description: terminal.key,
+                        text: terminal.text,
+                    }))
+                ], `The terminal type for the 5250 emulator.`)
+                    .addCheckbox(`setDeviceNameFor5250`, `Set Device Name for 5250`, `When enabled, the user will be able to enter a device name before the terminal starts.`, config.setDeviceNameFor5250)
+                    .addInput(`connectringStringFor5250`, `Connection string for 5250`, `The syntax for tn5250 is <code>[options] [ssl:]HOST[:PORT]</code> (default is <code>+uninhibited localhost</code>)<br /><ul><li><b>options</b>: a list of options that changes tn5250 behaviour; this list is whitespace separated (e.g. <code>+uninhibited +ruler</code>)</li><li><b>ssl</b>: allows you to connect to your system using TELNET over SSL</li><li><b>host</b>: the host you need to connect to (usually <code>localhost</code>)</li><li><b>port</b>: TCP port for the connection</li></ul><br>Further documentation is available at <a href="https://linux.die.net/man/5/tn5250rc">this link</a>, enjoy 😎`, { default: config.connectringStringFor5250 });
+            }
+            else if (connection) {
+                terminalsTab.addParagraph('Enable 5250 emulation to change these settings');
+            }
+            else {
+                terminalsTab.addParagraph('Connect to the server to see these settings.');
+            }
+            setFieldsReadOnly(terminalsTab);
+            const debuggerTab = new CustomUI_1.Section();
+            if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
+                debuggerTab.addParagraph(`The following values have been read from the debug service configuration.`);
+                const debugServiceConfig = new Map()
+                    .set("Debug port", config.debugPort);
+                debugServiceConfig.set("SEP debug port", config.debugSepPort);
+                debuggerTab.addParagraph(`<ul>${Array.from(debugServiceConfig.entries()).map(([label, value]) => `<li><code>${label}</code>: ${value}</li>`).join("")}</ul>`);
+                debuggerTab.addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
+                    .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
+                if (!(0, debug_1.isManaged)()) {
+                    debuggerTab.addHorizontalRule();
+                    if (await certificates.remoteCertificatesExists()) {
+                        let localCertificateIssue;
+                        try {
+                            await certificates.checkClientCertificate(connection);
+                        }
+                        catch (error) {
+                            localCertificateIssue = `${String(error)}. Debugging will not function correctly.`;
+                        }
+                        debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
+                            .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
+                            .addButtons({ id: `import`, label: `Download client certificate` });
+                    }
+                }
+            }
+            else if (connection) {
+                debuggerTab.addParagraph('Enable the debug service to change these settings');
+            }
+            else {
+                debuggerTab.addParagraph('Connect to the server to see these settings.');
+            }
+            setFieldsReadOnly(debuggerTab);
+            const componentsTab = new CustomUI_1.Section();
+            if (connection) {
+                const states = connection.getComponentManager().getComponentStates();
+                componentsTab.addParagraph(`The following extensions contribute these components:`);
+                manager_1.extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
+                    const extension = vscode_1.default.extensions.getExtension(extensionId);
+                    componentsTab.addParagraph(`<p>
+              <h3 style="padding-bottom: 1em;">${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
+              <ul>
+              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.id.name === component.getIdentification().name)?.state} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
+              </ul>
+              </p>`);
+                });
+                const userInstallableComponents = states.filter(c => c.id.userManaged && c.state !== `Installed`);
+                if (userInstallableComponents.length) {
+                    componentsTab.addButtons({ id: `installComponent`, label: `Install component` });
+                }
+            }
+            else {
+                componentsTab.addParagraph('Connect to the server to see these settings.');
+            }
+            setFieldsReadOnly(componentsTab);
+            const tabs = [
+                { label: `Features`, fields: featuresTab.fields },
+                { label: `Source Code`, fields: sourceTab.fields },
+                { label: `Terminals`, fields: terminalsTab.fields },
+                { label: `Debugger`, fields: debuggerTab.fields },
+                { label: `Temporary Data`, fields: tempDataTab.fields },
+                { label: `Components`, fields: componentsTab.fields },
+            ];
+            const ui = new CustomUI_1.CustomUI();
+            if (passwordAuthorisedExtensions.length) {
+                const passwordAuthTab = new CustomUI_1.Section();
+                passwordAuthTab
+                    .addParagraph(`The following extensions are authorized to use the password for this connection.`)
+                    .addParagraph(`<ul>${passwordAuthorisedExtensions.map(authExtension => `<li>✅ <code>${authExtension.displayName || authExtension.id}</code> - since ${new Date(authExtension.since).toDateString()} - last access on ${new Date(authExtension.lastAccess).toDateString()}</li>`).join(``)}</ul>`)
+                    .addButtons({ id: `clearAllowedExts`, label: `Clear list` });
+                tabs.push({ label: `Extension Auth`, fields: passwordAuthTab.fields });
+            }
+            const defaultTab = tabs.findIndex(t => t.label === tab);
+            // If `tab` is provided, we can open directory to a specific tab.. pretty cool
+            ui.addComplexTabs(tabs, (defaultTab >= 0 ? defaultTab : undefined))
+                .addHorizontalRule()
+                .addButtons({ id: `save`, label: `Save settings`, requiresValidation: true });
+            await Tools_2.VscodeTools.withContext(EDITING_CONTEXT, async () => {
+                const page = await ui.loadPage(`Settings: ${config.name}`);
+                if (page) {
+                    page.panel.dispose();
+                    if (page.data) {
+                        const data = page.data;
+                        const button = data.buttons;
+                        switch (button) {
+                            case `import`:
+                                vscode_1.default.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+                                break;
+                            case `clearAllowedExts`:
+                                instantiate_1.instance.getStorage()?.revokeAllExtensionAuthorisations();
+                                break;
+                            case `installComponent`:
+                                if (connection) {
+                                    installComponentsQuickPick(connection);
+                                }
+                                break;
+                            default:
+                                const data = page.data;
+                                for (const key in data) {
+                                    //In case we need to play with the data
+                                    switch (key) {
+                                        case `sourceASP`:
+                                            data[key] = null;
+                                            break;
+                                        case `hideCompileErrors`:
+                                            data[key] = String(data[key]).split(`,`)
+                                                .map(item => item.toUpperCase().trim())
+                                                .filter(item => item !== ``)
+                                                .filter(Tools_1.Tools.distinct);
+                                            break;
+                                        case `protectedPaths`:
+                                            data[key] = String(data[key]).split(`,`)
+                                                .map(item => item.trim())
+                                                .map(item => item.startsWith('/') ? item : connection?.upperCaseName(item) || item.toUpperCase())
+                                                .filter(item => item !== ``)
+                                                .filter(Tools_1.Tools.distinct);
+                                            break;
+                                        case `defaultDeploymentMethod`:
+                                            if (data[key] === 'No Default')
+                                                data[key] = '';
+                                            break;
+                                    }
+                                }
+                                if (restartFields.some(item => data[item] !== config[item])) {
+                                    restart = true;
+                                }
+                                const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
+                                const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
+                                Object.assign(config, data);
+                                await instantiate_1.instance.setConfig(config);
+                                if (removeCachedSettings)
+                                    IBMi_1.default.GlobalStorage.deleteServerSettingsCache(config.name);
+                                if (connection) {
+                                    if (restart) {
+                                        vscode_1.default.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+                                            .then(async (value) => {
+                                            if (value === `Reload`) {
+                                                await vscode_1.default.commands.executeCommand(`workbench.action.reloadWindow`);
+                                            }
+                                        });
+                                    }
+                                    else if (reloadBrowsers) {
+                                        vscode_1.default.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                                        vscode_1.default.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                                    }
+                                }
+                                //Refresh connection browser if not connected
+                                else {
+                                    vscode_1.default.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+                                }
+                                break;
+                        }
+                    }
+                }
+            });
+        }), vscode_1.default.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (server) => {
+            if (server) {
+                const name = server.name;
+                const connection = await IBMi_1.default.connectionManager.getByName(name);
+                if (connection) {
+                    const storedPassword = await (0, passwords_1.getStoredPassword)(context, name);
+                    let { data: stored, index } = connection;
+                    const privateKeyPath = stored.privateKeyPath ? Tools_1.Tools.resolvePath(stored.privateKeyPath) : undefined;
+                    const privateKeyWarning = !privateKeyPath || (0, fs_1.existsSync)(privateKeyPath) ? "" : "<b>⚠️ This private key doesn't exist on this system! ⚠️</b></br></br>";
+                    const ui = new CustomUI_1.CustomUI()
+                        .addInput(`host`, vscode_1.default.l10n.t(`Host or IP Address`), undefined, { default: stored.host, minlength: 1 })
+                        .addInput(`port`, vscode_1.default.l10n.t(`Port (SSH)`), undefined, { default: String(stored.port), min: 1, max: 65535, inputType: "number" })
+                        .addInput(`username`, vscode_1.default.l10n.t(`Username`), undefined, { default: stored.username, minlength: 1 })
+                        .addHorizontalRule()
+                        .addParagraph(vscode_1.default.l10n.t(`Only provide either the password or a private key - not both.`))
+                        .addPassword(`password`, `${vscode_1.default.l10n.t(`Password`)}${storedPassword ? ` (${vscode_1.default.l10n.t(`stored`)})` : ``}`, vscode_1.default.l10n.t("Only provide a password if you want to update an existing one or set a new one."))
+                        .addFile(`privateKeyPath`, `${vscode_1.default.l10n.t(`Private Key`)}${privateKeyPath ? ` (${vscode_1.default.l10n.t(`Private Key`)}: ${privateKeyPath})` : ``}`, privateKeyWarning + vscode_1.default.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode_1.default.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
+                        .addHorizontalRule()
+                        .addInput(`readyTimeout`, vscode_1.default.l10n.t(`Connection Timeout (in milliseconds)`), vscode_1.default.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })
+                        .addCheckbox(`sshDebug`, vscode_1.default.l10n.t(`Turn on SSH debug output`), vscode_1.default.l10n.t(`Enable this to output debug traces in the Code for i and help diagnose SSH connection issues.`), stored.sshDebug)
+                        .addButtons({ id: `submitButton`, label: vscode_1.default.l10n.t(`Save`), requiresValidation: true }, { id: `removeAuth`, label: vscode_1.default.l10n.t(`Remove auth methods`) });
+                    await Tools_2.VscodeTools.withContext(EDITING_CONTEXT, async () => {
+                        const page = await ui.loadPage(vscode_1.default.l10n.t(`Login Settings: "{0}"`, name));
+                        if (page && page.data) {
+                            page.panel.dispose();
+                            const data = page.data;
+                            const chosenButton = data.buttons;
+                            switch (chosenButton) {
+                                case `removeAuth`:
+                                    await (0, passwords_1.deleteStoredPassword)(context, name);
+                                    data.privateKeyPath = undefined;
+                                    vscode_1.default.window.showInformationMessage(vscode_1.default.l10n.t(`Authentication methods removed for "{0}".`, name));
+                                    break;
+                                default:
+                                    if (data.password) {
+                                        delete data.privateKeyPath;
+                                        if (data.password !== storedPassword) {
+                                            // New password was entered, so store the password
+                                            // and remove the private key path from the data
+                                            await (0, passwords_1.setStoredPassword)(context, name, data.password);
+                                            vscode_1.default.window.showInformationMessage(vscode_1.default.l10n.t(`Password updated and will be used for "{0}".`, name));
+                                        }
+                                    }
+                                    else if (data.privateKeyPath?.trim()) {
+                                        // If no password was entered, but a keypath exists
+                                        // then remove the password from the data and
+                                        // use the keypath instead
+                                        data.privateKeyPath = Tools_1.Tools.normalizePath(data.privateKeyPath);
+                                        await (0, passwords_1.deleteStoredPassword)(context, name);
+                                        vscode_1.default.window.showInformationMessage(vscode_1.default.l10n.t(`Private key updated and will be used for "{0}".`, name));
+                                    }
+                                    else {
+                                        delete data.privateKeyPath;
+                                    }
+                                    break;
+                            }
+                            //Fix values before assigning the data
+                            data.port = Number(data.port);
+                            data.readyTimeout = Number(data.readyTimeout);
+                            delete data.password;
+                            delete data.buttons;
+                            stored = Object.assign(stored, data);
+                            await IBMi_1.default.connectionManager.updateByIndex(index, stored);
+                            IBMi_1.default.GlobalStorage.deleteServerSettingsCache(server.name);
+                            vscode_1.default.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+                        }
+                    });
+                }
+            }
+        }));
+    }
+}
+exports.SettingsUI = SettingsUI;
+function installComponentsQuickPick(connection) {
+    const components = connection.getComponentManager().getComponentStates();
+    const installable = components.filter(c => c.id.userManaged && c.state !== `Installed`);
+    if (installable.length === 0) {
+        return;
+    }
+    const withS = installable.length > 1 ? `s` : ``;
+    const quickPick = vscode_1.window.showQuickPick(installable.map(c => ({
+        label: c.id.name,
+        description: c.state,
+        id: c.id.name
+    })), {
+        title: `Install component${withS}`,
+        canPickMany: true,
+        placeHolder: `Select component${withS} to install`
+    }).then(async (result) => {
+        if (result) {
+            vscode_1.window.withProgress({ title: `Component${withS}`, location: vscode_1.default.ProgressLocation.Notification }, async (progress) => {
+                for (const item of result) {
+                    progress.report({ message: `Installing ${item.label}...` });
+                    try {
+                        await connection.getComponentManager().installComponent(item.id);
+                    }
+                    catch (e) {
+                        // TODO: handle errors!
+                    }
+                }
+            });
+        }
+    });
+}
+//# sourceMappingURL=index.js.map

@@ -1,3 +1,4 @@
+
 import { parse } from 'csv-parse/sync';
 import fs from 'fs';
 import * as node_ssh from "node-ssh";
@@ -167,11 +168,11 @@ export default class IBMiContent {
     const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
     const tempRmt = Tools.ensureFullPath(this.getTempRemote(path), this.config.homeDirectory);
     let retry = false;
-    
+
     // Fetch source file CCSID and determine if conversion is needed
     const sourceCcsid = await this.ibmi.getFileCcsid(path);
     const {requiresConversion, targetCcsid} = Tools.determineCcsidConversion(sourceCcsid, this.config);
-  
+
     try {
       while (true) {
         let copyResult: CommandResult;
@@ -277,7 +278,7 @@ export default class IBMiContent {
       // Fetch source file CCSID and determine if conversion is needed
       const sourceCcsid = await this.ibmi.getFileCcsid(path);
       const {requiresConversion, targetCcsid} = Tools.determineCcsidConversion(sourceCcsid, this.config);
-      
+
       const tempRmt = Tools.ensureFullPath(this.getTempRemote(path), this.config.homeDirectory);
 
       try {
@@ -562,7 +563,7 @@ export default class IBMiContent {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
 
     if (localLibrary !== `QSYS`) {
-      if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
+      if (!await this.checkObjectExists({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
         throw new Error(`Library ${localLibrary} does not exist.`);
       }
     }
@@ -600,7 +601,7 @@ export default class IBMiContent {
     } else if (!withSourceFiles) {
       createOBJLIST = [
         /* sql */
-        `select 
+        `select
           OBJNAME          as NAME,
           OBJTYPE          as TYPE,
           OBJATTRIBUTE     as ATTRIBUTE,
@@ -627,7 +628,7 @@ export default class IBMiContent {
           where PHDTAT = 'S'
         ),
          OBJD as (
-          select 
+          select
             OBJNAME           as NAME,
             OBJTYPE           as TYPE,
             OBJATTRIBUTE      as ATTRIBUTE,
@@ -992,6 +993,17 @@ export default class IBMiContent {
       noLibList: true
     })).code === 0;
   }
+  /**
+   * Checks if an object exists using QSYS2.OBJECT_STATISTICS
+   * @param object Object descriptor with library, name, and type only
+   * @returns true if the object exists, false otherwise
+   */
+  async checkObjectExists(object: { library: string, name: string, type: string }): Promise<boolean> {
+    console.log('[DEBUG] checkObjectExists called with:', object);
+    const statement = `select objname, objtype, objlib FROM TABLE(QSYS2.OBJECT_STATISTICS('${object.library}','${object.type}','${object.name}'))`;
+    const results = await this.ibmi.runSQL(statement);
+    return results.length >= 1;
+  }
 
   async testStreamFile(path: string, right: "e" | "f" | "d" | "r" | "w" | "x") {
     return (await this.ibmi.sendCommand({ command: `test -${right} ${Tools.escapePath(path)}` })).code === 0;
@@ -1175,10 +1187,10 @@ export default class IBMiContent {
 
   /**
    * Returns the signature of an SQL component
-   * @param library 
-   * @param name 
-   * @param type 
-   * @returns 
+   * @param library
+   * @param name
+   * @param type
+   * @returns
    */
   async getSQLRoutineSignature(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
     return (await this.ibmi.runSQL(
