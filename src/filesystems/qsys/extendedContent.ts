@@ -30,9 +30,33 @@ export class ExtendedIBMiContent {
       const { library, file, name } = connection.parserMemberPath(uri.path);
       const overFile = await this.overDBFile(connection, library, file, name);
       try {
-        await this.readRecordLength(connection, alias, overFile);
+        // Query the column-specific CCSID and LENGTH for SRCDTA from SYSCOLUMNS
+        // Mapepire SQL cannot read columns with CCSID 65535, so we must cast to the job CCSID
+        const [columnInfo] = await connection.runSQL(
+          `SELECT CCSID, LENGTH FROM QSYS2.SYSCOLUMNS WHERE TABLE_SCHEMA = '${library}' AND TABLE_NAME = '${file}' AND COLUMN_NAME = 'SRCDTA'`
+        ) as { CCSID: number, LENGTH: number }[];
+
+        const columnCcsid = columnInfo?.CCSID || 0;
+        const columnLength = columnInfo?.LENGTH || DEFAULT_RECORD_LENGTH;
+
+        // Cache the record length for later use (e.g., in upload operations)
+        if (!this.sourceDateHandler.recordLengths.has(alias)) {
+          this.sourceDateHandler.recordLengths.set(alias, columnLength);
+        }
+
+        const jobCcsid = connection.getCcsid();
+
+        // Build the SELECT statement with conditional CAST for CCSID 65535
+        let srcdtaColumn: string;
+        if (columnCcsid === IBMi.CCSID_NOCONVERSION) {
+          console.log(`[downloadMemberContentWithDates] CCSID 65535 detected for ${library}/${file}, using CAST to CCSID ${jobCcsid}`);
+          srcdtaColumn = `cast(srcdta as varchar(${columnLength}) CCSID ${jobCcsid}) as srcdta`;
+        } else {
+          srcdtaColumn = `srcdta`;
+        }
+
         const rows = await connection.runSQL(
-          `select case when locate('40',hex(srcdat)) > 0 then 0 else srcdat end as srcdat, srcseq, srcdta from ${overFile}`
+          `select case when locate('40',hex(srcdat)) > 0 then 0 else srcdat end as srcdat, srcseq, ${srcdtaColumn} from ${overFile}`
         ) as { SRCDAT: number, SRCDTA: string, SRCSEQ: number }[];
 
         if (rows.length === 0) {
@@ -81,9 +105,9 @@ export class ExtendedIBMiContent {
   }
 
   /**
-   * Upload to a member with source dates 
+   * Upload to a member with source dates
    * @param {vscode.Uri} uri
-   * @param {string} body 
+   * @param {string} body
    */
   async uploadMemberContentWithDates(uri: vscode.Uri, body: string) {
     const connection = instance.getConnection();
