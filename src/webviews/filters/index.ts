@@ -83,6 +83,8 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
               .join(",");
             break;
           case `member`:
+            data[key] = connection.upperCaseName(String(data[key]));
+            break;
           case `memberType`:
             data[key] = String(data[key].trim()) || `*`;
             break;
