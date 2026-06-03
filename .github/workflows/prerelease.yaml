@@ -1,7 +1,7 @@
 on: workflow_dispatch
 
 jobs:
-  call-prerelease-workflow:
+  publish-pre-release:
     uses: codefori/.github/.github/workflows/prerelease.yaml@main
     with:
        publish_types: true

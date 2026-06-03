@@ -3,7 +3,7 @@ on:
     types: [created]
 
 jobs:
-  call-prerelease-workflow:
+  publish-release:
     uses: codefori/.github/.github/workflows/release.yaml@main
     with:
        publish_types: true
