@@ -1457,10 +1457,7 @@ export default class IBMi {
 
       const lastResultSet: Tools.DB2Row[] = [];
 
-      for (let i = 0; i < list.length; i++) {
-        let statement = list[i];
-        const isLast = i === (list.length - 1);
-
+      for (const statement of list) {
         if (statement.startsWith(`@`)) {
           const command = statement.substring(1);
           const log = `Running CL through SQL: ${command}\n\t`;
