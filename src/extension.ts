@@ -129,7 +129,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     return await getStoredPassword(context, connection.currentConnectionName) ||
       await window.showInputBox({
         password: true,
-        prompt: l10n.t(`Password for user profile {} on {} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName)
+        prompt: l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName)
       });
   });
   extensionComponentRegistry.registerComponent(context, mapepire);
