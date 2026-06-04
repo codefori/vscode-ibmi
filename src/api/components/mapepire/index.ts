@@ -1,12 +1,12 @@
 
-import { SQLJob } from "@ibm/mapepire-js";
+import { JDBCOptions, SQLJob } from "@ibm/mapepire-js";
 import { stat } from "fs/promises";
 import path from "path";
 import { SemanticVersion } from "../../../typings";
 import { getJavaHome } from "../../configuration/DebugConfiguration";
 import IBMi from "../../IBMi";
 import { IBMiComponent, SecureComponentState } from "../component";
-import { sshSqlJob } from "./sqlJob";
+import { SSHSQLJob } from "./sshSqlJob";
 import { SERVER_FILE_PREFIX, SERVER_VERSION_FILE, VERSION } from "./version";
 
 const DEFAULT_JAVA_EIGHT = `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`;
@@ -114,11 +114,14 @@ export class Mapepire implements IBMiComponent {
     return useExec;
   }
 
-  public async newJob(connection: IBMi, javaPath?: string) {
+  public async newJob(connection: IBMi, options?: { javaPath?: string, jdbc?: JDBCOptions }) {
     const config = connection.getConfig();
     const useServer = config.mapepireUseServer;
-    const sqlJob = useServer ? new SQLJob() : new sshSqlJob();
-    sqlJob.options.secure = config.secureSQL;
+    const sqlJob = useServer ? new SQLJob() : new SSHSQLJob();
+    if (options) {
+      sqlJob.options;
+    }
+    sqlJob.options.secure = sqlJob.options.secure || config.secureSQL;
     if (useServer) {
       connection.appendOutput(`Connecting to Mapepire over HTTP on port ${config.mapepireServerPort}${config.mapepireAllowSelfCert ? ", allowing self-signed certificates" : ""}`);
       //HTTP connection
@@ -137,7 +140,8 @@ export class Mapepire implements IBMiComponent {
     else {
       //Single mode over SSH
       connection.appendOutput(`Connecting to Mapepire over SSH in single mode`);
-      const sshJob = sqlJob as sshSqlJob;
+      const sshJob = sqlJob as SSHSQLJob;
+      let javaPath = options?.javaPath;
       if (!javaPath) {
         const javaVersion = config.mapepireJavaVersion;
         if (Number.isNaN(Number(javaVersion))) {

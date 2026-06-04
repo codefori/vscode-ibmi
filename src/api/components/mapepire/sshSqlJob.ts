@@ -5,7 +5,7 @@ import { Mapepire } from ".";
 import IBMi from "../../IBMi";
 import { JobStatus } from "./types";
 
-export class sshSqlJob extends SQLJob {
+export class SSHSQLJob extends SQLJob {
   static application = "<unknown>";
   private channel: ClientChannel | undefined;
   private onClose?: () => void;
@@ -111,11 +111,11 @@ export class sshSqlJob extends SQLJob {
       .join(`;`)
 
     const connectionObject = {
-      id: sshSqlJob.getNewUniqueId(),
+      id: SSHSQLJob.getNewUniqueId(),
       type: `connect`,
       //technique: (getInstance().getConnection().qccsid === 65535 || this.options["database name"]) ? `tcp` : `cli`, //TODO: investigate why QCCSID 65535 breaks CLI and if there is any workaround
       technique: `tcp`, // TODO: DOVE does not work in cli mode
-      application: sshSqlJob.application,
+      application: SSHSQLJob.application,
       props: props.length > 0 ? props : undefined
     }
 
@@ -137,7 +137,7 @@ export class sshSqlJob extends SQLJob {
 
   async close() {
     const exitObject: ServerRequest = {
-      id: sshSqlJob.getNewUniqueId(),
+      id: SSHSQLJob.getNewUniqueId(),
       type: `exit`
     };
 
