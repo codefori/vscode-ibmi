@@ -204,6 +204,7 @@ export namespace VscodeTools {
       "Home Directory": profile.homeDirectory,
       "Current Library": profile.currentLibrary,
       "Library List": profile.libraryList,
+      "ASP": profile.iasp || "*SYSBAS",
       "Library List Command": profile.setLibraryListCommand,
       "Object Filters": profile.objectFilters.length,
       "IFS Shortcuts": profile.ifsShortcuts.length,

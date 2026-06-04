@@ -113,8 +113,11 @@ export class QSysFS implements vscode.FileSystemProvider {
         let type = vscode.FileType.File;
         const connection = instance.getConnection();
         if (connection) {
-            const filePathLength = connection.getIAspDetail(pathParts[0]) ? 4 : 3;
-            if (pathParts.length < filePathLength) {
+            //It is a "directory" (library or SPF path) if the path has the form:
+            // - LIBRARY
+            // - LIBRARY/FILE
+            // - ASP/LIBRARY/FILE => in this case, we check if the LIBRARY's asp matches ASP; if not, it's a member path
+            if (pathParts.length < 3 || (pathParts.length === 3 && (await connection.getLibraryIAsp(pathParts[1]))?.toLocaleLowerCase() === pathParts[0].toLocaleLowerCase())) {
                 type = vscode.FileType.Directory;
             }
 
@@ -150,9 +153,9 @@ export class QSysFS implements vscode.FileSystemProvider {
         return await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
     }
 
-    parseMemberPath(connection: IBMi, path: string) {
+    async parseMemberPath(connection: IBMi, path: string) {
         const memberParts = connection.parserMemberPath(path);
-        memberParts.asp = memberParts.asp || connection.getLibraryIAsp(memberParts.library);
+        memberParts.asp = memberParts.asp || await connection.getLibraryIAsp(memberParts.library);
         return memberParts;
     }
 
@@ -160,7 +163,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         const connection = instance.getConnection();
         if (connection) {
             const contentApi = connection.getContent();
-            let { asp, library, file, name: member } = this.parseMemberPath(connection, uri.path);
+            let { asp, library, file, name: member } = await this.parseMemberPath(connection, uri.path);
             asp = asp || await connection.getLibraryIAsp(library);
 
             let memberContent;
@@ -201,7 +204,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                 throw new FileSystemError("Connection is in readonly mode");
             }
             const contentApi = connection.getContent();
-            let { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
+            let { asp, library, file, name: member, extension } = await this.parseMemberPath(connection, uri.path);
             asp = asp || await connection.getLibraryIAsp(library);
 
             if (!content.length) { //Coming from "Save as"

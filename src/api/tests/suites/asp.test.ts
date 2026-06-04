@@ -9,22 +9,16 @@ const SPFNAME = `VSCODESPFT`;
 const MBRNAME = `VSCODEMBRT`;
 
 async function createTestASPLibrary(connection: IBMi) {
-  //List all iASPS
-  const asps = (await connection.runSQL("select OBJNAME from table(QSYS2.OBJECT_STATISTICS('QSYS', '*DEVD')) where OBJATTRIBUTE = 'ASP'"))
-    .map(row => String(row.OBJNAME));
-
-  if (asps.length > 0) {
-    //Create the test library on the first active iasp
-    for (const asp of asps) {
-      const tempLibName = Tools.makeid();
-      const res = await connection.runCommand({ command: `QSYS/CRTLIB LIB(${tempLibName}) ASPDEV(${asp})` });
-      if (res.code === 0) {
-        assert.strictEqual(await connection.getLibraryIAsp(tempLibName), asp, "Temp library ASP doesn't match the expected ASP.")
-        return tempLibName;
-      }
-      else {
-        console.log(`Can't create library on iASP ${asp}: ${res.stderr || res.stdout}`);
-      }
+  const asp = connection.getConfig().iasp;
+  if (asp) {
+    const tempLibName = Tools.makeid();
+    const res = await connection.runCommand({ command: `QSYS/CRTLIB LIB(${tempLibName}) ASPDEV(${asp})` });
+    if (res.code === 0) {
+      assert.strictEqual(await connection.getLibraryIAsp(tempLibName), asp, "Temp library ASP doesn't match the expected ASP.")
+      return tempLibName;
+    }
+    else {
+      console.log(`Can't create library on iASP ${asp}: ${res.stderr || res.stdout}`);
     }
   }
 }
@@ -57,7 +51,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
     if (tempLib) {
       await createTempRpgle(connection, tempLib);
     } else {
-      console.log(`Skipping iASP tests, no iASP is available.`);
+      console.log(`Skipping iASP tests, no iASP set in configuration.`);
       skipAsp = true;
     }
   }, CONNECTION_TIMEOUT)

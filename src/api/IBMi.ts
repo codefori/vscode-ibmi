@@ -87,6 +87,8 @@ export default class IBMi {
   private qccsid: number = IBMi.CCSID_NOCONVERSION;
   private userJobCcsid: number = IBMi.CCSID_SYSVAL;
 
+  private currentASP: string | undefined;
+
   private componentManager = new ComponentManager(this);
 
   private configFiles: ConnectionConfigFiles = {
@@ -605,6 +607,13 @@ export default class IBMi {
       } else {
         callbacks.message(`warning`, `Mapepire component failed to start. SQL operations will not be available.`);
         this.appendOutput(`Warning: Mapepire component not available\n`);
+      }
+
+      try {
+        await this.setCurrentASP(this.getConfig().iasp);
+      }
+      catch (error: any) {
+        callbacks.message(`warning`, `Failed to switch to ASP ${this.getConfig().iasp}: ${error}.`);
       }
 
       if (this.sqlRunnerAvailable()) {
@@ -1503,7 +1512,7 @@ export default class IBMi {
     let libraryIASP = this.libraryAsps.get(library);
     if (!libraryIASP) {
       const [row] = await this.runSQL(`select IASP_NAME from table(QSYS2.object_statistics('QSYS', 'LIB', '${library}'));`);
-      libraryIASP = String(row.IASP_NAME);
+      libraryIASP = row?.IASP_NAME ? String(row.IASP_NAME) : "*SYSBAS";
       this.libraryAsps.set(library, libraryIASP);
     }
 
@@ -1554,6 +1563,26 @@ export default class IBMi {
     }
 
     return ccsid;
+  }
+
+  /**
+   * Change/reset the current ASP
+   * @param asp an ASP name or blank/undefined to reset to the user's default ASP
+   */
+  async setCurrentASP(asp?: string) {
+    if (asp !== this.currentASP) {
+      await Promise.all([
+        this.runSQL('connect reset').then(() => asp ? this.runSQL(`connect to ${asp}`) : undefined),
+        this.sendCommand({ command: 'cl "SETASPGRP *NONE"' }).then(() => asp ? this.sendCommand({ command: `cl "SETASPGRP ${asp}"` }) : undefined)
+      ]);
+      this.currentASP = asp;
+      this.getContent().reset();
+      this.appendOutput(`Switched to ${asp || 'default'} ASP\n`);
+    }
+  }
+
+  getCurrentASP() {
+    return this.currentASP;
   }
 
   /**

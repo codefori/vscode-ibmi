@@ -313,12 +313,14 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         config.currentProfile = profile.name || undefined;
         await IBMi.connectionManager.update(config);
 
+        await connection.setCurrentASP(profile.iasp);
+
         await Promise.all([
           vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
         ]);
-        environmentView.refresh();
+        environmentView.refresh();        
 
         if (profile.name && profile.setLibraryListCommand) {
           await vscode.commands.executeCommand("code-for-ibmi.environment.profile.runLiblistCommand", profile);

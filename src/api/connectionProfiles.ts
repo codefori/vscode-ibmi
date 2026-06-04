@@ -30,7 +30,7 @@ export async function updateConnectionProfile(profile: ConnectionProfile, option
 }
 
 /**
- * @returns ann arry of {@link ConnectionProfile} stored in the config; except the default profile (with a blank name), only used internally
+ * @returns an array of {@link ConnectionProfile} stored in the config; except the default profile (with a blank name), only used internally
  */
 export function getConnectionProfiles() {
   const config = instance.getConnection()?.getConfig();
@@ -74,6 +74,7 @@ export function getDefaultProfile() {
 export function assignProfile(fromProfile: ConnectionProfile, toProfile: ConnectionProfile) {
   toProfile.homeDirectory = fromProfile.homeDirectory;
   toProfile.currentLibrary = fromProfile.currentLibrary;
+  toProfile.iasp = fromProfile.iasp;
   toProfile.libraryList = fromProfile.libraryList;
   toProfile.objectFilters = fromProfile.objectFilters;
   toProfile.ifsShortcuts = fromProfile.ifsShortcuts;

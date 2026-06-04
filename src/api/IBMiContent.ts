@@ -32,6 +32,10 @@ export default class IBMiContent {
     return this.ibmi.getConfig();
   }
 
+  reset() {
+    this.dummyDSPF = false;
+  }
+
   private getTempRemote(path: string) {
     const tempRemote = this.ibmi.getTempRemote(path);
     if (!tempRemote) {
@@ -505,44 +509,14 @@ export default class IBMiContent {
    * @returns Bad libraries
    */
   async validateLibraryList(newLibl: string[]): Promise<string[]> {
-    let badLibs: string[] = [];
-
-    newLibl = newLibl
-      .filter(lib => {
-        const isValid = this.ibmi.validQsysName(lib);
-        if (!isValid) {
-          badLibs.push(lib);
-        }
-
-        return isValid;
-      });
-
-    const sanitized = Tools.sanitizeObjNamesForPase(newLibl);
-
-    const result = await this.ibmi.sendQsh({
-      command: [
-        `liblist -d ` + Tools.sanitizeObjNamesForPase(this.ibmi.defaultUserLibraries).join(` `),
-        ...sanitized.map(lib => `liblist -a ` + lib)
-      ].join(`; `)
-    });
-
-    if (result.stderr) {
-      const lines = result.stderr.split(`\n`);
-
-      lines.forEach(line => {
-        const isNotFound = line.includes(`CPF2110`);
-        if (isNotFound) {
-          const libraryReference = sanitized.find(library => line.includes(` ${library} `));
-
-          // If there is an error about the library, remove it
-          if (libraryReference) {
-            badLibs.push(libraryReference);
-          }
-        }
-      });
-    }
-
-    return badLibs;
+    return (await this.ibmi.runSQL(/* sql */`
+      with LIBRARIES (LIBRARY) as (
+        values ${newLibl.map(lib => `'${lib}'`).join(',')}
+      )
+      select LIBRARY, QSYS2.QCMDEXC('CHKOBJ OBJ(QSYS/' concat LIBRARY concat ') OBJTYPE(*LIB)') VALID from LIBRARIES
+    `))
+      .filter(row => row.VALID !== 1)
+      .map(row => String(row.LIBRARY));
   }
 
   async getLibraries(filters: { library: string; filterType?: FilterType }) {
@@ -688,13 +662,10 @@ export default class IBMiContent {
         asp: listLibraries ? await this.ibmi.getLibraryIAsp(name) : localLibASP
       });
     }
-    return objects.map(object => ({
-
-    } as IBMiObject))
-      .filter(object => !filters.types || filters.types.length < 1
-        || filters.types.includes('*ALL')
-        || (filters.types.includes('*SRCPF') && object.sourceFile)
-        || filters.types.includes(object.type))
+    return result.filter(object => !filters.types || filters.types.length < 1
+      || filters.types.includes('*ALL')
+      || (filters.types.includes('*SRCPF') && object.sourceFile)
+      || filters.types.includes(object.type))
       .filter(object => objectFilter || nameFilter.test(object.name))
       .sort((a, b) => {
         if (a.library.localeCompare(b.library) != 0) {
@@ -902,25 +873,13 @@ export default class IBMiContent {
     const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
 
     // Escape names for shell
-    const pathList = files
-      .map(file => {
-        const asp = file.asp;
-        if (asp && asp.length > 0) {
-          return [
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true)
-          ].join(` `);
-        } else {
-          return Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true);
-        }
-      })
-      .join(` `)
-      .toUpperCase();
+    const pathList: string[] = [];
+    for (const file of files) {
+      pathList.push(Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), await this.ibmi.getLibraryIAsp(file.library), true));
+    }
 
-    const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
-    const result = await this.ibmi.sendCommand({
-      command,
-    });
+    const command = `for f in ${pathList.join(' ').toUpperCase()}; do if [ -f $f ]; then echo $f; break; fi; done`;
+    const result = await this.ibmi.sendCommand({ command });
 
     if (result.code === 0) {
       const firstMost = result.stdout;
