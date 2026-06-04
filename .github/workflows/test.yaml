@@ -23,7 +23,7 @@ jobs:
       - run: npm ci
 
       - name: Type checker
-        run: npm run typings
+        run: npm run types
 
       # This step won't run when coming from a fork
       - name: Test suite

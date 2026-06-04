@@ -18,7 +18,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     homeDirectory: parameters.homeDirectory || `.`,
     /** Undefined means not created, so default to on */
     tempLibrary: parameters.tempLibrary || `ILEDITOR`,
-    tempDir: parameters.tempDir || `/tmp`,
+    tempDir: parameters.tempDir || `~/.vscode/tmp`,
     currentLibrary: parameters.currentLibrary || ``,
     sourceFileCCSID: parameters.sourceFileCCSID || `*FILE`,
     autoConvertIFSccsid: (parameters.autoConvertIFSccsid === true),
@@ -43,6 +43,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
     secureSQL: (parameters.secureSQL === true),
     keepActionSpooledFiles: (parameters.keepActionSpooledFiles === true),
+    autoUpdateDirectoryPermissions: (parameters.autoUpdateDirectoryPermissions || "ask"),
     mapepireJavaVersion: (parameters.mapepireJavaVersion || "default"),
     ccsidConversionEnabled: (parameters.ccsidConversionEnabled === true),
     ccsidConvertFrom: parameters.ccsidConvertFrom || ``,

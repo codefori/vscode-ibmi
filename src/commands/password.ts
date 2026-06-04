@@ -4,8 +4,13 @@ import { Password } from "../api/password";
 import { getStoredPassword, setStoredPassword } from "../config/passwords";
 import { CustomUI } from "../webviews/CustomUI";
 
-
-const passwordAttempts: { [extensionId: string]: number } = {}
+const access: {
+  attemps: { [extensionId: string]: number },
+  enabled: boolean
+} = {
+  attemps: {},
+  enabled: true
+}
 
 export function registerPasswordCommands(context: ExtensionContext, instance: Instance): Disposable[] {
   instance.subscribe(context, "connected", "Check password expiration", async () => {
@@ -27,8 +32,11 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
   });
 
   return [
+    commands.registerCommand(`code-for-ibmi.getPassword.disable`, () => {
+      access.enabled = false;
+    }),
     commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
-      if (extensionId) {
+      if (access.enabled && extensionId) {
         const extension = extensions.getExtension(extensionId);
         const isValid = (extension && extension.isActive);
         if (isValid) {
@@ -38,8 +46,8 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
             const displayName = extension.packageJSON.displayName || extensionId;
 
             // Some logic to stop spam from extensions.
-            passwordAttempts[extensionId] = passwordAttempts[extensionId] || 0;
-            if (passwordAttempts[extensionId] > 1) {
+            access.attemps[extensionId] = access.attemps[extensionId] || 0;
+            if (access.attemps[extensionId] > 1) {
               throw new Error(`Password request denied for extension ${displayName}.`);
             }
 
@@ -93,7 +101,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
               if (isAuthed) {
                 return storedPassword;
               } else {
-                passwordAttempts[extensionId]++;
+                access.attemps[extensionId]++;
               }
             }
 

@@ -1,4 +1,3 @@
-import Crypto from "crypto";
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
 import { instance } from "../../instantiate";
@@ -458,7 +457,7 @@ export class SourceDateHandler {
 }
 
 export function getAliasName(uri: vscode.Uri) {
-  return `TEMP_${Crypto.createHash('sha1').update(uri.toString()).digest('hex')}`.toUpperCase();
+  return uri.toString();
 }
 
 /**

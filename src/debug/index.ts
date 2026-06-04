@@ -313,10 +313,6 @@ export async function initialize(context: ExtensionContext) {
             vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
 
             if (!isDebugManaged) {
-              if (validateIPv4address(connection.currentHost)) {
-                vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
-              }
-
               // Set the debug environment variables early to be safe
               setCertEnv(true, connection);
 
@@ -359,13 +355,6 @@ export async function initialize(context: ExtensionContext) {
       vscode.commands.executeCommand(`setContext`, debugContext, false);
       vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
     });
-}
-
-function validateIPv4address(ipaddress: string) {
-  if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {
-    return (true)
-  }
-  return (false)
 }
 
 interface DebugOptions {

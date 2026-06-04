@@ -70,6 +70,9 @@ export async function newConnection(reloadSettings?: boolean) {
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);
   extensionComponentRegistry.registerComponent(testingId, new CustomCLI());
+  const componentId = `toBeDeleted`;
+  extensionComponentRegistry.registerComponent(testingId, new CustomCLI(componentId));
+  extensionComponentRegistry.disableComponent(testingId, componentId);
 
   const creds: ConnectionData = {
     ...ENV_CREDS,

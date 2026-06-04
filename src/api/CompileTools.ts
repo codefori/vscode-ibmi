@@ -115,8 +115,8 @@ export namespace CompileTools {
               const start = options.getSpooledFiles ? (await connection.runSQL('Values Current TimeStamp'))[0]["00001"] : undefined;
               try {
                 await connection.runSQL([
-                  ...(cwd ? [`@CHGCURDIR DIR('${cwd}')`] : []),
-                  ...(options.noLibList ? [] : [`@CHGLIBL CURLIB(${ileSetup.currentLibrary}) LIBL(${ileSetup.libraryList.join(` `)})`]),
+                  ...(cwd ? [`@QSYS/CHGCURDIR DIR('${cwd}')`] : []),
+                  ...(options.noLibList ? [] : [`@QSYS/CHGLIBL CURLIB(${ileSetup.currentLibrary}) LIBL(${ileSetup.libraryList.join(` `)})`]),
                   ...commands.map(c => `@${c}`)
                 ]);
               } catch (e: any) {
@@ -161,7 +161,7 @@ export namespace CompileTools {
                 }
               }
               if (!start || !connection.getConfig().keepActionSpooledFiles) {
-                await connection.runSQL(`@DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${connection.splfUserData})`);
+                await connection.runSQL(`@QSYS/DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${connection.splfUserData})`);
               }
             });
 

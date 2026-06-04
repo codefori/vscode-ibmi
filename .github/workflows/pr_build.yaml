@@ -1,0 +1,7 @@
+on: pull_request
+
+jobs:
+  pull-request-build:
+    uses: codefori/.github/.github/workflows/pr_build.yaml@main
+    with:
+       publish_types: true

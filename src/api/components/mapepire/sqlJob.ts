@@ -16,22 +16,20 @@ export class sshSqlJob extends SQLJob {
     return new Promise((resolve, reject) => {
       // Setting QIBM_JAVA_STDIO_CONVERT and QIBM_PASE_DESCRIPTOR_STDIO to make sure all PASE and Java converters are off
       const startingCommand = `QIBM_JAVA_STDIO_CONVERT=N QIBM_PASE_DESCRIPTOR_STDIO=B QIBM_USE_DESCRIPTOR_STDIO=Y QIBM_MULTI_THREADED=Y ${useExec ? `exec ` : ``}` + mapepire.getInitCommand(javaPath);
-
-      // ServerComponent.writeOutput(startingCommand);
-
+      connection.appendOutput(`Starting Mapepire: ${startingCommand}\n`);
       connection.client?.connection?.exec(startingCommand, {}, (err, stream) => {
         if (err) {
           reject(err);
-          // ServerComponent.writeOutput(err);
         }
         mapepire.jobs.set(this.getUniqueId(), this);
         this.onClose = () => mapepire.jobs.delete(this.uniqueId);
 
         let outString = ``;
 
-        // TODO: on is undefined?
         stream.stderr.on(`data`, (data: Buffer) => {
-          console.log(data.toString("utf-8"));
+          const error = data?.toString("utf-8") || "Undefined error";
+          connection.appendOutput(`Mapepire error: ${error}\n`);
+          console.log(error);
         })
 
         stream.stdout.on(`data`, (data: Buffer) => {
@@ -41,13 +39,13 @@ export class sshSqlJob extends SQLJob {
               if (thisMsg === ``) continue;
 
               outString = ``;
-              // if (this.isTracingChannelData) ServerComponent.writeOutput(thisMsg);
               try {
                 const response: ServerResponse = JSON.parse(thisMsg);
                 this.responseEmitter.emit(response.id, response);
               } catch (e: any) {
-                console.log(`Error: ` + e);
-                console.log(`Data: ` + thisMsg);
+                const error = `Mapepire output error: ${e}\nData: ${thisMsg}`;                  
+                connection.appendOutput(error + "\n");
+                console.log(e);
                 outString = ``;
               }
             }
@@ -83,18 +81,20 @@ export class sshSqlJob extends SQLJob {
   /**
    * The same as mapepire-js#connect, but with SSH
    */
-  async connectSsh(channel: ClientChannel): Promise<ConnectionResult> {
+  async connectSsh(connection:IBMi, channel: ClientChannel): Promise<ConnectionResult> {
     // this.isTracingChannelData = true;
 
     this.channel = channel;
 
     this.channel.on(`error`, (err: any) => {
       console.warn(err);
+      connection.appendOutput(`Mapepire channel error: ${err}\n`);
       this.end();
     })
 
     this.channel.on(`close`, (code: number) => {
-      console.warn(`Exited with code ${code}.`)
+      console.warn(`Mapepire exited with code ${code}.`);
+      connection.appendOutput(`Mapepire exited with code ${code}.\n`);
       this.end();
     })
 

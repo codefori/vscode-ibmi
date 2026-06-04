@@ -240,4 +240,5 @@ export namespace VscodeTools {
   export const normalizePath = Tools.normalizePath;
   export const resolvePath = Tools.resolvePath;
   export const makeid = Tools.makeid;
+  export const ensureFullPath = Tools.ensureFullPath;
 }

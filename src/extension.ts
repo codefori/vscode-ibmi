@@ -39,6 +39,7 @@ import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
+import { ActionTools } from "./api/actions";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -46,6 +47,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
   sshSqlJob.application = `${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`;
+  commands.registerCommand(`code-for-ibmi.sshSqlJob.appendApplicationName`, (applicationName: string) => {
+    sshSqlJob.application =`${applicationName} | ${sshSqlJob.application}`;
+  });
 
   await loadAllofExtension(context);
 
@@ -136,9 +140,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     instance,
     customUI: () => new CustomUI(),
     customEditor: (target, onSave, onClosed) => new CustomEditor(target, onSave, onClosed),
-    deployTools: DeployTools,
     evfeventParser: parseErrors,
     tools: VscodeTools,
+    deployTools: DeployTools,
+    actionTools: ActionTools,
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager,
     searchTools: SearchTools

@@ -1,9 +1,9 @@
 
-import path from 'path';
+import path, { posix } from 'path';
 import { create as tarCreate, t as tarT } from 'tar';
 import tmp from 'tmp';
 import vscode, { Uri } from 'vscode';
-import { getActions, getLocalActionsFiles } from '../../api/actions';
+import { ActionTools } from '../../api/actions';
 import IBMi from '../../api/IBMi';
 import IBMiContent from '../../api/IBMiContent';
 import { Tools } from '../../api/Tools';
@@ -103,7 +103,7 @@ export namespace Deployment {
               });
             }
 
-            getActions(workspace).then(result => {
+            ActionTools.getActions(workspace).then(result => {
               if (result.length === 0) {
                 vscode.window.showInformationMessage(
                   `There are no local Actions defined for this project.`,
@@ -182,7 +182,7 @@ export namespace Deployment {
         workspace = uri;
       }
 
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasLocalActions`, workspace ? (await getLocalActionsFiles(workspace)).length > 0 : false);
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasLocalActions`, workspace ? (await ActionTools.getActions(workspace)).length > 0 : false);
     };
 
     watcher.onDidChange(uri => {
@@ -269,7 +269,7 @@ export namespace Deployment {
   export async function sendCompressed(parameters: DeploymentParameters, files: vscode.Uri[], progress: vscode.Progress<{ message?: string }>) {
     const connection = getConnection();
     const localTarball = tmp.fileSync({ postfix: ".tar" });
-    const remoteTarball = path.posix.join(getConnection().getConfig().tempDir || '/tmp', `deploy_${Tools.makeid()}.tar`);
+    const remoteTarball = posix.join(connection.getTempDirectory(), `deploy_${Tools.makeid()}.tar`);
     try {
       const toSend = files.map(file => path.relative(parameters.workspaceFolder.uri.fsPath, file.fsPath));
 

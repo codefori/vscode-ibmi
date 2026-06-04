@@ -57,6 +57,18 @@ export interface Action {
   outputToFile?: string
 }
 
+export interface ActionResult {
+  success: boolean,
+  output: {
+    path: string,
+    processed: boolean,
+    hasRun: boolean,
+    executionOK: boolean,
+    output: string[]
+  }[],
+  message: string
+}
+
 export interface ConnectionData {
   name: string;
   host: string;

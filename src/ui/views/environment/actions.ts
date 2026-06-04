@@ -1,7 +1,7 @@
 import { parse } from "path";
 import { stringify } from "querystring";
 import vscode, { l10n } from "vscode";
-import { getActions } from "../../../api/actions";
+import { ActionTools } from "../../../api/actions";
 import { parseFSOptions } from "../../../filesystems/qsys/QSysFs";
 import { instance } from "../../../instantiate";
 import { Action, ActionType } from "../../../typings";
@@ -38,10 +38,10 @@ export class ActionsNode extends EnvironmentItem {
   async getChildren() {
     if (!this.children.length) {
       await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasActionSearched`, false);
-      const actions = (await getActions()).sort(sortActions);
+      const actions = (await ActionTools.getActions()).sort(sortActions);
       const localActions = new Map<vscode.WorkspaceFolder, Action[]>();
       for (const workspace of vscode.workspace.workspaceFolders || []) {
-        const workspaceActions = (await getActions(workspace));
+        const workspaceActions = (await ActionTools.getActions(workspace));
         if (workspaceActions.length) {
           localActions.set(workspace, workspaceActions.sort(sortActions));
         }

@@ -28,7 +28,9 @@ export namespace SearchTools {
       const pfgrep = connection.remoteFeatures.pfgrep;
 
       if (typeof members === `string`) {
-        memberFilter = connection.sysNameInAmerican(`${members}.MBR`);
+        memberFilter = connection.upperCaseName(
+          connection.sysNameInAmerican(`${members}.MBR`)
+        );
       } else
         if (Array.isArray(members)) {
           if (members.length > connection.maximumArgsLength) {
