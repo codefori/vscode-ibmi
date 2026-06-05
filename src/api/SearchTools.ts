@@ -156,7 +156,7 @@ export namespace SearchTools {
           return {
             term: findTerm,
             hits: parseFindOutput(findRes.stdout),
-            warnings:parseFindOutput(findRes.stderr)
+            ...(findRes.stderr ? { warnings: parseFindOutput(findRes.stderr) } : {})
           }
         }
       } else {
@@ -171,10 +171,7 @@ export namespace SearchTools {
   function parseFindOutput(output: string, readonly?: boolean, pathTransformer?: (path: string) => string): SearchHit[] {
     const results: SearchHit[] = [];
     for (const line of output.split('\n')) {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) continue;
-
-      const path = pathTransformer?.(trimmedLine) || trimmedLine;
+      const path = pathTransformer?.(line) || line;
       results.push(results.find(r => r.path === path) || { path, readonly, lines: [] });
     }
     return results;
