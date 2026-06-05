@@ -152,7 +152,7 @@ export namespace SearchTools {
           command: `${find} ${Tools.escapePath(path)} ${ignoreString} -type f -iname '*${findTerm}*' -print`
         });
 
-        if (findRes.code == 0 || findRes.stdout) {
+        if (findRes.stdout) {
           return {
             term: findTerm,
             hits: parseFindOutput(findRes.stdout),
