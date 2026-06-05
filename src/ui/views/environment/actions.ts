@@ -5,7 +5,7 @@ import { instance } from "../../../instantiate";
 import { Action, ActionType } from "../../../typings";
 import { VscodeTools } from "../../Tools";
 import { EnvironmentItem } from "./environmentItem";
-import { uriToActionTarget, isActionAvailable } from "../../actions";
+import { targetMatchesExtensions, uriToActionTarget } from "../../actions";
 
 type ActionContext = {
   canRun?: boolean
@@ -80,15 +80,30 @@ export class ActionsNode extends EnvironmentItem {
 
   async activeEditorChanged(editor?: vscode.TextEditor) {
     const uri = editor?.document.uri;
-
+    let activeEditorContext = undefined;
     let actionTarget = undefined;
+
     if (uri) {
       const connection = instance.getConnection();
       const workspace = vscode.workspace.getWorkspaceFolder(uri);
-      actionTarget = [uriToActionTarget(uri, workspace, connection)];
+
+      actionTarget = uriToActionTarget(uri, workspace, connection);
+
+      activeEditorContext = {
+        scheme: uri.scheme,
+        protected: actionTarget.protected,
+        workspace
+      };
     }
 
-    (await this.getAllActionItems()).forEach(item => item.setContext({ canRun: !!actionTarget && isActionAvailable(item.action, uri?.scheme || "", actionTarget) }));
+    const canRunOnEditor = (actionItem: ActionItem) => activeEditorContext !== undefined &&
+      actionTarget !== undefined &&
+      activeEditorContext.scheme === actionItem.action.type &&
+      activeEditorContext.workspace === actionItem.workspace &&
+      (actionItem.action.runOnProtected || !activeEditorContext.protected) &&
+      targetMatchesExtensions(actionTarget, actionItem.action.extensions);
+
+    (await this.getAllActionItems()).forEach(item => item.setContext({ canRun: canRunOnEditor(item) }));
     this.refresh();
   }
 
