@@ -5,26 +5,7 @@ on:
     types: [created]
 
 jobs:
-  build_opened_pr:
-    if: github.event.pull_request
+  pull-request-build:
     uses: codefori/.github/.github/workflows/pr_build.yaml@main
     with:
        publish_types: true
-
-  build_commented_pr:
-    if: github.event.issue.pull_request && contains(github.event.comment.body, '/build')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: khan/pull-request-comment-trigger@v1.1.0
-        with:
-          trigger: '/build'
-          reaction: rocket
-
-      - name: Get PR branch
-        uses: xt0rted/pull-request-comment-branch@v3
-        id: comment-branch
-
-      - uses: codefori/.github/.github/workflows/pr_build.yaml@main
-        with:
-          publish_types: true
-          target_branch: ${{ steps.comment-branch.outputs.head_ref }}
