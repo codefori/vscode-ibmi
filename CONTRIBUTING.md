@@ -72,3 +72,4 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@Mohammed-Yaseen-Ali-2081](https://github.com/Mohammed-Yaseen-Ali-2081)
 * [@SamJessep](https://github.com/SamJessep)
 * [@MerelSoftware](https://github.com/MerelSoftware)
+* [@agatabrzeczek](https://github.com/agatabrzeczek)
