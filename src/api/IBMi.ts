@@ -1,4 +1,4 @@
-import { BindingValue } from "@ibm/mapepire-js";
+import { BindingValue, SQLJob } from "@ibm/mapepire-js";
 import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
 import { ClientErrorExtensions } from "ssh2";
@@ -9,7 +9,6 @@ import { Tools } from './Tools';
 import { IBMiComponent } from "./components/component";
 import { ComponentManager, ComponentSearchProps } from "./components/manager";
 import { Mapepire } from './components/mapepire';
-import { sshSqlJob } from './components/mapepire/sqlJob';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
@@ -110,7 +109,7 @@ export default class IBMi {
   private tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
 
-  private sqlJob: sshSqlJob | undefined;
+  private sqlJob: SQLJob | undefined;
   splfUserData: string | undefined;
 
   /**
