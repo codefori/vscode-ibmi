@@ -559,6 +559,8 @@ export default class IBMiContent {
 
     if (sourceFilesOnly || withSourceFiles) {
       if (!this.dummyDSPF) {
+        //Drop if already exists
+        await this.ibmi.runSQL('drop table if exists SESSION.PFS');
         //Create an empty PFS table
         await this.ibmi.runSQL('declare global temporary table SESSION.PFS like QSYS.QAFDPHY rcdfmt QWHFDPHY');
         this.dummyDSPF = true;

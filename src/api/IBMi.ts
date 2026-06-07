@@ -1573,7 +1573,6 @@ export default class IBMi {
     if (asp !== this.currentASP) {
       await Promise.all([
         this.runSQL('connect reset').then(() => asp ? this.runSQL(`connect to ${asp}`) : undefined),
-        this.sendCommand({ command: 'cl "SETASPGRP *NONE"' }).then(() => asp ? this.sendCommand({ command: `cl "SETASPGRP ${asp}"` }) : undefined)
       ]);
       this.currentASP = asp;
       this.getContent().reset();
