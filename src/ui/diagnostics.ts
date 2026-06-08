@@ -103,7 +103,7 @@ export async function refreshDiagnosticsFromLocal(connection: IBMi, evfeventInfo
 
 export function handleEvfeventLines(connection: IBMi, lines: string[], evfeventInfo: EvfEventInfo) {
   const config = connection.getConfig();
-  const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
+  const asp = evfeventInfo.asp ? `${connection.getLibraryIAsp(evfeventInfo.library)}/` : ``;
 
   const errorsByFiles = parseErrors(lines);
 
@@ -149,16 +149,12 @@ export function handleEvfeventLines(connection: IBMi, lines: string[], evfeventI
           let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : undefined);
 
           if (relativeCompilePath) {
-            if (connection) {
-              // Belive it or not, sometimes if the deploy directory is symlinked into as ASP, this can be a problem
-              const aspNames = connection.getAllIAsps().map(asp => asp.name);
-
-              for (const aspName of aspNames) {
-                const aspRoot = `/${aspName}`;
-                if (relativeCompilePath.startsWith(aspRoot)) {
-                  relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
-                  break;
-                }
+            if (asp) {
+              // Believe it or not, sometimes if the deploy directory is symlinked into an ASP, this can be a problem              
+              const aspRoot = `/${asp}`;
+              if (relativeCompilePath.startsWith(aspRoot)) {
+                relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
+                break;
               }
             }
 

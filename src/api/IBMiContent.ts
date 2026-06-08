@@ -32,6 +32,10 @@ export default class IBMiContent {
     return this.ibmi.getConfig();
   }
 
+  reset() {
+    this.dummyDSPF = false;
+  }
+
   private getTempRemote(path: string) {
     const tempRemote = this.ibmi.getTempRemote(path);
     if (!tempRemote) {
@@ -165,7 +169,7 @@ export default class IBMiContent {
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
 
-    const asp = await this.ibmi.lookupLibraryIAsp(library);
+    const asp = await this.ibmi.getLibraryIAsp(library);
     const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
     const tempRmt = Tools.ensureFullPath(this.getTempRemote(path), this.config.homeDirectory);
     let retry = false;
@@ -268,7 +272,7 @@ export default class IBMiContent {
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
-    const asp = await this.ibmi.lookupLibraryIAsp(library);
+    const asp = await this.ibmi.getLibraryIAsp(library);
 
     const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
@@ -453,7 +457,7 @@ export default class IBMiContent {
           os.OBJTYPE AS TYPE,
           os.OBJATTRIBUTE AS ATTRIBUTE,
           OBJTEXT AS TEXT,
-          os.IASP_NUMBER AS IASP_NUMBER,
+          os.IASP_NAME AS IASP_NAME,
           os.OBJSIZE AS SIZE,
           EXTRACT(EPOCH FROM (os.OBJCREATED)) * 1000 AS CREATED,
           EXTRACT(EPOCH FROM (os.CHANGE_TIMESTAMP)) * 1000 AS CHANGED,
@@ -484,7 +488,7 @@ export default class IBMiContent {
       changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
-      asp: this.ibmi.getIAspName(Number(object.IASP_NUMBER))
+      asp: object.IASP_NAME !== "*SYSBAS" ? String(object.IASP_NAME) : undefined
     } as IBMiObject));
 
     return libraries.map(library => {
@@ -505,44 +509,14 @@ export default class IBMiContent {
    * @returns Bad libraries
    */
   async validateLibraryList(newLibl: string[]): Promise<string[]> {
-    let badLibs: string[] = [];
-
-    newLibl = newLibl
-      .filter(lib => {
-        const isValid = this.ibmi.validQsysName(lib);
-        if (!isValid) {
-          badLibs.push(lib);
-        }
-
-        return isValid;
-      });
-
-    const sanitized = Tools.sanitizeObjNamesForPase(newLibl);
-
-    const result = await this.ibmi.sendQsh({
-      command: [
-        `liblist -d ` + Tools.sanitizeObjNamesForPase(this.ibmi.defaultUserLibraries).join(` `),
-        ...sanitized.map(lib => `liblist -a ` + lib)
-      ].join(`; `)
-    });
-
-    if (result.stderr) {
-      const lines = result.stderr.split(`\n`);
-
-      lines.forEach(line => {
-        const isNotFound = line.includes(`CPF2110`);
-        if (isNotFound) {
-          const libraryReference = sanitized.find(library => line.includes(` ${library} `));
-
-          // If there is an error about the library, remove it
-          if (libraryReference) {
-            badLibs.push(libraryReference);
-          }
-        }
-      });
-    }
-
-    return badLibs;
+    return (await this.ibmi.runSQL(/* sql */`
+      with LIBRARIES (LIBRARY) as (
+        values ${newLibl.map(lib => `'${lib}'`).join(',')}
+      )
+      select LIBRARY, QSYS2.QCMDEXC('CHKOBJ OBJ(QSYS/' concat LIBRARY concat ') OBJTYPE(*LIB)') VALID from LIBRARIES
+    `))
+      .filter(row => row.VALID !== 1)
+      .map(row => String(row.LIBRARY));
   }
 
   async getLibraries(filters: { library: string; filterType?: FilterType }) {
@@ -562,8 +536,8 @@ export default class IBMiContent {
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
-
-    if (localLibrary !== `QSYS`) {
+    const listLibraries = localLibrary === "QSYS";
+    if (!listLibraries) {
       if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
         throw new Error(`Library ${localLibrary} does not exist.`);
       }
@@ -585,6 +559,8 @@ export default class IBMiContent {
 
     if (sourceFilesOnly || withSourceFiles) {
       if (!this.dummyDSPF) {
+        //Drop if already exists
+        await this.ibmi.runSQL('drop table if exists SESSION.PFS');
         //Create an empty PFS table
         await this.ibmi.runSQL('declare global temporary table SESSION.PFS like QSYS.QAFDPHY rcdfmt QWHFDPHY');
         this.dummyDSPF = true;
@@ -667,27 +643,31 @@ export default class IBMiContent {
       ];
     }
 
+    const localLibASP = await this.ibmi.getLibraryIAsp(localLibrary);
     const objects = (await this.ibmi.runSQL(createOBJLIST));
-
-    return objects.map(object => ({
-      library: localLibrary,
-      name: String(object.NAME),
-      type: String(object.TYPE),
-      attribute: String(object.ATTRIBUTE),
-      text: String(object.TEXT || ""),
-      sourceFile: Boolean(object.IS_SOURCE),
-      sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
-      size: Number(object.SIZE),
-      created: new Date(Number(object.CREATED)),
-      changed: new Date(Number(object.CHANGED)),
-      created_by: object.CREATED_BY,
-      owner: object.OWNER,
-      asp: this.ibmi.getLibraryIAsp(localLibrary)
-    } as IBMiObject))
-      .filter(object => !filters.types || filters.types.length < 1
-        || filters.types.includes('*ALL')
-        || (filters.types.includes('*SRCPF') && object.sourceFile)
-        || filters.types.includes(object.type))
+    const result: IBMiObject[] = [];
+    for (const object of objects) {
+      const name = String(object.NAME);
+      result.push({
+        library: localLibrary,
+        name,
+        type: String(object.TYPE),
+        attribute: String(object.ATTRIBUTE),
+        text: String(object.TEXT || ""),
+        sourceFile: Boolean(object.IS_SOURCE),
+        sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
+        size: Number(object.SIZE),
+        created: new Date(Number(object.CREATED)),
+        changed: new Date(Number(object.CHANGED)),
+        created_by: object.CREATED_BY ? String(object.CREATED_BY) : undefined,
+        owner: object.OWNER ? String(object.OWNER) : undefined,
+        asp: listLibraries ? await this.ibmi.getLibraryIAsp(name) : localLibASP
+      });
+    }
+    return result.filter(object => !filters.types || filters.types.length < 1
+      || filters.types.includes('*ALL')
+      || (filters.types.includes('*SRCPF') && object.sourceFile)
+      || filters.types.includes(object.type))
       .filter(object => objectFilter || nameFilter.test(object.name))
       .sort((a, b) => {
         if (a.library.localeCompare(b.library) != 0) {
@@ -773,7 +753,7 @@ export default class IBMiContent {
       `SELECT RTRIM(OBJ_STAT.OBJNAME) AS SOURCE_FILE,
              RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) AS NAME,
              PART_STAT.AVGROWSIZE AS RECORD_LENGTH,
-             OBJ_STAT.IASP_NUMBER AS ASP,
+             OBJ_STAT.IASP_NAME AS ASP,
              COALESCE(RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))), '') AS TYPE,
              COALESCE(RTRIM(VARCHAR(PART_STAT.TEXT)), '') AS TEXT,
              PART_STAT.NUMBER_ROWS AS LINES,
@@ -787,7 +767,7 @@ export default class IBMiContent {
 
     const results = await this.ibmi.runSQL(statement);
     if (results.length) {
-      const asp = this.ibmi.getIAspName(Number(results[0]?.ASP));
+      const asp = await this.ibmi.getLibraryIAsp(library);
       return results.map(result => ({
         asp,
         library,
@@ -895,25 +875,13 @@ export default class IBMiContent {
     const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
 
     // Escape names for shell
-    const pathList = files
-      .map(file => {
-        const asp = file.asp || this.ibmi.getCurrentIAspName();
-        if (asp && asp.length > 0) {
-          return [
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true)
-          ].join(` `);
-        } else {
-          return Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true);
-        }
-      })
-      .join(` `)
-      .toUpperCase();
+    const pathList: string[] = [];
+    for (const file of files) {
+      pathList.push(Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), await this.ibmi.getLibraryIAsp(file.library), true));
+    }
 
-    const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
-    const result = await this.ibmi.sendCommand({
-      command,
-    });
+    const command = `for f in ${pathList.join(' ').toUpperCase()}; do if [ -f $f ]; then echo $f; break; fi; done`;
+    const result = await this.ibmi.sendCommand({ command });
 
     if (result.code === 0) {
       const firstMost = result.stdout;

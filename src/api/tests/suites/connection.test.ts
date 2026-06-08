@@ -324,7 +324,7 @@ describe(`connection tests`, { concurrent: true }, () => {
   it('getLibraryIAsp against QSYSINC', async () => {
     const library = `QSYSINC`;
 
-    const asp = await connection.lookupLibraryIAsp(library);
+    const asp = await connection.getLibraryIAsp(library);
     expect(asp).toBeUndefined(); // Because QSYSINC is not an iASP
   })
 })

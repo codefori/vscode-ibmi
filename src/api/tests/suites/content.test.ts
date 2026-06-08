@@ -672,7 +672,7 @@ describe('Content Tests', { concurrent: true }, () => {
     const createLib = await connection.runCommand({ command: `QSYS/RUNSQL 'create schema "${longName}" for ${shortName}' commit(*none)`, noLibList: true });
     if (createLib.code === 0) {
       try {
-        const asp = await connection.lookupLibraryIAsp(shortName);
+        const asp = await connection.getLibraryIAsp(shortName);
         await connection.runCommand({ command: `QSYS/CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
 
         const libraries = await content.getLibraries({ library: `${shortName}` });

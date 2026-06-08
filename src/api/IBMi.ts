@@ -15,7 +15,7 @@ import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/serverFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CacheItem, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, QsysPath, RemoteCommand } from './types';
+import { CacheItem, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, QsysPath, RemoteCommand } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -86,6 +86,8 @@ export default class IBMi {
   private qccsid: number = IBMi.CCSID_NOCONVERSION;
   private userJobCcsid: number = IBMi.CCSID_SYSVAL;
 
+  private currentASP: string | undefined;
+
   private componentManager = new ComponentManager(this);
 
   private configFiles: ConnectionConfigFiles = {
@@ -112,30 +114,9 @@ export default class IBMi {
   private sqlJob: SQLJob | undefined;
   splfUserData: string | undefined;
 
-  /**
-   * Used to store ASP numbers and their names
-   * Their names usually maps up to a directory in
-   * the root of the IFS, thus why we store it.
-   */
-  private iAspInfo: AspInfo[] = [];
-  private currentAsp: string | undefined;
-  private libraryAsps = new Map<string, number>();
+  private libraryAsps = new Map<string, string>();
 
   connectionSuccessful = false;
-
-  /**
-   * @deprecated Will be replaced with {@link IBMi.getAllIAsps} in v3.0.0
-   */
-  public get aspInfo(): { [id: number]: string } {
-    console.warn("[Code for IBM i] Deprecation warning: you are using IBMi::aspInfo which is deprecated and will be removed in v3.0.0. Please use IBMi::getAllIAsps instead.");
-    const result: { [id: number]: string } = {};
-
-    this.iAspInfo.forEach(asp => {
-      result[asp.id] = asp.name;
-    });
-
-    return result;
-  }
 
   remoteFeatures: { [name: string]: string | undefined };
 
@@ -423,10 +404,10 @@ export default class IBMi {
         }
       }
 
-      if(!defaultHomeDir || defaultHomeDir === "/"){
+      if (!defaultHomeDir || defaultHomeDir === "/") {
         defaultHomeDir = `/home/${connectionObject.username}`;
         //We'll warn only once
-        if(!this.config.homeDirectory || this.config.homeDirectory === "/"){
+        if (!this.config.homeDirectory || this.config.homeDirectory === "/") {
           callbacks.message(`warning`, `Your home directory is set to '/' on your user profile. Code for IBM i will use ${defaultHomeDir} instead. Please contact a system administrator to fix this.`);
         }
       }
@@ -446,9 +427,9 @@ export default class IBMi {
         // Get home directory permissions (stat -c '%a' returns octal permissions)
         const getPermissions = async (path: string) => {
           const permissionString = (await this.sendCommand({ command: `ls -ld "${path}"` })).stdout.substring(1, 10);
-          const permissions : number[] = [];
+          const permissions: number[] = [];
           for (let i = 0; i < 9; i += 3) {
-            permissions.push((permissionString[i] == "r" ? 4 : 0) + (permissionString[i+1] == "w" ? 2 : 0) + (["x", "s"].includes(permissionString[i+2]) ? 1 : 0));
+            permissions.push((permissionString[i] == "r" ? 4 : 0) + (permissionString[i + 1] == "w" ? 2 : 0) + (["x", "s"].includes(permissionString[i + 2]) ? 1 : 0));
           }
           return permissions.map(String).join("");
         };
@@ -627,44 +608,14 @@ export default class IBMi {
         this.appendOutput(`Warning: Mapepire component not available\n`);
       }
 
+      try {
+        await this.setCurrentASP(this.getConfig().iasp);
+      }
+      catch (error: any) {
+        callbacks.message(`warning`, `Failed to switch to ASP ${this.getConfig().iasp}: ${error}.`);
+      }
+
       if (this.sqlRunnerAvailable()) {
-        // Check for ASP information?
-        if (quickConnect() && cachedServerSettings?.iAspInfo) {
-          this.iAspInfo = cachedServerSettings.iAspInfo;
-        } else {
-          callbacks.progress({
-            message: `Checking for iASP information.`
-          });
-
-          //This is mostly a nice to have. We grab the ASP info so user's do
-          //not have to provide the ASP in the settings.
-          try {
-            const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
-            resultSet.forEach(row => {
-              // Does not ever include SYSBAS/SYSTEM, only iASPs
-              if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                this.iAspInfo.push({
-                  id: Number(row.ASP_NUMBER),
-                  name: String(row.DEVICE_DESCRIPTION_NAME),
-                  type: String(row.ASP_TYPE),
-                  rdbName: String(row.RDB_NAME)
-                });
-              }
-            });
-          } catch (e) {
-            //Oh well
-            callbacks.progress({
-              message: `Failed to get ASP information.`
-            });
-          }
-        }
-
-        callbacks.progress({
-          message: `Fetching current iASP information.`
-        });
-
-        this.currentAsp = await this.getUserProfileAsp();
-
         // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
 
         // Fetch conversion values?
@@ -686,7 +637,7 @@ export default class IBMi {
               cross join table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )
               where SYSTEM_VALUE_NAME = 'QCCSID'`
             );
-            
+
             if (typeof ccsids.CURRENT_NUMERIC_VALUE === 'number') {
               this.qccsid = ccsids.CURRENT_NUMERIC_VALUE;
             }
@@ -1021,7 +972,7 @@ export default class IBMi {
       }
       else {
         this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
-      }      
+      }
 
       if (!options.reconnecting) {
         for (const operation of callbacks.onConnectedOperations || []) {
@@ -1031,7 +982,6 @@ export default class IBMi {
 
       IBMi.GlobalStorage.setServerSettingsCache(this.currentConnectionName, {
         lastCheckedOnVersion: currentExtensionVersion,
-        iAspInfo: this.iAspInfo,
         qccsid: this.qccsid,
         jobCcsid: this.userJobCcsid,
         remoteFeatures: this.remoteFeatures,
@@ -1553,60 +1503,16 @@ export default class IBMi {
     return this.remoteFeatures[`startDebugService.sh`] !== undefined;
   }
 
-  private async getUserProfileAsp(): Promise<string | undefined> {
-    const [currentRdb] = await this.runSQL(`values current_server`);
-
-    if (currentRdb) {
-      const key = Object.keys(currentRdb)[0];
-      const rdbName = currentRdb[key];
-      const currentAsp = this.iAspInfo.find(asp => asp.rdbName === rdbName);
-
-      if (currentAsp) {
-        return currentAsp.name;
-      }
-    }
-  }
-
-  getAllIAsps() {
-    return this.iAspInfo;
-  }
-
-  getIAspDetail(by: string | number) {
-    let asp: AspInfo | undefined;
-    if (typeof by === 'string') {
-      asp = this.iAspInfo.find(asp => asp.name === by);
-    } else {
-      asp = this.iAspInfo.find(asp => asp.id === by);
-    }
-
-    if (asp) {
-      return asp;
-    }
-  }
-
-  getIAspName(by: string | number): string | undefined {
-    return this.getIAspDetail(by)?.name;
-  }
-
-  getCurrentIAspName() {
-    return this.currentAsp;
-  }
-  async lookupLibraryIAsp(library: string): Promise<string | undefined> {
+  async getLibraryIAsp(library: string): Promise<string | undefined> {
     library = this.upperCaseName(library);
-    let foundNumber = this.libraryAsps.get(library);
-
-    if (!foundNumber) {
-      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}', DETAILED_INFO=>'NO'))`);
-      const iaspNumber = Number(row?.IASP_NUMBER);
-      if (iaspNumber >= 0) {
-        this.libraryAsps.set(library, iaspNumber);
-        foundNumber = iaspNumber;
-      }
+    let libraryIASP = this.libraryAsps.get(library);
+    if (!libraryIASP) {
+      const [row] = await this.runSQL(`select IASP_NAME from table(QSYS2.object_statistics('QSYS', 'LIB', '${library}'));`);
+      libraryIASP = row?.IASP_NAME ? String(row.IASP_NAME) : "*SYSBAS";
+      this.libraryAsps.set(library, libraryIASP);
     }
 
-    if (foundNumber) {
-      return this.getIAspName(foundNumber);
-    }
+    return libraryIASP !== "*SYSBAS" ? libraryIASP : undefined;
   }
 
   async getFileCcsid(path: string | QsysPath): Promise<number> {
@@ -1655,11 +1561,23 @@ export default class IBMi {
     return ccsid;
   }
 
-  getLibraryIAsp(library: string) {
-    const found = this.libraryAsps.get(library);
-    if (found && found >= 0) {
-      return this.getIAspName(found);
+  /**
+   * Change/reset the current ASP
+   * @param asp an ASP name or blank/undefined to reset to the user's default ASP
+   */
+  async setCurrentASP(asp?: string) {
+    if (asp !== this.currentASP) {
+      await Promise.all([
+        this.runSQL('connect reset').then(() => asp ? this.runSQL(`connect to ${asp}`) : undefined),
+      ]);
+      this.currentASP = asp;
+      this.getContent().reset();
+      this.appendOutput(`Switched to ${asp || 'default'} ASP\n`);
     }
+  }
+
+  getCurrentASP() {
+    return this.currentASP;
   }
 
   /**

@@ -29,7 +29,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   debugSepPort: string;
   debugUpdateProductionFiles: boolean;
   debugEnableDebugTracing: boolean;
-  debugIgnoreCertificateErrors:boolean;
+  debugIgnoreCertificateErrors: boolean;
   readOnlyMode: boolean;
   quickConnect: boolean;
   defaultDeploymentMethod: DeploymentMethod | '';
@@ -75,6 +75,7 @@ export interface ConnectionProfile {
   ifsShortcuts: string[]
   customVariables: CustomVariable[]
   setLibraryListCommand?: string
+  iasp?: string
 }
 
 export interface StoredConnection {
