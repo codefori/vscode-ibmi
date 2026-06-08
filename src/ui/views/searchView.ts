@@ -27,12 +27,12 @@ export function initializeSearchView(context: vscode.ExtensionContext) {
         searchViewViewer.message = vscode.l10n.t(`{0} file(s) contain(s) '{1}'`, hits, searchResults.term);
 
         if (warningCount) {
-          searchViewViewer.message += vscode.l10n.t(` — Permission denied to {0} file(s)`, warningCount);
+          searchViewViewer.message += vscode.l10n.t(` — Permission denied to {0} folder(s)`, warningCount);
         }
       }
       else {
         searchViewViewer.message = warningCount
-          ? vscode.l10n.t(`{0} file(s) name '{1}' — Permission denied to {2} file(s)`, hits, searchResults.term, warningCount)
+          ? vscode.l10n.t(`{0} file(s) name '{1}' — Permission denied to {2} folder(s)`, hits, searchResults.term, warningCount)
           : vscode.l10n.t(`{0} file(s) name '{1}'`, hits, searchResults.term);
       }
 
