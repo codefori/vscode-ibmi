@@ -1,10 +1,6 @@
 on:
   release:
     types: [created]
-
-permissions:
-  id-token: write  # Required for OIDC
-  contents: write
   
 jobs:
   publish-release:
