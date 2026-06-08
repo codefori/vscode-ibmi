@@ -1,5 +1,6 @@
 import path from 'path';
 import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskPanelKind, TaskRevealKind, WorkspaceFolder, commands, l10n, tasks } from 'vscode';
+import { ActionTools } from '../api/actions';
 import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
@@ -13,7 +14,6 @@ import { Action, ActionResult, DeploymentMethod } from '../typings';
 import { CustomUI, TreeListItem } from '../webviews/CustomUI';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 import { VscodeTools } from './Tools';
-import { ActionTools } from '../api/actions';
 import { BrowserItem } from './types';
 
 type CommandObject = {
@@ -393,21 +393,31 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             (postDownload.includes(`.evfevent`) || postDownload.includes(`.evfevent/`));
 
                           const possibleObjects = getObjectsFromJoblog(commandResult.stderr) || getObjectFromCommand(commandResult.command);
-                          if (isIleCommand && possibleObjects) {
-                            evfeventInfos.length = 0;
-                            if (Array.isArray(possibleObjects)) {
-                              for (const o of possibleObjects) {
-                                evfeventInfos.push({
-                                  library: o.library || evfeventInfo.library,
-                                  object: o.object,
-                                  extension: evfeventInfo.extension,
-                                  asp: evfeventInfo.asp
-                                })
-                              };
-                            } else {
-                              evfeventInfo.library = possibleObjects.library ? possibleObjects.library : evfeventInfo.library;
-                              evfeventInfo.object = possibleObjects.object;
-                              evfeventInfos.push(evfeventInfo);
+                          if (isIleCommand) {
+                            if (possibleObjects) {
+                              if (Array.isArray(possibleObjects)) {
+                                for (const o of possibleObjects) {
+                                  evfeventInfos.push({
+                                    library: o.library || evfeventInfo.library,
+                                    object: o.object,
+                                    extension: evfeventInfo.extension,
+                                    asp: evfeventInfo.asp
+                                  })
+                                };
+                              } else {
+                                evfeventInfo.library = possibleObjects.library ? possibleObjects.library : evfeventInfo.library;
+                                evfeventInfo.object = possibleObjects.object;
+                                evfeventInfos.push(evfeventInfo);
+                              }
+                            }
+                            else {
+                              //Add a default eventf target
+                              evfeventInfos.push({
+                                library: evfeventInfo.library,
+                                object: evfeventInfo.object,
+                                extension: evfeventInfo.extension,
+                                asp: evfeventInfo.asp
+                              });
                             }
                           }
 
@@ -418,12 +428,11 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                           if (useLocalEvfevent) {
                             writeEmitter.fire(`Fetching errors from .evfevent.${CompileTools.NEWLINE}`);
-
                           }
                           else if (evfeventInfo.object && evfeventInfo.library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
                               writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfos[0].library}/${evfeventInfos[0].object}.`) + CompileTools.NEWLINE);
-                              await refreshDiagnosticsFromServer(instance, evfeventInfos);
+                              refreshDiagnosticsFromServer(connection, evfeventInfos);
                               problemsFetched = true;
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
                               writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
@@ -508,7 +517,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
                                   // Process locally downloaded evfevent files:
                                   if (useLocalEvfevent) {
-                                    await refreshDiagnosticsFromLocal(instance, evfeventInfo);
+                                    await refreshDiagnosticsFromLocal(connection, evfeventInfo);
                                     problemsFetched = true;
                                   }
                                 })

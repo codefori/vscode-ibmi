@@ -3,7 +3,7 @@ import { commands, Disposable, env, l10n, TreeItem, Uri, window, WorkspaceFolder
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import Instance from "../Instance";
-import { Action, ActionResult, DeploymentMethod } from "../typings";
+import { Action, DeploymentMethod } from "../typings";
 import { runAction } from "../ui/actions";
 import { refreshDiagnosticsFromServer } from "../ui/diagnostics";
 import { BrowserItem } from "../ui/types";
@@ -127,18 +127,17 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         ext: undefined
       };
 
-      let inputPath: string | undefined
+      let inputPath: string | undefined      
+      const connection = instance.getConnection()!; //safe as action requires to be connected
 
       if (options.qualifiedObject) {
         // Value passed in via parameter
         inputPath = options.qualifiedObject;
-
       } else {
         // Value collected from user input
 
         let initialPath = ``;
-        const editor = window.activeTextEditor;
-        const connection = instance.getConnection();
+        const editor = window.activeTextEditor;        
 
         if (editor && connection) {
           const config = connection.getConfig();
@@ -180,7 +179,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const [library, object] = inputPath.split(`/`);
         if (library && object) {
           const nameDetail = path.parse(object);
-          refreshDiagnosticsFromServer(instance, [{ library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }], options.keepDiagnostics);
+          refreshDiagnosticsFromServer(connection, [{ library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }], options.keepDiagnostics);
         }
       }
     }),

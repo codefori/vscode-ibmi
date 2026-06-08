@@ -1,8 +1,8 @@
 
 import * as vscode from "vscode";
-import Instance from "../Instance";
 import IBMi from "../api/IBMi";
 import { parseErrors } from "../api/errors/parser";
+import { instance } from "../instantiate";
 import { FileError } from "../typings";
 import { VscodeTools } from "./Tools";
 
@@ -56,28 +56,27 @@ export function clearDiagnostic(uri: vscode.Uri, changeRange: vscode.Range) {
   }
 }
 
-export async function refreshDiagnosticsFromServer(instance: Instance, evfeventInfo: EvfEventInfo[], keepDiagnostics?: boolean) {
-  const connection = instance.getConnection();
-
-  if (connection) {
-    const content = connection.getContent();
-
-    if (IBMi.connectionManager.get(`clearErrorsBeforeBuild`) && !keepDiagnostics) {
-      // Clear all errors if the user has this setting enabled
-      clearDiagnostics();
-    }
-
-    evfeventInfo.forEach(async e => {
-      const tableData = await content.getTable(e.library, `EVFEVENT`, e.object);
-      const lines = tableData.map(row => String(row.EVFEVENT));
-      handleEvfeventLines(lines, instance, e);
-    });
-  } else {
-    throw new Error('Please connect to an IBM i');
+export function refreshDiagnosticsFromServer(connection: IBMi, evfeventInfo: EvfEventInfo[], keepDiagnostics?: boolean) {
+  if (IBMi.connectionManager.get(`clearErrorsBeforeBuild`) && !keepDiagnostics) {
+    // Clear all errors if the user has this setting enabled
+    clearDiagnostics();
   }
+
+  evfeventInfo.forEach(async e => {
+    const lines = (await connection.runSQL(/* sql */
+      `select trim(cast(LINE as VarChar(400) CCSID 1208)) EVFEVENT
+      from table(QSYS2.IFS_READ_UTF8(
+        path_name => '${e.asp ? `/${e.asp}` : ''}/QSYS.LIB/${e.library}.LIB/EVFEVENT.FILE/${e.object}.MBR',
+        maximum_line_length => 400))`
+    )).map(row => String(row.EVFEVENT));
+
+    if (lines.length) {
+      handleEvfeventLines(connection, lines, e);
+    }
+  });
 }
 
-export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventInfo: EvfEventInfo) {
+export async function refreshDiagnosticsFromLocal(connection: IBMi, evfeventInfo: EvfEventInfo) {
   if (evfeventInfo.workspace) {
     const evfeventFiles = await vscode.workspace.findFiles(new vscode.RelativePattern(evfeventInfo.workspace, `**/.evfevent/*`), null);
     if (evfeventFiles) {
@@ -93,7 +92,7 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
         const eol = content.includes(`\r\n`) ? `\r\n` : `\n`;
         const lines = content.split(eol);
 
-        handleEvfeventLines(lines, instance, evfeventInfo);
+        handleEvfeventLines(connection, lines, evfeventInfo);
       }
 
     } else {
@@ -102,8 +101,7 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
   }
 }
 
-export function handleEvfeventLines(lines: string[], instance: Instance, evfeventInfo: EvfEventInfo) {
-  const connection = instance.getConnection()!;
+export function handleEvfeventLines(connection: IBMi, lines: string[], evfeventInfo: EvfEventInfo) {
   const config = connection.getConfig();
   const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 

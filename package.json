@@ -2252,7 +2252,7 @@
 				},
 				{
 					"command": "code-for-ibmi.openErrors",
-					"when": "code-for-ibmi:connected"
+					"when": "never"
 				},
 				{
 					"command": "code-for-ibmi.launchTerminalPicker",
