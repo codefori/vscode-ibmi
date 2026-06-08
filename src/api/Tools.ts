@@ -249,4 +249,33 @@ export namespace Tools {
     // (it will remain relative)
     return inputPath;
   }
+
+  /**
+   * Parses the leading mode field of an `ls -l`/`ls -ld` listing into an octal
+   * permission string (e.g. `drwxr-x---` -> `"750"`).
+   *
+   * The first character is the file type (`-dlbcps`) and is ignored; the next
+   * nine characters are the owner/group/other `rwx` triplets. The execute slot
+   * also encodes the special bits, which are treated as execute being present:
+   * `s`/`S` (setuid/setgid) and `t`/`T` (sticky). Any trailing content, such as
+   * the `+`/`.` ACL marker that `ls` may append, is ignored.
+   *
+   * @param lsOutput raw (trimmed or untrimmed) stdout from `ls -l`/`ls -ld`
+   * @returns the 3-digit octal permission string, or `undefined` when the input
+   * does not start with a valid mode field (empty output, `ls` error, banner noise)
+   */
+  export function parseLsPermissions(lsOutput: string): string | undefined {
+    // type char + 9 perm chars (s/S = setuid/setgid, t/T = sticky; trailing ACL marker ignored)
+    const match = lsOutput.trim().match(/^[-dlbcps]([-r][-w][-xsS][-r][-w][-xsS][-r][-w][-xtT])/);
+    if (!match) {
+      return undefined;
+    }
+
+    const field = match[1];
+    const permissions: number[] = [];
+    for (let i = 0; i < 9; i += 3) {
+      permissions.push((field[i] === "r" ? 4 : 0) + (field[i + 1] === "w" ? 2 : 0) + (["x", "s", "t"].includes(field[i + 2]) ? 1 : 0));
+    }
+    return permissions.map(String).join("");
+  }
 }
