@@ -424,12 +424,22 @@ export default class IBMi {
           message: `Checking directory permissions.`
         });
 
-        // Get home directory permissions (stat -c '%a' returns octal permissions)
+        // Parse the rwx mode field from `ls -ld` into octal (e.g. "750").
+        // -L dereferences symlinks so we read the TARGET's permissions: IBM i home
+        // directories are frequently symlinks into an ASP (e.g. /home/me -> /ASP/home/me),
+        // and chmod follows the link, so detection must follow it too or it can never converge.
+        // Returns 'error' when the output can't be parsed (empty stdout, ls error, banner noise).
         const getPermissions = async (path: string) => {
-          const permissionString = (await this.sendCommand({ command: `ls -ld "${path}"` })).stdout.substring(1, 10);
+          const out = (await this.sendCommand({ command: `ls -ldL "${path}" 2>/dev/null` })).stdout.trim();
+          // type char + 9 perm chars (s/S = setuid/setgid, t/T = sticky; trailing ACL marker ignored)
+          const match = out.match(/^[-dlbcps]([-r][-w][-xsS][-r][-w][-xsS][-r][-w][-xtT])/);
+          if (!match) {
+            return 'error';
+          }
+          const field = match[1];
           const permissions: number[] = [];
           for (let i = 0; i < 9; i += 3) {
-            permissions.push((permissionString[i] == "r" ? 4 : 0) + (permissionString[i + 1] == "w" ? 2 : 0) + (["x", "s"].includes(permissionString[i + 2]) ? 1 : 0));
+            permissions.push((field[i] === "r" ? 4 : 0) + (field[i + 1] === "w" ? 2 : 0) + (["x", "s", "t"].includes(field[i + 2]) ? 1 : 0));
           }
           return permissions.map(String).join("");
         };
