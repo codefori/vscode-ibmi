@@ -18,19 +18,31 @@ export function initializeSearchView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => searchView.collapse()),
     vscode.commands.registerCommand(`code-for-ibmi.setSearchResults`, async (searchResults: SearchResults, appendResults?: boolean) => {
       const hits = appendResults ? searchView.hits + searchResults.hits.length : searchResults.hits.length;
-      if (searchResults.hits.some(hit => hit.lines.length)) {
+      const warningCount = appendResults
+        ? searchView.warningCount + (searchResults.warnings?.length || 0)
+        : (searchResults.warnings?.length || 0);
+      const isContentSearch = searchResults.hits.some(hit => hit.lines.length);
+
+      if (isContentSearch) {
         searchViewViewer.message = vscode.l10n.t(`{0} file(s) contain(s) '{1}'`, hits, searchResults.term);
+
+        if (warningCount) {
+          searchViewViewer.message += vscode.l10n.t(` — Permission denied to {0} folder(s)`, warningCount);
+        }
       }
       else {
-        searchViewViewer.message = vscode.l10n.t(`{0} file(s) named '{1}'`, hits, searchResults.term);
+        searchViewViewer.message = warningCount
+          ? vscode.l10n.t(`{0} file(s) name '{1}' — Permission denied to {2} folder(s)`, hits, searchResults.term, warningCount)
+          : vscode.l10n.t(`{0} file(s) name '{1}'`, hits, searchResults.term);
       }
+
       searchView.setResults(searchResults, appendResults);
     })
   )
 }
 
 class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
-  private readonly _results: SearchResults = { term: "", hits: [] };
+  private readonly _results: SearchResults = { term: "", hits: [], warnings: [] };
   private readonly _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
@@ -41,10 +53,13 @@ class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
   setResults(results: SearchResults, appendResults?: boolean) {
     if(!appendResults){
       this._results.term = results.term;
-      this._results.hits = [];      
-    }    
+      this._results.hits = [];
+      this._results.warnings = [];
+    }
+
     this._results.hits.push(...results.hits);
-    
+    this._results.warnings?.push(...(results.warnings || []));
+
     this.refresh();
     this.setViewVisible(true);
 
@@ -73,6 +88,10 @@ class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
 
   get hits() {
     return this._results.hits.length;
+  }
+
+  get warningCount() {
+    return this._results.warnings?.length || 0;
   }
 }
 

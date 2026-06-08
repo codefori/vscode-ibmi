@@ -193,7 +193,8 @@ export type AttrOperands = 'ACCESS_TIME' | 'ALLOC_SIZE' | 'ALLOC_SIZE_64' | 'ALW
 
 export type SearchResults = {
   term: string,
-  hits: SearchHit[]
+  hits: SearchHit[],
+  warnings?: SearchHit[]
 }
 
 export type SearchHit = {

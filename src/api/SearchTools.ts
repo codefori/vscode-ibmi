@@ -154,10 +154,11 @@ export namespace SearchTools {
           command: `${find} ${Tools.escapePath(path)} ${ignoreString} -type f -iname '*${findTerm}*' -print`
         });
 
-        if (findRes.code == 0 && findRes.stdout) {
+        if (findRes.stdout) {
           return {
             term: findTerm,
-            hits: parseFindOutput(findRes.stdout)
+            hits: parseFindOutput(findRes.stdout),
+            ...(findRes.stderr ? { warnings: parseFindOutput(findRes.stderr) } : {})
           }
         }
       } else {
