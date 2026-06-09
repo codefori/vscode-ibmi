@@ -117,10 +117,7 @@ export class Mapepire implements IBMiComponent {
   public async newJob(connection: IBMi, options?: { javaPath?: string, jdbc?: JDBCOptions }) {
     const config = connection.getConfig();
     const useServer = config.mapepireUseServer;
-    const sqlJob = useServer ? new SQLJob() : new SSHSQLJob();
-    if (options) {
-      sqlJob.options;
-    }
+    const sqlJob = useServer ? new SQLJob(options?.jdbc) : new SSHSQLJob(options?.jdbc);
     sqlJob.options.secure = sqlJob.options.secure || config.secureSQL;
     if (useServer) {
       connection.appendOutput(`Connecting to Mapepire over HTTP on port ${config.mapepireServerPort}${config.mapepireAllowSelfCert ? ", allowing self-signed certificates" : ""}`);
