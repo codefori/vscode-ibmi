@@ -1212,4 +1212,14 @@ export default class IBMiContent {
       libraryList: [] as string[]
     });
   }
+
+  async overDBFile(library: string, file: string, member: string) {
+    const overFile = Tools.makeid().toUpperCase();
+    await this.ibmi.runSQL(`@QSYS/OVRDBF FILE(${overFile}) TOFILE(${library}/${file}) MBR(${member}) OVRSCOPE(*JOB)`);
+    return overFile;
+  }
+
+  async deleteOVRDBFile(overFile: string) {
+    await this.ibmi.runSQL(`@QSYS/DLTOVR FILE(${overFile}) LVL(*JOB)`);
+  }
 }
