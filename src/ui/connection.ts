@@ -115,13 +115,13 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
           let updateCmd = '';
           
           if (homePerms && homePerms !== '750') {
-            updateCmd += `chmod 0750 ${homeDir}`;
+            updateCmd += `chmod 0750 "${homeDir}"`;
           }
-          
+
           if (!vscodeExists) {
-            updateCmd += (updateCmd ? ' && ' : '') + `mkdir -p ${homeDir}/.vscode && chmod 0700 ${homeDir}/.vscode`;
+            updateCmd += (updateCmd ? ' && ' : '') + `mkdir -p "${homeDir}/.vscode" && chmod 0700 "${homeDir}/.vscode"`;
           } else if (vscodePerms && vscodePerms !== '700') {
-            updateCmd += (updateCmd ? ' && ' : '') + `chmod 0700 ${homeDir}/.vscode`;
+            updateCmd += (updateCmd ? ' && ' : '') + `chmod 0700 "${homeDir}/.vscode"`;
           }
           
           if (updateCmd) {
