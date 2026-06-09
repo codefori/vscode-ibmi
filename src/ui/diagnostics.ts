@@ -63,15 +63,17 @@ export function refreshDiagnosticsFromServer(connection: IBMi, evfeventInfo: Evf
   }
 
   evfeventInfo.forEach(async e => {
-    const lines = (await connection.runSQL(/* sql */
-      `select trim(cast(LINE as VarChar(400) CCSID 1208)) EVFEVENT
-      from table(QSYS2.IFS_READ_UTF8(
-        path_name => '${e.asp ? `/${e.asp}` : ''}/QSYS.LIB/${e.library}.LIB/EVFEVENT.FILE/${e.object}.MBR',
-        maximum_line_length => 400))`
-    )).map(row => String(row.EVFEVENT));
+    const overFile = await connection.getContent().overDBFile(e.library, "EVFEVENT", e.object);
+    try {
+      const lines = (await connection.runSQL(/* sql */`select trim(cast(EVFEVENT as VarChar(400) CCSID ${connection.getCcsid()})) EVFEVENT from ${overFile}`))
+        .map(row => String(row.EVFEVENT));
 
-    if (lines.length) {
-      handleEvfeventLines(connection, lines, e);
+      if (lines.length) {
+        handleEvfeventLines(connection, lines, e);
+      }
+    }
+    finally{
+      connection.getContent().deleteOVRDBFile(overFile);
     }
   });
 }

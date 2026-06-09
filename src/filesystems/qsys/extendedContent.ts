@@ -28,7 +28,7 @@ export class ExtendedIBMiContent {
     if (connection) {
       const alias = getAliasName(uri);
       const { library, file, name } = connection.parserMemberPath(uri.path);
-      const overFile = await this.overDBFile(connection, library, file, name);
+      const overFile = await connection.getContent().overDBFile(library, file, name);
       try {
         // Query the column-specific CCSID and LENGTH for SRCDTA from SYSCOLUMNS
         // Mapepire SQL cannot read columns with CCSID 65535, so we must cast to the job CCSID
@@ -80,7 +80,7 @@ export class ExtendedIBMiContent {
         return body;
       }
       finally {
-        await this.deleteOVRDBFile(connection, overFile);
+        await connection.getContent().deleteOVRDBFile(overFile);
       }
     }
   }
@@ -117,7 +117,6 @@ export class ExtendedIBMiContent {
 
       const tempLib = "QTEMP";
       const alias = getAliasName(uri);
-      const aliasPath = `${tempLib}.${alias}`;
 
       let sourceDates;
 
@@ -138,7 +137,7 @@ export class ExtendedIBMiContent {
       if (tempRmt) {
         const tmpobj = await tmpFile();
 
-        const overFile = await this.overDBFile(connection, library, file, name);
+        const overFile = await connection.getContent().overDBFile(library, file, name);
         try {
           const sourceData = body.split(`\n`);
           const recordLength = await this.readRecordLength(connection, alias, overFile);
@@ -217,23 +216,13 @@ export class ExtendedIBMiContent {
           this.sourceDateHandler.baseDates.set(alias, sourceDates);
           this.sourceDateHandler.baseSequences.delete(alias);
         } finally {
-          await this.deleteOVRDBFile(connection, overFile);
+          await connection.getContent().deleteOVRDBFile(overFile);
           // Clean up temporary file
           await connection.clearTempRemote(tempKey);
         }
       }
     }
-  }
-
-  private async overDBFile(connection: IBMi, library: string, file: string, member: string) {
-    const overFile = Tools.makeid();
-    await connection.runSQL(`@QSYS/OVRDBF FILE(${overFile}) TOFILE(${library}/${file}) MBR(${member}) OVRSCOPE(*JOB)`);
-    return overFile;
-  }
-
-  private async deleteOVRDBFile(connection: IBMi, overFile: string) {
-    await connection.runSQL(`@QSYS/DLTOVR FILE(${overFile}) LVL(*JOB)`);
-  }
+  }  
 }
 
 function sliceUp(arr: any[], size: number): any[] {
