@@ -1507,7 +1507,7 @@ export default class IBMi {
     library = this.upperCaseName(library);
     let libraryIASP = this.libraryAsps.get(library);
     if (!libraryIASP) {
-      const [row] = await this.runSQL(`select IASP_NAME from table(QSYS2.object_statistics('QSYS', 'LIB', '${library}'));`);
+      const [row] = await this.runSQL(`select IASP_NAME from table(QSYS2.LIBRARY_INFO('${library}'));`);
       libraryIASP = row?.IASP_NAME ? String(row.IASP_NAME) : "*SYSBAS";
       this.libraryAsps.set(library, libraryIASP);
     }
