@@ -169,17 +169,19 @@ export function handleEvfeventLines(connection: IBMi, lines: string[], evfeventI
             continue;
           }
 
-          // If we get there, that means that even though we compiled from local, we likely had to use a temp member.
-          // We should try to find the file in the workspace. Since we can use findFile (it's async), then we look for open
-          // tabs like we do below.
-          if (evfeventInfo.extension) {
-            const baseName = file.split(`/`).pop();
-            const openFile = VscodeTools.findExistingDocumentByName(`${baseName}.${evfeventInfo.extension}`);
-            if (openFile) {
-              ileDiagnostics.set(openFile, diagnostics);
-              continue;
-            }
-          }
+        }
+      }
+
+      // For member paths: try to find an open local document by name before falling back to server URI.
+      // findExistingDocumentByName searches all open tabs — no workspace needed — so this works for
+      // member-type actions too (where evfeventInfo.workspace is not set).
+      if (!file.startsWith(`/`) && evfeventInfo.extension) {
+        const baseName = file.split(`/`).pop();
+        const lookupName = `${baseName}.${evfeventInfo.extension}`;
+        const openFile = VscodeTools.findExistingDocumentByName(lookupName);
+        if (openFile) {
+          ileDiagnostics.set(openFile, diagnostics);
+          continue;
         }
       }
 
