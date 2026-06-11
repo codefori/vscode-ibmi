@@ -457,7 +457,7 @@ export default class IBMiContent {
           os.OBJTYPE AS TYPE,
           os.OBJATTRIBUTE AS ATTRIBUTE,
           OBJTEXT AS TEXT,
-          os.IASP_NAME AS IASP_NAME,
+          li.IASP_NAME AS IASP_NAME,
           os.OBJSIZE AS SIZE,
           EXTRACT(EPOCH FROM (os.OBJCREATED)) * 1000 AS CREATED,
           EXTRACT(EPOCH FROM (os.CHANGE_TIMESTAMP)) * 1000 AS CHANGED,
@@ -472,6 +472,7 @@ export default class IBMiContent {
           OBJTYPELIST => '*LIB',
           OBJECT_NAME => libs.ELEMENT
         )) AS os
+        CROSS JOIN TABLE(QSYS2.LIBRARY_INFO(library_name => os.OBJNAME)) AS li
       `;
     const results = await this.ibmi.runSQL(statement);
 
@@ -753,7 +754,6 @@ export default class IBMiContent {
       `SELECT RTRIM(OBJ_STAT.OBJNAME) AS SOURCE_FILE,
              RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) AS NAME,
              PART_STAT.AVGROWSIZE AS RECORD_LENGTH,
-             OBJ_STAT.IASP_NAME AS ASP,
              COALESCE(RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))), '') AS TYPE,
              COALESCE(RTRIM(VARCHAR(PART_STAT.TEXT)), '') AS TEXT,
              PART_STAT.NUMBER_ROWS AS LINES,
