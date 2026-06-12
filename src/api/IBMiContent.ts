@@ -538,15 +538,13 @@ export default class IBMiContent {
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
 
-    // Libraries (*LIB) can only be listed from QSYS
+     // Libraries (*LIB) can only be listed from QSYS
     const isListingLibraries = !!filters?.types?.some(type => type === '*LIB'); 
      
     if (isListingLibraries && localLibrary !== `QSYS`) {
       // Return empty array when trying to list libraries from non-QSYS library
       return [];
     }
-    
-    if (localLibrary !== `QSYS`) {
     const listLibraries = localLibrary === "QSYS";
     if (!listLibraries) {
       if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
