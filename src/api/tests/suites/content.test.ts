@@ -571,7 +571,7 @@ describe('Content Tests', { concurrent: true }, () => {
   });
 
   it('Test @clCommand + select statement', async () => {
-    const [resultA] = await connection.runSQL(`@CRTSAVF FILE(QTEMP/UNITTESTA) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+    const [resultA] = await connection.runSQL(`@QSYS/CRTSAVF FILE(QTEMP/UNITTESTA) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
 
     expect(resultA.OBJNAME).toBe('UNITTESTA');
     expect(resultA.OBJTEXT).toBe('Code for i test');
@@ -579,12 +579,12 @@ describe('Content Tests', { concurrent: true }, () => {
 
   it('Test @clCommand with error', async () => {
     try {
-      const [resultA] = await connection.runSQL(`@CRTBNDRPG BOOP('hello world');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+      const [resultA] = await connection.runSQL(`@QSYS/CRTBNDRPG BOOP('hello world');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
       expect(resultA).toBeDefined(); // Never reaches here
     } catch (e: any) {
       expect(e).toBeInstanceOf(Tools.SqlError);
       expect(e.cause).toBeDefined();
-      expect(e.cause.command).toBe(`CRTBNDRPG BOOP('hello world')`);
+      expect(e.cause.command).toBe(`QSYS/CRTBNDRPG BOOP('hello world')`);
       expect(e.cause.jobLog).toBeDefined();
     }
   });
@@ -672,7 +672,7 @@ describe('Content Tests', { concurrent: true }, () => {
     const createLib = await connection.runCommand({ command: `QSYS/RUNSQL 'create schema "${longName}" for ${shortName}' commit(*none)`, noLibList: true });
     if (createLib.code === 0) {
       try {
-        const asp = await connection.lookupLibraryIAsp(shortName);
+        const asp = await connection.getLibraryIAsp(shortName);
         await connection.runCommand({ command: `QSYS/CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
 
         const libraries = await content.getLibraries({ library: `${shortName}` });
@@ -774,8 +774,8 @@ describe('Content Tests', { concurrent: true }, () => {
                            LINE => 'ENDPGM', 
                            OVERWRITE => 'APPEND', 
                            END_OF_LINE => 'CRLF')`,
-        `@CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
-        `@CRTSRVPGM SRVPGM(${tempLib}/${id}) MODULE(${tempLib}/${id}) EXPORT(*ALL)`
+        `@QSYS/CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`,
+        `@QSYS/CRTSRVPGM SRVPGM(${tempLib}/${id}) MODULE(${tempLib}/${id}) EXPORT(*ALL)`
       ]);
 
       const info: ProgramExportImportInfo[] = (await content.getProgramExportImportInfo(tempLib, id, '*SRVPGM'))

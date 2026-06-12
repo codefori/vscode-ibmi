@@ -1,7 +1,7 @@
 
 import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem } from 'vscode';
-import { getActions, updateAction } from '../../../api/actions';
+import { ActionTools } from '../../../api/actions';
 import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
@@ -69,7 +69,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.environment.action.create", async (node: ActionsNode | ActionTypeNode, from?: ActionItem) => {
       const typeNode = "type" in node ? node : (await vscode.window.showQuickPick<QuickPickItem & { typeNode: ActionTypeNode }>((await node.getChildren()).map(typeNode => ({ label: typeNode.label as string, description: typeNode.description ? typeNode.description as string : undefined, typeNode })), { title: l10n.t("Select an action type") }))?.typeNode;
       if (typeNode) {
-        const existingNames = (await getActions(typeNode.workspace)).filter(act => act.type === typeNode.type).map(act => act.name);
+        const existingNames = (await ActionTools.getActions(typeNode.workspace)).filter(act => act.type === typeNode.type).map(act => act.name);
 
         const name = await vscode.window.showInputBox({
           title: from ? l10n.t("Copy action '{0}'", from.action.name) : l10n.t("New action"),
@@ -85,7 +85,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
             environment: "ile" as ActionEnvironment,
             command: ''
           };
-          await updateAction(action, typeNode.workspace);
+          await ActionTools.updateAction(action, typeNode.workspace);
           vscode.commands.executeCommand("code-for-ibmi.environment.action.edit", { action, workspace: typeNode.workspace });
         }
       }
@@ -96,7 +96,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         vscode.window.showWarningMessage(l10n.t("Action '{0}' is being edited. Please close its editor first.", action.name));
       }
       else {
-        const existingNames = (await getActions(node.workspace)).filter(act => act.name !== action.name && act.type === action.type).map(act => act.name);
+        const existingNames = (await ActionTools.getActions(node.workspace)).filter(act => act.name !== action.name && act.type === action.type).map(act => act.name);
 
         const newName = await vscode.window.showInputBox({
           title: l10n.t("Rename action"),
@@ -106,7 +106,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         });
 
         if (newName) {
-          await updateAction(action, node.workspace, { newName });
+          await ActionTools.updateAction(action, node.workspace, { newName });
         }
       }
     }),
@@ -121,7 +121,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         vscode.window.showWarningMessage(l10n.t("Action '{0}' is being edited. Please close its editor first.", node.action.name));
       }
       else if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
-        await updateAction(node.action, node.workspace, { delete: true });
+        await ActionTools.updateAction(node.action, node.workspace, { delete: true });
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.runOnEditor", (node: ActionItem) => {
@@ -313,12 +313,14 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         config.currentProfile = profile.name || undefined;
         await IBMi.connectionManager.update(config);
 
+        await connection.setCurrentASP(profile.iasp);
+
         await Promise.all([
           vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
         ]);
-        environmentView.refresh();
+        environmentView.refresh();        
 
         if (profile.name && profile.setLibraryListCommand) {
           await vscode.commands.executeCommand("code-for-ibmi.environment.profile.runLiblistCommand", profile);

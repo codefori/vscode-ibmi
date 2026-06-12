@@ -54,7 +54,8 @@ const ENV_CREDS = {
   privateKeyPath: process.env.VITE_PRIVATE_KEY_PATH,
   passphrase: process.env.VITE_PASSPHRASE,
   port: parseInt(process.env.VITE_DB_PORT || `22`),
-  tempLibrary: process.env.VITE_TEMP_LIB || 'ILEDITOR'
+  tempLibrary: process.env.VITE_TEMP_LIB || 'ILEDITOR',
+  iasp: process.env.VITE_IASP
 }
 
 export async function newConnection(reloadSettings?: boolean) {
@@ -70,6 +71,9 @@ export async function newConnection(reloadSettings?: boolean) {
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);
   extensionComponentRegistry.registerComponent(testingId, new CustomCLI());
+  const componentId = `toBeDeleted`;
+  extensionComponentRegistry.registerComponent(testingId, new CustomCLI(componentId));
+  extensionComponentRegistry.disableComponent(testingId, componentId);
 
   const creds: ConnectionData = {
     ...ENV_CREDS,
@@ -77,8 +81,18 @@ export async function newConnection(reloadSettings?: boolean) {
   };
 
   const config = await IBMi.connectionManager.load(creds.name);
+  let updateConfig = false;
   if (config.tempLibrary !== ENV_CREDS.tempLibrary) {
     config.tempLibrary = ENV_CREDS.tempLibrary;
+    updateConfig = true;
+  }
+  
+  if (config.iasp !== ENV_CREDS.iasp) {
+    config.iasp = ENV_CREDS.iasp;
+    updateConfig = true;
+  }
+
+  if (updateConfig) {
     await IBMi.connectionManager.update(config);
   }
 

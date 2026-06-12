@@ -1,3 +1,4 @@
+
 # Contributing to Code for IBM i
 
 We welcome all users to contribute. Whether it be to documentation, or code, we love it all. We use a typical PR system:
@@ -71,3 +72,6 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@jman116](https://github.com/jman116)
 * [@Mohammed-Yaseen-Ali-2081](https://github.com/Mohammed-Yaseen-Ali-2081)
 * [@SamJessep](https://github.com/SamJessep)
+* [@MerelSoftware](https://github.com/MerelSoftware)
+* [@agatabrzeczek](https://github.com/agatabrzeczek)
+* [@phpdave](https://github.com/phpdave)

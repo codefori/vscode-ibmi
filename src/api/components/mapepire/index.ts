@@ -1,25 +1,27 @@
 
-import { SQLJob } from "@ibm/mapepire-js";
+import { JDBCOptions, SQLJob } from "@ibm/mapepire-js";
 import { stat } from "fs/promises";
 import path from "path";
 import { SemanticVersion } from "../../../typings";
 import { getJavaHome } from "../../configuration/DebugConfiguration";
 import IBMi from "../../IBMi";
 import { IBMiComponent, SecureComponentState } from "../component";
-import { sshSqlJob } from "./sqlJob";
+import { SSHSQLJob } from "./sshSqlJob";
 import { SERVER_FILE_PREFIX, SERVER_VERSION_FILE, VERSION } from "./version";
 
 const DEFAULT_JAVA_EIGHT = `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`;
 
 export class Mapepire implements IBMiComponent {
   static readonly ID = "mapepire";
+  private static readonly SIGNATURE = "41b1cfa67778ac204426f1dda0b51bd3f45fe3b89c91121d968660140acc0876";
+
   private readonly localAssetPath: string;
   private installPath = "";
   private readonly version: SemanticVersion;
 
   readonly jobs: Map<string, SQLJob> = new Map;
 
-  constructor(localAssetRoot: string) {
+  constructor(localAssetRoot: string, private readonly passwordProvider?: (connectionName: IBMi) => Promise<string | undefined>) {
     this.localAssetPath = path.join(localAssetRoot, SERVER_VERSION_FILE);
     const rawVersion = /-(\d+)\.(\d+)\.(\d+)\.jar$/.exec(SERVER_VERSION_FILE);
     if (rawVersion) {
@@ -31,7 +33,7 @@ export class Mapepire implements IBMiComponent {
   }
 
   getIdentification() {
-    return { name: Mapepire.ID, version: VERSION, signature: "41b1cfa67778ac204426f1dda0b51bd3f45fe3b89c91121d968660140acc0876" };
+    return { name: Mapepire.ID, version: VERSION, signature: Mapepire.SIGNATURE };
   }
 
   async setInstallDirectory(installDirectory: string): Promise<void> {
@@ -40,7 +42,12 @@ export class Mapepire implements IBMiComponent {
 
   async getRemoteState(connection: IBMi, installDirectory: string): Promise<SecureComponentState> {
     this.setInstallDirectory(installDirectory);
-    const remoteVersions = (await connection.sendCommand({ command: `find . -type f -name ${SERVER_FILE_PREFIX}\\*`, directory: installDirectory }))
+    if (connection.getConfig().mapepireUseServer) {
+      //No need to upload/check remote JAR file in server mode
+      return { status: "Installed", remoteSignature: Mapepire.SIGNATURE };
+    }
+
+    const remoteVersions = (await connection.sendCommand({ command: `/QOpenSys/usr/bin/find ${installDirectory} -type f -name ${SERVER_FILE_PREFIX}\\*` }))
       .stdout.split("\n")
       .map(line => line.trim().substring(2))
       .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\\.(\\d+)\\.(\\d+)\\.jar$`).exec(line))
@@ -107,20 +114,44 @@ export class Mapepire implements IBMiComponent {
     return useExec;
   }
 
-  public async newJob(connection: IBMi, javaPath?: string) {
-    const sqlJob = new sshSqlJob();
-    sqlJob.options.secure = connection.getConfig().secureSQL;
-    if (!javaPath) {
-      const javaVersion = connection.getConfig().mapepireJavaVersion;
-      if (Number.isNaN(Number(javaVersion))) {
-        javaPath = "";
+  public async newJob(connection: IBMi, options?: { javaPath?: string, jdbc?: JDBCOptions }) {
+    const config = connection.getConfig();
+    const useServer = config.mapepireUseServer;
+    const sqlJob = useServer ? new SQLJob(options?.jdbc) : new SSHSQLJob(options?.jdbc);
+    sqlJob.options.secure = sqlJob.options.secure || config.secureSQL;
+    if (useServer) {
+      connection.appendOutput(`Connecting to Mapepire over HTTP on port ${config.mapepireServerPort}${config.mapepireAllowSelfCert ? ", allowing self-signed certificates" : ""}`);
+      //HTTP connection
+      const password = await this.getPassword(connection);
+      if (!password) {
+        throw new Error("No password provided; cannot connect to Mapepire Server");
       }
-      else {
-        javaPath = getJavaHome(connection, javaVersion) || DEFAULT_JAVA_EIGHT;
-      }
+      await sqlJob.connect({
+        host: connection.currentHost,
+        user: connection.currentUser,
+        password,
+        rejectUnauthorized: (config.mapepireAllowSelfCert !== true),
+        port: config.mapepireServerPort
+      });
     }
-    const stream = await sqlJob.getSshChannel(this, connection, javaPath);
-    await sqlJob.connectSsh(stream);
+    else {
+      //Single mode over SSH
+      connection.appendOutput(`Connecting to Mapepire over SSH in single mode`);
+      const sshJob = sqlJob as SSHSQLJob;
+      let javaPath = options?.javaPath;
+      if (!javaPath) {
+        const javaVersion = config.mapepireJavaVersion;
+        if (Number.isNaN(Number(javaVersion))) {
+          javaPath = "";
+        }
+        else {
+          javaPath = getJavaHome(connection, javaVersion) || DEFAULT_JAVA_EIGHT;
+        }
+      }
+      const stream = await sshJob.getSshChannel(this, connection, javaPath);
+      await sshJob.connectSsh(connection, stream);
+    }
+
     // sqlJob.setTraceConfig(`IN_MEM`, `ON`);
     // sqlJob.enableLocalTrace();
     return sqlJob;
@@ -132,6 +163,10 @@ export class Mapepire implements IBMiComponent {
 
   reset() {
     this.jobs.clear();
+  }
+
+  private async getPassword(connection: IBMi) {
+    return this.passwordProvider?.(connection);
   }
 }
 

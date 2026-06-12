@@ -57,6 +57,18 @@ export interface Action {
   outputToFile?: string
 }
 
+export interface ActionResult {
+  success: boolean,
+  output: {
+    path: string,
+    processed: boolean,
+    hasRun: boolean,
+    executionOK: boolean,
+    output: string[]
+  }[],
+  message: string
+}
+
 export interface ConnectionData {
   name: string;
   host: string;
@@ -181,7 +193,8 @@ export type AttrOperands = 'ACCESS_TIME' | 'ALLOC_SIZE' | 'ALLOC_SIZE_64' | 'ALW
 
 export type SearchResults = {
   term: string,
-  hits: SearchHit[]
+  hits: SearchHit[],
+  warnings?: SearchHit[]
 }
 
 export type SearchHit = {

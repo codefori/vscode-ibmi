@@ -1,4 +1,4 @@
-import { CancellationToken, commands, env, Uri, window } from "vscode";
+import { CancellationToken, commands, env, Uri, window, workspace } from "vscode";
 import IBMi, { ConnectionErrorCode, ConnectionMessageType } from "../api/IBMi";
 
 export function messageCallback(type: ConnectionMessageType, message: string) {
@@ -47,7 +47,8 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
         modal: true,
         detail: `Your home directory (${data}) does not exist, so Code for IBM i may not function correctly. Would you like to create this directory now?`,
       }, `Yes`)) {
-        let mkHomeCmd = `mkdir -p ${data} && chown ${connection.currentUser.toLowerCase()} ${data} && chmod 0755 ${data}`;
+        // Create home directory with 750 permissions and .vscode folder with 700 permissions
+        let mkHomeCmd = `mkdir -p ${data} && chown ${connection.currentUser.toLowerCase()} ${data} && chmod 0750 ${data} && mkdir -p ${data}/.vscode && chmod 0700 ${data}/.vscode`;
         let mkHomeResult = await connection.sendCommand({ command: mkHomeCmd, directory: `.` });
         if (0 === mkHomeResult.code) {
           return true;
@@ -57,6 +58,82 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
           mkHomeErrs = mkHomeErrs.substring(1 + mkHomeErrs.indexOf(`\n`)).replace(`bash: line 1: `, ``);
           await window.showWarningMessage(`Error creating home directory (${data}):\n${mkHomeErrs}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
           return false;
+        }
+      }
+      break;
+
+    case `home_directory_permissions`:
+      const { homeDir, homePerms, vscodeExists, vscodePerms } = data;
+      let message = `Security recommendation: Update directory permissions?\n\n`;
+      let needsUpdate = false;
+      
+      if (homePerms && homePerms !== '750') {
+        message += `• Home directory (${homeDir}) has permissions ${homePerms}, recommended: 750\n`;
+        needsUpdate = true;
+      }
+      
+      if (vscodeExists && vscodePerms && vscodePerms !== '700') {
+        message += `• ${homeDir}/.vscode directory has permissions ${vscodePerms}, recommended: 700\n`;
+        needsUpdate = true;
+      } else if (!vscodeExists) {
+        message += `• ${homeDir}/.vscode directory does not exist and will be created with permissions 700\n`;
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
+        const config = connection.getConfig();
+        const autoUpdateSetting = config.autoUpdateDirectoryPermissions || "ask";
+        
+        let shouldUpdate = false;
+        
+        if (autoUpdateSetting === `always`) {
+          shouldUpdate = true;
+        } else if (autoUpdateSetting === `never`) {
+          shouldUpdate = false;
+        } else {
+          // autoUpdateSetting === 'ask'
+          const response = await window.showWarningMessage(`Directory permissions`, {
+            modal: true,
+            detail: message + `\nWould you like to update these permissions for better security?`,
+          }, `Yes`, `No`, `Always`, `Never`);
+          
+          if (response === `Yes`) {
+            shouldUpdate = true;
+          } else if (response === `Always`) {
+            shouldUpdate = true;
+            config.autoUpdateDirectoryPermissions = `always`;
+            await IBMi.connectionManager.update(config);
+          } else if (response === `Never`) {
+            shouldUpdate = false;
+            config.autoUpdateDirectoryPermissions = `never`;
+            await IBMi.connectionManager.update(config);
+          }
+          // If response is 'No' or undefined (dialog closed), shouldUpdate remains false
+        }
+        
+        if (shouldUpdate) {
+          let updateCmd = '';
+          
+          if (homePerms && homePerms !== '750') {
+            updateCmd += `chmod 0750 "${homeDir}"`;
+          }
+
+          if (!vscodeExists) {
+            updateCmd += (updateCmd ? ' && ' : '') + `mkdir -p "${homeDir}/.vscode" && chmod 0700 "${homeDir}/.vscode"`;
+          } else if (vscodePerms && vscodePerms !== '700') {
+            updateCmd += (updateCmd ? ' && ' : '') + `chmod 0700 "${homeDir}/.vscode"`;
+          }
+          
+          if (updateCmd) {
+            let updateResult = await connection.sendCommand({ command: updateCmd, directory: `.` });
+            if (0 === updateResult.code) {
+              window.showInformationMessage(`Directory permissions updated successfully.`);
+              return true;
+            } else {
+              await window.showWarningMessage(`Error updating permissions`, { modal: true, detail: updateResult.stderr });
+              return false;
+            }
+          }
         }
       }
       break;

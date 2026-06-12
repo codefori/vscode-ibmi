@@ -28,7 +28,9 @@ export namespace SearchTools {
       const pfgrep = connection.remoteFeatures.pfgrep;
 
       if (typeof members === `string`) {
-        memberFilter = connection.sysNameInAmerican(`${members}.MBR`);
+        memberFilter = connection.upperCaseName(
+          connection.sysNameInAmerican(`${members}.MBR`)
+        );
       } else
         if (Array.isArray(members)) {
           if (members.length > connection.maximumArgsLength) {
@@ -40,7 +42,7 @@ export namespace SearchTools {
         }
 
       // First, let's fetch the ASP info
-      const asp = await connection.lookupLibraryIAsp(library);
+      const asp = await connection.getLibraryIAsp(library);
 
       // Then search the members
       var result: CommandResult | undefined = undefined;
@@ -152,10 +154,11 @@ export namespace SearchTools {
           command: `${find} ${Tools.escapePath(path)} ${ignoreString} -type f -iname '*${findTerm}*' -print`
         });
 
-        if (findRes.code == 0 && findRes.stdout) {
+        if (findRes.stdout) {
           return {
             term: findTerm,
-            hits: parseFindOutput(findRes.stdout)
+            hits: parseFindOutput(findRes.stdout),
+            ...(findRes.stderr ? { warnings: parseFindOutput(findRes.stderr) } : {})
           }
         }
       } else {

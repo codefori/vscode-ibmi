@@ -1,4 +1,4 @@
-import { BindingValue } from "@ibm/mapepire-js";
+import { BindingValue, SQLJob } from "@ibm/mapepire-js";
 import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
 import { ClientErrorExtensions } from "ssh2";
@@ -9,21 +9,20 @@ import { Tools } from './Tools';
 import { IBMiComponent } from "./components/component";
 import { ComponentManager, ComponentSearchProps } from "./components/manager";
 import { Mapepire } from './components/mapepire';
-import { sshSqlJob } from './components/mapepire/sqlJob';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/serverFile';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { AspInfo, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, RemoteCommand, QsysPath, CacheItem } from './types';
+import { CacheItem, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, QsysPath, RemoteCommand } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
 }
 
 export type ConnectionMessageType = 'info' | 'warning' | 'error';
-export type ConnectionErrorCode = `shell_config` | `home_directory_creation` | `QCPTOIMPF_exists` | `QCPFRMIMPF_exists` | `default_not_bash` | `invalid_bashrc` | `invalid_temp_lib` | `no_auto_conv_ebcdic` | `not_loaded_debug_config` | `no_sql_runner` | `ccsid_warning` | `component_signature_mismatch`;
+export type ConnectionErrorCode = `shell_config` | `home_directory_creation` | `home_directory_permissions` | `QCPTOIMPF_exists` | `QCPFRMIMPF_exists` | `default_not_bash` | `invalid_bashrc` | `invalid_temp_lib` | `no_auto_conv_ebcdic` | `not_loaded_debug_config` | `no_sql_runner` | `ccsid_warning` | `component_signature_mismatch`;
 
 export interface ConnectionResult {
   success: boolean
@@ -37,6 +36,10 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   {
     path: `/usr/bin/`,
     names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`, `uname`]
+  },
+  {
+    path: `/QOpenSys/usr/bin/`,
+    names: [`openssl`]
   },
   {
     path: `/QOpenSys/pkgs/bin/`,
@@ -83,6 +86,8 @@ export default class IBMi {
   private qccsid: number = IBMi.CCSID_NOCONVERSION;
   private userJobCcsid: number = IBMi.CCSID_SYSVAL;
 
+  private currentASP: string | undefined;
+
   private componentManager = new ComponentManager(this);
 
   private configFiles: ConnectionConfigFiles = {
@@ -106,33 +111,12 @@ export default class IBMi {
   private tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
 
-  private sqlJob: sshSqlJob | undefined;
+  private sqlJob: SQLJob | undefined;
   splfUserData: string | undefined;
 
-  /**
-   * Used to store ASP numbers and their names
-   * Their names usually maps up to a directory in
-   * the root of the IFS, thus why we store it.
-   */
-  private iAspInfo: AspInfo[] = [];
-  private currentAsp: string | undefined;
-  private libraryAsps = new Map<string, number>();
+  private libraryAsps = new Map<string, string>();
 
   connectionSuccessful = false;
-
-  /**
-   * @deprecated Will be replaced with {@link IBMi.getAllIAsps} in v3.0.0
-   */
-  public get aspInfo(): { [id: number]: string } {
-    console.warn("[Code for IBM i] Deprecation warning: you are using IBMi::aspInfo which is deprecated and will be removed in v3.0.0. Please use IBMi::getAllIAsps instead.");
-    const result: { [id: number]: string } = {};
-
-    this.iAspInfo.forEach(asp => {
-      result[asp.id] = asp.name;
-    });
-
-    return result;
-  }
 
   remoteFeatures: { [name: string]: string | undefined };
 
@@ -211,7 +195,7 @@ export default class IBMi {
 
   getConfig() {
     if (this.connected && this.config) {
-      return this.config!;
+      return this.config;
     } else {
       throw new Error(`Not connected to IBM i.`);
     }
@@ -219,6 +203,11 @@ export default class IBMi {
 
   setConfig(newConfig: ConnectionConfig) {
     this.config = newConfig;
+  }
+
+  getTempDirectory() {
+    const config = this.getConfig();
+    return Tools.ensureFullPath(config.tempDir, config.homeDirectory);
   }
 
   constructor() {
@@ -230,6 +219,7 @@ export default class IBMi {
       setccsid: undefined,
       md5sum: undefined,
       sha256sum: undefined,
+      openssl: undefined,
       bash: undefined,
       chsh: undefined,
       stat: undefined,
@@ -374,14 +364,14 @@ export default class IBMi {
       //   - stdout contains the name of the home directory (even if it does not exist)
       //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
       //   - The 'test' command causes an error if the home directory is not writable (one can cd into a non-writable directory)
-      let isHomeUsable = (0 == echoHomeResult.code);
-      if (isHomeUsable) {
-        defaultHomeDir = echoHomeResult.stdout.trim();
+      const isHomeUsable = (0 == echoHomeResult.code);
+      const homeOutput = echoHomeResult.stdout.trim();
+      if (isHomeUsable && homeOutput && homeOutput !== "/") {
+        defaultHomeDir = homeOutput;
       } else {
         // Let's try to provide more valuable information to the user about why their home directory
         // is bad and maybe even provide the opportunity to create the home directory
-
-        let actualHomeDir = echoHomeResult.stdout.trim();
+        let actualHomeDir = homeOutput;
 
         // we _could_ just assume the home directory doesn't exist but maybe there's something more going on, namely mucked-up permissions
         let doesHomeExist = (0 === (await this.sendCommand({ command: `test -e ${actualHomeDir}` })).code);
@@ -414,17 +404,71 @@ export default class IBMi {
         }
       }
 
+      if (!defaultHomeDir || defaultHomeDir === "/") {
+        defaultHomeDir = `/home/${connectionObject.username}`;
+        //We'll warn only once
+        if (!this.config.homeDirectory || this.config.homeDirectory === "/") {
+          callbacks.message(`warning`, `Your home directory is set to '/' on your user profile. Code for IBM i will use ${defaultHomeDir} instead. Please contact a system administrator to fix this.`);
+        }
+      }
+
       // Check to see if we need to store a new value for the home directory
       if (defaultHomeDir) {
         if (this.config.homeDirectory !== defaultHomeDir) {
           this.config.homeDirectory = defaultHomeDir;
           callbacks.message(`info`, `Configured home directory reset to ${defaultHomeDir}.`);
         }
+
+        // Check permissions on home directory and .vscode folder
+        callbacks.progress({
+          message: `Checking directory permissions.`
+        });
+
+        // Parse the rwx mode field from `ls -ld` into octal (e.g. "750").
+        // -L dereferences symlinks so we read the TARGET's permissions: IBM i home
+        // directories are frequently symlinks into an ASP (e.g. /home/me -> /ASP/home/me),
+        // and chmod follows the link, so detection must follow it too or it can never converge.
+        // Returns 'error' when the output can't be parsed (empty stdout, ls error, banner noise).
+        const getPermissions = async (path: string) => {
+          const out = (await this.sendCommand({ command: `ls -ldL "${path}" 2>/dev/null` })).stdout;
+          return Tools.parseLsPermissions(out) ?? 'error';
+        };
+
+        const homePerms = await getPermissions(defaultHomeDir);
+
+        // Check if .vscode directory exists and get its permissions
+        const vscodeDir = `${defaultHomeDir}/.vscode`;
+        const vscodeExistsResult = await this.sendCommand({
+          command: `test -d ${vscodeDir} && echo "exists" || echo "notexists"`
+        });
+        const vscodeExists = vscodeExistsResult.stdout.trim() === 'exists';
+        const vscodePerms = vscodeExists ? await getPermissions(vscodeDir) : '';
+
+        // Check if permissions need updating
+        const needsPermissionUpdate =
+          (homePerms !== 'error' && homePerms !== '750') ||
+          !vscodeExists ||
+          (vscodeExists && vscodePerms !== 'error' && vscodePerms !== '700');
+
+        if (needsPermissionUpdate && !options.reconnecting) {
+          await callbacks.uiErrorHandler(this, `home_directory_permissions`, {
+            homeDir: defaultHomeDir,
+            homePerms: homePerms !== 'error' ? homePerms : undefined,
+            vscodeExists,
+            vscodePerms: vscodePerms !== 'error' ? vscodePerms : undefined
+          });
+        }
       } else {
         // New connections always have `.` as the initial value.
         // If we can't find a usable home directory, just reset it to
         // the initial default.
         this.config.homeDirectory = `.`;
+      }
+
+      // Migration: update old default tempDir (/tmp) to new default (~/.vscode/tmp)
+      if (this.config.tempDir === `/tmp` || this.config.tempDir === `.vscode/tmp`) {
+        this.config.tempDir = `~/.vscode/tmp`;
+        callbacks.message(`info`, `Temporary directory updated to ~/.vscode/tmp`);
       }
 
       //Set a default IFS listing
@@ -523,7 +567,7 @@ export default class IBMi {
       callbacks.progress({ message: `Checking Mapepire status.` });
       const tempDirSet = await this.checkOrCreateTempDirectory();
       if (!tempDirSet) {
-        this.config.tempDir = `/tmp`;
+        this.config.tempDir = `~/.vscode/tmp`;
       }
 
       // We always start up Mapepire first
@@ -562,6 +606,101 @@ export default class IBMi {
       } else {
         callbacks.message(`warning`, `Mapepire component failed to start. SQL operations will not be available.`);
         this.appendOutput(`Warning: Mapepire component not available\n`);
+      }
+
+      try {
+        await this.setCurrentASP(this.getConfig().iasp);
+      }
+      catch (error: any) {
+        callbacks.message(`warning`, `Failed to switch to ASP ${this.getConfig().iasp}: ${error}.`);
+      }
+
+      if (this.sqlRunnerAvailable()) {
+        // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
+
+        // Fetch conversion values?
+        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.qccsid) {
+          this.qccsid = cachedServerSettings.qccsid;
+          this.userJobCcsid = cachedServerSettings.jobCcsid;
+        } else {
+          callbacks.progress({
+            message: `Fetching conversion values.`
+          });
+
+          // Next, we're going to see if we can get the CCSID from the user or the system.
+          // Some things don't work without it!!!
+          try {
+            // we need to grab the system CCSID (QCCSID) and the users default CCSID
+            const [ccsids] = await this.runSQL( /* sql */
+              `select CURRENT_NUMERIC_VALUE, CHARACTER_CODE_SET_ID
+              from QSYS2.SYSTEM_VALUE_INFO
+              cross join table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )
+              where SYSTEM_VALUE_NAME = 'QCCSID'`
+            );
+
+            if (typeof ccsids.CURRENT_NUMERIC_VALUE === 'number') {
+              this.qccsid = ccsids.CURRENT_NUMERIC_VALUE;
+            }
+
+            if (ccsids.CHARACTER_CODE_SET_ID !== `null` && typeof ccsids.CHARACTER_CODE_SET_ID === 'number') {
+              this.userJobCcsid = ccsids.CHARACTER_CODE_SET_ID;
+            }
+
+            // if the job ccsid is *SYSVAL, then assign it to sysval
+            if (this.userJobCcsid === IBMi.CCSID_SYSVAL) {
+              this.userJobCcsid = this.qccsid;
+            }
+
+          } catch (e) {
+            // Oh well!
+            console.log(e);
+          }
+        }
+
+        const showCcsidWarning = (message: string) => {
+          callbacks.uiErrorHandler(this, `ccsid_warning`, message);
+        }
+
+        this.appendOutput(`\nCCSID information:\n`);
+        this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
+        this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
+
+        // We only do this check if we're on 7.3 or below.
+        if (this.systemVersion && this.systemVersion <= 7.3) {
+          callbacks.progress({
+            message: `Checking PASE locale environment variables.`
+          });
+
+          const systemEnvVars = await this.content.getSysEnvVars();
+
+          const paseLang = systemEnvVars.PASE_LANG;
+          const paseCcsid = systemEnvVars.QIBM_PASE_CCSID;
+
+          if (paseLang === undefined || paseCcsid === undefined) {
+            showCcsidWarning(`The PASE environment variables PASE_LANG and QIBM_PASE_CCSID are not set correctly and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+          } else if (paseCcsid !== `1208`) {
+            showCcsidWarning(`The PASE environment variable QIBM_PASE_CCSID is not set to 1208 and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+          }
+        }
+
+        // We always need to fetch the local variants because
+        // now we pickup CCSID changes faster due to cqsh
+        callbacks.progress({
+          message: `Fetching local encoding values.`
+        });
+
+        const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+          + `  values ( cast( x'7B' as varchar(1) )`
+          + `         , cast( x'7C' as varchar(1) )`
+          + `         , cast( x'5B' as varchar(1) ) )`
+          + `)`
+          + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+
+        if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
+          this.variantChars.local = variants.LOCAL;
+        }
+      } else {
+        callbacks.message(`warning`, `The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
       }
 
       callbacks.progress({
@@ -616,14 +755,15 @@ export default class IBMi {
           })
 
         this.sendCommand({
-          command: `rm -rf ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
+          command: `rm -rf ${path.posix.join(this.getTempDirectory(), `vscodetemp*`)}`
         })
           .then(result => {
             // All good!
           })
           .catch(e => {
             // CPF2125: No objects deleted.
-            callbacks.message(`error`, `Temporary data not cleared from ${this.config?.tempDir}.`);
+            // @ts-ignore We know the config exists.
+            callbacks.message(`error`, `Temporary data not cleared from ${this.getTempDirectory()}.`);
           });
       }
 
@@ -834,128 +974,6 @@ export default class IBMi {
         this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
       }
 
-      if (this.sqlRunnerAvailable()) {
-        // Check for ASP information?
-        if (quickConnect() && cachedServerSettings?.iAspInfo) {
-          this.iAspInfo = cachedServerSettings.iAspInfo;
-        } else {
-          callbacks.progress({
-            message: `Checking for iASP information.`
-          });
-
-          //This is mostly a nice to have. We grab the ASP info so user's do
-          //not have to provide the ASP in the settings.
-          try {
-            const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
-            resultSet.forEach(row => {
-              // Does not ever include SYSBAS/SYSTEM, only iASPs
-              if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                this.iAspInfo.push({
-                  id: Number(row.ASP_NUMBER),
-                  name: String(row.DEVICE_DESCRIPTION_NAME),
-                  type: String(row.ASP_TYPE),
-                  rdbName: String(row.RDB_NAME)
-                });
-              }
-            });
-          } catch (e) {
-            //Oh well
-            callbacks.progress({
-              message: `Failed to get ASP information.`
-            });
-          }
-        }
-
-        callbacks.progress({
-          message: `Fetching current iASP information.`
-        });
-
-        this.currentAsp = await this.getUserProfileAsp();
-
-        // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
-
-        // Fetch conversion values?
-        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.qccsid) {
-          this.qccsid = cachedServerSettings.qccsid;
-          this.userJobCcsid = cachedServerSettings.jobCcsid;
-        } else {
-          callbacks.progress({
-            message: `Fetching conversion values.`
-          });
-
-          // Next, we're going to see if we can get the CCSID from the user or the system.
-          // Some things don't work without it!!!
-          try {
-
-            // we need to grab the system CCSID (QCCSID)
-            const [systemCCSID] = await this.runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
-            if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
-              this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
-            }
-
-            // we grab the users default CCSID
-            const [userInfo] = await this.runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
-            if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-              this.userJobCcsid = userInfo.CHARACTER_CODE_SET_ID;
-            }
-
-            // if the job ccsid is *SYSVAL, then assign it to sysval
-            if (this.userJobCcsid === IBMi.CCSID_SYSVAL) {
-              this.userJobCcsid = this.qccsid;
-            }
-
-          } catch (e) {
-            // Oh well!
-            console.log(e);
-          }
-        }
-
-        const showCcsidWarning = (message: string) => {
-          callbacks.uiErrorHandler(this, `ccsid_warning`, message);
-        }
-
-        this.appendOutput(`\nCCSID information:\n`);
-        this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
-        this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
-
-        // We only do this check if we're on 7.3 or below.
-        if (this.systemVersion && this.systemVersion <= 7.3) {
-          callbacks.progress({
-            message: `Checking PASE locale environment variables.`
-          });
-
-          const systemEnvVars = await this.content.getSysEnvVars();
-
-          const paseLang = systemEnvVars.PASE_LANG;
-          const paseCcsid = systemEnvVars.QIBM_PASE_CCSID;
-
-          if (paseLang === undefined || paseCcsid === undefined) {
-            showCcsidWarning(`The PASE environment variables PASE_LANG and QIBM_PASE_CCSID are not set correctly and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
-          } else if (paseCcsid !== `1208`) {
-            showCcsidWarning(`The PASE environment variable QIBM_PASE_CCSID is not set to 1208 and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
-          }
-        }
-
-        // We always need to fetch the local variants because
-        // now we pickup CCSID changes faster due to cqsh
-        callbacks.progress({
-          message: `Fetching local encoding values.`
-        });
-
-        const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-          + `  values ( cast( x'7B' as varchar(1) )`
-          + `         , cast( x'7C' as varchar(1) )`
-          + `         , cast( x'5B' as varchar(1) ) )`
-          + `)`
-          + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
-
-        if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
-          this.variantChars.local = variants.LOCAL;
-        }
-      } else {
-        callbacks.message(`warning`, `The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
-      }
-
       if (!options.reconnecting) {
         for (const operation of callbacks.onConnectedOperations || []) {
           await operation();
@@ -964,7 +982,6 @@ export default class IBMi {
 
       IBMi.GlobalStorage.setServerSettingsCache(this.currentConnectionName, {
         lastCheckedOnVersion: currentExtensionVersion,
-        iAspInfo: this.iAspInfo,
         qccsid: this.qccsid,
         jobCcsid: this.userJobCcsid,
         remoteFeatures: this.remoteFeatures,
@@ -1018,7 +1035,7 @@ export default class IBMi {
       return false;
     }
 
-    const tempLibrary = this.config.tempLibrary;
+    const tempLibrary = this.config.tempLibrary = this.upperCaseName(this.config.tempLibrary);
 
     //Check if exists and get the user defined attribute
     const setLibraryUDA = () => this.runSQL(`call QSYS.QLICOBJD('', '${tempLibrary.padEnd(10)}QSYS      ', '*LIB      ', x'00000001' || x'00000009' || x'0000000A' || cast('CODE4ITEMP' as char(10) for bit data), x'0000000000000000')`);
@@ -1065,32 +1082,25 @@ export default class IBMi {
   }
 
   private async checkOrCreateTempDirectory() {
-    let tempDirSet: boolean = false;
-
-    if (!this.config) {
-      return false;
-    }
-
+    const tempDir = this.getTempDirectory();
     let result = await this.sendCommand({
-      command: `[ -d "${this.config.tempDir}" ]`
+      command: `[ -d "${tempDir}" ]`
     });
 
     if (result.code === 0) {
       // Directory exists
-      tempDirSet = true;
+      return true;
     } else {
       // Directory does not exist, try to create it
-      let result = await this.sendCommand({
-        command: `mkdir -p ${this.config.tempDir}`
+      result = await this.sendCommand({
+        command: `mkdir -p ${tempDir}`
       });
       if (result.code === 0) {
         // Directory created
-        tempDirSet = true;
-      } else {
-        // Directory not created
+        return true;
       }
     }
-    return tempDirSet;
+    return false;
   }
 
   /**
@@ -1224,12 +1234,24 @@ export default class IBMi {
       // console.log(`Using existing temp: ${this.tempRemoteFiles[key]}`);
       return this.tempRemoteFiles[key];
     } else
-      if (this.config) {
-        let value = path.posix.join(this.config.tempDir, `vscodetemp-${Tools.makeid()}`);
+      if (this.getConfig()) {
+        let value = path.posix.join(this.getTempDirectory(), `vscodetemp-${Tools.makeid()}`);
         // console.log(`Using new temp: ${value}`);
         this.tempRemoteFiles[key] = value;
         return value;
       }
+  }
+
+  /**
+   * Cleans up a temp file and removes it from cache
+   * @param {string} key Key to the temp file to clean up
+   */
+  async clearTempRemote(key: string) {
+    const tempFile = this.tempRemoteFiles[key];
+    if (tempFile) {
+      await this.sendCommand({ command: `rm -rf ${tempFile}`, directory: `.` }).catch(() => { });
+      delete this.tempRemoteFiles[key];
+    }
   }
 
   parserMemberPath(string: string, checkExtension?: boolean): MemberParts {
@@ -1324,7 +1346,7 @@ export default class IBMi {
    * @param process the process that will run on the empty directory
    */
   async withTempDirectory<T>(process: (directory: string) => Promise<T>) {
-    const tempDirectory = `${this.config?.tempDir || '/tmp'}/code4itemp${Tools.makeid(20)}`;
+    const tempDirectory = path.posix.join(this.getTempDirectory(), `/code4itemp${Tools.makeid(20)}`);
     const prepareDirectory = await this.sendCommand({ command: `rm -rf ${tempDirectory} && mkdir -p ${tempDirectory}` });
     if (prepareDirectory.code === 0) {
       try {
@@ -1384,10 +1406,7 @@ export default class IBMi {
 
       const lastResultSet: Tools.DB2Row[] = [];
 
-      for (let i = 0; i < list.length; i++) {
-        let statement = list[i];
-        const isLast = i === (list.length - 1);
-
+      for (const statement of list) {
         if (statement.startsWith(`@`)) {
           const command = statement.substring(1);
           const log = `Running CL through SQL: ${command}\n\t`;
@@ -1484,60 +1503,16 @@ export default class IBMi {
     return this.remoteFeatures[`startDebugService.sh`] !== undefined;
   }
 
-  private async getUserProfileAsp(): Promise<string | undefined> {
-    const [currentRdb] = await this.runSQL(`values current_server`);
-
-    if (currentRdb) {
-      const key = Object.keys(currentRdb)[0];
-      const rdbName = currentRdb[key];
-      const currentAsp = this.iAspInfo.find(asp => asp.rdbName === rdbName);
-
-      if (currentAsp) {
-        return currentAsp.name;
-      }
-    }
-  }
-
-  getAllIAsps() {
-    return this.iAspInfo;
-  }
-
-  getIAspDetail(by: string | number) {
-    let asp: AspInfo | undefined;
-    if (typeof by === 'string') {
-      asp = this.iAspInfo.find(asp => asp.name === by);
-    } else {
-      asp = this.iAspInfo.find(asp => asp.id === by);
-    }
-
-    if (asp) {
-      return asp;
-    }
-  }
-
-  getIAspName(by: string | number): string | undefined {
-    return this.getIAspDetail(by)?.name;
-  }
-
-  getCurrentIAspName() {
-    return this.currentAsp;
-  }
-  async lookupLibraryIAsp(library: string): Promise<string | undefined> {
+  async getLibraryIAsp(library: string): Promise<string | undefined> {
     library = this.upperCaseName(library);
-    let foundNumber = this.libraryAsps.get(library);
-
-    if (!foundNumber) {
-      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}', DETAILED_INFO=>'NO'))`);
-      const iaspNumber = Number(row?.IASP_NUMBER);
-      if (iaspNumber >= 0) {
-        this.libraryAsps.set(library, iaspNumber);
-        foundNumber = iaspNumber;
-      }
+    let libraryIASP = this.libraryAsps.get(library);
+    if (!libraryIASP) {
+      const [row] = await this.runSQL(`select IASP_NAME from table(QSYS2.LIBRARY_INFO('${library}'));`);
+      libraryIASP = row?.IASP_NAME ? String(row.IASP_NAME) : "*SYSBAS";
+      this.libraryAsps.set(library, libraryIASP);
     }
 
-    if (foundNumber) {
-      return this.getIAspName(foundNumber);
-    }
+    return libraryIASP !== "*SYSBAS" ? libraryIASP : undefined;
   }
 
   async getFileCcsid(path: string | QsysPath): Promise<number> {
@@ -1549,7 +1524,7 @@ export default class IBMi {
     let lookupPath: string | QsysPath;
 
     if (isQsysPath) {
-      
+
       const localPath: QsysPath = { ...path };
       localPath.asp = localPath.asp ? this.sysNameInAmerican(localPath.asp) : undefined;
       localPath.library = this.sysNameInAmerican(localPath.library);
@@ -1586,11 +1561,23 @@ export default class IBMi {
     return ccsid;
   }
 
-  getLibraryIAsp(library: string) {
-    const found = this.libraryAsps.get(library);
-    if (found && found >= 0) {
-      return this.getIAspName(found);
+  /**
+   * Change/reset the current ASP
+   * @param asp an ASP name or blank/undefined to reset to the user's default ASP
+   */
+  async setCurrentASP(asp?: string) {
+    if (asp !== this.currentASP) {
+      await Promise.all([
+        this.runSQL('connect reset').then(() => asp ? this.runSQL(`connect to ${asp}`) : undefined),
+      ]);
+      this.currentASP = asp;
+      this.getContent().reset();
+      this.appendOutput(`Switched to ${asp || 'default'} ASP\n`);
     }
+  }
+
+  getCurrentASP() {
+    return this.currentASP;
   }
 
   /**

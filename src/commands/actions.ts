@@ -13,6 +13,7 @@ type CommandOrigin = "editor" | "objectBrowser" | "ifsBrowser" | "commandPalette
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [
     commands.registerCommand(`code-for-ibmi.runAction`, async (item: (CommandOrigin | TreeItem | BrowserItem | Uri), items?: (TreeItem | BrowserItem | Uri)[], action?: Action, method?: DeploymentMethod, workspaceFolder?: WorkspaceFolder) => {
+      let actionMessage: string;
       if (!item && !items && !action && !method && !workspaceFolder) {
         item = "commandPalette";
       }
@@ -60,8 +61,9 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const scheme = uris[0]?.scheme;
         if (scheme) {
           if (!uris.every(uri => uri.scheme === scheme)) {
-            window.showWarningMessage(l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", ")));
-            return false;
+            actionMessage = l10n.t("Actions can't be run on multiple items of different natures. ({0})", uris.map(uri => uri.scheme).filter(Tools.distinct).join(", "));
+            window.showWarningMessage(actionMessage);
+            return { success: false, output: [], error: actionMessage };
           }
 
           const config = connection.getConfig();
@@ -72,7 +74,8 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
               if (config.autoSaveBeforeAction) {
                 await openedEditor.document.save();
               } else {
-                const result = await window.showWarningMessage(`File ${path} must be saved to run Actions.`, `Save`, `Save automatically`, `Cancel`);
+                actionMessage = l10n.t(`File {0} must be saved to run Actions.`, path);
+                const result = await window.showWarningMessage(actionMessage, `Save`, `Save automatically`, `Cancel`);
                 switch (result) {
                   case `Save`:
                     await openedEditor.document.save();
@@ -85,7 +88,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
                     break;
 
                   default:
-                    return;
+                    return { success: false, output: [], error: actionMessage }
                 }
               }
             }
@@ -94,14 +97,19 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
           if ([`member`, `streamfile`, `file`, 'object'].includes(scheme)) {
             return await runAction(instance, uris, action, method, browserItems, workspaceFolder);
           }
+
+          actionMessage = l10n.t("Unsupported file scheme: {0}. Must be 'member', 'streamfile', 'file', or 'object'", scheme);
+          return { success: false, output: [], error: actionMessage };
         }
 
+        actionMessage = l10n.t("Failed to retrieve file scheme");
+        return { success: false, output: [], error: actionMessage };
       }
       else {
-        window.showErrorMessage('Please connect to an IBM i first');
+        actionMessage = l10n.t("Please connect to an IBM i first");
+        window.showErrorMessage(actionMessage);
+        return { success: false, output: [], error: actionMessage };
       }
-
-      return false;
     }),
 
     commands.registerCommand(`code-for-ibmi.openErrors`, async (options: { qualifiedObject?: string, workspace?: WorkspaceFolder, keepDiagnostics?: boolean }) => {
@@ -119,18 +127,17 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         ext: undefined
       };
 
-      let inputPath: string | undefined
+      let inputPath: string | undefined      
+      const connection = instance.getConnection()!; //safe as action requires to be connected
 
       if (options.qualifiedObject) {
         // Value passed in via parameter
         inputPath = options.qualifiedObject;
-
       } else {
         // Value collected from user input
 
         let initialPath = ``;
-        const editor = window.activeTextEditor;
-        const connection = instance.getConnection();
+        const editor = window.activeTextEditor;        
 
         if (editor && connection) {
           const config = connection.getConfig();
@@ -149,7 +156,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
                 }
                 break;
               case `streamfile`:
-                detail.asp = connection.getCurrentIAspName();
+                detail.asp = await connection.getLibraryIAsp(config.currentLibrary);
                 detail.lib = config.currentLibrary;
                 break;
             }
@@ -172,7 +179,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         const [library, object] = inputPath.split(`/`);
         if (library && object) {
           const nameDetail = path.parse(object);
-          refreshDiagnosticsFromServer(instance, [{ library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }], options.keepDiagnostics);
+          refreshDiagnosticsFromServer(connection, [{ library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }], options.keepDiagnostics);
         }
       }
     }),

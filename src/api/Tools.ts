@@ -180,8 +180,8 @@ export namespace Tools {
    * Transforms a normalized path into an OS specific path.
    * - Replaces ~ with the current home directory
    * - Changes all / to \ on Windows
-   * @param path 
-   * @returns 
+   * @param path
+   * @returns
    */
   export function resolvePath(path: string) {
     path = path.replace("~", os.homedir());
@@ -216,5 +216,66 @@ export namespace Tools {
     }
 
     return { requiresConversion: true, targetCcsid: configuredTargetCcsid };
+  }
+
+  export function ensureFullPath(inputPath: string, remoteHomeDirectory: string | undefined): string {
+    // Handle ~ expansion with remote home directory
+    // Only expand ~ when it's followed by / or is the entire path
+    if (inputPath === '~' || inputPath.startsWith('~/')) {
+      if (remoteHomeDirectory) {
+        inputPath = inputPath.replace('~', remoteHomeDirectory);
+      } else {
+        // If no home directory is provided, just remove the ~ and treat as relative
+        inputPath = inputPath.substring(1);
+        // Remove leading slash if present after removing ~
+        if (inputPath.startsWith('/')) {
+          inputPath = inputPath.substring(1);
+        }
+      }
+    }
+
+    // Check if the path is already absolute (starts with /)
+    if (inputPath.startsWith('/')) {
+      return inputPath;
+    }
+
+    // If not absolute, prepend the remote home directory if available
+    if (remoteHomeDirectory) {
+      // Use path.posix.join to ensure forward slashes for IFS paths
+      return path.posix.join(remoteHomeDirectory, inputPath);
+    }
+
+    // If no home directory is provided, return the path as-is
+    // (it will remain relative)
+    return inputPath;
+  }
+
+  /**
+   * Parses the leading mode field of an `ls -l`/`ls -ld` listing into an octal
+   * permission string (e.g. `drwxr-x---` -> `"750"`).
+   *
+   * The first character is the file type (`-dlbcps`) and is ignored; the next
+   * nine characters are the owner/group/other `rwx` triplets. The execute slot
+   * also encodes the special bits, which are treated as execute being present:
+   * `s`/`S` (setuid/setgid) and `t`/`T` (sticky). Any trailing content, such as
+   * the `+`/`.` ACL marker that `ls` may append, is ignored.
+   *
+   * @param lsOutput raw (trimmed or untrimmed) stdout from `ls -l`/`ls -ld`
+   * @returns the 3-digit octal permission string, or `undefined` when the input
+   * does not start with a valid mode field (empty output, `ls` error, banner noise)
+   */
+  export function parseLsPermissions(lsOutput: string): string | undefined {
+    // type char + 9 perm chars (s/S = setuid/setgid, t/T = sticky; trailing ACL marker ignored)
+    const match = lsOutput.trim().match(/^[-dlbcps]([-r][-w][-xsS][-r][-w][-xsS][-r][-w][-xtT])/);
+    if (!match) {
+      return undefined;
+    }
+
+    const field = match[1];
+    const permissions: number[] = [];
+    for (let i = 0; i < 9; i += 3) {
+      permissions.push((field[i] === "r" ? 4 : 0) + (field[i + 1] === "w" ? 2 : 0) + (["x", "s", "t"].includes(field[i + 2]) ? 1 : 0));
+    }
+    return permissions.map(String).join("");
   }
 }

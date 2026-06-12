@@ -48,11 +48,14 @@ export const ActionSuite: TestSuite = {
     const config = connection.getConfig();
 
     const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
-    const tempDir = config.tempDir;
+    const tempDir = connection.getTempDirectory();
     assert.ok(workspaceFolder, "No workspace folder to work with");
     assert.ok(tempDir, "Cannot run deploy tools tests: no remote temp directory defined");
 
-    const tempDeployLocation = connection?.getTempRemote(`/some/dir`);
+    const tempRemote = connection.getTempRemote(`/some/dir`);
+    assert.ok(tempRemote, "No temp remote");
+
+    const tempDeployLocation = Tools.ensureFullPath(tempRemote, config.homeDirectory);
     await createFolder(workspaceFolder.uri, tempDeployLocation!, helloWorldProject);
     assert.ok(helloWorldProject.localPath, "Project has no local path");
     assert.ok(existsSync(helloWorldProject.localPath.fsPath), "Project local directory does not exist");
@@ -105,7 +108,7 @@ export const ActionSuite: TestSuite = {
 
         const success = await runAction(instance, uri, action, `all`);
         console.log(success);
-        assert.ok(success);
+        assert.ok(success.success);
       }
     },
     {
@@ -166,8 +169,8 @@ export const ActionSuite: TestSuite = {
           ],
         };
         const uri = getMemberUri({ library: tempLib, file: 'QRPGLESRC', name: 'THEBADONE', extension: 'RPGLE' })
-        const success = await runAction(instance, uri, action, `all`);
-        assert.strictEqual(success, false);
+        const result = await runAction(instance, uri, action, `all`);
+        assert.strictEqual(result.success, false);
       }
     },
     {
@@ -213,8 +216,8 @@ export const ActionSuite: TestSuite = {
           ],
         };
         const uri = getMemberUri({ library: tempLib, file: 'QRPGSRC', name: 'BADRPG', extension: srcType })
-        const success = await runAction(instance, uri, action, `all`);
-        assert.strictEqual(success, false);
+        const result = await runAction(instance, uri, action, `all`);
+        assert.strictEqual(result.success, false);
       }
     },
     {
@@ -224,11 +227,11 @@ export const ActionSuite: TestSuite = {
           vscode.Uri.parse("member:///QTEMP/SOMETHING.RPGLE"),
           vscode.Uri.parse("file://loca/youwish.txt")
         ];
-        assert.strictEqual(await runAction(instance, uris, {
+        assert.strictEqual((await runAction(instance, uris, {
           name: "It won't run",
           command: "wont run",
           environment: "ile",
-        }), false);
+        })).success, false);
       }
     },
     {
@@ -241,7 +244,7 @@ export const ActionSuite: TestSuite = {
           environment: "ile"
         });
 
-        assert.ok(result);
+        assert.ok(result.success);
       }
     },
     {
@@ -273,7 +276,7 @@ export const ActionSuite: TestSuite = {
             environment: "ile"
           });
 
-          assert.ok(result);
+          assert.ok(result.success);
         }
         finally {
           await connection.runCommand({ command: `DLTF FILE(${testlib}/${file})`, noLibList: true });
@@ -306,7 +309,7 @@ export const ActionSuite: TestSuite = {
               environment: "ile"
             });
 
-            assert.ok(result);
+            assert.ok(result.success);
 
             const rows = await connection.runSQL(`Select key, value from ${testLib}.${table}`);
             assert.strictEqual(rows.length, 5);
@@ -328,10 +331,21 @@ export const ActionSuite: TestSuite = {
         };
 
         const success = await runAction(instance, uris, action, `compare`);
-        assert.ok(success);
+        assert.ok(success.success);
       }
     }
-  ]
+  ],
+  after: async () => {
+    // Clean up local test directory
+    if (helloWorldProject.localPath && existsSync(helloWorldProject.localPath.fsPath)) {
+      await vscode.workspace.fs.delete(helloWorldProject.localPath, { recursive: true, useTrash: false });
+    }
+
+    // Clean up remote test directory
+    if (helloWorldProject.remotePath && await instance.getConnection()?.getContent().isDirectory(helloWorldProject.remotePath)) {
+      await instance.getConnection()?.sendCommand({ command: `rm -rf ${helloWorldProject.remotePath}` });
+    }
+  }
 };
 
 /**
@@ -341,7 +355,7 @@ export const ActionSuite: TestSuite = {
 
 async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: string, srcType: string = 'RPGLE') {
   const actionRan = await runAction(instance, uri, action, `all`);
-  assert.ok(actionRan);
+  assert.ok(actionRan.success);
 
   const keysToCompare = [`library`, `name`, `type`, `text`, `attribute`, `sourceFile`, `memberCount`];
   const toJSON = (obj: Object) => JSON.stringify(obj, (key, value) => {

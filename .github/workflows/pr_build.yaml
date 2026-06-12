@@ -1,0 +1,12 @@
+on:
+  pull_request:    
+    types: [opened]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  pull-request-build:
+    uses: codefori/.github/.github/workflows/pr_build.yaml@main
+    if: github.event.pull_request || (github.event.pull_request_review_comment && contains(github.event.pull_request_review_comment.comment.body, '/build'))
+    with:
+       publish_types: true

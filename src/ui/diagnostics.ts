@@ -1,8 +1,8 @@
 
 import * as vscode from "vscode";
-import Instance from "../Instance";
 import IBMi from "../api/IBMi";
 import { parseErrors } from "../api/errors/parser";
+import { instance } from "../instantiate";
 import { FileError } from "../typings";
 import { VscodeTools } from "./Tools";
 
@@ -56,28 +56,29 @@ export function clearDiagnostic(uri: vscode.Uri, changeRange: vscode.Range) {
   }
 }
 
-export async function refreshDiagnosticsFromServer(instance: Instance, evfeventInfo: EvfEventInfo[], keepDiagnostics?: boolean) {
-  const connection = instance.getConnection();
-
-  if (connection) {
-    const content = connection.getContent();
-
-    if (IBMi.connectionManager.get(`clearErrorsBeforeBuild`) && !keepDiagnostics) {
-      // Clear all errors if the user has this setting enabled
-      clearDiagnostics();
-    }
-
-    evfeventInfo.forEach(async e => {
-      const tableData = await content.getTable(e.library, `EVFEVENT`, e.object);
-      const lines = tableData.map(row => String(row.EVFEVENT));
-      handleEvfeventLines(lines, instance, e);
-    });
-  } else {
-    throw new Error('Please connect to an IBM i');
+export function refreshDiagnosticsFromServer(connection: IBMi, evfeventInfo: EvfEventInfo[], keepDiagnostics?: boolean) {
+  if (IBMi.connectionManager.get(`clearErrorsBeforeBuild`) && !keepDiagnostics) {
+    // Clear all errors if the user has this setting enabled
+    clearDiagnostics();
   }
+
+  evfeventInfo.forEach(async e => {
+    const overFile = await connection.getContent().overDBFile(e.library, "EVFEVENT", e.object);
+    try {
+      const lines = (await connection.runSQL(/* sql */`select trim(cast(EVFEVENT as VarChar(400) CCSID ${connection.getCcsid()})) EVFEVENT from ${overFile}`))
+        .map(row => String(row.EVFEVENT));
+
+      if (lines.length) {
+        handleEvfeventLines(connection, lines, e);
+      }
+    }
+    finally{
+      connection.getContent().deleteOVRDBFile(overFile);
+    }
+  });
 }
 
-export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventInfo: EvfEventInfo) {
+export async function refreshDiagnosticsFromLocal(connection: IBMi, evfeventInfo: EvfEventInfo) {
   if (evfeventInfo.workspace) {
     const evfeventFiles = await vscode.workspace.findFiles(new vscode.RelativePattern(evfeventInfo.workspace, `**/.evfevent/*`), null);
     if (evfeventFiles) {
@@ -93,7 +94,7 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
         const eol = content.includes(`\r\n`) ? `\r\n` : `\n`;
         const lines = content.split(eol);
 
-        handleEvfeventLines(lines, instance, evfeventInfo);
+        handleEvfeventLines(connection, lines, evfeventInfo);
       }
 
     } else {
@@ -102,10 +103,9 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
   }
 }
 
-export function handleEvfeventLines(lines: string[], instance: Instance, evfeventInfo: EvfEventInfo) {
-  const connection = instance.getConnection()!;
+export function handleEvfeventLines(connection: IBMi, lines: string[], evfeventInfo: EvfEventInfo) {
   const config = connection.getConfig();
-  const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
+  const asp = evfeventInfo.asp ? `${connection.getLibraryIAsp(evfeventInfo.library)}/` : ``;
 
   const errorsByFiles = parseErrors(lines);
 
@@ -151,16 +151,12 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
           let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : undefined);
 
           if (relativeCompilePath) {
-            if (connection) {
-              // Belive it or not, sometimes if the deploy directory is symlinked into as ASP, this can be a problem
-              const aspNames = connection.getAllIAsps().map(asp => asp.name);
-
-              for (const aspName of aspNames) {
-                const aspRoot = `/${aspName}`;
-                if (relativeCompilePath.startsWith(aspRoot)) {
-                  relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
-                  break;
-                }
+            if (asp) {
+              // Believe it or not, sometimes if the deploy directory is symlinked into an ASP, this can be a problem              
+              const aspRoot = `/${asp}`;
+              if (relativeCompilePath.startsWith(aspRoot)) {
+                relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
+                break;
               }
             }
 

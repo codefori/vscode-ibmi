@@ -1135,12 +1135,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       }
 
       if (parameters.length) {
-        const connection = getConnection();
-
         if (!parameters.some(p => p.path.split('/')[1] === '*ALL')) {
-          const selectedAsp = connection.getCurrentIAspName();
-          const aspText = (selectedAsp ? vscode.l10n.t(`(in ASP {0})`, selectedAsp) : ``);
-
           const list = IBMi.GlobalStorage.getPreviousSearchTerms();
           const listHeader: vscode.QuickPickItem[] = [
             { label: vscode.l10n.t(`Previous search terms`), kind: vscode.QuickPickItemKind.Separator }
@@ -1151,7 +1146,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = list.length > 0 ? listHeader.concat(list.map(term => ({ label: term }))).concat(clearListArray) : [];
           quickPick.placeholder = list.length > 0 ? vscode.l10n.t(`Enter search term or select one of the previous search terms.`) : vscode.l10n.t(`Enter search term.`);
-          quickPick.title = vscode.l10n.t(`Search {0} {1}`, parameters.map(p => p.path).join(", "), aspText);
+          quickPick.title = vscode.l10n.t(`Search {0}`, parameters.map(p => p.path).join(", "));
 
           quickPick.onDidChangeValue(() => {
             if (quickPick.value === ``) {

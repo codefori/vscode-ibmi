@@ -26,8 +26,14 @@ export type SortOptions = {
 export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
+  private dummyDSPF = false;
+
   private get config() {
     return this.ibmi.getConfig();
+  }
+
+  reset() {
+    this.dummyDSPF = false;
   }
 
   private getTempRemote(path: string) {
@@ -67,24 +73,34 @@ export default class IBMiContent {
    */
   async downloadStreamfileRaw(remotePath: string, localPath?: string) {
     const features = this.ibmi.remoteFeatures;
+    const originalPath = remotePath;
+    let usedTempFile = false;
 
-    if (this.config.autoConvertIFSccsid && features.attr && features.iconv) {
-      // If it's not 1208, generate a temp file with the converted content
-      const ccsid = await this.getNotUTF8CCSID(features.attr, remotePath);
-      if (ccsid) {
-        const newTempFile = this.getTempRemote(remotePath);
-        await this.convertToUTF8(features.iconv, remotePath, newTempFile, ccsid);
-        remotePath = newTempFile;
+    try {
+      if (this.config.autoConvertIFSccsid && features.attr && features.iconv) {
+        // If it's not 1208, generate a temp file with the converted content
+        const ccsid = await this.getNotUTF8CCSID(features.attr, remotePath);
+        if (ccsid) {
+          const newTempFile = this.getTempRemote(remotePath);
+          await this.convertToUTF8(features.iconv, remotePath, newTempFile, ccsid);
+          remotePath = newTempFile;
+          usedTempFile = true;
+        }
+      }
+
+      if (!localPath) {
+        localPath = await tmpFile();
+      }
+
+      await this.downloadFile(localPath, remotePath);
+      const raw = await readFileAsync(localPath);
+      return raw;
+    } finally {
+      // Clean up temporary file if one was created
+      if (usedTempFile) {
+        await this.ibmi.clearTempRemote(originalPath);
       }
     }
-
-    if (!localPath) {
-      localPath = await tmpFile();
-    }
-
-    await this.downloadFile(localPath, remotePath);
-    const raw = await readFileAsync(localPath);
-    return raw;
   }
 
   /**
@@ -105,22 +121,28 @@ export default class IBMiContent {
     const client = this.ibmi.client!;
     const features = this.ibmi.remoteFeatures;
     const tmpobj = await tmpFile();
+    const fixedPath = Tools.ensureFullPath(originalPath, this.config.homeDirectory);
 
     let ccsid;
     if (this.config.autoConvertIFSccsid && features.attr) {
       // First, find the CCSID of the original file if not UTF-8
-      ccsid = await this.getNotUTF8CCSID(features.attr, originalPath);
+      ccsid = await this.getNotUTF8CCSID(features.attr, fixedPath);
     }
 
     await writeFileAsync(tmpobj, content, { encoding: encoding as BufferEncoding });
 
     if (ccsid && features.iconv) {
       // Upload our file to the same temp file, then write convert it back to the original ccsid
-      const tempFile = this.getTempRemote(originalPath);
-      await client.putFile(tmpobj, tempFile); //TODO: replace with uploadFiles
-      return await this.convertToUTF8(features.iconv, tempFile, originalPath, ccsid);
+      const tempFile = this.getTempRemote(fixedPath);
+      try {
+        await client.putFile(tmpobj, tempFile); //TODO: replace with uploadFiles
+        return await this.convertToUTF8(features.iconv, tempFile, fixedPath, ccsid);
+      } finally {
+        // Clean up temporary file
+        await this.ibmi.clearTempRemote(fixedPath);
+      }
     } else {
-      return client.putFile(tmpobj, originalPath);
+      return client.putFile(tmpobj, fixedPath);
     }
   }
 
@@ -147,89 +169,94 @@ export default class IBMiContent {
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
 
-    const asp = await this.ibmi.lookupLibraryIAsp(library);
+    const asp = await this.ibmi.getLibraryIAsp(library);
     const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
-    const tempRmt = this.getTempRemote(path);
+    const tempRmt = Tools.ensureFullPath(this.getTempRemote(path), this.config.homeDirectory);
     let retry = false;
-    
+
     // Fetch source file CCSID and determine if conversion is needed
     const sourceCcsid = await this.ibmi.getFileCcsid(path);
-    const {requiresConversion, targetCcsid} = Tools.determineCcsidConversion(sourceCcsid, this.config);
-  
-  while (true) {
-      let copyResult: CommandResult;
-      if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-        copyResult = { code: 0, stdout: '', stderr: '' };
-        if (requiresConversion) {
-          await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => {}); // ignore error
-          await this.ibmi.runSQL([
-            `Drop table if exists QTEMP.QTEMPSRC`,
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
-            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
-            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
-          ].join("\n")).catch(e => {
-            copyResult.code = -1;
-            copyResult.stderr = String(e);
-          });
-        } else {
-        try {
-          await this.ibmi.runSQL([
-            `Drop table if exists QTEMP.QTEMPSRC`,
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
-            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`]);
-        } catch (error: any) {
-          copyResult.code = -1;
-          copyResult.stderr = String(error);
-        }
-        }
-      }
-      else {
-        if (requiresConversion) {
+    const { requiresConversion, targetCcsid } = Tools.determineCcsidConversion(sourceCcsid, this.config);
+
+    try {
+      while (true) {
+        let copyResult: CommandResult;
+        if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
           copyResult = { code: 0, stdout: '', stderr: '' };
-
-          await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => {}); // ignore error
-          try {
+          if (requiresConversion) {
+            await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => { }); // ignore error
             await this.ibmi.runSQL([
-              `@QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
+              `Drop table if exists QTEMP.QTEMPSRC`,
+              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+              `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
               `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
-            ]);
-          } catch (e: any) {
-            copyResult.code = -1;
-            copyResult.stderr = String(e);
+            ].join("\n")).catch(e => {
+              copyResult.code = -1;
+              copyResult.stderr = String(e);
+            });
+          } else {
+            try {
+              await this.ibmi.runSQL([
+                `Drop table if exists QTEMP.QTEMPSRC`,
+                `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+                `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`]);
+            } catch (error: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(error);
+            }
           }
+        }
+        else {
+          if (requiresConversion) {
+            copyResult = { code: 0, stdout: '', stderr: '' };
+
+            await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => { }); // ignore error
+            try {
+              await this.ibmi.runSQL([
+                `@QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
+                `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
+              ]);
+            } catch (e: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(e);
+            }
+          } else {
+            copyResult = await this.ibmi.runCommand({
+              command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+              noLibList: true
+            });
+          }
+        }
+
+        if (copyResult.code === 0) {
+          if (!localPath) {
+            localPath = await tmpFile();
+          }
+          await this.downloadFile(localPath, tempRmt);
+          return await readFileAsync(localPath, `utf8`);
         } else {
-          copyResult = await this.ibmi.runCommand({
-            command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-            noLibList: true
-          });
-        }
-      }
+          if (!retry) {
+            const messageID = String(copyResult.stderr).substring(0, 7);
+            switch (messageID) {
+              case "CPDA08A":
+                //We need to try again after we delete the temp remote
+                await this.ibmi.clearTempRemote(path);
+                retry = true;
+                break;
+              default:
+                retry = false;
+                break;
+            }
+          }
 
-      if (copyResult.code === 0) {
-        if (!localPath) {
-          localPath = await tmpFile();
-        }
-        await this.downloadFile(localPath, tempRmt);
-        return await readFileAsync(localPath, `utf8`);
-      } else {
-        if (!retry) {
-          const messageID = String(copyResult.stderr).substring(0, 7);
-          switch (messageID) {
-            case "CPDA08A":
-              //We need to try again after we delete the temp remote
-              const result = await this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` });
-              retry = !result.code || result.code === 0;
-              break;
-            default:
-              retry = false;
-              break;
+          if (!retry) {
+            throw new Error(`Failed downloading member: ${copyResult.stderr}`);
           }
         }
-
-        if (!retry) {
-          throw new Error(`Failed downloading member: ${copyResult.stderr}`);
-        }
       }
+    } finally {
+      // Clean up temporary file
+      await this.ibmi.clearTempRemote(path);
     }
   }
 
@@ -245,7 +272,7 @@ export default class IBMiContent {
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
-    const asp = await this.ibmi.lookupLibraryIAsp(library);
+    const asp = await this.ibmi.getLibraryIAsp(library);
 
     const client = this.ibmi.client!;
     const tmpobj = await tmpFile();
@@ -255,77 +282,82 @@ export default class IBMiContent {
       const path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       // Fetch source file CCSID and determine if conversion is needed
       const sourceCcsid = await this.ibmi.getFileCcsid(path);
-      const {requiresConversion, targetCcsid} = Tools.determineCcsidConversion(sourceCcsid, this.config);
-      
-      const tempRmt = this.getTempRemote(path);
+      const { requiresConversion, targetCcsid } = Tools.determineCcsidConversion(sourceCcsid, this.config);
 
-      const touchUnicode = await this.ibmi.sendCommand({ command: `touch ${tempRmt} && attr ${tempRmt} CCSID=1208` });
-      if (touchUnicode.code !== 0) {
-        throw new Error(`Could not create UTF-8 file: ${touchUnicode.stderr}`)
-      }
-      await client.putFile(tmpobj, tempRmt);
+      const tempRmt = Tools.ensureFullPath(this.getTempRemote(path), this.config.homeDirectory);
 
-      let copyResult: CommandResult;
-      if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-        copyResult = { code: 0, stdout: '', stderr: '' };
-
-        if (requiresConversion) {
-          try {
-          await this.ibmi.runSQL([
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
-            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
-            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`,
-            `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
-            ].join("\n"));
-          } catch (e: any) {
-            copyResult.code = -1;
-            copyResult.stderr = String(e);
-          }
-        } else {
-        try {
-          await this.ibmi.runSQL([
-            `Drop table if exists QTEMP.QTEMPSRC`,
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
-            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-            `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`
-          ]);
-        } catch (error: any) {
-          copyResult.code = -1;
-          copyResult.stderr = String(error);
+      try {
+        const touchUnicode = await this.ibmi.sendCommand({ command: `touch ${tempRmt} && attr ${tempRmt} CCSID=1208` });
+        if (touchUnicode.code !== 0) {
+          throw new Error(`Could not create UTF-8 file: ${touchUnicode.stderr}`)
         }
-      }
-      }
-      else {
-         if (requiresConversion) {
+        await client.putFile(tmpobj, tempRmt);
+
+        let copyResult: CommandResult;
+        if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
           copyResult = { code: 0, stdout: '', stderr: '' };
-          try {
-            await this.ibmi.runSQL([
-            `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
-            `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
-            `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
-            ]);
-          } catch (e: any) {
-            copyResult.code = -1;
-            copyResult.stderr = String(e);
-          }
-        } else {
-        copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-          noLibList: true
-        });
-      }
-      }
 
-      if (copyResult.code === 0) {
-        const messages = Tools.parseMessages(copyResult.stderr);
-        if (messages.findId("CPIA083")) {
-          // TODO: what do we do about this, really?
-          // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
+          if (requiresConversion) {
+            try {
+              await this.ibmi.runSQL([
+                `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+                `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
+                `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+                `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`,
+                `@CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
+              ].join("\n"));
+            } catch (e: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(e);
+            }
+          } else {
+            try {
+              await this.ibmi.runSQL([
+                `Drop table if exists QTEMP.QTEMPSRC`,
+                `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES)`,
+                `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+                `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE)`
+              ]);
+            } catch (error: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(error);
+            }
+          }
         }
-        return true;
-      } else {
-        throw new Error(`Failed uploading member: ${copyResult.stderr}`);
+        else {
+          if (requiresConversion) {
+            copyResult = { code: 0, stdout: '', stderr: '' };
+            try {
+              await this.ibmi.runSQL([
+                `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
+                `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(${targetCcsid}) DBFCCSID(${this.config.sourceFileCCSID})`,
+                `@QSYS/CHGATR OBJ('${tempRmt}') ATR(*CCSID) VALUE(1208)`
+              ]);
+            } catch (e: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(e);
+            }
+          } else {
+            copyResult = await this.ibmi.runCommand({
+              command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+              noLibList: true
+            });
+          }
+        }
+
+        if (copyResult.code === 0) {
+          const messages = Tools.parseMessages(copyResult.stderr);
+          if (messages.findId("CPIA083")) {
+            // TODO: what do we do about this, really?
+            // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
+          }
+          return true;
+        } else {
+          throw new Error(`Failed uploading member: ${copyResult.stderr}`);
+        }
+      } finally {
+        // Clean up temporary file
+        await this.ibmi.clearTempRemote(path);
       }
     } catch (error) {
       console.log(`Failed uploading member: ` + error);
@@ -366,7 +398,7 @@ export default class IBMiContent {
   async getTable(library: string, file: string, member?: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
 
-    const tempRmt = this.getTempRemote(Tools.qualifyPath(library, file, member));
+    const tempRmt = Tools.ensureFullPath(this.getTempRemote(Tools.qualifyPath(library, file, member)), this.config.homeDirectory);
     const copyResult = await this.ibmi.runCommand({
       command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
         `TOSTMF('${tempRmt}') ` +
@@ -425,7 +457,7 @@ export default class IBMiContent {
           os.OBJTYPE AS TYPE,
           os.OBJATTRIBUTE AS ATTRIBUTE,
           OBJTEXT AS TEXT,
-          os.IASP_NUMBER AS IASP_NUMBER,
+          li.IASP_NAME AS IASP_NAME,
           os.OBJSIZE AS SIZE,
           EXTRACT(EPOCH FROM (os.OBJCREATED)) * 1000 AS CREATED,
           EXTRACT(EPOCH FROM (os.CHANGE_TIMESTAMP)) * 1000 AS CHANGED,
@@ -440,6 +472,7 @@ export default class IBMiContent {
           OBJTYPELIST => '*LIB',
           OBJECT_NAME => libs.ELEMENT
         )) AS os
+        CROSS JOIN TABLE(QSYS2.LIBRARY_INFO(library_name => os.OBJNAME)) AS li
       `;
     const results = await this.ibmi.runSQL(statement);
 
@@ -456,7 +489,7 @@ export default class IBMiContent {
       changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
-      asp: this.ibmi.getIAspName(Number(object.IASP_NUMBER))
+      asp: object.IASP_NAME !== "*SYSBAS" ? String(object.IASP_NAME) : undefined
     } as IBMiObject));
 
     return libraries.map(library => {
@@ -477,44 +510,14 @@ export default class IBMiContent {
    * @returns Bad libraries
    */
   async validateLibraryList(newLibl: string[]): Promise<string[]> {
-    let badLibs: string[] = [];
-
-    newLibl = newLibl
-      .filter(lib => {
-        const isValid = this.ibmi.validQsysName(lib);
-        if (!isValid) {
-          badLibs.push(lib);
-        }
-
-        return isValid;
-      });
-
-    const sanitized = Tools.sanitizeObjNamesForPase(newLibl);
-
-    const result = await this.ibmi.sendQsh({
-      command: [
-        `liblist -d ` + Tools.sanitizeObjNamesForPase(this.ibmi.defaultUserLibraries).join(` `),
-        ...sanitized.map(lib => `liblist -a ` + lib)
-      ].join(`; `)
-    });
-
-    if (result.stderr) {
-      const lines = result.stderr.split(`\n`);
-
-      lines.forEach(line => {
-        const isNotFound = line.includes(`CPF2110`);
-        if (isNotFound) {
-          const libraryReference = sanitized.find(library => line.includes(` ${library} `));
-
-          // If there is an error about the library, remove it
-          if (libraryReference) {
-            badLibs.push(libraryReference);
-          }
-        }
-      });
-    }
-
-    return badLibs;
+    return (await this.ibmi.runSQL(/* sql */`
+      with LIBRARIES (LIBRARY) as (
+        values ${newLibl.map(lib => `'${lib}'`).join(',')}
+      )
+      select LIBRARY, QSYS2.QCMDEXC('CHKOBJ OBJ(QSYS/' concat LIBRARY concat ') OBJTYPE(*LIB)') VALID from LIBRARIES
+    `))
+      .filter(row => row.VALID !== 1)
+      .map(row => String(row.LIBRARY));
   }
 
   async getLibraries(filters: { library: string; filterType?: FilterType }) {
@@ -544,12 +547,13 @@ export default class IBMiContent {
     }
     
     if (localLibrary !== `QSYS`) {
+    const listLibraries = localLibrary === "QSYS";
+    if (!listLibraries) {
       if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
         throw new Error(`Library ${localLibrary} does not exist.`);
       }
     }
 
-    const usLocalLibrary = this.ibmi.sysNameInAmerican(localLibrary);
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
     const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
@@ -564,9 +568,21 @@ export default class IBMiContent {
 
     let createOBJLIST: string[];
 
+    if (sourceFilesOnly || withSourceFiles) {
+      if (!this.dummyDSPF) {
+        //Drop if already exists
+        await this.ibmi.runSQL('drop table if exists SESSION.PFS');
+        //Create an empty PFS table
+        await this.ibmi.runSQL('declare global temporary table SESSION.PFS like QSYS.QAFDPHY rcdfmt QWHFDPHY');
+        this.dummyDSPF = true;
+      }
+      //Clear and fill the PFs list - if the command crashes it won't break the queries below
+      await this.ibmi.runSQL(`delete from SESSION.PFS`);
+      await this.ibmi.runCommand({ command: `QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)` });
+    }
+
     if (sourceFilesOnly) {
       createOBJLIST = [
-        `@DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
         /* sql */
         `select
             trim(PHFILE) NAME,
@@ -575,7 +591,7 @@ export default class IBMiContent {
             PHMXRL SOURCE_LENGTH,
             1 as IS_SOURCE,
             '*FILE' as TYPE
-            from QTEMP.PFS
+            from SESSION.PFS
             where PHDTAT = 'S'
             ${sourceFileNameLike()}`
       ];
@@ -598,14 +614,13 @@ export default class IBMiContent {
     }
     else {
       createOBJLIST = [
-        `@DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
         /* sql */
         `with SRCFILES as (
           select
             trim(PHFILE) NAME,
             1 as IS_SOURCE,
             PHMXRL as SOURCE_LENGTH
-          from QTEMP.PFS
+          from SESSION.PFS
           where PHDTAT = 'S'
         ),
          OBJD as (
@@ -639,27 +654,31 @@ export default class IBMiContent {
       ];
     }
 
+    const localLibASP = await this.ibmi.getLibraryIAsp(localLibrary);
     const objects = (await this.ibmi.runSQL(createOBJLIST));
-
-    return objects.map(object => ({
-      library: localLibrary,
-      name: String(object.NAME),
-      type: String(object.TYPE),
-      attribute: String(object.ATTRIBUTE),
-      text: String(object.TEXT || ""),
-      sourceFile: Boolean(object.IS_SOURCE),
-      sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
-      size: Number(object.SIZE),
-      created: new Date(Number(object.CREATED)),
-      changed: new Date(Number(object.CHANGED)),
-      created_by: object.CREATED_BY,
-      owner: object.OWNER,
-      asp: this.ibmi.getLibraryIAsp(localLibrary)
-    } as IBMiObject))
-      .filter(object => !filters.types || filters.types.length < 1
-        || filters.types.includes('*ALL')
-        || (filters.types.includes('*SRCPF') && object.sourceFile)
-        || filters.types.includes(object.type))
+    const result: IBMiObject[] = [];
+    for (const object of objects) {
+      const name = String(object.NAME);
+      result.push({
+        library: localLibrary,
+        name,
+        type: String(object.TYPE),
+        attribute: String(object.ATTRIBUTE),
+        text: String(object.TEXT || ""),
+        sourceFile: Boolean(object.IS_SOURCE),
+        sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
+        size: Number(object.SIZE),
+        created: new Date(Number(object.CREATED)),
+        changed: new Date(Number(object.CHANGED)),
+        created_by: object.CREATED_BY ? String(object.CREATED_BY) : undefined,
+        owner: object.OWNER ? String(object.OWNER) : undefined,
+        asp: listLibraries ? await this.ibmi.getLibraryIAsp(name) : localLibASP
+      });
+    }
+    return result.filter(object => !filters.types || filters.types.length < 1
+      || filters.types.includes('*ALL')
+      || (filters.types.includes('*SRCPF') && object.sourceFile)
+      || filters.types.includes(object.type))
       .filter(object => objectFilter || nameFilter.test(object.name))
       .sort((a, b) => {
         if (a.library.localeCompare(b.library) != 0) {
@@ -707,7 +726,7 @@ export default class IBMiContent {
   async getModuleExports(library: string, name: string): Promise<ModuleExport[]> {
     const outfile: string = Tools.makeid().toUpperCase();
     const results = await this.runStatements(
-      `@DSPMOD MODULE(${library}/${name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${outfile})`,
+      `@QSYS/DSPMOD MODULE(${library}/${name}) DETAIL(*EXPORT) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${outfile})`,
       [
         `select EXLBNM as MODULE_LIBRARY, EXMONM as MODULE_NAME, EXMOAT as MODULE_ATTR, EXSYNM as SYMBOL_NAME,`,
         `  case EXSYTY when '0' then 'PROCEDURE' when '1' then 'DATA' end as SYMBOL_TYPE, EXOPPP as ARGUMENT_OPTIMIZATION`,
@@ -745,7 +764,6 @@ export default class IBMiContent {
       `SELECT RTRIM(OBJ_STAT.OBJNAME) AS SOURCE_FILE,
              RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) AS NAME,
              PART_STAT.AVGROWSIZE AS RECORD_LENGTH,
-             OBJ_STAT.IASP_NUMBER AS ASP,
              COALESCE(RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))), '') AS TYPE,
              COALESCE(RTRIM(VARCHAR(PART_STAT.TEXT)), '') AS TEXT,
              PART_STAT.NUMBER_ROWS AS LINES,
@@ -754,12 +772,12 @@ export default class IBMiContent {
         FROM TABLE (qsys2.object_statistics('${library}', '*FILE', '${sourceFile}')) OBJ_STAT,
         LATERAL (SELECT * FROM TABLE (qsys2.PARTITION_STATISTICS(RPAD(OBJ_STAT.OBJLIB, 10), RPAD(OBJ_STAT.OBJNAME, 10)))) PART_STAT
         ${singleMember ? `WHERE RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember}'` : ``}
-        ${singleMemberExtension ? `${singleMember ? `AND` : `WHERE`} RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
+        ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `${singleMember ? `AND` : `WHERE`} RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
     if (results.length) {
-      const asp = this.ibmi.getIAspName(Number(results[0]?.ASP));
+      const asp = await this.ibmi.getLibraryIAsp(library);
       return results.map(result => ({
         asp,
         library,
@@ -867,25 +885,13 @@ export default class IBMiContent {
     const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
 
     // Escape names for shell
-    const pathList = files
-      .map(file => {
-        const asp = file.asp || this.ibmi.getCurrentIAspName();
-        if (asp && asp.length > 0) {
-          return [
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
-            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true)
-          ].join(` `);
-        } else {
-          return Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true);
-        }
-      })
-      .join(` `)
-      .toUpperCase();
+    const pathList: string[] = [];
+    for (const file of files) {
+      pathList.push(Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), await this.ibmi.getLibraryIAsp(file.library), true));
+    }
 
-    const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
-    const result = await this.ibmi.sendCommand({
-      command,
-    });
+    const command = `for f in ${pathList.join(' ').toUpperCase()}; do if [ -f $f ]; then echo $f; break; fi; done`;
+    const result = await this.ibmi.sendCommand({ command });
 
     if (result.code === 0) {
       const firstMost = result.stdout;
@@ -927,7 +933,7 @@ export default class IBMiContent {
   }
 
   async streamfileResolve(names: string[], directories: string[]): Promise<string | undefined> {
-    const command = `for f in ${directories.flatMap(dir => names.map(name => `"${Tools.escapePath(path.posix.join(dir, name), true)}"`)).join(` `)}; do if [ -f "$f" ]; then echo $f; break; fi; done`;
+    const command = `for f in ${directories.flatMap(dir => names.map(name => `"${Tools.escapePath(Tools.ensureFullPath(path.posix.join(dir, name), this.config.homeDirectory), true)}"`)).join(` `)}; do if [ -f "$f" ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -1103,6 +1109,7 @@ export default class IBMiContent {
    */
   async createStreamFile(path: string) {
     path = Tools.escapePath(path);
+    path = Tools.ensureFullPath(path, this.config.homeDirectory);
     const result = (await this.ibmi.sendCommand({ command: `echo "" > ${path} && ${this.ibmi.remoteFeatures.attr} ${path} CCSID=1208` }));
     if (result.code !== 0) {
       throw new Error(result.stderr);
@@ -1168,13 +1175,15 @@ export default class IBMiContent {
   }
 
   async getSHA256FileHash(remoteFile: string) {
-    if (this.ibmi.remoteFeatures.sha256sum) {
-      const sha256Sum = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.sha256sum} ${remoteFile}` });
-      if (sha256Sum.code === 0) {
-        return sha256Sum.stdout.split(' ')[0];
+
+    //We use OPENSSL that is already build in inside os   
+    if (this.ibmi.remoteFeatures.openssl) {
+      const objhash = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 ${remoteFile} ` });
+      if (objhash.code === 0) {
+        return objhash.stdout.split(' ').pop();
       }
       else {
-        throw new Error(`Call to sha256sum failed: ${sha256Sum.stderr || sha256Sum.stdout}`);
+        throw new Error(`Call to openssl failed: ${objhash.stderr || objhash.stdout}`);
       }
     }
   }
@@ -1212,5 +1221,15 @@ export default class IBMiContent {
       currentLibrary: '',
       libraryList: [] as string[]
     });
+  }
+
+  async overDBFile(library: string, file: string, member: string) {
+    const overFile = Tools.makeid().toUpperCase();
+    await this.ibmi.runSQL(`@QSYS/OVRDBF FILE(${overFile}) TOFILE(${library}/${file}) MBR(${member}) OVRSCOPE(*JOB)`);
+    return overFile;
+  }
+
+  async deleteOVRDBFile(overFile: string) {
+    await this.ibmi.runSQL(`@QSYS/DLTOVR FILE(${overFile}) LVL(*JOB)`);
   }
 }

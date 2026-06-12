@@ -85,12 +85,14 @@ export const DeployToolsSuite: TestSuite = {
     name: `Deploy Tools API tests`,
     notConcurrent: true,
     before: async () => {
-        const features = instance.getConnection()?.remoteFeatures;
+        const connection = instance.getConnection()!;
+        const config = connection.getConfig();
+        const features = connection?.remoteFeatures;
         assert.ok(features?.stat, "stat is required to run deploy tools test suite");
         assert.ok(features?.md5sum, "md5sum is required to run deploy tools test suite");
 
         const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
-        const tempDir = instance.getConnection()?.getConfig().tempDir;
+        const tempDir = connection.getTempDirectory();
         assert.ok(workspaceFolder, "No workspace folder to work with");
         assert.ok(tempDir, "Cannot run deploy tools tests: no remote temp directory defined");
 

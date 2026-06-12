@@ -204,6 +204,7 @@ export namespace VscodeTools {
       "Home Directory": profile.homeDirectory,
       "Current Library": profile.currentLibrary,
       "Library List": profile.libraryList,
+      "ASP": profile.iasp || "*SYSBAS",
       "Library List Command": profile.setLibraryListCommand,
       "Object Filters": profile.objectFilters.length,
       "IFS Shortcuts": profile.ifsShortcuts.length,
@@ -240,4 +241,5 @@ export namespace VscodeTools {
   export const normalizePath = Tools.normalizePath;
   export const resolvePath = Tools.resolvePath;
   export const makeid = Tools.makeid;
+  export const ensureFullPath = Tools.ensureFullPath;
 }

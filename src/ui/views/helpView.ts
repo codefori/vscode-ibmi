@@ -123,6 +123,7 @@ async function openNewIssue() {
     { label: "Code for IBM i", target: 'vscode-ibmi' },
     { label: "Db2 for IBM i", target: 'vscode-db2i' },
     { label: "RPGLE language tools", target: 'vscode-rpgle' },
+    { label: "IBM i FileSystem", target: 'vscode-ibmi-fs' },
     { label: "IBM i Debugger", target: 'vscode-ibmi-debug-issues' },
   ], { title: l10n.t("Please pick the extension to report the issue on"), placeHolder: l10n.t("Report an issue on...") }))?.target;
 
