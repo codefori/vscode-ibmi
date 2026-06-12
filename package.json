@@ -3337,7 +3337,7 @@
 		"@types/tmp": "0.2.5",
 		"@types/vscode": "^1.90.0",
 		"@vscode/vsce": "^3.9.1",
-		"esbuild": "^0.27.0",
+		"esbuild": "^0.28.1",
 		"esbuild-loader": "^4.4.2",
 		"eslint": "^8.57.1",
 		"ssh2-streams": "^0.4.10",
