@@ -11,7 +11,7 @@ const annotationDecoration = vscode.window.createTextEditorDecorationType({
     textDecoration: `none`,
     fontWeight: `normal`,
     fontStyle: `normal`,
-    margin: `0 1em 0 0`,
+    margin: `0 1ch 0 0`,
     width: `7ch`,
     // Pull the decoration out of the document flow if we want to be scrollable
   },
