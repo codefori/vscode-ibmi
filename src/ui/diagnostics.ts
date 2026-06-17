@@ -69,7 +69,7 @@ export function refreshDiagnosticsFromServer(connection: IBMi, evfeventInfo: Evf
         .map(row => String(row.EVFEVENT));
 
       if (lines.length) {
-        handleEvfeventLines(connection, lines, e);
+        await handleEvfeventLines(connection, lines, e);
       }
     }
     finally{
@@ -94,7 +94,7 @@ export async function refreshDiagnosticsFromLocal(connection: IBMi, evfeventInfo
         const eol = content.includes(`\r\n`) ? `\r\n` : `\n`;
         const lines = content.split(eol);
 
-        handleEvfeventLines(connection, lines, evfeventInfo);
+        await handleEvfeventLines(connection, lines, evfeventInfo);
       }
 
     } else {
@@ -103,10 +103,8 @@ export async function refreshDiagnosticsFromLocal(connection: IBMi, evfeventInfo
   }
 }
 
-export function handleEvfeventLines(connection: IBMi, lines: string[], evfeventInfo: EvfEventInfo) {
+export async function handleEvfeventLines(connection: IBMi, lines: string[], evfeventInfo: EvfEventInfo) {
   const config = connection.getConfig();
-  const asp = evfeventInfo.asp ? `${connection.getLibraryIAsp(evfeventInfo.library)}/` : ``;
-
   const errorsByFiles = parseErrors(lines);
 
   const diagnostics: vscode.Diagnostic[] = [];
@@ -151,9 +149,9 @@ export function handleEvfeventLines(connection: IBMi, lines: string[], evfeventI
           let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : undefined);
 
           if (relativeCompilePath) {
-            if (asp) {
+            if (evfeventInfo.asp) {
               // Believe it or not, sometimes if the deploy directory is symlinked into an ASP, this can be a problem              
-              const aspRoot = `/${asp}`;
+              const aspRoot = `/${evfeventInfo.asp}`;
               if (relativeCompilePath.startsWith(aspRoot)) {
                 relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
                 break;
@@ -187,7 +185,8 @@ export function handleEvfeventLines(connection: IBMi, lines: string[], evfeventI
         ileDiagnostics.set(VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
       }
       else {
-        const memberUri = VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
+        const asp = await connection.getLibraryIAsp(file.split('/')[0]);
+        const memberUri = VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp ? `${asp}/` : '' }${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
         ileDiagnostics.set(memberUri, diagnostics);
       }
     }
