@@ -72,7 +72,7 @@ export function refreshDiagnosticsFromServer(connection: IBMi, evfeventInfo: Evf
         await handleEvfeventLines(connection, lines, e);
       }
     }
-    finally{
+    finally {
       connection.getContent().deleteOVRDBFile(overFile);
     }
   });
@@ -109,32 +109,33 @@ export async function handleEvfeventLines(connection: IBMi, lines: string[], evf
 
   const diagnostics: vscode.Diagnostic[] = [];
   if (errorsByFiles.size) {
-    for (const [file, errors] of errorsByFiles.entries()) {
-      diagnostics.length = 0;
-      for (const error of errors) {
-        error.column = Math.max(error.column - 1, 0);
-        error.lineNum = Math.max(error.lineNum - 1, 0);
-        error.toLineNum = Math.max(error.toLineNum - 1, 0);
+    for (const [file, errors] of errorsByFiles) {
+      if (file !== '.') {
+        for (const error of errors) {
+          error.column = Math.max(error.column - 1, 0);
+          error.lineNum = Math.max(error.lineNum - 1, 0);
+          error.toLineNum = Math.max(error.toLineNum - 1, 0);
 
-        if (error.column === 0 && error.toColumn === 0) {
-          error.column = 0;
-          error.toColumn = 100;
-        }
+          if (error.column === 0 && error.toColumn === 0) {
+            error.column = 0;
+            error.toColumn = 100;
+          }
 
-        const diagnostic = new vscode.Diagnostic(
-          new vscode.Range(error.lineNum, error.column, error.toLineNum, error.toColumn),
-          `${error.text} (${error.sev})`,
-          diagnosticSeverity(error)
-        );
+          const diagnostic = new vscode.Diagnostic(
+            new vscode.Range(error.lineNum, error.column, error.toLineNum, error.toColumn),
+            `${error.text} (${error.sev})`,
+            diagnosticSeverity(error)
+          );
 
-        diagnostic.code = error.code;
+          diagnostic.code = error.code;
 
-        if (config) {
-          if (!config.hideCompileErrors.includes(error.code)) {
+          if (config) {
+            if (!config.hideCompileErrors.includes(error.code)) {
+              diagnostics.push(diagnostic);
+            }
+          } else {
             diagnostics.push(diagnostic);
           }
-        } else {
-          diagnostics.push(diagnostic);
         }
       }
 
@@ -186,7 +187,7 @@ export async function handleEvfeventLines(connection: IBMi, lines: string[], evf
       }
       else {
         const asp = await connection.getLibraryIAsp(file.split('/')[0]);
-        const memberUri = VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp ? `${asp}/` : '' }${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
+        const memberUri = VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp ? `${asp}/` : ''}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
         ileDiagnostics.set(memberUri, diagnostics);
       }
     }
