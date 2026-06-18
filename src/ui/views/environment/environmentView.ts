@@ -320,7 +320,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
         ]);
-        environmentView.refresh();        
+        environmentView.refresh();
 
         if (profile.name && profile.setLibraryListCommand) {
           await vscode.commands.executeCommand("code-for-ibmi.environment.profile.runLiblistCommand", profile);
@@ -339,9 +339,32 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         const profile = profileItem && ("profile" in profileItem ? profileItem?.profile : profileItem) || getConnectionProfile(config.get);
 
         if (profile?.setLibraryListCommand) {
-          const command = profile.setLibraryListCommand.startsWith(`?`) ?
-            await vscode.window.showInputBox({ title: l10n.t(`Run Library List Command`), value: profile.setLibraryListCommand.substring(1) }) :
-            profile.setLibraryListCommand;
+          let command: string | undefined;
+
+          if (profile.setLibraryListCommand.startsWith(`?`)) {
+            // Command starts with '?' - needs prompting
+            const commandToPrompt = profile.setLibraryListCommand.substring(1);
+
+            // Check if CLPrompter extension is installed
+            const clPrompterExt = vscode.extensions.getExtension('CozziResearch.clprompter');
+            if (clPrompterExt) {
+              // Use CLPrompter for advanced prompting
+              if (!clPrompterExt.isActive) {
+                await clPrompterExt.activate();
+              }
+              const { CLPrompter } = clPrompterExt.exports;
+              command = await CLPrompter(commandToPrompt, context.extensionUri);
+            } else {
+              // Fall back to simple input box
+              command = await vscode.window.showInputBox({
+                title: l10n.t(`Run Library List Command`),
+                value: commandToPrompt
+              });
+            }
+          } else {
+            // No prompting needed
+            command = profile.setLibraryListCommand;
+          }
 
           if (command) {
             return await vscode.window.withProgress({ title: l10n.t("Running {0} profile's Library List Command...", profile.name), location: vscode.ProgressLocation.Notification }, async () => {
