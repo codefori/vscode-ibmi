@@ -1203,6 +1203,7 @@ export default class IBMiContent {
           if (libraryName !== '1') {
             throw new Error(`Failed to run Library List Command ${command}`);
           }
+          break;
         case 'CURRENT':
           result.currentLibrary = libraryName;
           break;
