@@ -302,9 +302,12 @@ export default class IBMi {
           this.appendOutput(`Using SSH Agent: ${agentPath}\n`);
         }
         
-        // Set agent
+        // Set agent and authentication options
         connectConfig.agent = agentPath;
         connectConfig.agentForward = true;
+        delete connectConfig.password;
+        delete connectConfig.privateKeyPath;
+        delete connectConfig.passphrase;
       }
 
       await this.client.connect(connectConfig);
