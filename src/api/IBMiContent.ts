@@ -539,8 +539,8 @@ export default class IBMiContent {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
 
      // Libraries (*LIB) can only be listed from QSYS
-    const isListingLibraries = !!filters?.types?.some(type => type === '*LIB'); 
-     
+    const isListingLibraries = !!filters?.types?.some(type => type === '*LIB');
+
     if (isListingLibraries && localLibrary !== `QSYS`) {
       // Return empty array when trying to list libraries from non-QSYS library
       return [];
@@ -596,7 +596,7 @@ export default class IBMiContent {
     } else if (!withSourceFiles) {
       createOBJLIST = [
         /* sql */
-        `select 
+        `select
           OBJNAME          as NAME,
           OBJTYPE          as TYPE,
           OBJATTRIBUTE     as ATTRIBUTE,
@@ -622,7 +622,7 @@ export default class IBMiContent {
           where PHDTAT = 'S'
         ),
          OBJD as (
-          select 
+          select
             OBJNAME           as NAME,
             OBJTYPE           as TYPE,
             OBJATTRIBUTE      as ATTRIBUTE,
@@ -1162,10 +1162,10 @@ export default class IBMiContent {
 
   /**
    * Returns the signature of an SQL component
-   * @param library 
-   * @param name 
-   * @param type 
-   * @returns 
+   * @param library
+   * @param name
+   * @param type
+   * @returns
    */
   async getSQLRoutineSignature(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
     return (await this.ibmi.runSQL(
@@ -1175,7 +1175,7 @@ export default class IBMiContent {
 
   async getSHA256FileHash(remoteFile: string) {
 
-    //We use OPENSSL that is already build in inside os   
+    //We use OPENSSL that is already build in inside os
     if (this.ibmi.remoteFeatures.openssl) {
       const objhash = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 ${remoteFile} ` });
       if (objhash.code === 0) {
@@ -1203,6 +1203,7 @@ export default class IBMiContent {
           if (libraryName !== '1') {
             throw new Error(`Failed to run Library List Command ${command}`);
           }
+          break;
         case 'CURRENT':
           result.currentLibrary = libraryName;
           break;

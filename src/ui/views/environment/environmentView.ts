@@ -320,7 +320,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
         ]);
-        environmentView.refresh();        
+        environmentView.refresh();
 
         if (profile.name && profile.setLibraryListCommand) {
           await vscode.commands.executeCommand("code-for-ibmi.environment.profile.runLiblistCommand", profile);
@@ -351,7 +351,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
                 if (newSettings) {
                   config.libraryList = newSettings.libraryList;
-                  config.currentLibrary = newSettings.currentLibrary;
+                  config.currentLibrary = newSettings.currentLibrary || config.currentLibrary;
                   await IBMi.connectionManager.update(config);
                   await vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
                 } else {
