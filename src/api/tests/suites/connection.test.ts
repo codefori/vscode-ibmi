@@ -4,6 +4,7 @@ import { CompileTools } from '../../CompileTools';
 import IBMi from '../../IBMi';
 import { Tools } from '../../Tools';
 import { getJavaHome } from '../../configuration/DebugConfiguration';
+import { ConnectionData } from '../../types';
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 
 describe(`connection tests`, { concurrent: true }, () => {
@@ -327,4 +328,107 @@ describe(`connection tests`, { concurrent: true }, () => {
     const asp = await connection.getLibraryIAsp(library);
     expect(asp).toBeUndefined(); // Because QSYSINC is not an iASP
   })
+})
+
+describe('SSH Agent connection tests', { concurrent: false }, () => {
+  it('should connect using SSH agent when VITE_USE_SSH_AGENT is set', async () => {
+    // Skip this test if SSH agent is not configured
+    if (process.env.VITE_USE_SSH_AGENT !== 'true') {
+      console.log('Skipping SSH agent test - VITE_USE_SSH_AGENT not set to true');
+      return;
+    }
+
+    let sshAgentConnection: IBMi | undefined;
+    
+    try {
+      // Create a new connection with SSH agent
+      sshAgentConnection = await newConnection();
+      
+      // Verify connection is established
+      expect(sshAgentConnection).toBeDefined();
+      expect(sshAgentConnection.client).toBeDefined();
+      
+      // Test basic command execution
+      const result = await sshAgentConnection.sendCommand({
+        command: `echo "SSH Agent connection test"`,
+      });
+      
+      expect(result.code).toBe(0);
+      expect(result.stdout).toBe('SSH Agent connection test');
+      
+      // Verify connection config has useSshAgent set
+      const config = sshAgentConnection.getConfig();
+      expect(config?.useSshAgent).toBe(true);
+      
+    } finally {
+      if (sshAgentConnection) {
+        await disposeConnection(sshAgentConnection);
+      }
+    }
+  }, CONNECTION_TIMEOUT);
+
+  it('should fail gracefully when SSH agent is not available', async () => {
+    // Skip this test if we're actually using SSH agent
+    if (process.env.VITE_USE_SSH_AGENT === 'true') {
+      console.log('Skipping SSH agent unavailable test - SSH agent is configured');
+      return;
+    }
+
+    // On Unix-like systems, we can test by unsetting SSH_AUTH_SOCK
+    // On Windows, the test will attempt to connect to the named pipe
+    // and fail if SSH agent is not running
+    const isWindows = process.platform === 'win32';
+    
+    // Skip on Unix if SSH_AUTH_SOCK is set (agent is available)
+    if (!isWindows && process.env.SSH_AUTH_SOCK) {
+      console.log('Skipping SSH agent unavailable test - SSH_AUTH_SOCK is set on Unix system');
+      return;
+    }
+
+    // This test verifies that the error handling works correctly
+    // when SSH agent is requested but not available
+    const conn = new IBMi();
+    conn.appendOutput = (data) => { };
+
+    const creds: ConnectionData = {
+      host: process.env.VITE_SERVER!,
+      username: process.env.VITE_DB_USER!,
+      port: parseInt(process.env.VITE_DB_PORT || `22`),
+      name: `test_ssh_agent_unavailable`,
+      useSshAgent: true
+    };
+
+    try {
+      const result = await conn.connect(creds, {
+        callbacks: {
+          message: (type: string, message: string) => {},
+          inputBox: async () => undefined,
+          progress: () => {},
+          uiErrorHandler: async () => false,
+        },
+        reloadServerSettings: false,
+        reconnecting: false,
+      });
+
+      // Connection should fail when SSH agent is not available
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      
+      if (!isWindows) {
+        // On Unix, error should mention SSH_AUTH_SOCK not being set
+        expect(result.error).toContain('SSH_AUTH_SOCK');
+      }
+      
+    } catch (error: any) {
+      // It's also acceptable for the connection to throw an error
+      expect(error).toBeDefined();
+      
+      if (!isWindows) {
+        // On Unix, the error should mention SSH_AUTH_SOCK
+        expect(error.message).toContain('SSH_AUTH_SOCK');
+      }
+    } finally {
+      await conn.disconnect();
+    }
+  }, CONNECTION_TIMEOUT);
 })
