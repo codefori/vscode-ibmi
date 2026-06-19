@@ -443,6 +443,7 @@ export class SettingsUI {
               .addCheckbox(`enableMfa`, vscode.l10n.t(`Enable Multi-Factor Authentication (MFA)`), vscode.l10n.t(`Enable this to be prompted for your additional factor when connecting.`), stored.enableMfa)
               .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${privateKeyPath})` : ``}`, privateKeyWarning + vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
               .addPassword(`passphrase`, `${vscode.l10n.t(`Key Passphrase`)}${storedPassphrase ? ` (${vscode.l10n.t(`stored`)})` : ``}`, vscode.l10n.t("Only provide a passphrase if you want to update an existing one or set a new one."))
+              .addCheckbox(`useSshAgent`, vscode.l10n.t(`Use SSH Agent`), vscode.l10n.t(`Enable this to use SSH agent for authentication. The SSH_AUTH_SOCK environment variable must be set.`), stored.useSshAgent)
               .addHorizontalRule()
               .addInput(`readyTimeout`, vscode.l10n.t(`Connection Timeout (in milliseconds)`), vscode.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })
 
@@ -491,8 +492,11 @@ export class SettingsUI {
                       }
                       await deleteStoredPassword(context, name);
                       vscode.window.showInformationMessage(vscode.l10n.t(`Private key updated and will be used for "{0}" ({1}).`, name, data.passphrase ? vscode.l10n.t("with passphrase") : vscode.l10n.t("without passphrase")));
-                    }
-                    else {
+                    } else if(data.useSshAgent) { 
+                      // With SSH agent, remove the password and keypath
+                      await deleteStoredPassword(context, name);
+                      await deleteStoredPassphrase(context, name);
+                    } else {
                       if (privateKeyPath && data.passphrase) {
                         await setStoredPassphrase(context, name, data.passphrase);
                         vscode.window.showInformationMessage(vscode.l10n.t(`Private key passphrase updated for "{0}".`, name));

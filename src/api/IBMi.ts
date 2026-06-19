@@ -278,12 +278,36 @@ export default class IBMi {
         }
       }
 
-      await this.client.connect({
+      const connectConfig: any = {
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
         passphrase: connectionObject.privateKeyPath ? connectionObject.passphrase : undefined,
         debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
-      });
+      };
+
+      if (connectionObject.useSshAgent) {
+        // Determine the SSH agent path based on platform
+        let agentPath: string;
+        
+        if (process.platform === 'win32') {
+          // On Windows, use the OpenSSH named pipe
+          agentPath = '\\\\.\\pipe\\openssh-ssh-agent';
+          this.appendOutput(`Using Windows SSH Agent: ${agentPath}\n`);
+        } else {
+          // On Unix-like systems, use SSH_AUTH_SOCK
+          if (!process.env.SSH_AUTH_SOCK) {
+            throw new Error(`SSH Agent is not available. Please start your SSH agent (SSH_AUTH_SOCK is not set).`);
+          }
+          agentPath = process.env.SSH_AUTH_SOCK;
+          this.appendOutput(`Using SSH Agent: ${agentPath}\n`);
+        }
+        
+        // Set agent
+        connectConfig.agent = agentPath;
+        connectConfig.agentForward = true;
+      }
+
+      await this.client.connect(connectConfig);
       this.connectionSuccessful = true;
 
       this.currentConnectionName = connectionObject.name;
