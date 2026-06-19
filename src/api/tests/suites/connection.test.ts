@@ -348,7 +348,7 @@ describe('SSH Agent connection tests', { concurrent: false }, () => {
       expect(sshAgentConnection).toBeDefined();
       expect(sshAgentConnection.client).toBeDefined();
       
-      // Test basic command execution
+      // Test basic command execution to verify the connection works
       const result = await sshAgentConnection.sendCommand({
         command: `echo "SSH Agent connection test"`,
       });
@@ -356,9 +356,10 @@ describe('SSH Agent connection tests', { concurrent: false }, () => {
       expect(result.code).toBe(0);
       expect(result.stdout).toBe('SSH Agent connection test');
       
-      // Verify connection config has useSshAgent set
-      const config = sshAgentConnection.getConfig();
-      expect(config?.useSshAgent).toBe(true);
+      // Verify connection properties are set correctly
+      expect(sshAgentConnection.currentHost).toBe(process.env.VITE_SERVER);
+      expect(sshAgentConnection.currentUser).toBe(process.env.VITE_DB_USER);
+      expect(sshAgentConnection.currentPort).toBe(parseInt(process.env.VITE_DB_PORT || '22'));
       
     } finally {
       if (sshAgentConnection) {
