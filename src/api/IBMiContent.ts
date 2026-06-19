@@ -537,6 +537,14 @@ export default class IBMiContent {
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
+
+     // Libraries (*LIB) can only be listed from QSYS
+    const isListingLibraries = !!filters?.types?.some(type => type === '*LIB');
+
+    if (isListingLibraries && localLibrary !== `QSYS`) {
+      // Return empty array when trying to list libraries from non-QSYS library
+      return [];
+    }
     const listLibraries = localLibrary === "QSYS";
     if (!listLibraries) {
       if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
@@ -588,7 +596,7 @@ export default class IBMiContent {
     } else if (!withSourceFiles) {
       createOBJLIST = [
         /* sql */
-        `select 
+        `select
           OBJNAME          as NAME,
           OBJTYPE          as TYPE,
           OBJATTRIBUTE     as ATTRIBUTE,
@@ -614,7 +622,7 @@ export default class IBMiContent {
           where PHDTAT = 'S'
         ),
          OBJD as (
-          select 
+          select
             OBJNAME           as NAME,
             OBJTYPE           as TYPE,
             OBJATTRIBUTE      as ATTRIBUTE,
@@ -761,8 +769,9 @@ export default class IBMiContent {
              EXTRACT(EPOCH FROM (PART_STAT.LAST_SOURCE_UPDATE_TIMESTAMP)) * 1000 AS CHANGED
         FROM TABLE (qsys2.object_statistics('${library}', '*FILE', '${sourceFile}')) OBJ_STAT,
         LATERAL (SELECT * FROM TABLE (qsys2.PARTITION_STATISTICS(RPAD(OBJ_STAT.OBJLIB, 10), RPAD(OBJ_STAT.OBJNAME, 10)))) PART_STAT
-        ${singleMember ? `WHERE RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember}'` : ``}
-        ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `${singleMember ? `AND` : `WHERE`} RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
+        WHERE TRIM(PART_STAT.SYSTEM_TABLE_MEMBER) <> ''
+        ${singleMember ? `AND RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember}'` : ``}
+        ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `AND RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
@@ -1153,10 +1162,10 @@ export default class IBMiContent {
 
   /**
    * Returns the signature of an SQL component
-   * @param library 
-   * @param name 
-   * @param type 
-   * @returns 
+   * @param library
+   * @param name
+   * @param type
+   * @returns
    */
   async getSQLRoutineSignature(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
     return (await this.ibmi.runSQL(
@@ -1166,7 +1175,7 @@ export default class IBMiContent {
 
   async getSHA256FileHash(remoteFile: string) {
 
-    //We use OPENSSL that is already build in inside os   
+    //We use OPENSSL that is already build in inside os
     if (this.ibmi.remoteFeatures.openssl) {
       const objhash = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 ${remoteFile} ` });
       if (objhash.code === 0) {
@@ -1194,6 +1203,7 @@ export default class IBMiContent {
           if (libraryName !== '1') {
             throw new Error(`Failed to run Library List Command ${command}`);
           }
+          break;
         case 'CURRENT':
           result.currentLibrary = libraryName;
           break;

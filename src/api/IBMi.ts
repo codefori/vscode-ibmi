@@ -173,14 +173,6 @@ export default class IBMi {
     }
   }
 
-
-  /**
-   * Primarily used for running SQL statements.
-   */
-  get userCcsidInvalid() {
-    return this.userJobCcsid === IBMi.CCSID_NOCONVERSION;
-  }
-
   get dangerousVariants() {
     return this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
   };
@@ -651,6 +643,17 @@ export default class IBMi {
               this.userJobCcsid = this.qccsid;
             }
 
+            if (this.userJobCcsid === IBMi.CCSID_NOCONVERSION) {
+              //At this point, if it's still *HEX, we get the job's default CCSID
+              const [row] = await this.runSQL(/* sql */`
+                select DEFAULT_CCSID from table(
+                  QSYS2.ACTIVE_JOB_INFO(
+                    JOB_NAME_FILTER => '*',
+                    DETAILED_INFO => 'WORK'
+                  )
+                )`);
+              this.userJobCcsid = row?.DEFAULT_CCSID ? Number(row.DEFAULT_CCSID) : this.userJobCcsid;
+            }
           } catch (e) {
             // Oh well!
             console.log(e);
