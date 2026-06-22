@@ -289,7 +289,7 @@
   "Online": "Online",
   "Only provide a password if you want to update an existing one or set a new one.": "Geben Sie nur dann ein Passwort ein, wenn Sie ein bestehendes aktualisieren oder ein neues festlegen möchten.",
   "Only provide a private key if you want to update from the existing one or set one.": "Geben Sie nur dann einen privaten Schlüssel an, wenn Sie vom vorhandenen aktualisieren oder einen festlegen möchten.",
-  "Choose only one authentication method from among password, private key, or SSH agent": "Wählen Sie nur eine Authentifizierungsmethode aus Passwort, privatem Schlüssel oder SSH-Agent.",
+  "Choose only one authentication method among password, private key, or SSH agent": "Wählen Sie nur eine Authentifizierungsmethode aus Passwort, privatem Schlüssel oder SSH-Agent.",
   "OK": "OK",
   "Open": "öffnen",
   "Open configuration": "Konfiguration öffnen",

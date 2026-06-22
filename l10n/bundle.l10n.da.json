@@ -289,7 +289,7 @@
   "Online": "Online",
   "Only provide a password if you want to update an existing one or set a new one.": "Angiv kun et kodeord hvis du ønsker at ændre det gemte eller oprette et nyt.",
   "Only provide a private key if you want to update from the existing one or set one.": "Angiv kun en privat nøgle hvis du ønsker at opdatere den aktuelle eller indstille en ny.",
-  "Choose only one authentication method from among password, private key, or SSH agent": "Vælg kun én godkendelsesmetode blandt kodeord, privat nøgle eller SSH-agent.",
+  "Choose only one authentication method among password, private key, or SSH agent": "Vælg kun én godkendelsesmetode blandt kodeord, privat nøgle eller SSH-agent.",
   "OK": "OK",
   "Open": "Open",
   "Open configuration": "Åbn konfiguration",

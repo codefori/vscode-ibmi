@@ -290,7 +290,7 @@
   "Online": "Online",
   "Only provide a password if you want to update an existing one or set a new one.": "Only provide a password if you want to update an existing one or set a new one.",
   "Only provide a private key if you want to update from the existing one or set one.": "Only provide a private key if you want to update from the existing one or set one.",
-  "Choose only one authentication method from among password, private key, or SSH agent": "Choose only one authentication method from among password, private key, or SSH agent.",
+  "Choose only one authentication method among password, private key, or SSH agent": "Choose only one authentication method among password, private key, or SSH agent.",
   "OK": "OK",
   "Open": "Open",
   "Open configuration": "Open configuration",

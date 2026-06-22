@@ -31,7 +31,7 @@ export class Login {
       .addInput(`port`, l10n.t(`Port (SSH)`), ``, { default: `22`, min: 1, max: 65535, inputType: "number" })
       .addInput(`username`, l10n.t(`Username`), undefined, { minlength: 1, maxlength: 10 })
       .addHorizontalRule()
-      .addParagraph(l10n.t(`Choose only one authentication method from among password, private key, or SSH agent`))
+      .addParagraph(l10n.t(`Choose only one authentication method among password, private key, or SSH agent`))
       .addPassword(`password`, l10n.t(`Password`))
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
       .addCheckbox(`enableMfa`, l10n.t(`Enable Multi-Factor Authentication (MFA)`), l10n.t(`Enable this to be prompted for your additional factor when connecting.`))

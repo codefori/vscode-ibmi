@@ -289,7 +289,7 @@
   "Online": "Online",
   "Only provide a password if you want to update an existing one or set a new one.": "Angi kun et passord hvis du ønsker å endre det eksisterende eller opprette et nytt.",
   "Only provide a private key if you want to update from the existing one or set one.": "Angi kun en privat nøkkel hvis du ønsker å oppdatere den aktuelle eller lage en ny.",
-  "Choose only one authentication method from among password, private key, or SSH agent": "Velg bare én autentiseringsmetode blant passord, privat nøkkel eller SSH-agent.",
+  "Choose only one authentication method among password, private key, or SSH agent": "Velg bare én autentiseringsmetode blant passord, privat nøkkel eller SSH-agent.",
   "OK": "OK",
   "Open": "Open",
   "Open configuration": "Åpne konfigurasjon",

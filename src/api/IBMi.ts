@@ -278,7 +278,7 @@ export default class IBMi {
         }
       }
 
-      const connectConfig: any = {
+      const connectConfig: node_ssh.Config  = {
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
         passphrase: connectionObject.privateKeyPath ? connectionObject.passphrase : undefined,

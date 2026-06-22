@@ -438,7 +438,7 @@ export class SettingsUI {
               .addInput(`port`, vscode.l10n.t(`Port (SSH)`), undefined, { default: String(stored.port), min: 1, max: 65535, inputType: "number" })
               .addInput(`username`, vscode.l10n.t(`Username`), undefined, { default: stored.username, minlength: 1 })
               .addHorizontalRule()
-              .addParagraph(vscode.l10n.t(`Choose only one authentication method from among password, private key, or SSH agent`))
+              .addParagraph(vscode.l10n.t(`Choose only one authentication method among password, private key, or SSH agent`))
               .addPassword(`password`, `${vscode.l10n.t(`Password`)}${storedPassword ? ` (${vscode.l10n.t(`stored`)})` : ``}`, vscode.l10n.t("Only provide a password if you want to update an existing one or set a new one."))
               .addCheckbox(`enableMfa`, vscode.l10n.t(`Enable Multi-Factor Authentication (MFA)`), vscode.l10n.t(`Enable this to be prompted for your additional factor when connecting.`), stored.enableMfa)
               .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${privateKeyPath})` : ``}`, privateKeyWarning + vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
