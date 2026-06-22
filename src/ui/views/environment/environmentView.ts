@@ -9,7 +9,7 @@ import { editAction, isActionEdited } from '../../../editors/actionEditor';
 import { editConnectionProfile, isProfileEdited } from '../../../editors/connectionProfileEditor';
 import { instance } from '../../../instantiate';
 import { Action, ActionEnvironment, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions } from '../../../typings';
-import { uriToActionTarget } from '../../actions';
+import { uriToActionTarget, targetMatchesExtensions } from '../../actions';
 import { ActionItem, Actions, ActionsNode, ActionTypeNode } from './actions';
 import { ConnectionProfiles, ProfileItem, ProfilesNode } from './connectionProfiles';
 import { CustomVariableItem, CustomVariables, CustomVariablesNode } from './customVariables';
@@ -142,7 +142,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         }
 
         const actionTarget = uriToActionTarget(uri);
-        if (action.extensions && !action.extensions.includes('GLOBAL') && !action.extensions.includes(actionTarget.extension) && !action.extensions.includes(actionTarget.fragment)) {
+        if (!targetMatchesExtensions(actionTarget, action.extensions)) {
           vscode.window.showErrorMessage(l10n.t("This action cannot run on a file with the {0} extension.", actionTarget.extension), editActionLabel).then(edit => edit ? editAction() : '');
           return;
         }

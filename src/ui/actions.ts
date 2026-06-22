@@ -670,9 +670,8 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
   });
 
   // Then we get all the available Actions for the current context
-  const availableActions: AvailableAction[] = allActions.filter(action => action.type === scheme)
-    .filter(action => !action.extensions || action.extensions.every(e => !e) || targets.every(t => action.extensions!.includes(t.extension) || action.extensions!.includes(t.fragment)) || action.extensions.includes(`GLOBAL`))
-    .filter(action => action.runOnProtected || !targets.some(t => t.protected))
+  const availableActions: AvailableAction[] = allActions
+    .filter(action => isActionAvailable(action, scheme, targets))
     .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
     .map(action => ({
       label: action.name,
@@ -680,6 +679,41 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     }));
 
   return availableActions;
+}
+
+export function isActionAvailable(action: Action, scheme: string, targets: ActionTarget[]): boolean {
+  if (action.type !== scheme) return false;
+
+  // action isn't cleared to run on protected targets and some of them are 
+  if (!action.runOnProtected && targets.some(t => t.protected)) return false;
+
+  return targets.every((t) => targetMatchesExtensions(t, action.extensions));
+}
+
+export function targetMatchesExtensions(target: ActionTarget, extensions?: string[]): boolean {
+  // action has no extension requirements, or is global
+  if (!extensions || extensions.every(e => !e) || extensions.includes("GLOBAL")) return true;
+
+  const targetExtParts = [target.extension.toUpperCase(), target.fragment.toUpperCase()];
+
+  for (const e of extensions) {
+    const ext = e.toUpperCase();
+    const extDotCount = ext.split('.').length - 1;
+
+    if (extDotCount === 0) {
+      // match on single extension (myfile.a)
+      if (targetExtParts.includes(ext)) return true; // match
+    } else {
+      // match on multi-part extension (myfile.a.b)
+      const parsed = path.parse(target.uri.path);
+      const targetFile = (parsed.name + parsed.ext).toUpperCase();
+      const targetDotCount = targetFile.split('.').length - 1;
+
+      if ((targetDotCount > extDotCount) && targetFile.endsWith(ext)) return true; // match
+    }
+  }
+
+  return false; // no matches
 }
 
 function getObjectsFromJoblog(stderr: string): CommandObject[] | undefined {

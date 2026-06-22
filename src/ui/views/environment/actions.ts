@@ -1,12 +1,11 @@
-import { parse } from "path";
 import { stringify } from "querystring";
 import vscode, { l10n } from "vscode";
 import { ActionTools } from "../../../api/actions";
-import { parseFSOptions } from "../../../filesystems/qsys/QSysFs";
 import { instance } from "../../../instantiate";
 import { Action, ActionType } from "../../../typings";
 import { VscodeTools } from "../../Tools";
 import { EnvironmentItem } from "./environmentItem";
+import { targetMatchesExtensions, uriToActionTarget } from "../../actions";
 
 type ActionContext = {
   canRun?: boolean
@@ -82,21 +81,27 @@ export class ActionsNode extends EnvironmentItem {
   async activeEditorChanged(editor?: vscode.TextEditor) {
     const uri = editor?.document.uri;
     let activeEditorContext = undefined;
+    let actionTarget = undefined;
+
     if (uri) {
       const connection = instance.getConnection();
+      const workspace = vscode.workspace.getWorkspaceFolder(uri);
+
+      actionTarget = uriToActionTarget(uri, workspace, connection);
+
       activeEditorContext = {
         scheme: uri.scheme,
-        extension: parse(uri.path).ext.substring(1).toLocaleUpperCase(),
-        protected: parseFSOptions(uri).readonly || connection?.getConfig()?.readOnlyMode || connection?.getContent().isProtectedPath(uri.path),
-        workspace: vscode.workspace.getWorkspaceFolder(uri)
+        protected: actionTarget.protected,
+        workspace
       };
     }
 
     const canRunOnEditor = (actionItem: ActionItem) => activeEditorContext !== undefined &&
+      actionTarget !== undefined &&
       activeEditorContext.scheme === actionItem.action.type &&
       activeEditorContext.workspace === actionItem.workspace &&
       (actionItem.action.runOnProtected || !activeEditorContext.protected) &&
-      (!actionItem.action.extensions?.length || actionItem.action.extensions.includes('GLOBAL') || actionItem.action.extensions.includes(activeEditorContext.extension));
+      targetMatchesExtensions(actionTarget, actionItem.action.extensions);
 
     (await this.getAllActionItems()).forEach(item => item.setContext({ canRun: canRunOnEditor(item) }));
     this.refresh();
@@ -163,7 +168,7 @@ export class ActionItem extends EnvironmentItem {
 
     this.iconPath = new vscode.ThemeIcon("github-action", this.context.matched ? new vscode.ThemeColor(ActionItem.matchedColor) : undefined);
     this.description = this.context.matched ? l10n.t("search match") : undefined;
-    this.tooltip = `${ this.action.command }\nExtensions: ${this.action.extensions?.join(`, `)}`;
+    this.tooltip = `${this.action.command}\nExtensions: ${this.action.extensions?.join(`, `)}`;
     this.resourceUri = vscode.Uri.from({
       scheme: ActionItem.context,
       authority: this.action.name,
