@@ -81,6 +81,7 @@ export interface ConnectionData {
   readyTimeout?: number;
   sshDebug?: boolean;
   enableMfa?: boolean;
+  useSshAgent?: boolean;
 }
 
 export interface Server {

@@ -1,7 +1,7 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
-import { deleteStoredPassword, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from "../../config/passwords";
+import { deleteStoredPassword, deleteStoredPassphrase, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from "../../config/passwords";
 import { instance, safeDisconnect } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 import { CustomUI, Section } from "../CustomUI";
@@ -31,12 +31,13 @@ export class Login {
       .addInput(`port`, l10n.t(`Port (SSH)`), ``, { default: `22`, min: 1, max: 65535, inputType: "number" })
       .addInput(`username`, l10n.t(`Username`), undefined, { minlength: 1, maxlength: 10 })
       .addHorizontalRule()
-      .addParagraph(l10n.t(`Only provide either the password or a private key - not both.`))
+      .addParagraph(l10n.t(`Choose only one authentication method among password, private key, or SSH agent`))
       .addPassword(`password`, l10n.t(`Password`))
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
       .addCheckbox(`enableMfa`, l10n.t(`Enable Multi-Factor Authentication (MFA)`), l10n.t(`Enable this to be prompted for your additional factor when connecting.`))
       .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716 and PPK formats are supported.`))
       .addPassword(`passphrase`, l10n.t(`Key Passphrase`))
+      .addCheckbox(`useSshAgent`, l10n.t(`Use SSH Agent`), l10n.t(`Enable this option to use the SSH agent for authentication. The agent must be running, and the identities must have been imported.`))
       .addHorizontalRule()
       .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" })
       .addCheckbox(`sshDebug`, l10n.t(`Turn on SSH debug output`), l10n.t(`Enable this to output debug traces in the Code for i and help diagnose SSH connection issues.`));
@@ -76,7 +77,8 @@ export class Login {
             username: data.username,
             privateKeyPath: data.privateKeyPath,
             passphrase: data.passphrase,
-            enableMfa: data.enableMfa
+            enableMfa: data.enableMfa,
+            useSshAgent: data.useSshAgent
           };
 
           if (data.savePassword && data.password) {
@@ -106,11 +108,11 @@ export class Login {
             case `connect`:
               vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
               const toDoOnConnected: Function[] = [];
-              if (!data.password && !data.privateKeyPath && await promptPassword(data)) {
+              if (!data.password && !data.privateKeyPath && !data.useSshAgent && await promptPassword(data)) {
                 toDoOnConnected.push(() => setStoredPassword(context, data.name, data.password!));
               }
 
-              if (data.password || data.privateKeyPath) {
+              if (data.password || data.privateKeyPath || data.useSshAgent) {
                 try {
                   const connected = await instance.connect({ data, onConnectedOperations: toDoOnConnected });
                   if (connected.success) {
@@ -170,12 +172,16 @@ export class Login {
     if (connection) {
       const toDoOnConnected: Function[] = [];
       const connectionConfig = connection.data;
-      if (connectionConfig.privateKeyPath) {
+      if (connectionConfig.useSshAgent) {
+        // If using SSH agent, no password or private key is needed
+        await deleteStoredPassword(context, connectionConfig.name);
+        await deleteStoredPassphrase(context, connectionConfig.name);
+      } else if (connectionConfig.privateKeyPath) {
         // If connecting with a private key, remove the password
         await deleteStoredPassword(context, connectionConfig.name);
         connectionConfig.passphrase = await getStoredPassphrase(context, connectionConfig.name);
       } else {
-        // Assume connection with a password, but prompt if we don't have one        
+        // Assume connection with a password, but prompt if we don't have one
         connectionConfig.password = await getStoredPassword(context, connectionConfig.name);
         if (!connectionConfig.password) {
           if (await promptPassword(connectionConfig)) {
@@ -233,7 +239,18 @@ async function promptPassword(connection: ConnectionData) {
 }
 
 export async function checkLoginForm(data: ConnectionData) {
-  if (data.password && data.privateKeyPath) {
+  if (data.useSshAgent) {
+    if (data.password || data.privateKeyPath) {
+      const proceed = await vscode.window.showWarningMessage(
+        l10n.t("SSH Agent is enabled. Password and private key will be ignored."),
+        { modal: true },
+        l10n.t("OK")
+      );
+      if (!proceed) {
+        return false;
+      };
+    }
+  } else if (data.password && data.privateKeyPath) {
     const password = l10n.t("Password");
     const privateKey = l10n.t("Private Key");
     const toKeep = await vscode.window.showWarningMessage(l10n.t("Both a password and a private key were provided. Which one should be kept?"), { modal: true }, password, privateKey);
