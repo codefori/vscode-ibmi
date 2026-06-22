@@ -472,7 +472,7 @@ export default class IBMiContent {
           OBJTYPELIST => '*LIB',
           OBJECT_NAME => libs.ELEMENT
         )) AS os
-        CROSS JOIN TABLE(QSYS2.LIBRARY_INFO(library_name => os.OBJNAME)) AS li
+        CROSS JOIN TABLE(QSYS2.LIBRARY_INFO(library_name => os.OBJNAME, DETAILED_INFO => 'NO')) AS li
       `;
     const results = await this.ibmi.runSQL(statement);
 
