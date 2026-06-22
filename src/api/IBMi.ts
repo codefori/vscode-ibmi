@@ -465,9 +465,9 @@ export default class IBMi {
 
         // Check if permissions need updating
         const needsPermissionUpdate =
-          (homePerms !== 'error' && homePerms !== '750') ||
+          (homePerms !== 'error' && !Tools.checkPermissionsValue(homePerms, 750)) ||
           !vscodeExists ||
-          (vscodeExists && vscodePerms !== 'error' && vscodePerms !== '700');
+          (vscodeExists && vscodePerms !== 'error' && !Tools.checkPermissionsValue(vscodePerms, 700));
 
         if (needsPermissionUpdate && !options.reconnecting) {
           await callbacks.uiErrorHandler(this, `home_directory_permissions`, {
