@@ -149,7 +149,7 @@ export default class IBMi {
   /**
    * getConfigFile can return pre-defined configuration files,
    * but can lazy load new configuration files as well.
-   * 
+   *
    * This does not load the configuration file from the server,
    * it only returns a ConfigFile instance. You should check the
    * state of the ConfigFile instance to see if it has been loaded,
@@ -288,7 +288,7 @@ export default class IBMi {
       if (connectionObject.useSshAgent) {
         // Determine the SSH agent path based on platform
         let agentPath: string;
-        
+
         if (process.platform === 'win32') {
           // On Windows, use the OpenSSH named pipe
           agentPath = '\\\\.\\pipe\\openssh-ssh-agent';
@@ -301,7 +301,7 @@ export default class IBMi {
           agentPath = process.env.SSH_AUTH_SOCK;
           this.appendOutput(`Using SSH Agent: ${agentPath}\n`);
         }
-        
+
         // Set agent and authentication options
         connectConfig.agent = agentPath;
         connectConfig.agentForward = true;
@@ -361,7 +361,7 @@ export default class IBMi {
       if (this.client.connection) {
         //end: Disconnected by the user
         this.client.connection.once(`end`, onDisconnected);
-        //error/tiemout: connection dropped for some reason (details given in the SSHError type) 
+        //error/tiemout: connection dropped for some reason (details given in the SSHError type)
         this.client.connection.once(`error`, onDisconnected);
         this.client.connection.once(`timeout`, onDisconnected);
       }
@@ -1537,7 +1537,7 @@ export default class IBMi {
     library = this.upperCaseName(library);
     let libraryIASP = this.libraryAsps.get(library);
     if (!libraryIASP) {
-      const [row] = await this.runSQL(`select IASP_NAME from table(QSYS2.LIBRARY_INFO('${library}'));`);
+      const [row] = await this.runSQL(`select IASP_NAME from table(QSYS2.LIBRARY_INFO('${library}', DETAILED_INFO => 'NO'));`);
       libraryIASP = row?.IASP_NAME ? String(row.IASP_NAME) : "*SYSBAS";
       this.libraryAsps.set(library, libraryIASP);
     }
@@ -1579,7 +1579,7 @@ export default class IBMi {
       this.ccsidCache.delete(cacheKey);
     }
 
-    // Call getAttributes to fetch CCSID 
+    // Call getAttributes to fetch CCSID
     const attrs = await this.getContent().getAttributes(lookupPath, 'CCSID');
     const ccsid = Number(attrs?.CCSID) || 0;
 
