@@ -405,6 +405,19 @@
 					],
 					"description": "Determine which view should be shown when running Actions"
 				},
+				"code-for-ibmi.sortActionsBy": {
+					"type": "string",
+					"default": "usage",
+					"enum": [
+						"usage",
+						"name"
+					],
+					"enumDescriptions": [
+						"Sort actions by most recently used",
+						"Sort actions alphabetically by name"
+					],
+					"description": "Determine how actions should be sorted in the action selection menu"
+				},
 				"code-for-ibmi.clearErrorsBeforeBuild": {
 					"type": "boolean",
 					"default": true,
