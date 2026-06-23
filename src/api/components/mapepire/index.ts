@@ -53,7 +53,7 @@ export class Mapepire implements IBMiComponent {
       .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\\.(\\d+)\\.(\\d+)\\.jar$`).exec(line))
       .filter(Boolean)
       .map(version => ({ major: Number(version![1]), minor: Number(version![2]), patch: Number(version![3]) } as SemanticVersion));
-    if (!remoteVersions) {
+    if (remoteVersions.length === 0) {
       return { status: "NotInstalled" };
     }
     else if (remoteVersions.every(remoteVersion => remoteVersion.major < this.version.major || (remoteVersion.major === this.version.major && remoteVersion.minor < this.version.minor) || (remoteVersion.major === this.version.major && remoteVersion.minor === this.version.minor && remoteVersion.patch < this.version.patch))) {
