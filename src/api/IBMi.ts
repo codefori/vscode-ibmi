@@ -465,7 +465,7 @@ export default class IBMi {
 
         // Check if permissions need updating
         const needsPermissionUpdate =
-          (homePerms !== 'error' && homePerms !== '750') ||
+          (homePerms !== 'error' && homePerms !== '750' && homePerms !== '700') ||
           !vscodeExists ||
           (vscodeExists && vscodePerms !== 'error' && vscodePerms !== '700');
 
