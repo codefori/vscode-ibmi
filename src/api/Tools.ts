@@ -278,21 +278,4 @@ export namespace Tools {
     }
     return permissions.map(String).join("");
   }
-
-  /**
-   * Checks whether a permission string in octal format is within the allowed
-   * target permission limits.
-   * The expected input is a three-digit octal permission string such as `777`.
-   *
-   * @param permission current permissions as a three-digit octal string
-   * @param target optional target permission value to compare against
-   * @returns `true` if each digit of `permission` is less than or equal to the
-   *          corresponding digit of `target`, otherwise `false`
-   */
-  export function checkPermissionsValue(permission: string, target: number = 750): boolean | undefined {
-    const curPermission = Array.from(permission).map(Number);
-    const curTarget = Array.from(target.toString()).map(Number);
-
-    return curPermission.every((val, i) => val <= curTarget[i]);
-  }
 }
