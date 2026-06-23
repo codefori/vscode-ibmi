@@ -67,7 +67,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       let message = `Security recommendation: Update directory permissions?\n\n`;
       let needsUpdate = false;
       
-      if (homePerms && homePerms !== '750') {
+      if (homePerms && homePerms !== '750' && homePerms !== '700') {
         message += `• Home directory (${homeDir}) has permissions ${homePerms}, recommended: 750\n`;
         needsUpdate = true;
       }
