@@ -1,7 +1,8 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
-import { deleteStoredPassword, deleteStoredPassphrase, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from "../../config/passwords";
+import { deleteStoredPassphrase, deleteStoredPassword, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from "../../config/passwords";
+import { setTemporaryPassword } from "../../extension";
 import { instance, safeDisconnect } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 import { CustomUI, Section } from "../CustomUI";
@@ -228,6 +229,7 @@ async function promptPassword(connection: ConnectionData) {
       savePassword = true;
     }
     connection.password = passwordBox.value;
+    setTemporaryPassword(passwordBox.value);
     passwordBox.dispose();
   };
   passwordBox.onDidTriggerButton(onClose);

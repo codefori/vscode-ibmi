@@ -44,6 +44,7 @@ import { SettingsUI } from "./webviews/settings";
 
 let temporaryPassword: string | undefined;
 export let getPassword: (connection: IBMi, prompt: string) => Promise<string | undefined>;
+export const setTemporaryPassword = (password:string) => temporaryPassword = password;
 export const clearPassword = () => temporaryPassword = undefined;
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
