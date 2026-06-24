@@ -42,6 +42,10 @@ import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
 
+let temporaryPassword: string | undefined;
+export let getPassword: (connection: IBMi, prompt: string) => Promise<string | undefined>;
+export const clearPassword = () => temporaryPassword = undefined;
+
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
@@ -125,12 +129,23 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.environment.refresh");
     });
 
+  getPassword = async (connection, prompt) => {
+    let password = temporaryPassword ?? await getStoredPassword(context, connection.currentConnectionName);
+
+    if (password) {
+      return password;
+    }
+  
+    return temporaryPassword = await window.showInputBox({
+      password: true,
+      prompt
+    });
+  }
+
+  instance.subscribe(context, "disconnected", "Clear temporary password", clearPassword);
+
   const mapepire = new Mapepire(path.join(context.extensionPath, `dist`), async (connection) => {
-    return await getStoredPassword(context, connection.currentConnectionName) ||
-      await window.showInputBox({
-        password: true,
-        prompt: l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName)
-      });
+    return await getPassword(connection, l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName));
   });
   extensionComponentRegistry.registerComponent(context, mapepire);
 
