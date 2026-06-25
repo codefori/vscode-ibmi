@@ -2,6 +2,7 @@ import { commands, Disposable, ExtensionContext, extensions, l10n, ProgressLocat
 import Instance from "../Instance";
 import { Password } from "../api/password";
 import { getStoredPassword, setStoredPassword } from "../config/passwords";
+import { getPassword } from "../extension";
 import { CustomUI } from "../webviews/CustomUI";
 
 const access: {
@@ -35,7 +36,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
     commands.registerCommand(`code-for-ibmi.getPassword.disable`, () => {
       access.enabled = false;
     }),
-    commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
+    commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string, prompt?:string) => {
       if (access.enabled && extensionId) {
         const extension = extensions.getExtension(extensionId);
         const isValid = (extension && extension.isActive);
@@ -51,7 +52,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
               throw new Error(`Password request denied for extension ${displayName}.`);
             }
 
-            const storedPassword = await getStoredPassword(context, instance.getConnection()!.currentConnectionName);
+            const storedPassword = await getPassword(instance.getConnection()!, prompt || `IBM i password requeted by ${displayName}`);
 
             if (storedPassword) {
               let isAuthed = storage.getExtensionAuthorisation(extension.id) !== undefined;

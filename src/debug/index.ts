@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { ILELibrarySettings } from "../api/CompileTools";
 import { getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
 import IBMi from "../api/IBMi";
-import { getStoredPassword } from "../config/passwords";
+import { clearPassword, getPassword } from "../extension";
 import { Env, getEnvConfig } from "../filesystems/local/env";
 import { instance } from "../instantiate";
 import { ObjectItem } from "../typings";
@@ -52,7 +52,7 @@ export async function initialize(context: ExtensionContext) {
       if (connection) {
         const config = connection.getConfig();
         if (connection.remoteFeatures[`startDebugService.sh`]) {
-          const password = await getPassword();
+          const password = await getPassword(connection, `Password for user profile ${connection.currentUser} is required to debug. Password is not stored on device, but is stored temporarily for this connection.`);
 
           const libraries: ILELibrarySettings = {
             currentLibrary: config?.currentLibrary,
@@ -172,28 +172,6 @@ export async function initialize(context: ExtensionContext) {
     }
 
     return qualifiedPath;
-  }
-
-  const getPassword = async () => {
-    const connection = instance.getConnection();
-
-    let password = await getStoredPassword(context, connection!.currentConnectionName);
-
-    if (!password) {
-      password = temporaryPassword;
-    }
-
-    if (!password) {
-      password = await vscode.window.showInputBox({
-        password: true,
-        prompt: `Password for user profile ${connection!.currentUser} is required to debug. Password is not stored on device, but is stored temporarily for this connection.`
-      });
-
-      // Store for later
-      temporaryPassword = password;
-    }
-
-    return password;
   }
 
   const validateWorkspaceFolder = (maybeFolder?: vscode.WorkspaceFolder) => {
@@ -382,7 +360,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   const port = config?.debugPort;
   const updateProductionFiles = config?.debugUpdateProductionFiles;
   const enableDebugTracing = config?.debugEnableDebugTracing;
-  const debugIgnoreCertificateErrors= config?.debugIgnoreCertificateErrors;
+  const debugIgnoreCertificateErrors = config?.debugIgnoreCertificateErrors;
 
   let secure = true;
 
@@ -447,10 +425,8 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
 
       if (debugResult) {
         connectionConfirmed = true;
-      } else {
-        if (!connectionConfirmed) {
-          temporaryPassword = undefined;
-        }
+      } else if (!connectionConfirmed) {
+        clearPassword();
       }
     }
   }
