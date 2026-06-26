@@ -51,6 +51,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     ccsidConversionEnabled: (parameters.ccsidConversionEnabled === true),
     ccsidConvertFrom: parameters.ccsidConvertFrom || ``,
     ccsidConvertTo: parameters.ccsidConvertTo || ``,
+    sqlJobNaming: parameters.sqlJobNaming || `sql`,
   }
 }
 
