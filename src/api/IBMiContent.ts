@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { parse } from 'csv-parse/sync';
 import fs from 'fs';
 import * as node_ssh from "node-ssh";
@@ -538,7 +539,7 @@ export default class IBMiContent {
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
 
-     // Libraries (*LIB) can only be listed from QSYS
+    // Libraries (*LIB) can only be listed from QSYS
     const isListingLibraries = !!filters?.types?.some(type => type === '*LIB');
 
     if (isListingLibraries && localLibrary !== `QSYS`) {
@@ -1165,16 +1166,27 @@ export default class IBMiContent {
    * @param library
    * @param name
    * @param type
-   * @returns
+   * 
+   * @returns the routine program if it's external, the sha256 hash of the routine's body otherwise
    */
   async getSQLRoutineSignature(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
-    return (await this.ibmi.runSQL(
-      /* sql */`select HASH_SHA256(ROUTINEDEF) SIGNATURE from qsys2.sysroutines where routine_type = '${type}' and rtnschema = '${library}' and RTNNAME = '${name}' fetch first row only`
-    )).at(0)?.SIGNATURE as string;
+    const [row] = await this.ibmi.runSQL(/* sql */`
+      select ROUTINE_BODY, EXTERNAL_NAME, ROUTINEDEF
+      from QSYS2.SYSROUTINES
+      where ROUTINE_TYPE = '${type}' and
+            RTNSCHEMA = '${library}' and
+            RTNNAME = '${name}'
+      fetch first row only`
+    );
+    if (row?.ROUTINE_BODY === "EXTERNAL") {
+      return row.EXTERNAL_NAME as string
+    }
+    else if (row?.ROUTINEDEF) {
+      return crypto.createHash('sha256').update(row.ROUTINEDEF as string).digest('hex').toUpperCase();
+    }
   }
 
   async getSHA256FileHash(remoteFile: string) {
-
     //We use OPENSSL that is already build in inside os
     if (this.ibmi.remoteFeatures.openssl) {
       const objhash = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 ${remoteFile} ` });
