@@ -408,6 +408,15 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Allow all self-signed certificates or certificates from a CA when connecting to Mapepire."
+							},
+							"sqlJobNaming": {
+								"type": "string",
+								"default": "sql",
+								"enum": [
+									"system",
+									"sql"
+								],
+								"description": "The job naming convention to use when running SQL queries. 'system' will use the system naming convention, 'sql' will use the SQL naming convention."
 							}
 						}
 					}
