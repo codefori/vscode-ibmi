@@ -33,7 +33,7 @@ const INVALID_TARGET_CCSIDS = ["65534", "65535"]; // invalid target CCSIDs for c
 const SQL_NAMING = [
   { value: "sql", text: "SQL" },
   { value: "system", text: "System" }
-]
+];
 
 /**
  * Helper function to convert CCSID data to SelectItem format
