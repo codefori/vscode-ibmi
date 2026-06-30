@@ -30,6 +30,12 @@ connectedBarItem.command = {
   title: `Show connection settings`
 };
 
+const jobInfoBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+jobInfoBarItem.command = {
+  command: `code-for-ibmi.copyJobId`,
+  title: `Copy job ID to clipboard`
+};
+
 export async function safeDisconnect(): Promise<boolean> {
   let doDisconnect = true;
 
@@ -64,6 +70,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
+    jobInfoBarItem,
 
     ...registerConnectionCommands(context, instance),
 
@@ -80,6 +87,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ...registerPasswordCommands(context, instance),
 
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
+
+    vscode.commands.registerCommand("code-for-ibmi.updateJobInfoBar", updateJobInfoBar),
   );
 
   instance.subscribe(context, 'connected', 'Load status bars', onConnected);
@@ -104,7 +113,7 @@ async function updateConnectedBar() {
 
     const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
     const serverConfigOk = remoteConnectionConfig.getState() === `ok`;
-    let serverConfig: RemoteConfigFile|undefined;
+    let serverConfig: RemoteConfigFile | undefined;
     if (serverConfigOk) {
       serverConfig = await remoteConnectionConfig.get();
     }
@@ -115,9 +124,7 @@ async function updateConnectedBar() {
     const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.environment.actions.focus)`;
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
-    const sqlJobId = connection.getSqlJobId();
-    const sqlJobInfo = sqlJobId ? `[$(database) Job: ${sqlJobId}](command:code-for-ibmi.copyJobId)` : `$(database) Job: Not available`;
-    
+
     connectedBarItemTooltips.push(
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       terminalMenuItem,
@@ -126,8 +133,7 @@ async function updateConnectedBar() {
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
         :
-        `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`,
-      sqlJobInfo
+        `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
     );
     connectedBarItem.tooltip = new vscode.MarkdownString(connectedBarItemTooltips.join(`\n\n---\n\n`), true);
     connectedBarItem.tooltip.isTrusted = true;
@@ -137,10 +143,32 @@ async function updateConnectedBar() {
   }
 }
 
+async function updateJobInfoBar() {
+  const connection = instance.getConnection();
+  if (connection) {
+    const sqlJobId = connection.getSqlJobId();
+    if (!sqlJobId) {
+      jobInfoBarItem.hide();
+      return;
+    }
+    jobInfoBarItem.text = `$(server-environment) ${sqlJobId}`;
+    const jobInfoBarItemTooltips: String[] = [];
+    const JDBCInfo = sqlJobId ? `[$(settings) JDBC options]` : ``;
+    const sqlJobInfo = sqlJobId ? `[$(server-process) Job info]` : ``;
+    jobInfoBarItemTooltips.push(
+      sqlJobInfo,
+      JDBCInfo,
+    );
+    jobInfoBarItem.tooltip = new vscode.MarkdownString(jobInfoBarItemTooltips.join(`\n\n---\n\n`), true);
+    jobInfoBarItem.tooltip.isTrusted = true;
+  }
+}
+
 async function onConnected() {
   [
     connectedBarItem,
     disconnectBarItem,
+    jobInfoBarItem,
   ].forEach(barItem => barItem.show());
 }
 
@@ -149,5 +177,6 @@ async function onDisconnected() {
   [
     disconnectBarItem,
     connectedBarItem,
+    jobInfoBarItem,
   ].forEach(barItem => barItem.hide())
 }
