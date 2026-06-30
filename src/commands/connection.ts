@@ -1,4 +1,4 @@
-import { commands, Disposable, ExtensionContext, window } from "vscode";
+import { commands, Disposable, ExtensionContext, window, env } from "vscode";
 import { ConnectionResult } from "../api/IBMi";
 import { setStoredPassword } from "../config/passwords";
 import Instance from "../Instance";
@@ -28,6 +28,27 @@ export function registerConnectionCommands(context: ExtensionContext, instance: 
         await safeDisconnect();
       } else if (!silent) {
         window.showErrorMessage(`Not currently connected to any system.`);
+      }
+    }),
+    commands.registerCommand(`code-for-ibmi.copyJobId`, async () => {
+      const connection = instance.getConnection();
+      const sqlJobId = connection?.getSqlJobId();
+      if (sqlJobId) {
+        await env.clipboard.writeText(sqlJobId);
+        window.showInformationMessage(`Job ID copied: ${sqlJobId}`);
+      } else {
+        window.showWarningMessage(`No job ID available`);
+      }
+    }),
+    commands.registerCommand(`code-for-ibmi.showIBMiJobInfo`, async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const job = await connection.getSqlJobId();
+        if (job) {
+          await commands.executeCommand('vscode-ibmi-fs.wrkjob', job);
+        } else {
+          window.showErrorMessage(`Unable to retrieve current SQL job ID.`);
+        }
       }
     }),
   ]
