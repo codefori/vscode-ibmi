@@ -154,7 +154,7 @@ async function updateJobInfoBar() {
     jobInfoBarItem.text = `$(server-environment) ${sqlJobId}`;
     const jobInfoBarItemTooltips: String[] = [];
     const JDBCInfo = sqlJobId ? `[$(settings) JDBC options]` : ``;
-    const sqlJobInfo = sqlJobId ? `[$(server-process) Job info]` : ``;
+    const sqlJobInfo = sqlJobId ? `[$(server-process) Job info](command:code-for-ibmi.showIBMiJobInfo)` : ``;
     jobInfoBarItemTooltips.push(
       sqlJobInfo,
       JDBCInfo,
