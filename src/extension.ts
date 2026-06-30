@@ -46,7 +46,7 @@ import { JobLogUI } from "./webviews/wrkjob";
 
 let temporaryPassword: string | undefined;
 export let getPassword: (connection: IBMi, prompt: string) => Promise<string | undefined>;
-export const setTemporaryPassword = (password:string) => temporaryPassword = password;
+export const setTemporaryPassword = (password: string) => temporaryPassword = password;
 export const clearPassword = () => temporaryPassword = undefined;
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
@@ -131,6 +131,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshLibraryListView");
       commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
       commands.executeCommand("code-for-ibmi.environment.refresh");
+      commands.executeCommand("code-for-ibmi.updateJobInfoBar");
     });
 
   getPassword = async (connection, prompt) => {
@@ -139,7 +140,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     if (password) {
       return password;
     }
-  
+
     return temporaryPassword = await window.showInputBox({
       password: true,
       prompt
