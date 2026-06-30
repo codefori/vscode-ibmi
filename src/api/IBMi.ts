@@ -278,7 +278,7 @@ export default class IBMi {
         }
       }
 
-      const connectConfig: node_ssh.Config  = {
+      const connectConfig: node_ssh.Config = {
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
         passphrase: connectionObject.privateKeyPath ? connectionObject.passphrase : undefined,
@@ -1253,6 +1253,10 @@ export default class IBMi {
 
   public getSqlJobId() {
     return this.sqlJob?.id;
+  }
+
+  public getSqlJobJDBCOptions() {
+    return this.sqlJob?.options;
   }
 
   /**

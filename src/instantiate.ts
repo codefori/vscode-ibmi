@@ -149,19 +149,21 @@ async function updateConnectedBar() {
 
 async function updateJobInfoBar() {
   const connection = instance.getConnection();
-  if (connection) {
+  if (connection && connection.sqlRunnerAvailable()) {
     const sqlJobId = connection.getSqlJobId();
-    if (!sqlJobId) {
-      jobInfoBarItem.hide();
-      return;
-    }
+    const jdbcOptions = connection.getSqlJobJDBCOptions() || {};
+    const jdbcInfo = [
+      `Active JDBC connection options:`,
+      ``,
+      ...Object.entries(jdbcOptions).map(([key, value]) => `- ${key}: ${value}`)
+    ].join(`\n`);
+
     jobInfoBarItem.text = `$(server-environment) ${sqlJobId}`;
     const jobInfoBarItemTooltips: String[] = [];
-    const JDBCInfo = sqlJobId ? `[$(settings) JDBC options]` : ``;
     const sqlJobInfo = sqlJobId ? `[$(server-process) Job info](command:code-for-ibmi.showIBMiJobInfo)` : ``;
     jobInfoBarItemTooltips.push(
+      jdbcInfo,
       sqlJobInfo,
-      JDBCInfo,
     );
     jobInfoBarItem.tooltip = new vscode.MarkdownString(jobInfoBarItemTooltips.join(`\n\n---\n\n`), true);
     jobInfoBarItem.tooltip.isTrusted = true;
