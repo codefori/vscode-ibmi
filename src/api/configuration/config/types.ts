@@ -42,6 +42,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   mapepireUseServer: boolean
   mapepireServerPort: number
   mapepireAllowSelfCert: boolean
+  sqlJobNaming: string
   currentProfile?: string
   [name: string]: any;
 }
