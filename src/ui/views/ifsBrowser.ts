@@ -939,8 +939,7 @@ Please type "{0}" to confirm deletion.`, dirName);
                   }
                   else {
                     if (!existsSync(target) || await vscode.window.showWarningMessage(l10n.t(`{0} already exists.
-Do you want to replace it?`, target), { modal: true }, l10n.t(`{0} already exists.
-Do you want to replace it?`, target))) {
+Do you want to replace it?`, target), { modal: true }, l10n.t(`Yes`))) {
                       await ibmi.getContent().downloadFile(target, targetPath);
                     }
                   }
