@@ -169,7 +169,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     actionTools: ActionTools,
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager,
-    searchTools: SearchTools
+    searchTools: SearchTools,
+    getSystemVersion: () => instance.getConnection()?.getSystemVersion(),
   };
 }
 

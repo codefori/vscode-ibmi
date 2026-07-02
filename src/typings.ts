@@ -21,7 +21,8 @@ export interface CodeForIBMi {
   actionTools: typeof ActionTools,
   componentRegistry: ComponentRegistry,
   connectionManager: ConnectionManager,
-  searchTools: typeof SearchTools
+  searchTools: typeof SearchTools,
+  getSystemVersion: () => number | undefined,
 }
 
 export interface DeploymentParameters {
