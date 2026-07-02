@@ -1067,6 +1067,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
                 .filter(item => item.copy)
                 .flatMap(item =>
                   [
+                    `@QSYS/RUNSQL SQL('DROP TABLE IF EXISTS QTEMP.QTEMPSRC') COMMIT(*NONE) NAMING(*SYS)`,
                     `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(TEMPMBR) MBROPT(*REPLACE) CRTFILE(*YES)`,
                     `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMBR")}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID})`
                   ]);
