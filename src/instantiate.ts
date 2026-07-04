@@ -160,7 +160,7 @@ async function updateJobInfoBar() {
 
     jobInfoBarItem.text = `$(server-environment) ${sqlJobId}`;
     const jobInfoBarItemTooltips: String[] = [];
-    const sqlJobInfo = sqlJobId ? `[$(server-process) Job info](command:code-for-ibmi.showIBMiJobInfo)` : ``;
+    const sqlJobInfo = sqlJobId ? `[$(server-process) Job Info](command:code-for-ibmi.showIBMiJobInfo)` : ``;
     jobInfoBarItemTooltips.push(
       jdbcInfo,
       sqlJobInfo,
