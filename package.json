@@ -1067,6 +1067,12 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.showJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Display Job Log",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.launchTerminalPicker",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Launch Terminal Picker",
@@ -2231,6 +2237,10 @@
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.showJobLog",
 					"when": "code-for-ibmi:connected"
 				},
 				{

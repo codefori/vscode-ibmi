@@ -27,6 +27,7 @@ import { mergeCommandProfiles } from "./mergeProfiles";
 import { initialise } from "./testing";
 import { CodeForIBMi } from "./typings";
 import { VscodeTools } from "./ui/Tools";
+import { FrontendTables } from "./ui/frontendTables";
 import { registerActionTools } from "./ui/actions";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
 import { initializeLibraryListView } from "./ui/views/LibraryListView";
@@ -41,6 +42,7 @@ import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
+import { JobLogUI } from "./webviews/wrkjob";
 
 let temporaryPassword: string | undefined;
 export let getPassword: (connection: IBMi, prompt: string) => Promise<string | undefined>;
@@ -69,6 +71,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   };
 
   SettingsUI.init(context);
+  JobLogUI.init(context);
   initializeConnectionBrowser(context);
   initializeObjectBrowser(context)
   initializeIFSBrowser(context);
@@ -165,6 +168,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     customEditor: (target, onSave, onClosed) => new CustomEditor(target, onSave, onClosed),
     evfeventParser: parseErrors,
     tools: VscodeTools,
+    frontendTables: FrontendTables,
     deployTools: DeployTools,
     actionTools: ActionTools,
     componentRegistry: extensionComponentRegistry,

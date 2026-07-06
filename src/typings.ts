@@ -8,6 +8,7 @@ import { CustomEditor } from "./editors/customEditorProvider";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { ActionTools } from "./api/actions";
 import { VscodeTools } from "./ui/Tools";
+import { FrontendTables } from "./ui/frontendTables";
 import { SearchTools } from "./api/SearchTools";
 import { CustomUI } from "./webviews/CustomUI";
 
@@ -17,6 +18,7 @@ export interface CodeForIBMi {
   customEditor: <T>(target: string, onSave: (data: T) => Promise<void>, onClosed?: () => void) => CustomEditor<T>,
   evfeventParser: (lines: string[]) => Map<string, FileError[]>,
   tools: typeof VscodeTools,
+  frontendTables: typeof FrontendTables,
   deployTools: typeof DeployTools,
   actionTools: typeof ActionTools,
   componentRegistry: ComponentRegistry,
