@@ -46,7 +46,7 @@ export default class IBMiContent {
   }
 
   private async getNotUTF8CCSID(attr: string, remotePath: string): Promise<string> {
-    const result = await this.ibmi.sendCommand({ command: `${attr} "${remotePath}" CCSID` });
+    const result = await this.ibmi.sendCommand({ command: `${attr} ${Tools.escapePath(remotePath)} CCSID` });
     if (result.code === 0) {
       //What's the point of converting 1208?
       let ccsid = result.stdout.trim();
@@ -1189,7 +1189,7 @@ export default class IBMiContent {
   async getSHA256FileHash(remoteFile: string) {
     //We use OPENSSL that is already build in inside os
     if (this.ibmi.remoteFeatures.openssl) {
-      const objhash = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 ${remoteFile} ` });
+      const objhash = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 ${Tools.escapePath(remoteFile)} ` });
       if (objhash.code === 0) {
         return objhash.stdout.split(' ').pop();
       }
