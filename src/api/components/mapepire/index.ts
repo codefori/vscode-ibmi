@@ -48,7 +48,7 @@ export class Mapepire implements IBMiComponent {
       return { status: "Installed", remoteSignature: Mapepire.SIGNATURE };
     }
 
-    const remoteVersions = (await connection.sendCommand({ command: `/QOpenSys/usr/bin/find ${Tools.escapePath(installDirectory)} -type f -name ${SERVER_FILE_PREFIX}\\*` }))
+    const remoteVersions = (await connection.sendCommand({ command: `/QOpenSys/usr/bin/find "${Tools.escapePath(installDirectory, true)}" -type f -name ${SERVER_FILE_PREFIX}\\*` }))
       .stdout.split("\n")
       .map(line => line.trim().substring(2))
       .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\\.(\\d+)\\.(\\d+)\\.jar$`).exec(line))
@@ -77,7 +77,7 @@ export class Mapepire implements IBMiComponent {
       }
 
       await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
-      const result = await connection.sendCommand({ command: `chmod +x ${Tools.escapePath(this.installPath)}` });
+      const result = await connection.sendCommand({ command: `chmod +x "${Tools.escapePath(this.installPath, true)}"` });
       if (result.code !== 0) {
         throw `Failed to make Mapepire jar file executable: ${result.stderr}`;
       }
@@ -92,7 +92,7 @@ export class Mapepire implements IBMiComponent {
 
   getInitCommand(javaHome: string): string | undefined {
     if (this.installPath) {
-      return `${javaHome ? path.posix.join(javaHome, `bin`, `java`) : 'java'} -Dos400.stdio.convert=N -jar ${Tools.escapePath(this.installPath)} --single`
+      return `${javaHome ? path.posix.join(javaHome, `bin`, `java`) : 'java'} -Dos400.stdio.convert=N -jar "${Tools.escapePath(this.installPath, true)}" --single`
     }
   }
 

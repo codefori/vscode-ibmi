@@ -146,7 +146,7 @@ export namespace Deployment {
 
   export async function createRemoteDirectory(remotePath: string) {
     return await getConnection().sendCommand({
-      command: `mkdir -p ${Tools.escapePath(remotePath)}`
+      command: `mkdir -p "${Tools.escapePath(remotePath, true)}"`
     });
   }
 
