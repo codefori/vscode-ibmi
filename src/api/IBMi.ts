@@ -449,7 +449,7 @@ export default class IBMi {
         // and chmod follows the link, so detection must follow it too or it can never converge.
         // Returns 'error' when the output can't be parsed (empty stdout, ls error, banner noise).
         const getPermissions = async (path: string) => {
-          const out = (await this.sendCommand({ command: `ls -ldL "${path}" 2>/dev/null` })).stdout;
+          const out = (await this.sendCommand({ command: `ls -ldL "${Tools.escapePath(path, true)}" 2>/dev/null` })).stdout;
           return Tools.parseLsPermissions(out) ?? 'error';
         };
 
@@ -458,7 +458,7 @@ export default class IBMi {
         // Check if .vscode directory exists and get its permissions
         const vscodeDir = `${defaultHomeDir}/.vscode`;
         const vscodeExistsResult = await this.sendCommand({
-          command: `test -d ${vscodeDir} && echo "exists" || echo "notexists"`
+          command: `test -d "${Tools.escapePath(vscodeDir, true)}" && echo "exists" || echo "notexists"`
         });
         const vscodeExists = vscodeExistsResult.stdout.trim() === 'exists';
         const vscodePerms = vscodeExists ? await getPermissions(vscodeDir) : '';
@@ -894,7 +894,7 @@ export default class IBMi {
               if ((!quickConnect() || !cachedServerSettings?.pathChecked)) {
                 const currentPaths = (await this.sendCommand({ command: "echo $PATH" })).stdout.split(":");
                 const bashrcFile = `${defaultHomeDir}/.bashrc`;
-                let bashrcExists = (await this.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0;
+                let bashrcExists = (await this.sendCommand({ command: `test -e "${Tools.escapePath(bashrcFile, true)}"` })).code === 0;
                 let reason;
                 const requiredPaths = ["/QOpenSys/pkgs/bin", "/usr/bin", "/QOpenSys/usr/bin"]
                 let missingPath;
