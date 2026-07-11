@@ -1,23 +1,17 @@
 import * as vscode from 'vscode';
+import { VscodeTools } from './Tools';
 
 export namespace FrontendTables {
 
   const EMPTY_VALUE_PLACEHOLDER = '<span style="color: var(--vscode-descriptionForeground); font-style: italic;">—</span>';
 
-  /** Escape a value for safe interpolation into the generated HTML. */
+  /** Escape a value for safe interpolation into the generated HTML; empty/null-ish values render as '-'. */
   function escapeHtml(text: string | number): string {
     if (text === 0) return '0';
     if (text === null || text === undefined || text === '') return '-';
     const str = String(text);
     if (str === 'null' || str === 'undefined' || str.trim() === '') return '-';
-    const map: { [key: string]: string } = {
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#039;'
-    };
-    return str.replace(/[&<>"']/g, m => map[m]);
+    return VscodeTools.escapeHtml(str);
   }
 
   /** Renders YES/NO as colored badges and integers with locale formatting; undefined if the value is neither. */
@@ -133,7 +127,7 @@ export namespace FrontendTables {
 
   /**
    * Generate an enhanced detail table (key-value pairs) using Fast components
-   * This is a modern replacement for generateTableHtml and generateTableHtmlCode
+   * Replaces the legacy table generators (generateTableHtml/generateTableHtmlCode) from the FS extension
    * @param options - Detail table configuration options
    * @returns Complete HTML page string
    */
@@ -423,7 +417,7 @@ export namespace FrontendTables {
             const colIndex = collapsibleIndices.indexOf(index);
             return `<vscode-table-cell style="width: ${columnsArray[index]}; text-align: center;">
               <vscode-button appearance="secondary" class="show-modal-btn" data-row="${rowIndex}" data-col="${colIndex}" aria-label="Show details">
-                +
+                <span style="font-size: 1.2em;">ⓘ</span>
               </vscode-button>
             </vscode-table-cell>`;
           }
