@@ -149,7 +149,7 @@ export class SettingsUI {
           .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
           .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) })
           .addHorizontalRule()
-          .addInput(`statusBarColor`, `Status bar color`, `The color of this system's name in the status bar, as a hexadecimal color (e.g. <code>#8A2BE2</code>). Useful to tell your systems apart at a glance. Leave empty to keep the color of the current theme.`, { default: config.statusBarColor, regexTest: `^\\s*(#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\\s*)?$` })
+          .addInput(`statusBarColor`, vscode.l10n.t(`Status bar color`), vscode.l10n.t(`The color of this system's name in the status bar, as a hexadecimal color (e.g. <code>#8A2BE2</code>). Useful to tell your systems apart at a glance. Leave empty to keep the color of the current theme.`), { default: config.statusBarColor, regexTest: `^\\s*(#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\\s*)?$` })
 
         setFieldsReadOnly(featuresTab);
 

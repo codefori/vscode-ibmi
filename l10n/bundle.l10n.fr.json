@@ -5,6 +5,8 @@
   "\"findutils\" must be installed on the remote system.": "\"findutils\" doit être installé sur le système distant.",
   "(current library)": "(bibliothèque en cours)",
   "(in ASP {0})": "(dans l'ASP {0})",
+  "Status bar color": "Couleur de la barre d'état",
+  "The color of this system's name in the status bar, as a hexadecimal color (e.g. <code>#8A2BE2</code>). Useful to tell your systems apart at a glance. Leave empty to keep the color of the current theme.": "La couleur du nom de ce système dans la barre d'état, sous forme de couleur hexadécimale (par ex. <code>#8A2BE2</code>). Utile pour distinguer vos systèmes d'un coup d'œil. Laissez vide pour conserver la couleur du thème actuel.",
   "{0} {1} occurred while listing files.": "{0} {1} s'est produit lors du chargement des fichiers.",
   "{0} already exists.\nDo you want to replace it?": "{0} existe déjà.\nVoulez-vous le remplacer?",
   "{0} file(s) contain(s) '{1}'": "{0} file(s) contenant '{1}'",

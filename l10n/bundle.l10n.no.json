@@ -5,6 +5,8 @@
   "\"findutils\" must be installed on the remote system.": "\"findutils\" must be installed on the remote system.",
   "(current library)": "(nåværende bibliotek)",
   "(in ASP {0})": "(i ASP {0})",
+  "Status bar color": "Farge på statuslinjen",
+  "The color of this system's name in the status bar, as a hexadecimal color (e.g. <code>#8A2BE2</code>). Useful to tell your systems apart at a glance. Leave empty to keep the color of the current theme.": "Fargen på navnet til dette systemet i statuslinjen, som en heksadesimal farge (f.eks. <code>#8A2BE2</code>). Nyttig for å skille systemene dine fra hverandre med et blikk. La feltet stå tomt for å beholde fargen fra gjeldende tema.",
   "{0} {1} occurred while listing files.": "{0} {1} oppstod ved visning av filer.",
   "{0} already exists.\nDo you want to replace it?": "{0} eksisterer allerede.\nVil du erstatte den?",
   "{0} file(s) contain(s) '{1}'": "{0} file(s) contain(s) '{1}'",
