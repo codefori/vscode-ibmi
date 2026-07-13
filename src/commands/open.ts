@@ -112,6 +112,8 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
 
     commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => commands.executeCommand(`code-for-ibmi.goToFile`, true)),
     commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
+      readonly = readonly ?? IBMi.connectionManager.get<DefaultOpenMode>("defaultOpenMode") === "browse";
+
       const compareIcon = new ThemeIcon('split-horizontal');
       const compareButton: QuickInputButton = {
         iconPath: compareIcon,
