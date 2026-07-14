@@ -146,8 +146,6 @@ async function onConnected() {
     connectedBarItem,
     disconnectBarItem,
   ].forEach(barItem => barItem.show());
-
-  connectedBarItem.color = parseStatusBarColor(instance.getConnection()?.getConfig().statusBarColor);
 }
 
 async function onDisconnected() {

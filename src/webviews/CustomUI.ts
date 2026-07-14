@@ -45,7 +45,7 @@ interface WebviewMessageRequest {
   data?: any;
 }
 
-type InputType = "text" | "number";
+type InputType = "text" | "number" | "color";
 
 export class Section {
   readonly fields: Field[] = [];
