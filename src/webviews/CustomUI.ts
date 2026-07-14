@@ -1,5 +1,6 @@
 /* eslint-disable indent */
 import vscode, { ProviderResult } from 'vscode';
+import { codiconStyles } from './codicons';
 
 //Webpack is returning this as a string
 const vscodeweb = require(`@vscode-elements/elements/dist/bundled`);
@@ -180,6 +181,8 @@ export class CustomHTML extends Section {
 
         <script type="module">${vscodeweb}</script>
         <style>
+            ${codiconStyles}
+
             @media only screen and (min-width: 750px) {
               #laforma {
                 padding-left: ${this.options?.fullWidth || this.options?.fullPage ? '0' : '15'}%;

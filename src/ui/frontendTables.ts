@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { codiconStyles } from '../webviews/codicons';
 import { VscodeTools } from './Tools';
 
 export namespace FrontendTables {
@@ -416,9 +417,9 @@ export namespace FrontendTables {
             // Show button to open modal if content exists
             const colIndex = collapsibleIndices.indexOf(index);
             return `<vscode-table-cell style="width: ${columnsArray[index]}; text-align: center;">
-              <vscode-button appearance="secondary" class="show-modal-btn" data-row="${rowIndex}" data-col="${colIndex}" aria-label="Show details">
-                <span style="font-size: 1.2em;">ⓘ</span>
-              </vscode-button>
+              <button type="button" class="show-modal-btn" data-row="${rowIndex}" data-col="${colIndex}" title="${vscode.l10n.t('Show details')}" aria-label="${vscode.l10n.t('Show details')}">
+                <span class="codicon codicon-info"></span>
+              </button>
             </vscode-table-cell>`;
           }
         }
@@ -446,6 +447,8 @@ export namespace FrontendTables {
 
     return /*html*/`
     <style>
+      ${codiconStyles}
+
       body {
         padding: 0;
         margin: 0;
@@ -618,13 +621,22 @@ export namespace FrontendTables {
 
       /* Modal button styles */
       .show-modal-btn {
-        background: transparent !important;
-        border: none !important;
-        padding: 4px !important;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        color: var(--vscode-foreground);
+        cursor: pointer;
+        line-height: 1;
+        padding: 4px;
       }
 
       .show-modal-btn:hover {
-        background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.1) !important;
+        background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.15);
+      }
+
+      .show-modal-btn:focus-visible {
+        outline: 1px solid var(--vscode-focusBorder);
+        outline-offset: 2px;
       }
 
       /* Modal styles */
@@ -688,6 +700,27 @@ export namespace FrontendTables {
         font-size: 1.2em;
         font-weight: 600;
         color: var(--vscode-foreground);
+      }
+
+      .modal-close-btn {
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        color: var(--vscode-foreground);
+        cursor: pointer;
+        font-family: var(--vscode-font-family);
+        font-size: 1.1em;
+        line-height: 1;
+        padding: 4px 8px;
+      }
+
+      .modal-close-btn:hover {
+        background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.15);
+      }
+
+      .modal-close-btn:focus-visible {
+        outline: 1px solid var(--vscode-focusBorder);
+        outline-offset: 2px;
       }
 
       .modal-body {
@@ -759,9 +792,9 @@ export namespace FrontendTables {
             <div class="modal-content">
               <div class="modal-header">
                 <h3 id="modal-title"></h3>
-                <vscode-button appearance="icon" id="modal-close" aria-label="Close">
+                <button type="button" class="modal-close-btn" id="modal-close" title="${vscode.l10n.t('Close')}" aria-label="${vscode.l10n.t('Close')}">
                   <span class="codicon codicon-close"></span>
-                </vscode-button>
+                </button>
               </div>
               <div class="modal-body" id="modal-body"></div>
             </div>
