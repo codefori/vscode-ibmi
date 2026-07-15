@@ -6,7 +6,7 @@
   "(current library)": "(biblioteca actual)",
   "(in ASP {0})": "(en ASP {0})",
   "Status bar color": "Color de la barra de estado",
-  "The color of this system's name in the status bar, as a hexadecimal color (e.g. <code>#8A2BE2</code>). Useful to tell your systems apart at a glance. Leave empty to keep the color of the current theme.": "El color del nombre de este sistema en la barra de estado, como color hexadecimal (p. ej. <code>#8A2BE2</code>). Útil para distinguir tus sistemas de un vistazo. Déjalo vacío para mantener el color del tema actual.",
+  "The color of this system's name in the status bar. Useful to tell your systems apart at a glance. Pick black to keep the color of the current theme.": "El color del nombre de este sistema en la barra de estado. Útil para distinguir tus sistemas de un vistazo. Elige el negro para mantener el color del tema actual.",
   "{0} {1} occurred while listing files.": "Se ha producido {0} {1} al listar los archivos.",
   "{0} already exists.\nDo you want to replace it?": "{0} ya existe.\n¿Sustituirlo?",
   "{0} file(s) contain(s) '{1}'": "{0} archivo(s) contiene(n) '{1}'",
