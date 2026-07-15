@@ -12,6 +12,7 @@ import { debugPTFInstalled, isDebugEngineRunning } from './debug/server';
 import { setupGitEventHandler } from './filesystems/local/git';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
 import Instance from "./Instance";
+import { parseStatusBarColor } from './ui/statusBarColor';
 import { Terminal } from './ui/Terminal';
 
 export let instance: Instance;
@@ -61,6 +62,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
 
   instance = new Instance(context);
+
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
@@ -134,6 +136,8 @@ async function updateConnectedBar() {
 
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isReadonly`, config?.readOnlyMode || systemReadOnly);
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isSystemReadonly`, systemReadOnly);
+
+    connectedBarItem.color = parseStatusBarColor(config.statusBarColor);
   }
 }
 

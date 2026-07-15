@@ -46,7 +46,7 @@ interface WebviewMessageRequest {
   data?: any;
 }
 
-type InputType = "text" | "number";
+type InputType = "text" | "number" | "color";
 
 export class Section {
   readonly fields: Field[] = [];
@@ -200,6 +200,10 @@ export class CustomHTML extends Section {
 
             .long-input {
               width: 100%;
+            }
+
+            .short-input {
+              width: 15%;
             }
 
             :root{
@@ -591,11 +595,12 @@ export class Field {
       case `input`:
         const multiline = (this.rows || 1) > 1;
         const tag = multiline ? "vscode-textarea" : "vscode-textfield";
+        const inputClass = this.inputType === 'color' ? `short-input` : `long-input`;
         return /* html */`
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <${tag} class="long-input" id="${this.id}" name="${this.id}"
+              <${tag} class="${inputClass}" id="${this.id}" name="${this.id}"
                 ${this.inputType ? `type="${this.inputType}"` : ``}
                 ${this.default ? `value="${this.default}"` : ``}
                 ${this.readonly ? `readonly` : ``}
