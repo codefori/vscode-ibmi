@@ -1069,6 +1069,12 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.showJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Display Job Log",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.launchTerminalPicker",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Launch Terminal Picker",
@@ -2236,6 +2242,10 @@
 					"when": "code-for-ibmi:connected"
 				},
 				{
+					"command": "code-for-ibmi.showJobLog",
+					"when": "code-for-ibmi:connected"
+				},
+				{
 					"command": "code-for-ibmi.selectForCompare",
 					"when": "never"
 				},
@@ -3393,6 +3403,7 @@
 		"@ibm/ibmi-eventf-parser": "2.0.2",
 		"@ibm/mapepire-js": "0.6.1",
 		"@vscode-elements/elements": "2.5.1",
+		"@vscode/codicons": "0.0.45",
 		"adm-zip": "0.5.16",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
 		"csv": "6.4.1",
