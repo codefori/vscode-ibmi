@@ -27,8 +27,8 @@ import { mergeCommandProfiles } from "./mergeProfiles";
 import { initialise } from "./testing";
 import { CodeForIBMi } from "./typings";
 import { VscodeTools } from "./ui/Tools";
-import { FrontendTables } from "./ui/frontendTables";
 import { registerActionTools } from "./ui/actions";
+import { FrontendTables } from "./ui/frontendTables";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
 import { initializeLibraryListView } from "./ui/views/LibraryListView";
 import { initializeDebugBrowser } from "./ui/views/debugView";
@@ -145,8 +145,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       prompt
     });
   }
-
-  instance.subscribe(context, "disconnected", "Clear temporary password", clearPassword);
 
   const mapepire = new Mapepire(path.join(context.extensionPath, `dist`), async (connection) => {
     return await getPassword(connection, l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName));

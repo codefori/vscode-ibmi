@@ -6,6 +6,7 @@ import { BaseStorage } from "./api/configuration/storage/BaseStorage";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 import { VsCodeConfig } from "./config/Configuration";
+import { clearPassword } from "./extension";
 import { getEnvConfig } from "./filesystems/local/env";
 import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
 import { VscodeTools } from "./ui/Tools";
@@ -181,9 +182,10 @@ export default class Instance {
     return this.connected;
   }
 
-  async disconnect(keepTabsOpened?: boolean) {
+  async disconnect(reconnect?: boolean) {
     delete this.connected;
-    if (!keepTabsOpened) {
+    if (!reconnect) {
+      clearPassword();
       vscode.window.tabGroups.close(
         vscode.window.tabGroups.all
           .flatMap(group => group.tabs)
