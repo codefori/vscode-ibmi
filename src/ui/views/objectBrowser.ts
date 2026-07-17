@@ -1058,6 +1058,29 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           }
         }
 
+        // Resolve the real source file CCSID (COMMON_CCSID) per distinct file, so the
+        // stream file conversion uses the actual CCSID instead of the config default.
+        const ccsidByFile = new Map<string, string>();
+        for (const item of toBeDownloaded.filter(m => m.copy)) {
+          const fileKey = `${item.member.library}/${item.member.file}`;
+          if (!ccsidByFile.has(fileKey)) {
+            let ccsid = config.sourceFileCCSID;
+            try {
+              const [row] = await connection.runSQL(`SELECT COMMON_CCSID FROM TABLE(QSYS2.SYSFILES('${item.member.library}', '${item.member.file}'))`);
+              if (row?.COMMON_CCSID !== undefined && row?.COMMON_CCSID !== null) {
+                if (Number(row.COMMON_CCSID) === 65535) {
+                  // 65535 file can't be copied, fall back to the user job CCSID
+                  ccsidByFile.set(fileKey, String(connection.getCcsid()));
+                } else {
+                  ccsidByFile.set(fileKey, ccsid);
+                }
+              }
+            } catch (e) {
+              // iter if query has an error
+            }
+          }
+        }
+
         // Download members
         vscode.window.withProgress({ title: vscode.l10n.t(`Downloading {0} members`, toBeDownloaded.filter(m => m.copy).length), location: vscode.ProgressLocation.Notification }, async (task) => {
           try {
@@ -1065,12 +1088,14 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
               task.report({ message: vscode.l10n.t(`copying to streamfiles`), increment: -1 })
               const copyToStreamFiles = toBeDownloaded
                 .filter(item => item.copy)
-                .flatMap(item =>
-                  [
+                .flatMap(item => {
+                  const dbfCcsid = ccsidByFile.get(`${item.member.library}/${item.member.file}`) ?? config.sourceFileCCSID;
+                  return [
                     `@QSYS/RUNSQL SQL('DROP TABLE IF EXISTS QTEMP.QTEMPSRC') COMMIT(*NONE) NAMING(*SYS)`,
                     `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(TEMPMBR) MBROPT(*REPLACE) CRTFILE(*YES)`,
-                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMBR")}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID})`
-                  ]);
+                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMBR")}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${dbfCcsid})`
+                  ];
+                });
               await connection.runSQL(copyToStreamFiles);
 
               task.report({ message: vscode.l10n.t(`getting streamfiles`), increment: -1 })
