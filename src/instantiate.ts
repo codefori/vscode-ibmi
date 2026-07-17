@@ -12,8 +12,8 @@ import { debugPTFInstalled, isDebugEngineRunning } from './debug/server';
 import { setupGitEventHandler } from './filesystems/local/git';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
 import Instance from "./Instance";
-import { parseStatusBarColor } from './ui/statusBarColor';
 import { Terminal } from './ui/Terminal';
+import { VscodeTools } from './ui/Tools';
 
 export let instance: Instance;
 
@@ -29,12 +29,6 @@ const connectedBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlign
 connectedBarItem.command = {
   command: `code-for-ibmi.showAdditionalSettings`,
   title: `Show connection settings`
-};
-
-const jobInfoBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
-jobInfoBarItem.command = {
-  command: `code-for-ibmi.copyJobId`,
-  title: `Copy job ID to clipboard`
 };
 
 export async function safeDisconnect(): Promise<boolean> {
@@ -72,7 +66,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
-    jobInfoBarItem,
 
     ...registerConnectionCommands(context, instance),
 
@@ -156,16 +149,17 @@ async function updateConnectedBar() {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isReadonly`, config?.readOnlyMode || systemReadOnly);
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isSystemReadonly`, systemReadOnly);
 
-    connectedBarItem.color = parseStatusBarColor(config.statusBarColor);
-    disconnectBarItem.color = parseStatusBarColor(config.statusBarColor);
+    connectedBarItem.color = VscodeTools.parseStatusBarColor(config.statusBarColor);
+    disconnectBarItem.color = VscodeTools.parseStatusBarColor(config.statusBarColor);
   }
 }
 
 async function onConnected() {
+  // Show bar items
+  await updateConnectedBar();
   [
     connectedBarItem,
     disconnectBarItem,
-    jobInfoBarItem,
   ].forEach(barItem => barItem.show());
 }
 
@@ -174,6 +168,5 @@ async function onDisconnected() {
   [
     disconnectBarItem,
     connectedBarItem,
-    jobInfoBarItem,
   ].forEach(barItem => barItem.hide())
 }

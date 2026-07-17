@@ -6,10 +6,14 @@ import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 import { API, GitExtension } from "../filesystems/local/gitApi";
 import { ConnectionProfile, IBMiMember, IBMiObject, IFSFile } from '../typings';
-import { parseStatusBarColor as parseStatusBarColorImpl } from './statusBarColor';
 
 let gitLookedUp: boolean;
 let gitAPI: API | undefined;
+
+const HEX_COLOR = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+/** The colour picker has no empty state, so black is what it reports when no colour was ever picked. */
+const NO_COLOR = `#000000`;
 
 export namespace VscodeTools {
   export function getGitAPI(): API | undefined {
@@ -33,7 +37,14 @@ export namespace VscodeTools {
    * can colour their own status bar items to match the one picked in the connection settings.
    */
   export function parseStatusBarColor(color?: string) {
-    return parseStatusBarColorImpl(color);
+    const trimmed = (color || ``).trim();
+    if (!HEX_COLOR.test(trimmed)) {
+      return undefined;
+    }
+
+    const hex = trimmed.substring(1);
+    const normalized = `#${hex.length === 3 ? hex.split(``).map(channel => channel + channel).join(``) : hex}`.toLowerCase();
+    return normalized === NO_COLOR ? undefined : normalized;
   }
 
   export function md5Hash(file: vscode.Uri): string {
