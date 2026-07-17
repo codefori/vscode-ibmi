@@ -6,6 +6,7 @@ import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 import { API, GitExtension } from "../filesystems/local/gitApi";
 import { ConnectionProfile, IBMiMember, IBMiObject, IFSFile } from '../typings';
+import { parseStatusBarColor as parseStatusBarColorImpl } from './statusBarColor';
 
 let gitLookedUp: boolean;
 let gitAPI: API | undefined;
@@ -24,6 +25,15 @@ export namespace VscodeTools {
       }
     }
     return gitAPI;
+  }
+
+  /**
+   * Normalizes a status bar colour into `#rrggbb`; returns undefined when it's empty, invalid or black,
+   * which leaves the status bar item with the colour of the current theme. Exposed so extensions (FS, DB2, ...)
+   * can colour their own status bar items to match the one picked in the connection settings.
+   */
+  export function parseStatusBarColor(color?: string) {
+    return parseStatusBarColorImpl(color);
   }
 
   export function md5Hash(file: vscode.Uri): string {
