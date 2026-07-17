@@ -89,8 +89,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ...registerPasswordCommands(context, instance),
 
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
-
-    vscode.commands.registerCommand("code-for-ibmi.updateJobInfoBar", updateJobInfoBar),
   );
 
   instance.subscribe(context, 'connected', 'Load status bars', onConnected);
@@ -127,7 +125,21 @@ async function updateConnectedBar() {
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
 
+    const sqlJobId = connection.getSqlJobId();
+    const jdbcOptions = connection.getSqlJobJDBCOptions() || {};
+
+    const jdbcInfo = [
+      `Active JDBC connection options:`,
+      ``,
+      ...Object.entries(jdbcOptions).map(([key, value], index) => `${index + 1}. ${String(key).toUpperCase()}: \`${String(value).toUpperCase()}\``)
+    ].join(`\n`);
+    const sqlJobInfo = sqlJobId ? `[Job: ${sqlJobId}](command:code-for-ibmi.copyJobId)` : ``;
+    const jobLogInfo = sqlJobId ? `[$(info) View Job Log](command:code-for-ibmi.showJobLog?${encodeURIComponent(JSON.stringify([sqlJobId]))})` : ``;
+
     connectedBarItemTooltips.push(
+      sqlJobInfo,
+      jobLogInfo,
+      jdbcInfo,
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       terminalMenuItem,
       actionsMenuItem,
@@ -137,6 +149,7 @@ async function updateConnectedBar() {
         :
         `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
     );
+
     connectedBarItem.tooltip = new vscode.MarkdownString(connectedBarItemTooltips.join(`\n\n---\n\n`), true);
     connectedBarItem.tooltip.isTrusted = true;
 
@@ -144,52 +157,7 @@ async function updateConnectedBar() {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isSystemReadonly`, systemReadOnly);
 
     connectedBarItem.color = parseStatusBarColor(config.statusBarColor);
-  }
-}
-
-async function updateJobInfoBar() {
-  const connection = instance.getConnection();
-  if (connection && connection.sqlRunnerAvailable()) {
-    const sqlJobId = connection.getSqlJobId();
-    const jdbcOptions = connection.getSqlJobJDBCOptions() || {};
-    const jdbcInfo = [
-      `Active JDBC connection options:`,
-      ``,
-      ...Object.entries(jdbcOptions).map(([key, value]) => `- ${key}: ${value}`)
-    ].join(`\n`);
-
-    jobInfoBarItem.text = `$(server-environment) ${sqlJobId}`;
-    const jobInfoBarItemTooltips: String[] = [];
-    const sqlJobInfo = sqlJobId ? `[$(server-process) Job Info](command:code-for-ibmi.showIBMiJobInfo)` : ``;
-    jobInfoBarItemTooltips.push(
-      jdbcInfo,
-      sqlJobInfo,
-    );
-    jobInfoBarItem.tooltip = new vscode.MarkdownString(jobInfoBarItemTooltips.join(`\n\n---\n\n`), true);
-    jobInfoBarItem.tooltip.isTrusted = true;
-  }
-}
-
-async function updateJobInfoBar() {
-  const connection = instance.getConnection();
-  if (connection && connection.sqlRunnerAvailable()) {
-    const sqlJobId = connection.getSqlJobId();
-    const jdbcOptions = connection.getSqlJobJDBCOptions() || {};
-    const jdbcInfo = [
-      `Active JDBC connection options:`,
-      ``,
-      ...Object.entries(jdbcOptions).map(([key, value]) => `- ${key}: ${value}`)
-    ].join(`\n`);
-
-    jobInfoBarItem.text = `$(server-environment) ${sqlJobId}`;
-    const jobInfoBarItemTooltips: String[] = [];
-    const sqlJobInfo = sqlJobId ? `[$(server-process) Job Info](command:code-for-ibmi.showIBMiJobInfo)` : ``;
-    jobInfoBarItemTooltips.push(
-      jdbcInfo,
-      sqlJobInfo,
-    );
-    jobInfoBarItem.tooltip = new vscode.MarkdownString(jobInfoBarItemTooltips.join(`\n\n---\n\n`), true);
-    jobInfoBarItem.tooltip.isTrusted = true;
+    disconnectBarItem.color = parseStatusBarColor(config.statusBarColor);
   }
 }
 
