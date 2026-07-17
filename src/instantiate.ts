@@ -156,7 +156,6 @@ async function updateConnectedBar() {
 
 async function onConnected() {
   // Show bar items
-  await updateConnectedBar();
   [
     connectedBarItem,
     disconnectBarItem,
