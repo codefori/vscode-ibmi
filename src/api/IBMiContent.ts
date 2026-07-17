@@ -771,8 +771,8 @@ export default class IBMiContent {
         FROM TABLE (qsys2.object_statistics('${library}', '*FILE', '${sourceFile}')) OBJ_STAT,
         LATERAL (SELECT * FROM TABLE (qsys2.PARTITION_STATISTICS(RPAD(OBJ_STAT.OBJLIB, 10), RPAD(OBJ_STAT.OBJNAME, 10)))) PART_STAT
         WHERE TRIM(PART_STAT.SYSTEM_TABLE_MEMBER) <> ''
-        ${singleMember ? `AND RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) ${!singleMemberExtension? '=' : 'like'} '${singleMember}'` : ``}
-        ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `AND RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
+        ${singleMember ? `AND RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember.replaceAll('_', '+_')}' escape '+'` : ``}
+        ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `AND RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension.replaceAll('_', '+_')}' escape '+'` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
