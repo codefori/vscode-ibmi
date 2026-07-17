@@ -170,6 +170,29 @@ async function updateJobInfoBar() {
   }
 }
 
+async function updateJobInfoBar() {
+  const connection = instance.getConnection();
+  if (connection && connection.sqlRunnerAvailable()) {
+    const sqlJobId = connection.getSqlJobId();
+    const jdbcOptions = connection.getSqlJobJDBCOptions() || {};
+    const jdbcInfo = [
+      `Active JDBC connection options:`,
+      ``,
+      ...Object.entries(jdbcOptions).map(([key, value]) => `- ${key}: ${value}`)
+    ].join(`\n`);
+
+    jobInfoBarItem.text = `$(server-environment) ${sqlJobId}`;
+    const jobInfoBarItemTooltips: String[] = [];
+    const sqlJobInfo = sqlJobId ? `[$(server-process) Job Info](command:code-for-ibmi.showIBMiJobInfo)` : ``;
+    jobInfoBarItemTooltips.push(
+      jdbcInfo,
+      sqlJobInfo,
+    );
+    jobInfoBarItem.tooltip = new vscode.MarkdownString(jobInfoBarItemTooltips.join(`\n\n---\n\n`), true);
+    jobInfoBarItem.tooltip.isTrusted = true;
+  }
+}
+
 async function onConnected() {
   [
     connectedBarItem,
