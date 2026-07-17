@@ -9,7 +9,6 @@ import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
 import { instance } from "../../instantiate";
 import { ConnectionConfig, ConnectionData, RemoteConfigFile, Server } from '../../typings';
-import { parseStatusBarColor } from "../../ui/statusBarColor";
 import { VscodeTools } from "../../ui/Tools";
 import { ComplexTab, CustomUI, Section, SelectItem } from "../CustomUI";
 import { checkLoginForm } from "../login";
@@ -129,7 +128,7 @@ export class SettingsUI {
 
         const featuresTab = new Section();
         if (hasServerProperties) {
-          mapepireTab
+          featuresTab
             .addParagraph(`Some of these settings have been set on the server and cannot be changed here.`)
             .addHorizontalRule();
         }
@@ -403,7 +402,7 @@ export class SettingsUI {
                         if (data[key] === 'No Default') data[key] = '';
                         break;
                       case `statusBarColor`:
-                        data[key] = parseStatusBarColor(String(data[key])) || ``;
+                        data[key] = VscodeTools.parseStatusBarColor(String(data[key])) || ``;
                         break;
                     }
                   }

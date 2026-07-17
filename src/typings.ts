@@ -1,5 +1,5 @@
 import { Ignore } from "ignore";
-import { Uri, WorkspaceFolder } from "vscode";
+import { ConfigurationChangeEvent, Disposable, Uri, WorkspaceFolder } from "vscode";
 import Instance from "./Instance";
 import { ComponentRegistry } from './api/components/manager';
 import { ConnectionManager } from "./api/configuration/config/ConnectionManager";
@@ -23,7 +23,8 @@ export interface CodeForIBMi {
   actionTools: typeof ActionTools,
   componentRegistry: ComponentRegistry,
   connectionManager: ConnectionManager,
-  searchTools: typeof SearchTools
+  searchTools: typeof SearchTools,
+  onCodeForIBMiConfigurationChange: (props: string | string[], todo: (event: ConfigurationChangeEvent) => void) => Disposable
 }
 
 export interface DeploymentParameters {
