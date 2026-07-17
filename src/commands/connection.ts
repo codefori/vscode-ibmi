@@ -40,16 +40,5 @@ export function registerConnectionCommands(context: ExtensionContext, instance: 
         window.showWarningMessage(`No job ID available`);
       }
     }),
-    commands.registerCommand(`code-for-ibmi.showIBMiJobInfo`, async () => {
-      const connection = instance.getConnection();
-      if (connection) {
-        const job = await connection.getSqlJobId();
-        if (job) {
-          await commands.executeCommand('vscode-ibmi-fs.wrkjob', job);
-        } else {
-          window.showErrorMessage(`Unable to retrieve current SQL job ID.`);
-        }
-      }
-    }),
   ]
 }
