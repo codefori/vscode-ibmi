@@ -187,7 +187,8 @@ export class ExtendedIBMiContent {
           }
 
           // Fetch source file CCSID and determine if conversion is needed
-          const memberPath = { library, name: file, member: name };
+          const asp = await connection.getLibraryIAsp(library);
+          const memberPath = { library, name: file, member: name, asp };
           const sourceCcsid = await connection.getFileCcsid(memberPath);
           const { requiresConversion, targetCcsid } = Tools.determineCcsidConversion(sourceCcsid, config);
 
