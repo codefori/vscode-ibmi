@@ -1064,16 +1064,14 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         for (const item of toBeDownloaded.filter(m => m.copy)) {
           const fileKey = `${item.member.library}/${item.member.file}`;
           if (!ccsidByFile.has(fileKey)) {
-            let ccsid = config.sourceFileCCSID;
+            const ccsid = config.sourceFileCCSID;
             try {
               const [row] = await connection.runSQL(`SELECT COMMON_CCSID FROM TABLE(QSYS2.SYSFILES('${item.member.library}', '${item.member.file}'))`);
-              if (row?.COMMON_CCSID !== undefined && row?.COMMON_CCSID !== null) {
-                if (Number(row.COMMON_CCSID) === 65535) {
-                  // 65535 file can't be copied, fall back to the user job CCSID
-                  ccsidByFile.set(fileKey, String(connection.getCcsid()));
-                } else {
-                  ccsidByFile.set(fileKey, ccsid);
-                }
+              if (row?.COMMON_CCSID === 65535) {
+                // 65535 file can't be copied, fall back to the user job CCSID
+                ccsidByFile.set(fileKey, String(connection.getCcsid()));
+              } else {
+                ccsidByFile.set(fileKey, ccsid);
               }
             } catch (e) {
               // iter if query has an error
