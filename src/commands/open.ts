@@ -299,7 +299,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                      , ifnull( TEXT, '' ) as PARTITION_TEXT
                      , ifnull( SOURCE_TYPE, '' ) as SOURCE_TYPE
                   from TABLE(qsys2.PARTITION_STATISTICS(RPAD('${selectionSplit[0]}', 10), RPAD('${selectionSplit[1]}', 10)))
-                  ${filterText ? `where SYSTEM_TABLE_MEMBER like '${filterText}%'` : ``}
+                  ${filterText ? `where SYSTEM_TABLE_MEMBER like '${filterText.replaceAll('_', '+_')}%' escape '+'` : ``}
                  order by 1
               `);
 
