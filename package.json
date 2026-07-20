@@ -1075,6 +1075,13 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.refreshJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Refresh Job Log",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
 				"command": "code-for-ibmi.launchTerminalPicker",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Launch Terminal Picker",
@@ -2802,6 +2809,11 @@
 				}
 			],
 			"editor/title": [
+				{
+					"command": "code-for-ibmi.refreshJobLog",
+					"when": "activeWebviewPanelId == 'jobLogView'",
+					"group": "navigation@1"
+				},
 				{
 					"submenu": "code-for-ibmi.debug.group",
 					"when": "code-for-ibmi:connected && editorLangId =~ /^rpg(le)?|cl(le)?|(ile)?cobol|c?$/i",

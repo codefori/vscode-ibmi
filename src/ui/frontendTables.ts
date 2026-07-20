@@ -755,14 +755,14 @@ export namespace FrontendTables {
 
       ${enableSearch ? `
       <div class="search-bar">
-        <label class="search-bar-label" for="search-input">
+        <label class="search-bar-label" for="search-input${tableId ? `-${tableId}` : ''}">
           <span class="codicon codicon-search"></span> ${vscode.l10n.t('Search')}
         </label>
         <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 4px;">
           <span class="codicon codicon-search" style="color: var(--vscode-input-placeholderForeground);"></span>
           <input
             type="text"
-            id="search-input"
+            id="search-input${tableId ? `-${tableId}` : ''}"
             placeholder="${escapeHtml(searchPlaceholder)}"
             value="${searchTerm && searchTerm !== '-' ? escapeHtml(searchTerm) : ''}"
             style="flex: 1; background: transparent; border: none; outline: none; color: var(--vscode-input-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); padding: 4px 0;">

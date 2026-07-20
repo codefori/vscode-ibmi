@@ -22,15 +22,25 @@ export namespace JobLogUI {
   /** Auto-refresh interval in milliseconds. */
   const AUTO_REFRESH_INTERVAL = 30000;
 
+  /** Number of job log messages shown per page (server-side pagination). */
+  const ITEMS_PER_PAGE = 50;
+
   interface PanelState {
     panel: vscode.WebviewPanel;
-    /** Whether auto-refresh is currently enabled for this panel. */
-    autoRefresh: boolean;
     /** Active auto-refresh timer, if any. */
     timer?: NodeJS.Timeout;
+    /** Current server-side search term. */
+    searchTerm: string;
+    /** Current page (1-based) for server-side pagination. */
+    currentPage: number;
+    /** Total number of messages matching the current search. */
+    totalItems: number;
   }
 
   const activePanels = new Map<string, PanelState>();
+
+  /** Job name of the panel that most recently had focus (used by the toolbar refresh command). */
+  let currentActiveJob: string | undefined;
 
   export function init(context: vscode.ExtensionContext) {
     context.subscriptions.push(
@@ -59,15 +69,49 @@ export namespace JobLogUI {
         if (jobName) {
           await openJobLog(jobName);
         }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.refreshJobLog`, async () => {
+        if (currentActiveJob) {
+          const state = activePanels.get(currentActiveJob);
+          if (state) {
+            await render(state.panel, currentActiveJob);
+            return;
+          }
+        }
+        vscode.window.showWarningMessage(vscode.l10n.t("No active job log view found to refresh"));
       })
     );
   }
 
-  async function fetchJoblog(jobName: string): Promise<JoblogEntry[]> {
+  /**
+   * Fetch a page of job log messages, optionally filtered by a search term.
+   * Filtering and pagination are performed server-side.
+   */
+  async function fetchJoblog(jobName: string, searchTerm: string, page: number): Promise<{ entries: JoblogEntry[]; total: number }> {
     const connection = instance.getConnection();
     if (!connection) {
-      return [];
+      return { entries: [], total: 0 };
     }
+
+    // Build the search filter (shared between the count and the data query)
+    let whereClause = ``;
+    if (searchTerm && searchTerm.trim() !== `` && searchTerm.trim() !== `-`) {
+      const searchPattern = `%${searchTerm.trim().toUpperCase()}%`;
+      whereClause = ` WHERE (
+        UPPER(MESSAGE_ID) LIKE '${searchPattern}' OR
+        UPPER(MESSAGE_TEXT) LIKE '${searchPattern}' OR
+        UPPER(MESSAGE_SECOND_LEVEL_TEXT) LIKE '${searchPattern}' OR
+        UPPER(FROM_LIBRARY CONCAT '/' CONCAT FROM_PROGRAM) LIKE '${searchPattern}'
+      )`;
+    }
+
+    // Total count for pagination
+    const countRows = await connection.runSQL(
+      `SELECT COUNT(*) AS TOTAL FROM TABLE(QSYS2.JOBLOG_INFO('${jobName}'))${whereClause}`
+    );
+    const total = countRows.length ? Number(countRows[0].TOTAL) : 0;
+
+    const offset = (page - 1) * ITEMS_PER_PAGE;
 
     const rows = await connection.runSQL(
       `SELECT MESSAGE_ID,
@@ -77,11 +121,12 @@ export namespace JobLogUI {
          FROM_LIBRARY CONCAT '/' CONCAT FROM_PROGRAM AS FROM_PROGRAM,
          MESSAGE_LIBRARY CONCAT '/' CONCAT MESSAGE_FILE AS MESSAGE_FILE,
          TO_CHAR(MESSAGE_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS') AS MESSAGE_TIMESTAMP
-       FROM TABLE(QSYS2.JOBLOG_INFO('${jobName}'))
-       ORDER BY ORDINAL_POSITION DESC`
+       FROM TABLE(QSYS2.JOBLOG_INFO('${jobName}'))${whereClause}
+       ORDER BY ORDINAL_POSITION DESC
+       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}`
     );
 
-    return rows.map((row: Tools.DB2Row): JoblogEntry => ({
+    const entries = rows.map((row: Tools.DB2Row): JoblogEntry => ({
       msgid: String(row.MESSAGE_ID),
       msgtext: String(row.MESSAGE_TEXT),
       msgtext2: String(row.MESSAGE_SECOND_LEVEL_TEXT),
@@ -90,12 +135,15 @@ export namespace JobLogUI {
       msgFile: String(row.MESSAGE_FILE),
       timestamp: String(row.MESSAGE_TIMESTAMP)
     }));
+
+    return { entries, total };
   }
 
   async function openJobLog(jobName: string) {
     const existing = activePanels.get(jobName);
     if (existing) {
       existing.panel.reveal();
+      currentActiveJob = jobName;
       await render(existing.panel, jobName);
       return;
     }
@@ -110,37 +158,55 @@ export namespace JobLogUI {
       }
     );
 
-    const state: PanelState = { panel, autoRefresh: false };
+    const state: PanelState = { panel, searchTerm: ``, currentPage: 1, totalItems: 0 };
     activePanels.set(jobName, state);
+    currentActiveJob = jobName;
+
+    // Track focus so the toolbar refresh command targets the right panel
+    panel.onDidChangeViewState(e => {
+      if (e.webviewPanel.active) {
+        currentActiveJob = jobName;
+      }
+    });
 
     panel.onDidDispose(() => {
       stopAutoRefresh(state);
       activePanels.delete(jobName);
+      if (currentActiveJob === jobName) {
+        currentActiveJob = undefined;
+      }
     });
 
-    panel.webview.onDidReceiveMessage(async (message: { command?: string }) => {
+    panel.webview.onDidReceiveMessage(async (message: { command?: string; searchTerm?: string; page?: number }) => {
       switch (message?.command) {
-        case `refresh`:
+        case `search`:
+          state.searchTerm = message.searchTerm ?? ``;
+          state.currentPage = 1;
           await render(panel, jobName);
           break;
-        case `toggleAutoRefresh`:
-          state.autoRefresh = !state.autoRefresh;
-          if (state.autoRefresh) {
-            startAutoRefresh(state, jobName);
-          } else {
-            stopAutoRefresh(state);
+        case `paginate`:
+          if (message.searchTerm !== undefined) {
+            state.searchTerm = message.searchTerm;
           }
+          state.currentPage = message.page ?? 1;
           await render(panel, jobName);
           break;
       }
     });
 
+    startAutoRefresh(state, jobName);
     await render(panel, jobName);
   }
 
   function startAutoRefresh(state: PanelState, jobName: string) {
     stopAutoRefresh(state);
     state.timer = setInterval(async () => {
+      // Only refresh while the panel is on screen, so a job log left open in a
+      // background tab doesn't keep querying the host every interval.
+      if (!state.panel.visible) {
+        return;
+      }
+
       try {
         await render(state.panel, jobName);
       } catch (error) {
@@ -157,9 +223,15 @@ export namespace JobLogUI {
   }
 
   async function render(panel: vscode.WebviewPanel, jobName: string) {
-    const joblog = await fetchJoblog(jobName);
-    const autoRefresh = activePanels.get(jobName)?.autoRefresh ?? false;
-    const lastUpdated = new Date().toLocaleTimeString();
+    const state = activePanels.get(jobName);
+    const searchTerm = state?.searchTerm ?? ``;
+    const currentPage = state?.currentPage ?? 1;
+
+    const { entries, total } = await fetchJoblog(jobName, searchTerm, currentPage);
+
+    if (state) {
+      state.totalItems = total;
+    }
 
     const columns: FrontendTables.FastTableColumn<JoblogEntry>[] = [
       { title: vscode.l10n.t("MSGID"), width: "0.7fr", getValue: e => e.msgid },
@@ -172,11 +244,18 @@ export namespace JobLogUI {
 
     const body = FrontendTables.generateFastTable({
       title: vscode.l10n.t("Job Log"),
-      subtitle: vscode.l10n.t("Job {0} - Total messages: {1}", jobName, String(joblog.length)),
+      subtitle: vscode.l10n.t("Job {0} - Total messages: {1}", jobName, String(total)),
       columns,
-      data: joblog,
+      data: entries,
       stickyHeader: true,
-      emptyMessage: vscode.l10n.t("No job log messages found.")
+      emptyMessage: vscode.l10n.t("No job log messages found."),
+      enableSearch: true,
+      searchPlaceholder: vscode.l10n.t("Search messages..."),
+      enablePagination: true,
+      itemsPerPage: ITEMS_PER_PAGE,
+      totalItems: total,
+      currentPage,
+      searchTerm
     });
 
     panel.webview.html = /*html*/`
@@ -187,43 +266,10 @@ export namespace JobLogUI {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>${vscode.l10n.t("Job Log: {0}", jobName)}</title>
       <script type="module">${vscodeElements}</script>
-      <style>
-        .joblog-toolbar {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px 20px;
-          border-bottom: 1px solid var(--vscode-panel-border);
-        }
-        .joblog-toolbar .last-updated {
-          margin-left: auto;
-          color: var(--vscode-descriptionForeground);
-          font-size: 0.9em;
-        }
-      </style>
     </head>
     <body>
-      <div class="joblog-toolbar">
-        <vscode-button id="joblog-refresh-btn" appearance="primary">
-          ${vscode.l10n.t("Refresh")}
-        </vscode-button>
-        <vscode-button id="joblog-autorefresh-btn" appearance="${autoRefresh ? `primary` : `secondary`}">
-          ${autoRefresh
-            ? vscode.l10n.t("Auto-refresh: ON ({0}s)", String(AUTO_REFRESH_INTERVAL / 1000))
-            : vscode.l10n.t("Auto-refresh: OFF")}
-        </vscode-button>
-        <span class="last-updated">${vscode.l10n.t("Last updated: {0}", lastUpdated)}</span>
-      </div>
+      <script>const vscode = acquireVsCodeApi();</script>
       ${body}
-      <script>
-        const vscode = acquireVsCodeApi();
-        document.getElementById('joblog-refresh-btn')?.addEventListener('click', () => {
-          vscode.postMessage({ command: 'refresh' });
-        });
-        document.getElementById('joblog-autorefresh-btn')?.addEventListener('click', () => {
-          vscode.postMessage({ command: 'toggleAutoRefresh' });
-        });
-      </script>
     </body>
     </html>`;
   }
