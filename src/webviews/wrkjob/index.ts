@@ -33,6 +33,9 @@ export namespace JobLogUI {
     totalItems: number;
   }
 
+  /** Explicit id so refreshes can target this table; see FastTableUpdateOptions.tableId. */
+  const JOBLOG_TABLE_ID = `joblog`;
+
   const activePanels = new Map<string, PanelState>();
 
   /** Job name of the panel that most recently had focus (used by the toolbar refresh command). */
@@ -212,7 +215,7 @@ export namespace JobLogUI {
         // query must still be answered — otherwise it spins until its own timeout.
         console.error(`Job log ${message?.command} error:`, error);
         vscode.window.showErrorMessage(vscode.l10n.t("Failed to load job log: {0}", String(error)));
-        await panel.webview.postMessage({ command: `updateTableFailed` });
+        await panel.webview.postMessage({ command: `updateTableFailed`, tableId: JOBLOG_TABLE_ID });
       }
     });
 
@@ -285,7 +288,8 @@ export namespace JobLogUI {
       data: entries,
       totalItems: total,
       currentPage,
-      subtitle: subtitleFor(jobName, total)
+      subtitle: subtitleFor(jobName, total),
+      tableId: JOBLOG_TABLE_ID
     }));
   }
 
@@ -316,7 +320,8 @@ export namespace JobLogUI {
       itemsPerPage: FrontendTables.getItemsPerPage(),
       totalItems: total,
       currentPage,
-      searchTerm
+      searchTerm,
+      tableId: JOBLOG_TABLE_ID
     });
 
     panel.webview.html = /*html*/`
