@@ -494,13 +494,19 @@ export namespace FrontendTables {
       }
 
       .search-bar-label {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 6px;
         margin-bottom: 8px;
         font-weight: 600;
         font-size: 0.9em;
         color: var(--vscode-foreground);
         text-transform: uppercase;
         letter-spacing: 0.5px;
+      }
+
+      .search-bar-label .codicon {
+        font-size: 1.1em;
       }
 
       .search-bar vscode-text-field {
@@ -541,6 +547,27 @@ export namespace FrontendTables {
       .table-scroll-wrapper {
         overflow-x: auto;
         width: 100%;
+        transition: opacity 0.15s ease;
+      }
+
+      /* Search/pagination are server-side: while the extension re-queries, dim the
+         stale rows so it is obvious the content on screen is not the answer yet. */
+      .table-scroll-wrapper.is-busy {
+        opacity: 0.55;
+        pointer-events: none;
+      }
+
+      /* Visually hidden, but still announced by screen readers. */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
 
       vscode-table {
@@ -759,7 +786,7 @@ export namespace FrontendTables {
           <span class="codicon codicon-search"></span> ${vscode.l10n.t('Search')}
         </label>
         <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 4px;">
-          <span class="codicon codicon-search" style="color: var(--vscode-input-placeholderForeground);"></span>
+          <span class="codicon codicon-search" id="search-icon${tableId ? `-${tableId}` : ''}" style="color: var(--vscode-input-placeholderForeground);"></span>
           <input
             type="text"
             id="search-input${tableId ? `-${tableId}` : ''}"
@@ -767,11 +794,12 @@ export namespace FrontendTables {
             value="${searchTerm && searchTerm !== '-' ? escapeHtml(searchTerm) : ''}"
             style="flex: 1; background: transparent; border: none; outline: none; color: var(--vscode-input-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); padding: 4px 0;">
         </div>
+        <span class="sr-only" role="status" aria-live="polite" id="search-status${tableId ? `-${tableId}` : ''}"></span>
       </div>
       ` : ''}
 
       ${data.length > 0 ? `
-        <div class="table-scroll-wrapper">
+        <div class="table-scroll-wrapper" id="table-scroll-wrapper${tableId ? `-${tableId}` : ''}">
           <vscode-table
             id="data-table"
             bordered-rows
@@ -854,6 +882,9 @@ export namespace FrontendTables {
 
       // Get DOM elements
       const searchInput = document.getElementById('search-input${tableId ? `-${tableId}` : ''}');
+      const searchIcon = document.getElementById('search-icon${tableId ? `-${tableId}` : ''}');
+      const searchStatus = document.getElementById('search-status${tableId ? `-${tableId}` : ''}');
+      const tableWrapper = document.getElementById('table-scroll-wrapper${tableId ? `-${tableId}` : ''}');
       const paginationInfo = document.getElementById('pagination-info${tableId ? `-${tableId}` : ''}');
       const pageInput = document.getElementById('page-input${tableId ? `-${tableId}` : ''}');
       const totalPagesLabel = document.getElementById('total-pages-label${tableId ? `-${tableId}` : ''}');
@@ -864,6 +895,42 @@ export namespace FrontendTables {
 
       // Calculate total pages
       const totalPages = enablePagination ? Math.ceil(totalItems / itemsPerPage) : 1;
+
+      // Busy indicator. Search and pagination are handled by the extension, which
+      // answers by replacing the whole webview HTML — so there is no "done" message
+      // to listen for: the spinner disappears with the DOM it lives in. The safety
+      // timeout only matters when the extension fails to re-render (e.g. a query
+      // error), which would otherwise leave the icon spinning forever.
+      const BUSY_SAFETY_TIMEOUT = 15000;
+      let busySafetyTimer;
+
+      function setSearching(isBusy) {
+        if (searchIcon) {
+          searchIcon.classList.toggle('codicon-search', !isBusy);
+          searchIcon.classList.toggle('codicon-loading', isBusy);
+          searchIcon.classList.toggle('codicon-modifier-spin', isBusy);
+        }
+        if (searchStatus) {
+          searchStatus.textContent = isBusy ? ${JSON.stringify(vscode.l10n.t("Searching..."))} : '';
+        }
+        if (tableWrapper) {
+          tableWrapper.classList.toggle('is-busy', isBusy);
+        }
+        if (enablePagination) {
+          [firstPageBtn, prevPageBtn, nextPageBtn, lastPageBtn].forEach(btn => {
+            if (btn) btn.disabled = isBusy;
+          });
+          if (pageInput) pageInput.disabled = isBusy;
+        }
+
+        clearTimeout(busySafetyTimer);
+        if (isBusy) {
+          busySafetyTimer = setTimeout(() => {
+            setSearching(false);
+            updatePaginationDisplay();
+          }, BUSY_SAFETY_TIMEOUT);
+        }
+      }
 
       // Search functionality - sends message to extension
       let searchTimeout;
@@ -902,6 +969,7 @@ export namespace FrontendTables {
       function changePage(newPage) {
         if (newPage < 1 || newPage > totalPages) return;
         currentPage = newPage;
+        setSearching(true);
         // Set flag to indicate this is a search/pagination operation (preserve tab)
         // IMPORTANT: Save BOTH the flag AND the current tab index BEFORE sending message
         const state = vscode.getState() || {};
@@ -954,6 +1022,9 @@ export namespace FrontendTables {
       // Event listeners
       if (enableSearch && searchInput) {
         searchInput.addEventListener('input', (e) => {
+          // Start the indicator on the keystroke, not when the debounce fires,
+          // so the 500ms wait is not silent.
+          setSearching(true);
           performSearch(e.target.value);
         });
       }

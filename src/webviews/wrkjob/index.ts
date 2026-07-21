@@ -178,19 +178,27 @@ export namespace JobLogUI {
     });
 
     panel.webview.onDidReceiveMessage(async (message: { command?: string; searchTerm?: string; page?: number }) => {
-      switch (message?.command) {
-        case `search`:
-          state.searchTerm = message.searchTerm ?? ``;
-          state.currentPage = 1;
-          await render(panel, jobName);
-          break;
-        case `paginate`:
-          if (message.searchTerm !== undefined) {
-            state.searchTerm = message.searchTerm;
-          }
-          state.currentPage = message.page ?? 1;
-          await render(panel, jobName);
-          break;
+      try {
+        switch (message?.command) {
+          case `search`:
+            state.searchTerm = message.searchTerm ?? ``;
+            state.currentPage = 1;
+            await render(panel, jobName);
+            break;
+          case `paginate`:
+            if (message.searchTerm !== undefined) {
+              state.searchTerm = message.searchTerm;
+            }
+            state.currentPage = message.page ?? 1;
+            await render(panel, jobName);
+            break;
+        }
+      } catch (error) {
+        // The webview shows a busy indicator until the HTML is replaced, so a failed
+        // query must still produce a render — otherwise it spins until its own timeout.
+        console.error(`Job log ${message?.command} error:`, error);
+        vscode.window.showErrorMessage(vscode.l10n.t("Failed to load job log: {0}", String(error)));
+        await render(panel, jobName).catch(() => { });
       }
     });
 
