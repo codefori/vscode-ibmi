@@ -1,6 +1,7 @@
 import vscode from "vscode";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
+import { onCodeForIBMiConfigurationChange, ViewSettings } from "../../config/Configuration";
 import { FrontendTables } from "../../ui/frontendTables";
 
 const vscodeElements = require(`@vscode-elements/elements/dist/bundled`);
@@ -19,11 +20,6 @@ interface JoblogEntry {
  * Displays the job log for a given job in a webview panel.
  */
 export namespace JobLogUI {
-  /** Auto-refresh interval in milliseconds. */
-  const AUTO_REFRESH_INTERVAL = 30000;
-
-  /** Number of job log messages shown per page (server-side pagination). */
-  const ITEMS_PER_PAGE = 50;
 
   interface PanelState {
     panel: vscode.WebviewPanel;
@@ -79,6 +75,23 @@ export namespace JobLogUI {
           }
         }
         vscode.window.showWarningMessage(vscode.l10n.t("No active job log view found to refresh"));
+      }),
+      onCodeForIBMiConfigurationChange(`views.autoRefreshInterval`, () => {
+        for (const [jobName, state] of activePanels) {
+          startAutoRefresh(state, jobName);
+        }
+      }),
+      onCodeForIBMiConfigurationChange(`tables.itemsPerPage`, async () => {
+        // The page size is baked into the webview's script, so the whole page has to
+        // be rebuilt. The current page number no longer means the same thing either.
+        for (const [jobName, state] of activePanels) {
+          state.currentPage = 1;
+          try {
+            await render(state.panel, jobName);
+          } catch (error) {
+            console.error(`Job log re-render error:`, error);
+          }
+        }
       })
     );
   }
@@ -111,7 +124,8 @@ export namespace JobLogUI {
     );
     const total = countRows.length ? Number(countRows[0].TOTAL) : 0;
 
-    const offset = (page - 1) * ITEMS_PER_PAGE;
+    const pageSize = FrontendTables.getItemsPerPage();
+    const offset = (page - 1) * pageSize;
 
     const rows = await connection.runSQL(
       `SELECT MESSAGE_ID,
@@ -123,7 +137,7 @@ export namespace JobLogUI {
          TO_CHAR(MESSAGE_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS') AS MESSAGE_TIMESTAMP
        FROM TABLE(QSYS2.JOBLOG_INFO('${jobName}'))${whereClause}
        ORDER BY ORDINAL_POSITION DESC
-       LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}`
+       LIMIT ${pageSize} OFFSET ${offset}`
     );
 
     const entries = rows.map((row: Tools.DB2Row): JoblogEntry => ({
@@ -208,19 +222,22 @@ export namespace JobLogUI {
 
   function startAutoRefresh(state: PanelState, jobName: string) {
     stopAutoRefresh(state);
-    state.timer = setInterval(async () => {
-      // Only refresh while the panel is on screen, so a job log left open in a
-      // background tab doesn't keep querying the host every interval.
-      if (!state.panel.visible) {
-        return;
-      }
 
+    const interval = ViewSettings.getAutoRefreshInterval();
+    if (interval <= 0) {
+      return;
+    }
+
+    // No visibility check: the panel is created with retainContextWhenHidden, so a
+    // job log left in a background tab keeps refreshing and is already up to date
+    // when the user comes back to it.
+    state.timer = setInterval(async () => {
       try {
         await refresh(state.panel, jobName);
       } catch (error) {
         console.error(`Job log auto-refresh error:`, error);
       }
-    }, AUTO_REFRESH_INTERVAL);
+    }, interval);
   }
 
   function stopAutoRefresh(state: PanelState) {
@@ -296,7 +313,7 @@ export namespace JobLogUI {
       enableSearch: true,
       searchPlaceholder: vscode.l10n.t("Search messages..."),
       enablePagination: true,
-      itemsPerPage: ITEMS_PER_PAGE,
+      itemsPerPage: FrontendTables.getItemsPerPage(),
       totalItems: total,
       currentPage,
       searchTerm

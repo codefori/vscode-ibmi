@@ -13,7 +13,7 @@ import { Mapepire } from "./api/components/mapepire";
 import { SSHSQLJob } from "./api/components/mapepire/sshSqlJob";
 import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
-import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
+import { onCodeForIBMiConfigurationChange, ViewSettings } from "./config/Configuration";
 import { getStoredPassword } from "./config/passwords";
 import * as Debug from './debug';
 import { CustomEditor, CustomEditorProvider } from "./editors/customEditorProvider";
@@ -167,6 +167,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     evfeventParser: parseErrors,
     tools: VscodeTools,
     frontendTables: FrontendTables,
+    viewSettings: ViewSettings,
     deployTools: DeployTools,
     actionTools: ActionTools,
     componentRegistry: extensionComponentRegistry,

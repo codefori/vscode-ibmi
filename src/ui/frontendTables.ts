@@ -1,10 +1,18 @@
 import * as vscode from 'vscode';
+import { ViewSettings } from '../config/Configuration';
 import { codiconStyles } from '../webviews/codicons';
 import { VscodeTools } from './Tools';
 
 export namespace FrontendTables {
 
   const EMPTY_VALUE_PLACEHOLDER = '<span style="color: var(--vscode-descriptionForeground); font-style: italic;">—</span>';
+
+  /**
+   * Page size used by every paginated table.
+   * @see ViewSettings.getItemsPerPage — re-exported here so callers already using this
+   * namespace don't need a second import.
+   */
+  export const getItemsPerPage = ViewSettings.getItemsPerPage;
 
   /** Escape a value for safe interpolation into the generated HTML; empty/null-ish values render as '-'. */
   function escapeHtml(text: string | number): string {
@@ -76,7 +84,7 @@ export namespace FrontendTables {
     searchPlaceholder?: string;
     /** Enable pagination (default: false) */
     enablePagination?: boolean;
-    /** Items per page (default: 50) */
+    /** Items per page (defaults to the `code-for-ibmi.tables.itemsPerPage` setting) */
     itemsPerPage?: number;
     /** Total items count (for server-side pagination) */
     totalItems?: number;
@@ -492,7 +500,7 @@ export namespace FrontendTables {
       enableSearch = false,
       searchPlaceholder = 'Search...',
       enablePagination = false,
-      itemsPerPage = 50,
+      itemsPerPage = getItemsPerPage(),
       totalItems = data.length,
       currentPage = 1,
       searchTerm = '',

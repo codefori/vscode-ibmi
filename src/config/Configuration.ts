@@ -11,6 +11,46 @@ export function onCodeForIBMiConfigurationChange<T>(props: string | string[], to
   })
 }
 
+/**
+ * Settings that shape the shared views, read in one place so that every consumer —
+ * including extensions built on top of this one, via the exported API — applies the
+ * same defaults and bounds. Duplicating the clamping on the caller's side is what
+ * makes a table render pages of one size while its query fetches another.
+ */
+export namespace ViewSettings {
+  /** Fallback page size when the setting is unset or unusable, and the floor it is clamped to. */
+  const DEFAULT_ITEMS_PER_PAGE = 50;
+  const MIN_ITEMS_PER_PAGE = 30;
+
+  /** Fallback interval, in seconds, when the setting is unset or unusable. */
+  const DEFAULT_AUTO_REFRESH_SECONDS = 30;
+
+  /**
+   * Page size for every paginated table, from `code-for-ibmi.tables.itemsPerPage`.
+   * Callers that paginate server-side must use this for their own LIMIT/OFFSET too,
+   * otherwise the page count shown by the table won't match the rows it receives.
+   */
+  export function getItemsPerPage(): number {
+    const configured = vscode.workspace.getConfiguration(`code-for-ibmi`).get<number>(`tables.itemsPerPage`);
+    if (typeof configured !== 'number' || !Number.isFinite(configured)) {
+      return DEFAULT_ITEMS_PER_PAGE;
+    }
+    return Math.max(MIN_ITEMS_PER_PAGE, Math.floor(configured));
+  }
+
+  /**
+   * Auto-refresh interval in milliseconds, from `code-for-ibmi.views.autoRefreshInterval`
+   * (which is expressed in seconds). Returns 0 when auto-refresh is disabled.
+   */
+  export function getAutoRefreshInterval(): number {
+    const configured = vscode.workspace.getConfiguration(`code-for-ibmi`).get<number>(`views.autoRefreshInterval`);
+    const seconds = typeof configured === 'number' && Number.isFinite(configured) && configured >= 0
+      ? Math.floor(configured)
+      : DEFAULT_AUTO_REFRESH_SECONDS;
+    return seconds * 1000;
+  }
+}
+
 export class VsCodeConfig extends Config {
   constructor() {
     super();
