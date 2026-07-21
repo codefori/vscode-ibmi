@@ -74,7 +74,7 @@ export namespace JobLogUI {
         if (currentActiveJob) {
           const state = activePanels.get(currentActiveJob);
           if (state) {
-            await render(state.panel, currentActiveJob);
+            await refresh(state.panel, currentActiveJob);
             return;
           }
         }
@@ -144,7 +144,7 @@ export namespace JobLogUI {
     if (existing) {
       existing.panel.reveal();
       currentActiveJob = jobName;
-      await render(existing.panel, jobName);
+      await refresh(existing.panel, jobName);
       return;
     }
 
@@ -183,22 +183,22 @@ export namespace JobLogUI {
           case `search`:
             state.searchTerm = message.searchTerm ?? ``;
             state.currentPage = 1;
-            await render(panel, jobName);
+            await refresh(panel, jobName);
             break;
           case `paginate`:
             if (message.searchTerm !== undefined) {
               state.searchTerm = message.searchTerm;
             }
             state.currentPage = message.page ?? 1;
-            await render(panel, jobName);
+            await refresh(panel, jobName);
             break;
         }
       } catch (error) {
-        // The webview shows a busy indicator until the HTML is replaced, so a failed
-        // query must still produce a render — otherwise it spins until its own timeout.
+        // The webview spins its busy indicator until an answer arrives, so a failed
+        // query must still be answered — otherwise it spins until its own timeout.
         console.error(`Job log ${message?.command} error:`, error);
         vscode.window.showErrorMessage(vscode.l10n.t("Failed to load job log: {0}", String(error)));
-        await render(panel, jobName).catch(() => { });
+        await panel.webview.postMessage({ command: `updateTableFailed` });
       }
     });
 
@@ -216,7 +216,7 @@ export namespace JobLogUI {
       }
 
       try {
-        await render(state.panel, jobName);
+        await refresh(state.panel, jobName);
       } catch (error) {
         console.error(`Job log auto-refresh error:`, error);
       }
@@ -230,6 +230,49 @@ export namespace JobLogUI {
     }
   }
 
+  function getColumns(): FrontendTables.FastTableColumn<JoblogEntry>[] {
+    return [
+      { title: vscode.l10n.t("MSGID"), width: "0.7fr", getValue: e => e.msgid },
+      { title: vscode.l10n.t("Message"), width: "2fr", getValue: e => e.msgtext },
+      { title: vscode.l10n.t("Second Level"), width: "0.3fr", getValue: e => e.msgtext2.replaceAll(`&N`, `\n`).replaceAll(`&B`, `\n\t`).replaceAll(`&P`, `\n\t`), collapsible: true },
+      { title: vscode.l10n.t("Sev."), width: "0.3fr", getValue: e => String(e.severity) },
+      { title: vscode.l10n.t("From Program"), width: "1.5fr", getValue: e => e.fromProgram },
+      { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp }
+    ];
+  }
+
+  function subtitleFor(jobName: string, total: number) {
+    return vscode.l10n.t("Job {0} - Total messages: {1}", jobName, String(total));
+  }
+
+  /**
+   * Refresh the rows of an already rendered panel.
+   * Deliberately does NOT reassign `panel.webview.html`: that would recreate the
+   * search box, stealing keyboard focus mid-typing and restoring the search term
+   * as it was when the query started — so characters the user had backspaced in
+   * the meantime would reappear. The webview patches the table body instead.
+   */
+  async function refresh(panel: vscode.WebviewPanel, jobName: string) {
+    const state = activePanels.get(jobName);
+    const searchTerm = state?.searchTerm ?? ``;
+    const currentPage = state?.currentPage ?? 1;
+
+    const { entries, total } = await fetchJoblog(jobName, searchTerm, currentPage);
+
+    if (state) {
+      state.totalItems = total;
+    }
+
+    await panel.webview.postMessage(FrontendTables.generateFastTableUpdate({
+      columns: getColumns(),
+      data: entries,
+      totalItems: total,
+      currentPage,
+      subtitle: subtitleFor(jobName, total)
+    }));
+  }
+
+  /** Build the whole page. Only used when the panel is first opened. */
   async function render(panel: vscode.WebviewPanel, jobName: string) {
     const state = activePanels.get(jobName);
     const searchTerm = state?.searchTerm ?? ``;
@@ -241,18 +284,11 @@ export namespace JobLogUI {
       state.totalItems = total;
     }
 
-    const columns: FrontendTables.FastTableColumn<JoblogEntry>[] = [
-      { title: vscode.l10n.t("MSGID"), width: "0.7fr", getValue: e => e.msgid },
-      { title: vscode.l10n.t("Message"), width: "2fr", getValue: e => e.msgtext },
-      { title: vscode.l10n.t("Second Level"), width: "0.3fr", getValue: e => e.msgtext2.replaceAll(`&N`, `\n`).replaceAll(`&B`, `\n\t`).replaceAll(`&P`, `\n\t`), collapsible: true },
-      { title: vscode.l10n.t("Sev."), width: "0.3fr", getValue: e => String(e.severity) },
-      { title: vscode.l10n.t("From Program"), width: "1.5fr", getValue: e => e.fromProgram },
-      { title: vscode.l10n.t("Timestamp"), width: "1.2fr", getValue: e => e.timestamp }
-    ];
+    const columns = getColumns();
 
     const body = FrontendTables.generateFastTable({
       title: vscode.l10n.t("Job Log"),
-      subtitle: vscode.l10n.t("Job {0} - Total messages: {1}", jobName, String(total)),
+      subtitle: subtitleFor(jobName, total),
       columns,
       data: entries,
       stickyHeader: true,
