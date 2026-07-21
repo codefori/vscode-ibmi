@@ -315,59 +315,66 @@ export namespace FrontendTables {
   }
 
   /**
-   * Generate a complete HTML page with FAST Element table
-   * Optimized for displaying large datasets with better performance
-   * @param options - Table configuration options
-   * @returns Complete HTML page string
+   * Payload sent to a live table to replace its rows without rebuilding the page.
+   * @see generateFastTableUpdate
    */
-  export function generateFastTable<T>(options: FastTableOptions<T>): string {
-    const {
-      title,
-      subtitle,
-      columns,
-      data,
-      stickyHeader = true,
-      emptyMessage = 'No data available.',
-      customStyles = '',
-      customScript = '',
-      enableSearch = false,
-      searchPlaceholder = 'Search...',
-      enablePagination = false,
-      itemsPerPage = 50,
-      totalItems = data.length,
-      currentPage = 1,
-      searchTerm = '',
-      tableId = undefined
-    } = options;
+  export interface FastTableUpdate {
+    command: 'updateTable';
+    /** Target table, when the document hosts more than one */
+    tableId?: string;
+    /** Markup for the new <vscode-table-body> content */
+    rowsHtml: string;
+    /** Modal contents for collapsible columns, indexed by row */
+    collapsibleData: { title: string, value: string | number }[][];
+    /** Number of rows in this page (used to toggle the empty state) */
+    rowCount: number;
+    totalItems: number;
+    currentPage: number;
+    /** Replacement subtitle text (optional) */
+    subtitle?: string;
+  }
 
-    // Format value with icons and styling for FastTable.
-    // NOTE: unlike generateDetailTable, cell values here are NOT html-escaped —
-    // several callers intentionally return raw HTML (e.g. <vscode-button> action
-    // markup) from a column's getValue(), which must render as real elements.
-    const formatFastValue = (value: string | number): string => {
-      if (value === null || value === undefined || value === '') {
-        return EMPTY_VALUE_PLACEHOLDER;
-      }
+  /** Options for building a FastTableUpdate — the data-dependent subset of FastTableOptions. */
+  export interface FastTableUpdateOptions<T> {
+    columns: FastTableColumn<T>[];
+    data: T[];
+    totalItems: number;
+    currentPage: number;
+    subtitle?: string;
+    tableId?: string;
+  }
 
-      const strValue = String(value).trim();
-      if (strValue === 'null' || strValue === 'undefined' || strValue === '') {
-        return EMPTY_VALUE_PLACEHOLDER;
-      }
+  // Format value with icons and styling for FastTable.
+  // NOTE: unlike generateDetailTable, cell values here are NOT html-escaped —
+  // several callers intentionally return raw HTML (e.g. <vscode-button> action
+  // markup) from a column's getValue(), which must render as real elements.
+  function formatFastValue(value: string | number): string {
+    if (value === null || value === undefined || value === '') {
+      return EMPTY_VALUE_PLACEHOLDER;
+    }
 
-      return formatYesNoOrNumber(strValue, false) ?? String(value);
-    };
+    const strValue = String(value).trim();
+    if (strValue === 'null' || strValue === 'undefined' || strValue === '') {
+      return EMPTY_VALUE_PLACEHOLDER;
+    }
 
-    // Fixed pixel width assigned per 1fr unit, and an absolute floor so no
-    // column becomes too narrow to read. Columns get an actual fixed size
-    // instead of a percentage, so resizing the window never squashes them —
-    // the wrapper scrolls horizontally instead (see .table-scroll-wrapper below).
-    // The floor is intentionally low relative to MIN_PX_PER_FR so 'fr' weights
-    // stay visually distinct instead of every small-weight column clamping to
-    // the same floor value; wide tables (many columns) are expected to scroll.
+    return formatYesNoOrNumber(strValue, false) ?? String(value);
+  }
+
+  /**
+   * Resolve each column to a fixed pixel width.
+   * Fixed pixel width assigned per 1fr unit, and an absolute floor so no
+   * column becomes too narrow to read. Columns get an actual fixed size
+   * instead of a percentage, so resizing the window never squashes them —
+   * the wrapper scrolls horizontally instead (see .table-scroll-wrapper).
+   * The floor is intentionally low relative to MIN_PX_PER_FR so 'fr' weights
+   * stay visually distinct instead of every small-weight column clamping to
+   * the same floor value; wide tables (many columns) are expected to scroll.
+   */
+  function computeColumnWidths<T>(columns: FastTableColumn<T>[]) {
     const MIN_PX_PER_FR = 140;
     const MIN_COLUMN_WIDTH = 90;
 
-    // Fixed pixel width for each column
     const columnMinWidths = columns.map(col => {
       if (!col.width) return MIN_COLUMN_WIDTH;
       if (col.width.includes('fr')) {
@@ -380,19 +387,24 @@ export namespace FrontendTables {
       return MIN_COLUMN_WIDTH;
     });
 
-    // Total fixed width for the whole table. When the viewport is narrower than
-    // this, the wrapper scrolls horizontally instead of squashing columns.
-    const tableMinWidth = columnMinWidths.reduce((sum, w) => sum + w, 0);
+    return {
+      // Fixed pixel width per column, passed to the vscode-table 'columns' attribute
+      columnsArray: columnMinWidths.map(w => `${w}px`),
+      // Total fixed width for the whole table. When the viewport is narrower than
+      // this, the wrapper scrolls horizontally instead of squashing columns.
+      tableMinWidth: columnMinWidths.reduce((sum, w) => sum + w, 0)
+    };
+  }
 
-    // Fixed pixel width per column, passed to the vscode-table 'columns' attribute
-    const columnsArray = columnMinWidths.map(w => `${w}px`);
-
-    // Check if there are any collapsible columns
-    const hasCollapsibleColumns = columns.some(col => col.collapsible);
+  /**
+   * Build the table body markup, plus the modal payload for collapsible columns.
+   * Shared by the initial page render and by incremental updates, so both produce
+   * identical markup.
+   */
+  function buildRows<T>(columns: FastTableColumn<T>[], data: T[], columnsArray: string[]) {
     const collapsibleIndices = columns.map((col, idx) => col.collapsible ? idx : -1).filter(idx => idx !== -1);
 
-    // Store collapsible data for modal
-    const collapsibleData = hasCollapsibleColumns ? data.map((row, rowIndex) => {
+    const collapsibleData = collapsibleIndices.length > 0 ? data.map(row => {
       return collapsibleIndices.map(colIdx => {
         const col = columns[colIdx];
         return {
@@ -402,8 +414,7 @@ export namespace FrontendTables {
       });
     }) : [];
 
-    // Generate table rows with width styles and collapsible support
-    const rows = data.map((row, rowIndex) => {
+    const rowsHtml = data.map((row, rowIndex) => {
       const visibleCells = columns.map((col, index) => {
         if (col.collapsible) {
           // For collapsible columns, check if value is empty/null before showing button
@@ -433,6 +444,66 @@ export namespace FrontendTables {
           ${visibleCells}
         </vscode-table-row>`;
     }).join('\n      ');
+
+    return { rowsHtml, collapsibleData };
+  }
+
+  /**
+   * Build the payload to refresh a table already on screen (search, pagination,
+   * auto-refresh). Post it to the webview instead of reassigning `webview.html`:
+   * rebuilding the page would recreate the search box, dropping keyboard focus and
+   * overwriting whatever the user typed while the query was running.
+   * @param options - The new data plus the pagination state it corresponds to
+   * @returns Message to pass to `webview.postMessage`
+   */
+  export function generateFastTableUpdate<T>(options: FastTableUpdateOptions<T>): FastTableUpdate {
+    const { columns, data, totalItems, currentPage, subtitle, tableId } = options;
+    const { columnsArray } = computeColumnWidths(columns);
+    const { rowsHtml, collapsibleData } = buildRows(columns, data, columnsArray);
+
+    return {
+      command: 'updateTable',
+      tableId,
+      rowsHtml,
+      collapsibleData,
+      rowCount: data.length,
+      totalItems,
+      currentPage,
+      subtitle
+    };
+  }
+
+  /**
+   * Generate a complete HTML page with FAST Element table
+   * Optimized for displaying large datasets with better performance
+   * @param options - Table configuration options
+   * @returns Complete HTML page string
+   */
+  export function generateFastTable<T>(options: FastTableOptions<T>): string {
+    const {
+      title,
+      subtitle,
+      columns,
+      data,
+      stickyHeader = true,
+      emptyMessage = 'No data available.',
+      customStyles = '',
+      customScript = '',
+      enableSearch = false,
+      searchPlaceholder = 'Search...',
+      enablePagination = false,
+      itemsPerPage = 50,
+      totalItems = data.length,
+      currentPage = 1,
+      searchTerm = '',
+      tableId = undefined
+    } = options;
+
+    const { columnsArray, tableMinWidth } = computeColumnWidths(columns);
+    const { rowsHtml: rows, collapsibleData } = buildRows(columns, data, columnsArray);
+
+    // Check if there are any collapsible columns
+    const hasCollapsibleColumns = columns.some(col => col.collapsible);
 
     // Generate table header with width styles (skip collapsible columns)
     const headerCells = columns.map((col, index) => {
@@ -494,13 +565,19 @@ export namespace FrontendTables {
       }
 
       .search-bar-label {
-        display: block;
+        display: flex;
+        align-items: center;
+        gap: 6px;
         margin-bottom: 8px;
         font-weight: 600;
         font-size: 0.9em;
         color: var(--vscode-foreground);
         text-transform: uppercase;
         letter-spacing: 0.5px;
+      }
+
+      .search-bar-label .codicon {
+        font-size: 1.1em;
       }
 
       .search-bar vscode-text-field {
@@ -541,6 +618,27 @@ export namespace FrontendTables {
       .table-scroll-wrapper {
         overflow-x: auto;
         width: 100%;
+        transition: opacity 0.15s ease;
+      }
+
+      /* Search/pagination are server-side: while the extension re-queries, dim the
+         stale rows so it is obvious the content on screen is not the answer yet. */
+      .table-scroll-wrapper.is-busy {
+        opacity: 0.55;
+        pointer-events: none;
+      }
+
+      /* Visually hidden, but still announced by screen readers. */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
 
       vscode-table {
@@ -755,48 +853,51 @@ export namespace FrontendTables {
 
       ${enableSearch ? `
       <div class="search-bar">
-        <label class="search-bar-label" for="search-input">
+        <label class="search-bar-label" for="search-input${tableId ? `-${tableId}` : ''}">
           <span class="codicon codicon-search"></span> ${vscode.l10n.t('Search')}
         </label>
         <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 4px;">
-          <span class="codicon codicon-search" style="color: var(--vscode-input-placeholderForeground);"></span>
+          <span class="codicon codicon-search" id="search-icon${tableId ? `-${tableId}` : ''}" style="color: var(--vscode-input-placeholderForeground);"></span>
           <input
             type="text"
-            id="search-input"
+            id="search-input${tableId ? `-${tableId}` : ''}"
             placeholder="${escapeHtml(searchPlaceholder)}"
             value="${searchTerm && searchTerm !== '-' ? escapeHtml(searchTerm) : ''}"
             style="flex: 1; background: transparent; border: none; outline: none; color: var(--vscode-input-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); padding: 4px 0;">
         </div>
+        <span class="sr-only" role="status" aria-live="polite" id="search-status${tableId ? `-${tableId}` : ''}"></span>
       </div>
       ` : ''}
 
-      ${data.length > 0 ? `
-        <div class="table-scroll-wrapper">
+      <!-- The table and the empty state are both always emitted and toggled with
+           .hidden, so an incremental update can switch between them without the
+           extension having to rebuild the page. -->
+        <div class="table-scroll-wrapper${data.length > 0 ? '' : ' hidden'}" id="table-scroll-wrapper${tableId ? `-${tableId}` : ''}">
           <vscode-table
-            id="data-table"
+            id="data-table${tableId ? `-${tableId}` : ''}"
             bordered-rows
             columns='${JSON.stringify(columnsArray)}'
             aria-label="${escapeHtml(title)}">
             <vscode-table-header>
               ${headerCells}
             </vscode-table-header>
-            <vscode-table-body id="table-body">
+            <vscode-table-body id="table-body${tableId ? `-${tableId}` : ''}">
               ${rows}
             </vscode-table-body>
           </vscode-table>
 
           ${hasCollapsibleColumns ? `
           <!-- Modal for collapsible content -->
-          <div id="collapsible-modal" class="modal" style="display: none;">
+          <div id="collapsible-modal${tableId ? `-${tableId}` : ''}" class="modal" style="display: none;">
             <div class="modal-overlay"></div>
             <div class="modal-content">
               <div class="modal-header">
-                <h3 id="modal-title"></h3>
-                <button type="button" class="modal-close-btn" id="modal-close" title="${vscode.l10n.t('Close')}" aria-label="${vscode.l10n.t('Close')}">
+                <h3 id="modal-title${tableId ? `-${tableId}` : ''}"></h3>
+                <button type="button" class="modal-close-btn" id="modal-close${tableId ? `-${tableId}` : ''}" title="${vscode.l10n.t('Close')}" aria-label="${vscode.l10n.t('Close')}">
                   <span class="codicon codicon-close"></span>
                 </button>
               </div>
-              <div class="modal-body" id="modal-body"></div>
+              <div class="modal-body" id="modal-body${tableId ? `-${tableId}` : ''}"></div>
             </div>
           </div>
           ` : ''}
@@ -832,11 +933,10 @@ export namespace FrontendTables {
         </div>
           ` : ''}
         </div>
-      ` : `
-        <div class="empty-state">
+
+        <div class="empty-state${data.length > 0 ? ' hidden' : ''}" id="empty-state${tableId ? `-${tableId}` : ''}">
           <p>${escapeHtml(emptyMessage)}</p>
         </div>
-      `}
     </div>
 
     <script defer>
@@ -846,14 +946,21 @@ export namespace FrontendTables {
 
       // State management${tableId ? ` for table: ${tableId}` : ''}
       let currentPage = ${currentPage};
-      let currentSearchTerm = '${escapeHtml(searchTerm)}';
+      let currentSearchTerm = ${JSON.stringify(searchTerm)};
       const itemsPerPage = ${itemsPerPage};
-      const totalItems = ${totalItems};
+      // Mutable: an incremental update carries a new match count (see 'updateTable').
+      let totalItems = ${totalItems};
       const enableSearch = ${enableSearch};
       const enablePagination = ${enablePagination};
 
       // Get DOM elements
       const searchInput = document.getElementById('search-input${tableId ? `-${tableId}` : ''}');
+      const tableBody = document.getElementById('table-body${tableId ? `-${tableId}` : ''}');
+      const emptyState = document.getElementById('empty-state${tableId ? `-${tableId}` : ''}');
+      const subtitleInfo = document.getElementById('subtitle-info');
+      const searchIcon = document.getElementById('search-icon${tableId ? `-${tableId}` : ''}');
+      const searchStatus = document.getElementById('search-status${tableId ? `-${tableId}` : ''}');
+      const tableWrapper = document.getElementById('table-scroll-wrapper${tableId ? `-${tableId}` : ''}');
       const paginationInfo = document.getElementById('pagination-info${tableId ? `-${tableId}` : ''}');
       const pageInput = document.getElementById('page-input${tableId ? `-${tableId}` : ''}');
       const totalPagesLabel = document.getElementById('total-pages-label${tableId ? `-${tableId}` : ''}');
@@ -863,7 +970,42 @@ export namespace FrontendTables {
       const lastPageBtn = document.getElementById('last-page${tableId ? `-${tableId}` : ''}');
 
       // Calculate total pages
-      const totalPages = enablePagination ? Math.ceil(totalItems / itemsPerPage) : 1;
+      let totalPages = enablePagination ? Math.ceil(totalItems / itemsPerPage) : 1;
+
+      // Busy indicator. Search and pagination are handled by the extension, which
+      // answers with an 'updateTable' message; the indicator is cleared there. The
+      // safety timeout only matters when no answer ever arrives (e.g. a query
+      // error), which would otherwise leave the icon spinning forever.
+      const BUSY_SAFETY_TIMEOUT = 15000;
+      let busySafetyTimer;
+
+      function setSearching(isBusy) {
+        if (searchIcon) {
+          searchIcon.classList.toggle('codicon-search', !isBusy);
+          searchIcon.classList.toggle('codicon-loading', isBusy);
+          searchIcon.classList.toggle('codicon-modifier-spin', isBusy);
+        }
+        if (searchStatus) {
+          searchStatus.textContent = isBusy ? ${JSON.stringify(vscode.l10n.t("Searching..."))} : '';
+        }
+        if (tableWrapper) {
+          tableWrapper.classList.toggle('is-busy', isBusy);
+        }
+        if (enablePagination) {
+          [firstPageBtn, prevPageBtn, nextPageBtn, lastPageBtn].forEach(btn => {
+            if (btn) btn.disabled = isBusy;
+          });
+          if (pageInput) pageInput.disabled = isBusy;
+        }
+
+        clearTimeout(busySafetyTimer);
+        if (isBusy) {
+          busySafetyTimer = setTimeout(() => {
+            setSearching(false);
+            updatePaginationDisplay();
+          }, BUSY_SAFETY_TIMEOUT);
+        }
+      }
 
       // Search functionality - sends message to extension
       let searchTimeout;
@@ -872,21 +1014,6 @@ export namespace FrontendTables {
         searchTimeout = setTimeout(() => {
           currentSearchTerm = searchTerm;
           currentPage = 1;
-          // Set flag to indicate this is a search/pagination operation (preserve tab)
-          // IMPORTANT: Save BOTH the flag AND the current tab index BEFORE sending message
-          const state = vscode.getState() || {};
-          state.isSearchRestore = true;
-
-          // Save the current active tab index
-          const tabs = document.querySelector('vscode-tabs');
-          if (tabs) {
-            const currentTabIndex = tabs.getAttribute('selected-index');
-            if (currentTabIndex !== null) {
-              state.activeTabIndex = parseInt(currentTabIndex);
-            }
-          }
-
-          vscode.setState(state);
           const message = {
             command: 'search',
             searchTerm: searchTerm,
@@ -902,21 +1029,7 @@ export namespace FrontendTables {
       function changePage(newPage) {
         if (newPage < 1 || newPage > totalPages) return;
         currentPage = newPage;
-        // Set flag to indicate this is a search/pagination operation (preserve tab)
-        // IMPORTANT: Save BOTH the flag AND the current tab index BEFORE sending message
-        const state = vscode.getState() || {};
-        state.isSearchRestore = true;
-
-        // Save the current active tab index
-        const tabs = document.querySelector('vscode-tabs');
-        if (tabs) {
-          const currentTabIndex = tabs.getAttribute('selected-index');
-          if (currentTabIndex !== null) {
-            state.activeTabIndex = parseInt(currentTabIndex);
-          }
-        }
-
-        vscode.setState(state);
+        setSearching(true);
         const message = {
           command: 'paginate',
           searchTerm: currentSearchTerm,
@@ -954,6 +1067,9 @@ export namespace FrontendTables {
       // Event listeners
       if (enableSearch && searchInput) {
         searchInput.addEventListener('input', (e) => {
+          // Start the indicator on the keystroke, not when the debounce fires,
+          // so the 500ms wait is not silent.
+          setSearching(true);
           performSearch(e.target.value);
         });
       }
@@ -999,11 +1115,12 @@ export namespace FrontendTables {
       updatePaginationDisplay();
 
       // Modal functionality for collapsible content
-      const collapsibleDataArray = ${JSON.stringify(collapsibleData)};
-      const modal = document.getElementById('collapsible-modal');
-      const modalTitle = document.getElementById('modal-title');
-      const modalBody = document.getElementById('modal-body');
-      const modalClose = document.getElementById('modal-close');
+      // Mutable: replaced wholesale by an incremental update (see 'updateTable').
+      let collapsibleDataArray = ${JSON.stringify(collapsibleData)};
+      const modal = document.getElementById('collapsible-modal${tableId ? `-${tableId}` : ''}');
+      const modalTitle = document.getElementById('modal-title${tableId ? `-${tableId}` : ''}');
+      const modalBody = document.getElementById('modal-body${tableId ? `-${tableId}` : ''}');
+      const modalClose = document.getElementById('modal-close${tableId ? `-${tableId}` : ''}');
       const modalOverlay = modal ? modal.querySelector('.modal-overlay') : null;
 
       function openModal(rowIndex, colIndex) {
@@ -1033,16 +1150,18 @@ export namespace FrontendTables {
         }
       }
 
-      // Show modal buttons
-      const showModalButtons = document.querySelectorAll('.show-modal-btn');
-      showModalButtons.forEach(button => {
-        button.addEventListener('click', (e) => {
+      // Show modal buttons. Delegated on the body, since the rows are replaced on
+      // every update and per-button listeners would die with them.
+      if (tableBody) {
+        tableBody.addEventListener('click', (e) => {
+          const button = e.target.closest('.show-modal-btn');
+          if (!button) return;
           e.stopPropagation();
           const rowIndex = parseInt(button.getAttribute('data-row'));
           const colIndex = parseInt(button.getAttribute('data-col'));
           openModal(rowIndex, colIndex);
         });
-      });
+      }
 
       // Close modal handlers
       if (modalClose) {
@@ -1057,6 +1176,48 @@ export namespace FrontendTables {
         if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
           closeModal();
         }
+      });
+
+      // Incremental refresh: the extension answers search/pagination/auto-refresh
+      // with new rows instead of a new page, so the search box is never recreated
+      // and keeps both focus and whatever has been typed since the request went out.
+      window.addEventListener('message', (event) => {
+        const msg = event.data;
+        if (!msg) return;
+        ${tableId ? `if (msg.tableId !== '${tableId}') return;` : `if (msg.tableId) return;`}
+
+        // The query failed: stop the indicator and keep the rows already on screen
+        // (the extension surfaces the error itself).
+        if (msg.command === 'updateTableFailed') {
+          setSearching(false);
+          updatePaginationDisplay();
+          return;
+        }
+
+        if (msg.command !== 'updateTable') return;
+
+        if (tableBody) {
+          tableBody.innerHTML = msg.rowsHtml;
+        }
+        collapsibleDataArray = msg.collapsibleData || [];
+        totalItems = msg.totalItems;
+        currentPage = msg.currentPage;
+        totalPages = enablePagination ? Math.ceil(totalItems / itemsPerPage) : 1;
+
+        if (tableWrapper) {
+          tableWrapper.classList.toggle('hidden', msg.rowCount === 0);
+        }
+        if (emptyState) {
+          emptyState.classList.toggle('hidden', msg.rowCount > 0);
+        }
+        if (subtitleInfo && msg.subtitle !== undefined) {
+          subtitleInfo.textContent = msg.subtitle;
+        }
+
+        // A row the modal was showing may no longer exist in the new page.
+        closeModal();
+        setSearching(false);
+        updatePaginationDisplay();
       });
 
       // Custom script
