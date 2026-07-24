@@ -7,13 +7,6 @@ export namespace FrontendTables {
 
   const EMPTY_VALUE_PLACEHOLDER = '<span style="color: var(--vscode-descriptionForeground); font-style: italic;">—</span>';
 
-  /**
-   * Page size used by every paginated table.
-   * @see ViewSettings.getItemsPerPage — re-exported here so callers already using this
-   * namespace don't need a second import.
-   */
-  export const getItemsPerPage = ViewSettings.getItemsPerPage;
-
   /** Escape a value for safe interpolation into the generated HTML; empty/null-ish values render as '-'. */
   function escapeHtml(text: string | number): string {
     if (text === 0) return '0';
@@ -515,7 +508,7 @@ export namespace FrontendTables {
       enableSearch = false,
       searchPlaceholder = 'Search...',
       enablePagination = false,
-      itemsPerPage = getItemsPerPage(),
+      itemsPerPage = ViewSettings.getItemsPerPage(),
       totalItems = data.length,
       currentPage = 1,
       searchTerm = '',

@@ -92,7 +92,7 @@ export namespace JobLogUI {
           try {
             await render(state.panel, jobName);
           } catch (error) {
-            console.error(`Job log re-render error:`, error);
+            vscode.window.showErrorMessage(vscode.l10n.t("Failed to refresh job log: {0}", String(error)));
           }
         }
       })
@@ -127,7 +127,7 @@ export namespace JobLogUI {
     );
     const total = countRows.length ? Number(countRows[0].TOTAL) : 0;
 
-    const pageSize = FrontendTables.getItemsPerPage();
+    const pageSize = ViewSettings.getItemsPerPage();
     const offset = (page - 1) * pageSize;
 
     const rows = await connection.runSQL(
@@ -317,7 +317,7 @@ export namespace JobLogUI {
       enableSearch: true,
       searchPlaceholder: vscode.l10n.t("Search messages..."),
       enablePagination: true,
-      itemsPerPage: FrontendTables.getItemsPerPage(),
+      itemsPerPage: ViewSettings.getItemsPerPage(),
       totalItems: total,
       currentPage,
       searchTerm,

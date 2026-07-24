@@ -172,6 +172,7 @@
   "Failed to get library list from command. Feature not installed.": "Failed to get library list from command. Feature not installed.",
   "Failed to move selection to {0}: {1}": "Failed to move selection to {0}: {1}",
   "Failed to read debug service detail file {0}: {1}": "Failed to read debug service detail file {0}: {1}",
+  "Failed to refresh job log: {0}": "Failed to refresh job log: {0}",
   "Failed to set {0} as current library: {1}": "Failed to set {0} as current library: {1}",
   "Failed to start debug server: {0}": "Failed to start debug server: {0}",
   "Failed to start debug service: {0}": "Failed to start debug service: {0}",

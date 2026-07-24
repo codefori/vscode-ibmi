@@ -1,5 +1,6 @@
 
 import * as vscode from 'vscode';
+import IBMi from "../api/IBMi";
 import { Config } from "../api/configuration/config/VirtualConfig";
 
 export function onCodeForIBMiConfigurationChange<T>(props: string | string[], todo: (value: vscode.ConfigurationChangeEvent) => void) {
@@ -31,7 +32,7 @@ export namespace ViewSettings {
    * otherwise the page count shown by the table won't match the rows it receives.
    */
   export function getItemsPerPage(): number {
-    const configured = vscode.workspace.getConfiguration(`code-for-ibmi`).get<number>(`tables.itemsPerPage`);
+    const configured = IBMi.connectionManager.get(`tables.itemsPerPage`);
     if (typeof configured !== 'number' || !Number.isFinite(configured)) {
       return DEFAULT_ITEMS_PER_PAGE;
     }
@@ -43,7 +44,7 @@ export namespace ViewSettings {
    * (which is expressed in seconds). Returns 0 when auto-refresh is disabled.
    */
   export function getAutoRefreshInterval(): number {
-    const configured = vscode.workspace.getConfiguration(`code-for-ibmi`).get<number>(`views.autoRefreshInterval`);
+    const configured = IBMi.connectionManager.get(`views.autoRefreshInterval`);
     const seconds = typeof configured === 'number' && Number.isFinite(configured) && configured >= 0
       ? Math.floor(configured)
       : DEFAULT_AUTO_REFRESH_SECONDS;

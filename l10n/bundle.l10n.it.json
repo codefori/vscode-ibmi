@@ -175,6 +175,7 @@
   "Failed to get library list from command. Feature not installed.": "Impossibile ottenere la lista librerie da comando, feauture non installata",
   "Failed to move selection to {0}: {1}": "Impossibile spostare la selezione in {0}: {1}",
   "Failed to read debug service detail file {0}: {1}": "Impossibile leggere i dettagli sul debug service {0}: {1}",
+  "Failed to refresh job log: {0}": "Impossibile aggiornare il log del lavoro: {0}",
   "Failed to set {0} as current library: {1}": "Impossibile impostare {0} come libreria corrente: {1}",
   "Failed to start debug server: {0}": "Impossibile avviare debug server: {0}",
   "Failed to start debug service: {0}": "Impossibile avviare debug service: {0}",

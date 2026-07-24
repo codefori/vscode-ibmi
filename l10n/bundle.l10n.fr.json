@@ -172,6 +172,7 @@
   "Failed to get library list from command. Feature not installed.": "Échec de la récupération de la liste des bibliothèque depuis la commande. Fonctionnalité non installée.",
   "Failed to move selection to {0}: {1}": "Échec du déplacement de la sélection vers {0}: {1}",
   "Failed to read debug service detail file {0}: {1}": "Erreur de lecture du fichier détail du service de débogage {0}: {1}",
+  "Failed to refresh job log: {0}": "Échec de l'actualisation du journal du travail : {0}",
   "Failed to set {0} as current library: {1}": "La bibliothèque {0} ne peut pas devenir la bibliothèque en cours: {1}",
   "Failed to start debug server: {0}": "Échec du démarrage du serveur de débogage: {0}",
   "Failed to start debug service: {0}": "Échec du démarrage du service de débogage: {0}",

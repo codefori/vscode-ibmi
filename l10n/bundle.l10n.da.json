@@ -171,6 +171,7 @@
   "Failed to get library list from command. Feature not installed.": "Fejl ved at hente bibliotekslisten fra kommando. Feature er ikke installeret.",
   "Failed to move selection to {0}: {1}": "Fejl ved flytning af det valgte til {0}: {1}",
   "Failed to read debug service detail file {0}: {1}": "Fejl ved læsning af debug service detail fil {0}: {1}",
+  "Failed to refresh job log: {0}": "Kunne ikke opdatere joblog: {0}",
   "Failed to set {0} as current library: {1}": "Fejl ved skift til {0} som aktuelt bibliotek: {1}",
   "Failed to start debug server: {0}": "Fejl ved start af debug server: {0}",
   "Failed to start debug service: {0}": "Fejl ved start af debug service: {0}",
