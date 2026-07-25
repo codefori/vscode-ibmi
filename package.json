@@ -551,6 +551,18 @@
 						"Keep the 30 most recently opened files"
 					]
 				},
+				"code-for-ibmi.tables.itemsPerPage": {
+					"type": "integer",
+					"default": 50,
+					"minimum": 30,
+					"description": "Number of rows shown per page in the extension's table views (job log, object lists, etc.). Minimum is 30."
+				},
+				"code-for-ibmi.views.autoRefreshInterval": {
+					"type": "integer",
+					"default": 30,
+					"minimum": 0,
+					"markdownDescription": "Auto-refresh interval, **in seconds**, for the auto-refreshing views (Job Log, Work with Job, Message Queue). Typical values are `30`, `60` or `120`; any other number of seconds is accepted. Set to `0` to disable auto-refresh. The refresh runs even when the tab is in the background."
+				},
 				"code-for-ibmi.safeDeleteMode": {
 					"type": "boolean",
 					"default": false,

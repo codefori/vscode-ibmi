@@ -1,5 +1,5 @@
 import { FilterType } from "../../Filter";
-import { ConnectionData, DeploymentMethod } from "../../types";
+import { Action, ConnectionData, DeploymentMethod } from "../../types";
 
 export type DefaultOpenMode = "browse" | "edit";
 export type ReconnectMode = "always" | "never" | "ask";
@@ -46,6 +46,33 @@ export interface ConnectionConfig extends ConnectionProfile {
   statusBarColor: string
   currentProfile?: string
   [name: string]: any;
+}
+
+// Global `code-for-ibmi.*` settings not related to a single connection
+export interface GlobalConfiguration {
+  recentlyOpenedFilesLimit: number;
+  defaultOpenMode: DefaultOpenMode;
+  autoReconnect: ReconnectMode;
+  grepIgnoreDirs: string[];
+  createLibraryOnBranchChange: boolean;
+  clearDiagnosticOnEdit: boolean;
+  clearErrorsBeforeBuild: boolean;
+  'tables.itemsPerPage': number;
+  'views.autoRefreshInterval': number;
+  postActionView: 'task' | 'problems' | 'none';
+  logCompileOutput: boolean;
+  clearOutputEveryTime: boolean;
+  persistOutputOnConnect: boolean;
+  sortActionsBy: 'usage' | 'name' | 'config';
+  'IfsBrowser.DragAndDropDefaultBehavior': 'ask' | 'copy' | 'move';
+  autoRefresh: boolean;
+  safeDeleteMode: boolean;
+  'ObjectBrowser.showNamesInLowercase': boolean;
+  'ObjectBrowser.sortObjectsByName': boolean;
+  autoOpenFile: boolean;
+  'terminals.5250.openInEditorArea': boolean;
+  'terminals.pase.openInEditorArea': boolean;
+  actions: Action[];
 }
 
 export interface RemoteConfigFile {

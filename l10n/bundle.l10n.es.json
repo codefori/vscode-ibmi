@@ -172,6 +172,7 @@
   "Failed to get library list from command. Feature not installed.": "No se ha podido obtener la lista de bibliotecas desde el mandato. Función no instalada.",
   "Failed to move selection to {0}: {1}": "No se ha podido mover la selección a {0}: {1}",
   "Failed to read debug service detail file {0}: {1}": "No se ha podido leer el archivo de detalles del Debug Service {0}: {1}",
+  "Failed to refresh job log: {0}": "No se ha podido actualizar el registro de trabajo: {0}",
   "Failed to set {0} as current library: {1}": "No se ha podido establecer {0} como biblioteca actual: {1}",
   "Failed to start debug server: {0}": "No se ha podido iniciar el Debug Server: {0}",
   "Failed to start debug service: {0}": "No se ha podido iniciar el Debug Service: {0}",
