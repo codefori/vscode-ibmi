@@ -1,5 +1,5 @@
 import { FilterType } from "../../Filter";
-import { ConnectionData, DeploymentMethod } from "../../types";
+import { Action, ConnectionData, DeploymentMethod } from "../../types";
 
 export type DefaultOpenMode = "browse" | "edit";
 export type ReconnectMode = "always" | "never" | "ask";
@@ -60,7 +60,9 @@ export interface GlobalConfiguration {
   'tables.itemsPerPage': number;
   'views.autoRefreshInterval': number;
   postActionView: 'task' | 'problems' | 'none';
+  logCompileOutput: boolean;
   clearOutputEveryTime: boolean;
+  persistOutputOnConnect: boolean;
   sortActionsBy: 'usage' | 'name' | 'config';
   'IfsBrowser.DragAndDropDefaultBehavior': 'ask' | 'copy' | 'move';
   autoRefresh: boolean;
@@ -70,6 +72,7 @@ export interface GlobalConfiguration {
   autoOpenFile: boolean;
   'terminals.5250.openInEditorArea': boolean;
   'terminals.pase.openInEditorArea': boolean;
+  actions: Action[];
 }
 
 export interface RemoteConfigFile {
