@@ -176,8 +176,9 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
     super(filter, filter.name, { icon: filter.protected ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
     this.library = parseFilter(filter.library, filter.filterType).noFilter ? filter.library : '';
     this.contextValue = `filter${this.library ? "_library" : ''}${this.isProtected() ? `_readonly` : ``}`;
-    this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
-    this.tooltip = ``;
+    const memberTextSuffix = filter.memberText && !/^\*(?:ALL)?$/.test(filter.memberText.trim()) ? ` [${filter.memberText}]` : ``;
+    this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})${memberTextSuffix}`;
+    this.tooltip = VscodeTools.filterToToolTip(filter);
 
     if (this.library) {
       this.resourceUri = vscode.Uri.from({
