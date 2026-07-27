@@ -776,7 +776,7 @@ export default class IBMiContent {
         WHERE TRIM(PART_STAT.SYSTEM_TABLE_MEMBER) <> ''
         ${singleMember ? `AND RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember.replaceAll('_', '+_')}' escape '+'` : ``}
         ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `AND RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension.replaceAll('_', '+_')}' escape '+'` : ``}
-        ${singleMemberText && singleMemberText.trim() !== '%' ? `AND UPPER(RTRIM(VARCHAR(PART_STAT.TEXT))) like '${singleMemberText.replaceAll('_', '+_')}' escape '+'` : ``}
+        ${singleMemberText && singleMemberText.trim() !== '%' ? `AND UPPER(RTRIM(VARCHAR(PART_STAT.TEXT))) like '${singleMemberText.replaceAll('+', '++').replaceAll('_', '+_').replaceAll(`'`, `''`)}' escape '+'` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
