@@ -16,7 +16,20 @@ export namespace FrontendTables {
     return VscodeTools.escapeHtml(str);
   }
 
-  /** Renders YES/NO as colored badges and integers with locale formatting; undefined if the value is neither. */
+  const MAX_FRACTION_DIGITS = 20;
+
+  /** Locale-format a number keeping exactly the decimals of the source text, so 12.50 stays "12.50". */
+  function formatNumber(num: number, strValue: string): string {
+    const fraction = strValue.split('.')[1];
+    if (fraction === undefined) {
+      // Integer, or exponential notation whose digits can't be read off the text.
+      return num.toLocaleString(undefined, Number.isInteger(num) ? undefined : { maximumFractionDigits: MAX_FRACTION_DIGITS });
+    }
+    const digits = Math.min(fraction.length, MAX_FRACTION_DIGITS);
+    return num.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  }
+
+  /** Renders YES/NO as colored badges and numbers with locale formatting; undefined if the value is neither. */
   function formatYesNoOrNumber(strValue: string, skipNumeric: boolean): string | undefined {
     if (strValue === 'YES') {
       return '<span style="color: var(--vscode-testing-iconPassed, #73c991); font-weight: 600;">✓ YES</span>';
@@ -24,11 +37,9 @@ export namespace FrontendTables {
     if (strValue === 'NO') {
       return '<span style="color: var(--vscode-testing-iconFailed, #f48771); font-weight: 600;">✗ NO</span>';
     }
-    if (!skipNumeric && !isNaN(Number(strValue)) && strValue !== '') {
+    if (!skipNumeric && strValue !== '' && isFinite(Number(strValue))) {
       const num = Number(strValue);
-      if (Number.isInteger(num)) {
-        return `<span style="font-family: var(--vscode-editor-font-family); color: var(--vscode-charts-blue);">${num.toLocaleString()}</span>`;
-      }
+      return `<span style="font-family: var(--vscode-editor-font-family); color: var(--vscode-charts-blue);">${formatNumber(num, strValue)}</span>`;
     }
     return undefined;
   }
