@@ -282,6 +282,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
         sourceFile: this.object.name,
         members: this.filter.member,
         extensions: this.filter.memberType,
+        memberText: this.filter.memberText,
         filterType: this.filter.filterType,
         sort: this.sort
       });
@@ -1249,7 +1250,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           IBMi.connectionManager.update(config);
           const autoRefresh = objectBrowser.autoRefresh();
 
-          if(!existsInLibl) {
+          if (!existsInLibl) {
             // Add to library list ?
             await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Yes`))
               .then(async result => {
@@ -1354,12 +1355,12 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
 
           newPathOK = true;
 
-          let command:string;
+          let command: string;
 
-          if(node.object.type.toLocaleLowerCase() === `*lib`){
-            command= `QSYS/CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})`;
+          if (node.object.type.toLocaleLowerCase() === `*lib`) {
+            command = `QSYS/CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})`;
           } else {
-            command=`QSYS/CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
+            command = `QSYS/CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
           }
 
           const commandRes = await connection.runCommand({

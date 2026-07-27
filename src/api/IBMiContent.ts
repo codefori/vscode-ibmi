@@ -747,7 +747,7 @@ export default class IBMiContent {
    * @param filter: the criterias used to list the members
    * @returns
    */
-  async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
+  async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, memberText?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
     const sort = filter.sort || { order: 'name' };
     const library = this.ibmi.upperCaseName(filter.library);
     const sourceFile = this.ibmi.upperCaseName(filter.sourceFile);
@@ -758,6 +758,9 @@ export default class IBMiContent {
 
     const memberExtensionFilter = parseFilter(filter.extensions, filter.filterType);
     const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? this.ibmi.upperCaseName(filter.extensions).replace(/[*]/g, `%`) : undefined;
+
+    const memberTextFilter = parseFilter(filter.memberText, filter.filterType);
+    const singleMemberText = memberTextFilter.noFilter && filter.memberText && !filter.memberText.includes(",") ? filter.memberText.toUpperCase().replace(/[*]/g, `%`) : undefined;
 
     const statement = /* sql */
       `SELECT RTRIM(OBJ_STAT.OBJNAME) AS SOURCE_FILE,
@@ -773,6 +776,7 @@ export default class IBMiContent {
         WHERE TRIM(PART_STAT.SYSTEM_TABLE_MEMBER) <> ''
         ${singleMember ? `AND RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember.replaceAll('_', '+_')}' escape '+'` : ``}
         ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `AND RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension.replaceAll('_', '+_')}' escape '+'` : ``}
+        ${singleMemberText && singleMemberText.trim() !== '%' ? `AND UPPER(RTRIM(VARCHAR(PART_STAT.TEXT))) like '${singleMemberText.replaceAll('_', '+_')}' escape '+'` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
@@ -791,7 +795,8 @@ export default class IBMiContent {
         changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
       } as IBMiMember))
         .filter(member => memberFilter.test(member.name))
-        .filter(member => memberExtensionFilter.test(member.extension));
+        .filter(member => memberExtensionFilter.test(member.extension))
+        .filter(member => memberTextFilter.test(member.text || ``));
     }
     else {
       return [];
@@ -1166,7 +1171,7 @@ export default class IBMiContent {
    * @param library
    * @param name
    * @param type
-   * 
+   *
    * @returns the routine program if it's external, the sha256 hash of the routine's body otherwise
    */
   async getSQLRoutineSignature(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
