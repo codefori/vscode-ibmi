@@ -51,8 +51,34 @@ export function initializeSearchView(context: vscode.ExtensionContext) {
         .filter((item): item is HitSource => item instanceof HitSource)
         .map(item => item.result);
       await downloadSearchHits(hits);
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.copyAllSearchResultNames`, async () => {
+      await copySearchHitNames(searchView.getHits());
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.copySelectedSearchResultNames`, async (node: HitSource, nodes?: HitSource[]) => {
+      const selected = nodes || (node ? [node] : searchViewViewer.selection.filter((item): item is HitSource => item instanceof HitSource));
+      const hits = selected
+        .filter((item): item is HitSource => item instanceof HitSource)
+        .map(item => item.result);
+      await copySearchHitNames(hits);
     })
   )
+}
+
+async function copySearchHitNames(hits: SearchHit[]) {
+  const names = [...new Set(
+    hits.map(hit => path.posix.basename(hit.path)).filter(Boolean)
+  )];
+
+  if (names.length === 0) {
+    vscode.window.showWarningMessage(vscode.l10n.t(`No search results to copy.`));
+    return;
+  }
+
+  await vscode.env.clipboard.writeText(names.join(`\n`));
+  vscode.window.showInformationMessage(
+    vscode.l10n.t(`Copied {0} name(s) to the clipboard.`, names.length)
+  );
 }
 
 async function downloadSearchHits(hits: SearchHit[]) {
