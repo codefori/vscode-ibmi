@@ -1,5 +1,9 @@
-import path from 'path';
+import fs from "fs";
+import path from "path";
 import vscode from "vscode";
+import IBMi from "../../api/IBMi";
+import { Tools } from "../../api/Tools";
+import { instance } from "../../instantiate";
 import { DefaultOpenMode, SearchHit, SearchHitLine, SearchResults, WithPath } from "../../typings";
 
 export function initializeSearchView(context: vscode.ExtensionContext) {
@@ -8,7 +12,7 @@ export function initializeSearchView(context: vscode.ExtensionContext) {
     `searchView`, {
     treeDataProvider: searchView,
     showCollapseAll: true,
-    canSelectMany: false
+    canSelectMany: true
   });
 
   context.subscriptions.push(
@@ -37,8 +41,109 @@ export function initializeSearchView(context: vscode.ExtensionContext) {
       }
 
       searchView.setResults(searchResults, appendResults);
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.downloadAllSearchResults`, async () => {
+      await downloadSearchHits(searchView.getHits());
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.downloadSelectedSearchResults`, async (node: HitSource, nodes?: HitSource[]) => {
+      const selected = nodes || (node ? [node] : searchViewViewer.selection.filter((item): item is HitSource => item instanceof HitSource));
+      const hits = selected
+        .filter((item): item is HitSource => item instanceof HitSource)
+        .map(item => item.result);
+      await downloadSearchHits(hits);
     })
   )
+}
+
+async function downloadSearchHits(hits: SearchHit[]) {
+  const connection = instance.getConnection();
+  if (!connection) {
+    return;
+  }
+
+  const uniqueHits = hits.filter(
+    (hit, index, arr) => arr.findIndex(h => h.path === hit.path) === index
+  );
+
+  if (uniqueHits.length === 0) {
+    vscode.window.showWarningMessage(vscode.l10n.t(`No search results to download.`));
+    return;
+  }
+
+  const rootUriArray = await vscode.window.showOpenDialog({
+    canSelectMany: false,
+    canSelectFiles: false,
+    canSelectFolders: true,
+    openLabel: vscode.l10n.t(`Select download folder`),
+    defaultUri: vscode.Uri.file(IBMi.GlobalStorage.getLastDownloadLocation()),
+    title: vscode.l10n.t(`Download {0} search result(s)`, uniqueHits.length)
+  });
+
+  if (!rootUriArray || rootUriArray.length === 0) {
+    return;
+  }
+
+  const rootPath = rootUriArray[0].fsPath;
+  await IBMi.GlobalStorage.setLastDownloadLocation(rootPath);
+
+  const contentApi = connection.getContent();
+
+  await vscode.window.withProgress(
+    { title: vscode.l10n.t(`Downloading {0} search result(s)`, uniqueHits.length), location: vscode.ProgressLocation.Notification },
+    async (progress) => {
+      let done = 0;
+      const errors: string[] = [];
+
+      for (const hit of uniqueHits) {
+        progress.report({
+          message: hit.path,
+          increment: 100 / uniqueHits.length
+        });
+
+        try {
+          if (hit.path.startsWith(`/`)) {
+            const relativePath = hit.path.replace(/^\//, ``);
+            const localFile = path.join(Tools.fixWindowsPath(rootPath), ...relativePath.split(`/`));
+            fs.mkdirSync(path.dirname(localFile), { recursive: true });
+            await contentApi.downloadFile(localFile, hit.path);
+          }
+          else {
+            const member = connection.parserMemberPath(hit.path);
+            const localDir = path.join(rootPath, member.library.toUpperCase(), member.file.toUpperCase());
+            const localFile = path.join(localDir, `${member.name.toUpperCase()}.${(member.extension || `MBR`).toUpperCase()}`);
+            fs.mkdirSync(localDir, { recursive: true });
+            const content = await contentApi.downloadMemberContent(member.library, member.file, member.name);
+            if (content !== undefined) {
+              fs.writeFileSync(localFile, content, `utf8`);
+            }
+          }
+          done++;
+        } catch (e: any) {
+          errors.push(`${hit.path}: ${String(e)}`);
+        }
+      }
+
+      if (errors.length > 0) {
+        vscode.window.showWarningMessage(
+          vscode.l10n.t(`{0} of {1} file(s) downloaded. {2} error(s).`, done, uniqueHits.length, errors.length),
+          vscode.l10n.t(`Show Details`)
+        ).then(action => {
+          if (action) {
+            vscode.window.showErrorMessage(errors.join(`\n`));
+          }
+        });
+      } else {
+        vscode.window.showInformationMessage(
+          vscode.l10n.t(`{0} file(s) downloaded to {1}`, done, rootPath),
+          vscode.l10n.t(`Open download folder`)
+        ).then(action => {
+          if (action) {
+            vscode.commands.executeCommand(`revealFileInOS`, vscode.Uri.file(rootPath));
+          }
+        });
+      }
+    }
+  );
 }
 
 class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
@@ -84,6 +189,10 @@ class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
     } else {
       return hitSource.getChildren();
     }
+  }
+
+  getHits(): SearchHit[] {
+    return [...this._results.hits];
   }
 
   get hits() {

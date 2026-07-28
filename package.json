@@ -1618,6 +1618,19 @@
 				"icon": "$(close)"
 			},
 			{
+				"command": "code-for-ibmi.downloadAllSearchResults",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Download all results",
+				"category": "IBM i",
+				"icon": "$(cloud-download)"
+			},
+			{
+				"command": "code-for-ibmi.downloadSelectedSearchResults",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Download",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.sortIFSFilesByDate",
 				"title": "Date",
 				"category": "IBM i"
@@ -2501,6 +2514,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.downloadSelectedSearchResults",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.removeFromLibraryList",
 					"when": "never"
 				},
@@ -2800,6 +2817,11 @@
 					"when": "view == objectBrowser"
 				},
 				{
+					"command": "code-for-ibmi.downloadAllSearchResults",
+					"group": "navigation@1",
+					"when": "view == searchView"
+				},
+				{
 					"command": "code-for-ibmi.closeSearchView",
 					"group": "navigation@2",
 					"when": "view == searchView"
@@ -2853,6 +2875,11 @@
 				}
 			],
 			"view/item/context": [
+				{
+					"command": "code-for-ibmi.downloadSelectedSearchResults",
+					"when": "view == searchView && viewItem == hitSource",
+					"group": "1_download@1"
+				},
 				{
 					"command": "code-for-ibmi.copyConnection",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
