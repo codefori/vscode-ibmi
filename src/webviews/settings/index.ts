@@ -156,7 +156,7 @@ export class SettingsUI {
         tempDataTab
           .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary, minlength: 1, maxlength: 10 })
           .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir, minlength: 1 })
-          .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData);
+          .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library when they are no longer needed and on startup. Also removes all <code>vscodetemp*</code> files from the chosen temporary IFS directory on startup.`, config.autoClearTempData);
 
         setFieldsReadOnly(tempDataTab);
 
