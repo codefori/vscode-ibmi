@@ -652,10 +652,36 @@ export namespace FrontendTables {
         width: 80px;
       }
 
+      /* Height capped (refined at runtime by syncTableViewport) so the horizontal
+         scrollbar stays on screen instead of sitting below a long table. */
       .table-scroll-wrapper {
-        overflow-x: auto;
+        overflow: auto;
+        max-height: 65vh;
         width: 100%;
         transition: opacity 0.15s ease;
+      }
+
+      /* The webview host only styles the document scrollbars, not the wrapper's. */
+      .table-scroll-wrapper::-webkit-scrollbar {
+        height: 12px;
+        width: 12px;
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-track,
+      .table-scroll-wrapper::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-thumb {
+        background-color: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+        background-color: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-thumb:active {
+        background-color: var(--vscode-scrollbarSlider-activeBackground, rgba(191, 191, 191, 0.4));
       }
 
       /* Search/pagination are server-side: while the extension re-queries, dim the
@@ -922,6 +948,7 @@ export namespace FrontendTables {
               ${rows}
             </vscode-table-body>
           </vscode-table>
+        </div>
 
           ${hasCollapsibleColumns ? `
           <!-- Modal for collapsible content -->
@@ -940,7 +967,7 @@ export namespace FrontendTables {
           ` : ''}
 
           ${enablePagination ? `
-          <div class="pagination-controls">
+          <div class="pagination-controls${data.length > 0 ? '' : ' hidden'}" id="pagination-controls${suffix}">
           <div class="pagination-info" id="pagination-info${suffix}"></div>
           <div class="pagination-buttons">
             <vscode-button id="first-page${suffix}" appearance="icon" aria-label="First page">
@@ -969,7 +996,6 @@ export namespace FrontendTables {
           </div>
         </div>
           ` : ''}
-        </div>
 
         <div class="empty-state${data.length > 0 ? ' hidden' : ''}" id="empty-state${suffix}">
           <p>${escapeHtml(emptyMessage)}</p>
@@ -998,6 +1024,7 @@ export namespace FrontendTables {
       const searchIcon = document.getElementById('search-icon${suffix}');
       const searchStatus = document.getElementById('search-status${suffix}');
       const tableWrapper = document.getElementById('table-scroll-wrapper${suffix}');
+      const paginationControls = document.getElementById('pagination-controls${suffix}');
       const paginationInfo = document.getElementById('pagination-info${suffix}');
       const pageInput = document.getElementById('page-input${suffix}');
       const totalPagesLabel = document.getElementById('total-pages-label${suffix}');
@@ -1008,6 +1035,31 @@ export namespace FrontendTables {
 
       // Calculate total pages
       let totalPages = enablePagination ? Math.ceil(totalItems / itemsPerPage) : 1;
+
+      // Fit the table to the visible area, keeping its horizontal scrollbar on screen.
+      // Measured against the document (rect.top + scrollY) so scrolling the page does
+      // not feed back into the computed height.
+      const MIN_TABLE_VIEWPORT_HEIGHT = 200;
+      const CONTAINER_BOTTOM_PADDING = 20;
+      const PAGINATION_MARGIN_TOP = 16;
+
+      function syncTableViewport() {
+        if (!tableWrapper || tableWrapper.classList.contains('hidden')) return;
+
+        const top = tableWrapper.getBoundingClientRect().top + window.scrollY;
+        const below = paginationControls && !paginationControls.classList.contains('hidden')
+          ? paginationControls.getBoundingClientRect().height + PAGINATION_MARGIN_TOP
+          : 0;
+        const available = window.innerHeight - top - below - CONTAINER_BOTTOM_PADDING;
+
+        tableWrapper.style.maxHeight = Math.max(MIN_TABLE_VIEWPORT_HEIGHT, available) + 'px';
+      }
+
+      syncTableViewport();
+      // The vscode-* elements upgrade after this script runs and shift the table down.
+      requestAnimationFrame(syncTableViewport);
+      window.addEventListener('load', syncTableViewport);
+      window.addEventListener('resize', syncTableViewport);
 
       // Busy indicator. Search and pagination are handled by the extension, which
       // answers with an 'updateTable' message; the indicator is cleared there. The
@@ -1244,9 +1296,13 @@ export namespace FrontendTables {
         if (tableWrapper) {
           tableWrapper.classList.toggle('hidden', msg.rowCount === 0);
         }
+        if (paginationControls) {
+          paginationControls.classList.toggle('hidden', msg.rowCount === 0);
+        }
         if (emptyState) {
           emptyState.classList.toggle('hidden', msg.rowCount > 0);
         }
+        syncTableViewport();
         if (subtitleInfo && msg.subtitle !== undefined) {
           subtitleInfo.textContent = msg.subtitle;
         }
