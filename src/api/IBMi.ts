@@ -638,7 +638,9 @@ export default class IBMi {
         // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
 
         // Fetch conversion values?
-        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.qccsid) {
+        // Do not restore a cached CCSID_NOCONVERSION value via quick-connect: it must go through
+        // the full resolution path (ACTIVE_JOB_INFO) to obtain a usable CCSID.
+        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.jobCcsid !== IBMi.CCSID_NOCONVERSION && cachedServerSettings?.qccsid) {
           this.qccsid = cachedServerSettings.qccsid;
           this.userJobCcsid = cachedServerSettings.jobCcsid;
         } else {
@@ -671,7 +673,9 @@ export default class IBMi {
             }
 
             if (this.userJobCcsid === IBMi.CCSID_NOCONVERSION) {
-              //At this point, if it's still *HEX, we get the job's default CCSID
+              //At this point, if it's still *HEX, we get the job's default CCSID.
+              // IBM i guarantees DEFAULT_CCSID in ACTIVE_JOB_INFO is never 65535 — it is the
+              // authoritative value IBM i uses when the job CCSID is set to *HEX (65535).
               const [row] = await this.runSQL(/* sql */`
                 select DEFAULT_CCSID from table(
                   QSYS2.ACTIVE_JOB_INFO(
@@ -679,7 +683,9 @@ export default class IBMi {
                     DETAILED_INFO => 'WORK'
                   )
                 )`);
-              this.userJobCcsid = row?.DEFAULT_CCSID ? Number(row.DEFAULT_CCSID) : this.userJobCcsid;
+              if (row?.DEFAULT_CCSID) {
+                this.userJobCcsid = Number(row.DEFAULT_CCSID);
+              }
             }
           } catch (e) {
             // Oh well!
