@@ -42,33 +42,17 @@ export function initializeSearchView(context: vscode.ExtensionContext) {
 
       searchView.setResults(searchResults, appendResults);
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.downloadAllSearchResults`, async () => {
-      await downloadSearchHits(searchView.getHits());
-    }),
-    vscode.commands.registerCommand(`code-for-ibmi.downloadSelectedSearchResults`, async (node: HitSource, nodes?: HitSource[]) => {
-      const selected = nodes || (node ? [node] : searchViewViewer.selection.filter((item): item is HitSource => item instanceof HitSource));
-      const hits = selected
-        .filter((item): item is HitSource => item instanceof HitSource)
-        .map(item => item.result);
-      await downloadSearchHits(hits);
-    }),
-    vscode.commands.registerCommand(`code-for-ibmi.copyAllSearchResultNames`, async () => {
-      await copySearchHitNames(searchView.getHits());
-    }),
-    vscode.commands.registerCommand(`code-for-ibmi.copySelectedSearchResultNames`, async (node: HitSource, nodes?: HitSource[]) => {
-      const selected = nodes || (node ? [node] : searchViewViewer.selection.filter((item): item is HitSource => item instanceof HitSource));
-      const hits = selected
-        .filter((item): item is HitSource => item instanceof HitSource)
-        .map(item => item.result);
-      await copySearchHitNames(hits);
-    })
+    vscode.commands.registerCommand(`code-for-ibmi.downloadAllSearchResults`, () => downloadSearchHits(searchView.getHits())),
+    vscode.commands.registerCommand(`code-for-ibmi.downloadSelectedSearchResults`, (node: HitSource, nodes?: HitSource[]) => downloadSearchHits((nodes || [node]).map(item => item.result))),
+    vscode.commands.registerCommand(`code-for-ibmi.copyAllSearchResultNames`, () => copySearchHitNames(searchView.getHits())),
+    vscode.commands.registerCommand(`code-for-ibmi.copySelectedSearchResultNames`, (node: HitSource, nodes?: HitSource[]) => copySearchHitNames((nodes || [node]).map(item => item.result)))
   )
 }
 
 async function copySearchHitNames(hits: SearchHit[]) {
-  const names = [...new Set(
-    hits.map(hit => path.posix.basename(hit.path)).filter(Boolean)
-  )];
+  const names = hits.map(hit => path.posix.basename(hit.path))
+    .filter(Boolean)
+    .filter(Tools.distinct);
 
   if (names.length === 0) {
     vscode.window.showWarningMessage(vscode.l10n.t(`No search results to copy.`));
@@ -87,9 +71,7 @@ async function downloadSearchHits(hits: SearchHit[]) {
     return;
   }
 
-  const uniqueHits = hits.filter(
-    (hit, index, arr) => arr.findIndex(h => h.path === hit.path) === index
-  );
+  const uniqueHits = hits.filter(Tools.distinct);
 
   if (uniqueHits.length === 0) {
     vscode.window.showWarningMessage(vscode.l10n.t(`No search results to download.`));
@@ -128,9 +110,7 @@ async function downloadSearchHits(hits: SearchHit[]) {
 
         try {
           if (hit.path.startsWith(`/`)) {
-            const relativePath = hit.path.replace(/^\//, ``);
-            const localFile = path.join(Tools.fixWindowsPath(rootPath), ...relativePath.split(`/`));
-            fs.mkdirSync(path.dirname(localFile), { recursive: true });
+            const localFile = path.join(Tools.fixWindowsPath(rootPath), path.posix.basename(hit.path));
             await contentApi.downloadFile(localFile, hit.path);
           }
           else {
@@ -218,7 +198,7 @@ class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
   }
 
   getHits(): SearchHit[] {
-    return [...this._results.hits];
+    return this._results.hits;
   }
 
   get hits() {
