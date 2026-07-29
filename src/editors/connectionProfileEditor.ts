@@ -2,6 +2,7 @@ import vscode, { l10n } from "vscode";
 import { isActiveProfile, updateConnectionProfile } from "../api/connectionProfiles";
 import { instance } from "../instantiate";
 import { ConnectionProfile } from "../typings";
+import { VscodeTools } from "../ui/Tools";
 import { CustomEditor } from "./customEditorProvider";
 
 type ConnectionProfileData = {
@@ -10,6 +11,7 @@ type ConnectionProfileData = {
   libraryList: string
   setLibraryListCommand: string
   iasp: string
+  statusBarColor: string
 }
 
 const editedProfiles: Set<string> = new Set;
@@ -31,6 +33,7 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
     .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries."), { default: profile.libraryList.join(","), readonly: activeProfile })
     .addInput("iasp", l10n.t("Current IASP"), l10n.t("The independent ASP to enable when using this profile. If the database name of this ASP is different from its name, make sure to use the database name here. Leave blank to use the system ASP."), { default: profile.iasp, readonly: activeProfile })
     .addInput("setLibraryListCommand", l10n.t("Library List Command"), l10n.t("Library List Command can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.<br/>Commands should be as explicit as possible.<br/>When refering to commands and objects, both should be qualified with a library.<br/>Put <code>?</code> in front of the command to prompt it before execution."), { default: profile.setLibraryListCommand })
+    .addInput("statusBarColor", l10n.t("Status bar color"), l10n.t("The color of the status bar items while this profile is active. Useful to tell your environments apart at a glance. Pick black to keep the color of the current theme."), { default: (profile.statusBarColor ?? config?.statusBarColor) || `#000000`, inputType: "color" })
     .addHorizontalRule()
     .addHeading(l10n.t("Object filters"), 3)
     .addParagraph(objectFilters.length ? `<ul>${objectFilters.map(filter => `<li>${filter.name}</li>`).join('')}</ul>` : l10n.t("None"))
@@ -53,6 +56,7 @@ async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
     profile.homeDirectory = data.homeDirectory.trim();
     profile.iasp = data.iasp.trim() ? data.iasp.trim() : undefined;
     profile.setLibraryListCommand = data.setLibraryListCommand.trim();
+    profile.statusBarColor = VscodeTools.parseStatusBarColor(data.statusBarColor) || ``;
 
     const currentASP = connection.getCurrentASP();
     try {

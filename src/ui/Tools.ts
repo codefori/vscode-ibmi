@@ -230,6 +230,7 @@ export namespace VscodeTools {
       "Object Filters": profile.objectFilters.length,
       "IFS Shortcuts": profile.ifsShortcuts.length,
       "Custom Variables": profile.customVariables.length,
+      "Status Bar Color": parseStatusBarColor(profile.statusBarColor),
     }));
     tooltip.supportHtml = true;
     return tooltip;
