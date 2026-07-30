@@ -226,7 +226,7 @@ export namespace VscodeTools {
       "Library": filter.library,
       "Member": filter.member,
       "Type": filter.memberType || `*`,
-      "Text": filter.memberText || undefined
+      "Text": filter.memberText || `*`
     }));
     tooltip.supportHtml = true;
     return tooltip;
