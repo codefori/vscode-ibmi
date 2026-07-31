@@ -1487,7 +1487,7 @@ export default class IBMi {
             error.cause = statement
 
             const parts: string[] = e.message.split(`,`);
-            if (parts.length > 3) {
+            if (parts.length >= 3) {
               error.sqlstate = parts[parts.length - 2].trim();
             }
 
