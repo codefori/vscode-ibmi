@@ -131,6 +131,11 @@
 											"description": "Member type filter",
 											"maxLength": 10,
 											"default": "*"
+										},
+										"memberText": {
+											"type": "string",
+											"description": "Member text description filter",
+											"default": "*"
 										}
 									}
 								},

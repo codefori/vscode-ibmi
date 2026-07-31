@@ -87,6 +87,7 @@ export interface ObjectFilters {
   types: string[]
   member: string
   memberType: string
+  memberText?: string
   protected: boolean
 }
 

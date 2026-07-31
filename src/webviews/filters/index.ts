@@ -22,6 +22,7 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
           types: [...filter.types],
           member: filter.member,
           memberType: filter.memberType,
+          memberText: filter.memberText || `*`,
           protected: filter.protected
         }
 
@@ -37,6 +38,7 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
         types: [`*SRCPF`],
         member: `*`,
         memberType: `*`,
+        memberText: `*`,
         protected: false
       }
 
@@ -54,6 +56,7 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
       .addInput(`types`, `Object types`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM</code>, <code>*SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, { default: filter.types.join(`, `) })
       .addInput(`member`, `Members`, `Member names filter.`, { default: filter.member })
       .addInput(`memberType`, `Member type`, `Member types filter.`, { default: filter.memberType })
+      .addInput(`memberText`, `Member text`, `Member text description filter.`, { default: filter.memberText || `*` })
       .addCheckbox(`protected`, `Protected`, `Make this filter protected, preventing modifications and source members from being saved.`, filter.protected)
       .addButtons({ id: `save`, label: `Save settings` })
       .loadPage<any>(`Filter: ${newFilter ? `New` : filter.name}`);
@@ -86,6 +89,9 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
             data[key] = connection.upperCaseName(String(data[key]));
             break;
           case `memberType`:
+            data[key] = String(data[key].trim()) || `*`;
+            break;
+          case `memberText`:
             data[key] = String(data[key].trim()) || `*`;
             break;
           case `protected`:

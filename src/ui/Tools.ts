@@ -5,7 +5,7 @@ import vscode, { MarkdownString } from "vscode";
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 import { API, GitExtension } from "../filesystems/local/gitApi";
-import { ConnectionProfile, IBMiMember, IBMiObject, IFSFile } from '../typings';
+import { ConnectionProfile, IBMiMember, IBMiObject, IFSFile, ObjectFilters } from '../typings';
 
 let gitLookedUp: boolean;
 let gitAPI: API | undefined;
@@ -215,6 +215,18 @@ export namespace VscodeTools {
       "Size": ifsFile.size,
       "Modified": ifsFile.modified ? safeIsoValue(new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000)) : ``,
       "Owner": ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
+
+  export function filterToToolTip(filter: ObjectFilters) {
+    const tooltip = new MarkdownString(generateTooltipHtmlTable(filter.name, {
+      "Object": filter.object,
+      "Library": filter.library,
+      "Member": filter.member,
+      "Type": filter.memberType || `*`,
+      "Text": filter.memberText || `*`
     }));
     tooltip.supportHtml = true;
     return tooltip;
