@@ -181,7 +181,11 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
     const details = filterDetails();
     if (details !== `tooltip`) {
       const memberTextSuffix = filter.memberText && !/^\*(?:ALL)?$/.test(filter.memberText.trim()) ? ` [${filter.memberText}]` : ``;
-      this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})${memberTextSuffix}`;
+      const dateSuffix = [
+        filter.memberCreated ? `created ≥ ${filter.memberCreated}` : ``,
+        filter.memberChanged ? `changed ≥ ${filter.memberChanged}` : ``
+      ].filter(Boolean).join(`, `);
+      this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})${memberTextSuffix}${dateSuffix ? ` {${dateSuffix}}` : ``}`;
     }
     this.tooltip = details !== `description` ? VscodeTools.filterToToolTip(filter) : ``;
 
@@ -289,6 +293,8 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
         members: this.filter.member,
         extensions: this.filter.memberType,
         memberText: this.filter.memberText,
+        memberCreated: this.filter.memberCreated,
+        memberChanged: this.filter.memberChanged,
         filterType: this.filter.filterType,
         sort: this.sort
       });

@@ -90,6 +90,8 @@ export interface ObjectFilters {
   member: string
   memberType: string
   memberText?: string
+  memberCreated?: string
+  memberChanged?: string
   protected: boolean
 }
 

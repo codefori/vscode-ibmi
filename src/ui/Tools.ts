@@ -228,7 +228,9 @@ export namespace VscodeTools {
       "Object types": escapeHtml(filter.types.join(`, `)),
       "Members": escapeHtml(filter.member),
       "Member type": escapeHtml(filter.memberType || `*`),
-      "Member text": escapeHtml(filter.memberText || `*`),
+      "Member text": filter.memberText ? escapeHtml(filter.memberText) : undefined,
+      "Member created from": filter.memberCreated ? escapeHtml(filter.memberCreated) : undefined,
+      "Member changed from": filter.memberChanged ? escapeHtml(filter.memberChanged) : undefined,
       "Protected": filter.protected ? vscode.l10n.t(`Yes`) : undefined
     }));
     tooltip.supportHtml = true;

@@ -747,7 +747,7 @@ export default class IBMiContent {
    * @param filter: the criterias used to list the members
    * @returns
    */
-  async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, memberText?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
+  async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, memberText?: string, memberCreated?: string, memberChanged?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
     const sort = filter.sort || { order: 'name' };
     const library = this.ibmi.upperCaseName(filter.library);
     const sourceFile = this.ibmi.upperCaseName(filter.sourceFile);
@@ -761,6 +761,9 @@ export default class IBMiContent {
 
     const memberTextFilter = parseFilter(filter.memberText, filter.filterType);
     const singleMemberText = memberTextFilter.noFilter && filter.memberText && !filter.memberText.includes(",") ? filter.memberText.toUpperCase().replace(/[*]/g, `%`) : undefined;
+
+    const createdFrom = Tools.parseFilterDate(filter.memberCreated);
+    const changedFrom = Tools.parseFilterDate(filter.memberChanged);
 
     const statement = /* sql */
       `SELECT RTRIM(OBJ_STAT.OBJNAME) AS SOURCE_FILE,
@@ -777,6 +780,8 @@ export default class IBMiContent {
         ${singleMember ? `AND RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember.replaceAll('_', '+_')}' escape '+'` : ``}
         ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `AND RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension.replaceAll('_', '+_')}' escape '+'` : ``}
         ${singleMemberText && singleMemberText.trim() !== '%' ? `AND UPPER(RTRIM(VARCHAR(PART_STAT.TEXT))) like '${singleMemberText.replaceAll('+', '++').replaceAll('_', '+_').replaceAll(`'`, `''`)}' escape '+'` : ``}
+        ${createdFrom ? `AND DATE(PART_STAT.CREATE_TIMESTAMP) >= DATE('${createdFrom}')` : ``}
+        ${changedFrom ? `AND DATE(PART_STAT.LAST_SOURCE_UPDATE_TIMESTAMP) >= DATE('${changedFrom}')` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
