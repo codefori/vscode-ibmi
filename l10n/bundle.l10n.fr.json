@@ -380,6 +380,7 @@
   "Subsystem": "Sous-système",
   "Successfully downloaded logs to {0}": "Logs téléchargés avec succès vers {0}",
   "Switched to profile \"{0}\".": "Le profil en cours est \"{0}\".",
+  "Symbolic link": "Lien symbolique",
   "Text": "Texte",
   "Thanks for trying the Code for IBM i Sandbox!": "Merci d'essayer le bac à sable Code for IBM i!",
   "The browser level to refresh after the action is done": "Le niveau du navigateur devant être rafraîchi une fois l\"action exécutée",

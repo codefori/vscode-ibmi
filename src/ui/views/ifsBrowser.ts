@@ -163,7 +163,7 @@ class IFSFileItem extends IFSItem {
     super(file, { parent: ifsParent });
 
     this.contextValue = "streamfile";
-    this.iconPath = vscode.ThemeIcon.File;
+    this.iconPath = file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-file") : vscode.ThemeIcon.File;
 
     this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
 
@@ -184,7 +184,8 @@ class IFSDirectoryItem extends IFSItem {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
     const protectedDir = isProtected(this.file.path);
     this.contextValue = `directory${protectedDir ? `_protected` : ``}`;
-    this.iconPath = protectedDir ? new vscode.ThemeIcon("lock-small") : vscode.ThemeIcon.Folder;
+    this.iconPath = protectedDir ? new vscode.ThemeIcon("lock-small") :
+      file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-directory") : vscode.ThemeIcon.Folder;
   }
 
   async getChildren(): Promise<BrowserItem[]> {

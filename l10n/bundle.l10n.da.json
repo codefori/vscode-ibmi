@@ -378,6 +378,7 @@
   "Subsystem": "Subsystem",
   "Successfully downloaded logs to {0}": "Logfiler blev downloadet til {0}",
   "Switched to profile \"{0}\".": "Skiftede til profilen \"{0}\".",
+  "Symbolic link": "Symbolsk link",
   "Text": "Tekst",
   "Thanks for trying the Code for IBM i Sandbox!": "Tak for at afprøve Code for IBM i Sandbox!",
   "The browser level to refresh after the action is done": "Liste niveauet for opfriskning efter aktion er udført.",

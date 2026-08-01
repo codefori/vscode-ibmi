@@ -378,6 +378,7 @@
   "Subsystem": "Subsystem",
   "Successfully downloaded logs to {0}": "Erfolgreich heruntergeladene Protokolle nach {0}",
   "Switched to profile \"{0}\".": "Zum Profil \"{0}\" gewechselt.",
+  "Symbolic link": "Symbolische Verknüpfung",
   "Text": "Text",
   "Thanks for trying the Code for IBM i Sandbox!": "Vielen Dank, dass Sie den Code für IBM i Sandbox ausprobiert haben!",
   "The browser level to refresh after the action is done": "Die Browserebene, die nach Abschluss der Aktion aktualisiert werden soll",
