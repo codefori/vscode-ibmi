@@ -451,6 +451,11 @@ export default class IBMiContent {
    * @returns an array of libraries as IBMiObject
    */
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
+    if (!libraries.length) {
+      //An empty list would generate an invalid VALUES clause
+      return [];
+    }
+
     let objects: IBMiObject[];
     const statement = /*sql*/`
         SELECT
