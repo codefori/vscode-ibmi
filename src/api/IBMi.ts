@@ -745,7 +745,7 @@ export default class IBMi {
 
       //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
       //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
-      let currentLibrary = `QGPL`;
+      let currentLibrary = `*CRTDFT`;
       this.defaultUserLibraries = [];
 
       const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL())`);
