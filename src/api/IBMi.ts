@@ -74,6 +74,8 @@ interface ConnectionConfigFiles {
   [key: string]: ConfigFile<any>;
 }
 
+const CLIENT_ONLY_SETTINGS = new Set([`statusBarColor`]);
+
 export default class IBMi {
   public static GlobalStorage: CodeForIStorage;
   public static connectionManager: ConnectionManager = new ConnectionManager();
@@ -833,7 +835,7 @@ export default class IBMi {
 
         if (remoteConfig.codefori) {
           for (const [key, value] of Object.entries(remoteConfig.codefori)) {
-            if (this.config[key] !== undefined) {
+            if (!CLIENT_ONLY_SETTINGS.has(key) && this.config[key] !== undefined) {
               this.config[key] = value;
             }
           }

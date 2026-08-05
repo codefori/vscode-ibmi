@@ -29,6 +29,7 @@ const TERMINAL_TYPES = [
 ];
 
 const INVALID_TARGET_CCSIDS = ["65534", "65535"]; // invalid target CCSIDs for conversion
+const CLIENT_ONLY_SETTINGS = new Set([`statusBarColor`]);
 
 const SQL_NAMING = [
   { value: "sql", text: "SQL" },
@@ -92,7 +93,7 @@ export class SettingsUI {
             for (const field of currentSection.fields) {
               if (!field.id) continue;
 
-              if (serverConfig.codefori[field.id] !== undefined) {
+              if (!CLIENT_ONLY_SETTINGS.has(field.id) && serverConfig.codefori[field.id] !== undefined) {
                 field.readonly = true;
               }
             }
