@@ -370,15 +370,25 @@ describe('Content Tests', { concurrent: true }, () => {
 
       const objects = await content?.getFileList(dir);
 
-      const fileLink = objects?.find(obj => obj.name === linkFileName);
-      expect(fileLink).toBeDefined();
-      expect(fileLink?.type).toBe('streamfile');
-      expect(fileLink?.symlink).toBe(`${dir}/${targetFileName}`);
+      const targetFile = objects?.find(obj => obj.name === targetFileName);
+      expect(targetFile).toBeDefined();
+      expect(targetFile?.type).toBe('streamfile');
+      expect(targetFile?.symlink).toBeUndefined();
 
-      const dirLink = objects?.find(obj => obj.name === linkDirName);
-      expect(dirLink).toBeDefined();
-      expect(dirLink?.type).toBe('directory');
-      expect(dirLink?.symlink).toBe(`${dir}/${targetDirName}`);
+      const targetDir = objects?.find(obj => obj.name === targetDirName);
+      expect(targetDir).toBeDefined();
+      expect(targetDir?.type).toBe('directory');
+      expect(targetDir?.symlink).toBeUndefined();
+
+      const linkFile = objects?.find(obj => obj.name === linkFileName);
+      expect(linkFile).toBeDefined();
+      expect(linkFile?.type).toBe('streamfile');
+      expect(linkFile?.symlink).toBe(`${dir}/${targetFileName}`);
+
+      const linkDir = objects?.find(obj => obj.name === linkDirName);
+      expect(linkDir).toBeDefined();
+      expect(linkDir?.type).toBe('directory');
+      expect(linkDir?.symlink).toBe(`${dir}/${targetDirName}`);
     }
     finally {
       result = await connection?.sendCommand({ command: `rm -r "${dir}"` });
