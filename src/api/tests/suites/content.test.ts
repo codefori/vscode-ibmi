@@ -353,6 +353,39 @@ describe('Content Tests', { concurrent: true }, () => {
     }
   });
 
+  it('Test getFileList (with symlink)', async () => {
+    const content = connection.getContent();
+    const dir = `/tmp/${Date.now()}`;
+    const targetFileName = `targetfile.txt`;
+    const targetDirName = `targetdir`;
+    const linkFileName = `linktofile`;
+    const linkDirName = `linktodir`;
+
+    let result;
+    result = await connection?.sendCommand({ command: `mkdir -p "${dir}/${targetDirName}" && touch "${dir}/${targetFileName}"` });
+    expect(result?.code).toBe(0);
+    try {
+      result = await connection?.sendCommand({ command: `ln -s "${dir}/${targetFileName}" "${dir}/${linkFileName}" && ln -s "${dir}/${targetDirName}" "${dir}/${linkDirName}"` });
+      expect(result?.code).toBe(0);
+
+      const objects = await content?.getFileList(dir);
+
+      const fileLink = objects?.find(obj => obj.name === linkFileName);
+      expect(fileLink).toBeDefined();
+      expect(fileLink?.type).toBe('streamfile');
+      expect(fileLink?.symlink).toBe(`${dir}/${targetFileName}`);
+
+      const dirLink = objects?.find(obj => obj.name === linkDirName);
+      expect(dirLink).toBeDefined();
+      expect(dirLink?.type).toBe('directory');
+      expect(dirLink?.symlink).toBe(`${dir}/${targetDirName}`);
+    }
+    finally {
+      result = await connection?.sendCommand({ command: `rm -r "${dir}"` });
+      expect(result?.code).toBe(0);
+    }
+  });
+
   it('Test getObjectList (all objects)', async () => {
     const content = connection.getContent();
 
