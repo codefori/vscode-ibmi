@@ -261,24 +261,24 @@ describe('Content Tests', { concurrent: true }, () => {
     // First, get all rows to know the total count
     const allRows = await connection.runSQL('select * from qiws.qcustcdt');
     expect(allRows?.length).toBeGreaterThan(5);
-    
+
     // Test with rows parameter set to 3
     const limitedRows = await connection.runSQL('select * from qiws.qcustcdt', { rows: 3 });
     expect(limitedRows?.length).toBe(3);
-    
+
     // Verify row structure is still correct
     const firstRow = limitedRows[0];
     expect(typeof firstRow['BALDUE']).toBe('number');
     expect(typeof firstRow['CITY']).toBe('string');
-    
+
     // Test with rows parameter set to 1
     const singleRow = await connection.runSQL('select * from qiws.qcustcdt', { rows: 1 });
     expect(singleRow?.length).toBe(1);
-    
+
     // Test without rows parameter (should default to 99999)
     const defaultRows = await connection.runSQL('select * from qiws.qcustcdt');
     expect(defaultRows?.length).toBe(allRows.length);
-    
+
     // // Test with rows parameter greater than actual row count
     const moreRowsThanAvailable = await connection.runSQL('select * from qiws.qcustcdt', { rows: 99999 });
     expect(moreRowsThanAvailable?.length).toBe(allRows.length);
@@ -467,6 +467,68 @@ describe('Content Tests', { concurrent: true }, () => {
     const membersRegex = await content?.getMemberList({ library: 'QSYSINC', sourceFile: 'QRPGLESRC', members: '^QSY(?!RTV).*$', filterType: 'regex' });
     expect(membersRegex?.length).not.toBe(0);
     expect(membersRegex!.map(m => m.name).every(n => n.startsWith('QSY') && !n.includes('RTV'))).toBe(true);
+  });
+
+  it('getMemberList (member text filtering)', async () => {
+    const content = connection.getContent();
+
+    // QSYSINC/H/MATH has member text "STANDARD HEADER FILE MATH"
+
+    // Simple filter type
+    const membersGlob = await content?.getMemberList({ library: 'QSYSINC', sourceFile: 'H', members: ['MATH'], memberText: '*HEADER*' });
+    expect(membersGlob?.length).not.toBe(0);
+    expect(membersGlob!.every(m => m.text?.toUpperCase().includes('HEADER'))).toBe(true);
+
+    // Regex filter type
+    const membersRegex = await content?.getMemberList({ library: 'QSYSINC', sourceFile: 'H', members: ['MATH'], memberText: 'STANDARD.*MATH', filterType: 'regex' });
+    expect(membersRegex?.length).not.toBe(0);
+    expect(membersRegex!.every(m => /STANDARD.*MATH/i.test(m.text || ''))).toBe(true);
+  });
+
+  it('getMemberList (date filtering)', async () => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const sourceFile = Tools.makeid(8);
+
+    const toDateString = (d: Date) => d.toISOString().slice(0, 10);
+    const currentDate = new Date();
+    const pastDate = toDateString(new Date(currentDate.getFullYear() - 1, currentDate.getMonth(), currentDate.getDate()));
+    const futureDate = toDateString(new Date(currentDate.getFullYear() + 1, currentDate.getMonth(), currentDate.getDate()));
+
+    try {
+      const createSPF = await connection.runCommand({ command: `QSYS/CRTSRCPF FILE(${tempLib}/${sourceFile}) RCDLEN(112)`, noLibList: true });
+      expect(createSPF.code).toBe(0);
+
+      const addMbr = await connection.runCommand({ command: `QSYS/ADDPFM FILE(${tempLib}/${sourceFile}) MBR(MBRTEST) SRCTYPE(TXT) TEXT('Test member')` });
+      expect(addMbr.code).toBe(0);
+
+      // Past created date
+      const createdPast = await content?.getMemberList({ library: tempLib, sourceFile, memberCreated: pastDate });
+      expect(createdPast?.length).not.toBe(0);
+
+      // Future created date
+      const createdFuture = await content?.getMemberList({ library: tempLib, sourceFile, memberCreated: futureDate });
+      expect(createdFuture?.length).toBe(0);
+
+      // Past changed date
+      const changedPast = await content?.getMemberList({ library: tempLib, sourceFile, memberChanged: pastDate });
+      expect(changedPast?.length).not.toBe(0);
+
+      // Future changed date
+      const changedFuture = await content?.getMemberList({ library: tempLib, sourceFile, memberChanged: futureDate });
+      expect(changedFuture?.length).toBe(0);
+
+      // Both past created and changed date
+      const bothPast = await content?.getMemberList({ library: tempLib, sourceFile, memberCreated: pastDate, memberChanged: pastDate });
+      expect(bothPast?.length).not.toBe(0);
+
+      // Both future created and changed date
+      const bothFuture = await content?.getMemberList({ library: tempLib, sourceFile, memberCreated: futureDate, memberChanged: futureDate });
+      expect(bothFuture?.length).toBe(0);
+    }
+    finally {
+      await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${sourceFile})`, noLibList: true });
+    }
   });
 
   it('getQtempTable', async () => {
