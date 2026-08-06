@@ -212,6 +212,7 @@ export namespace VscodeTools {
 
   export function ifsFileToToolTip(path: string, ifsFile: IFSFile) {
     const tooltip = new MarkdownString(generateTooltipHtmlTable(path, {
+      "Symbolic link": ifsFile.symlink ? escapeHtml(ifsFile.symlink) : ifsFile.symlink === `` ? `?` : undefined,
       "Size": ifsFile.size,
       "Modified": ifsFile.modified ? safeIsoValue(new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000)) : ``,
       "Owner": ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
