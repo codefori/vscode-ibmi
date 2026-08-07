@@ -7,6 +7,7 @@ import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
 import { SearchTools } from "../../api/SearchTools";
 import { Tools } from "../../api/Tools";
+import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
 import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
@@ -16,6 +17,7 @@ import { BrowserItem, BrowserItemParameters } from "../types";
 
 const objectNamesLower = () => IBMi.connectionManager.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
 const objectSortOrder = () => IBMi.connectionManager.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
+const filterDetails = () => IBMi.connectionManager.get(`ObjectBrowser.filterDetails`) || `both`;
 
 const correctCase = (value: string) => {
   ;
@@ -176,9 +178,16 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
     super(filter, filter.name, { icon: filter.protected ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
     this.library = parseFilter(filter.library, filter.filterType).noFilter ? filter.library : '';
     this.contextValue = `filter${this.library ? "_library" : ''}${this.isProtected() ? `_readonly` : ``}`;
-    const memberTextSuffix = filter.memberText && !/^\*(?:ALL)?$/.test(filter.memberText.trim()) ? ` [${filter.memberText}]` : ``;
-    this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})${memberTextSuffix}`;
-    this.tooltip = VscodeTools.filterToToolTip(filter);
+    const details = filterDetails();
+    if (details !== `tooltip`) {
+      const memberTextSuffix = filter.memberText && !/^\*(?:ALL)?$/.test(filter.memberText.trim()) ? ` [${filter.memberText}]` : ``;
+      const dateSuffix = [
+        filter.memberCreated ? `created ≥ ${filter.memberCreated}` : ``,
+        filter.memberChanged ? `changed ≥ ${filter.memberChanged}` : ``
+      ].filter(Boolean).join(`, `);
+      this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})${memberTextSuffix}${dateSuffix ? ` {${dateSuffix}}` : ``}`;
+    }
+    this.tooltip = details !== `description` ? VscodeTools.filterToToolTip(filter) : ``;
 
     if (this.library) {
       this.resourceUri = vscode.Uri.from({
@@ -284,6 +293,8 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
         members: this.filter.member,
         extensions: this.filter.memberType,
         memberText: this.filter.memberText,
+        memberCreated: this.filter.memberCreated,
+        memberChanged: this.filter.memberChanged,
         filterType: this.filter.filterType,
         sort: this.sort
       });
@@ -560,6 +571,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     objectTreeViewer,
+
+    onCodeForIBMiConfigurationChange(`ObjectBrowser.filterDetails`, () => objectBrowser.refresh()),
 
     vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, (item: ObjectBrowserSourcePhysicalFileItem | ObjectBrowserMemberItem) => {
       item.sortBy({ order: "name" });

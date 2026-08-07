@@ -222,12 +222,17 @@ export namespace VscodeTools {
   }
 
   export function filterToToolTip(filter: ObjectFilters) {
-    const tooltip = new MarkdownString(generateTooltipHtmlTable(filter.name, {
-      "Object": filter.object,
-      "Library": filter.library,
-      "Member": filter.member,
-      "Type": filter.memberType || `*`,
-      "Text": filter.memberText || `*`
+    const tooltip = new MarkdownString(generateTooltipHtmlTable(escapeHtml(filter.name), {
+      "Filtering type": filter.filterType === `regex` ? vscode.l10n.t(`Regex`) : vscode.l10n.t(`Simple`),
+      "Libraries": escapeHtml(filter.library),
+      "Objects": escapeHtml(filter.object),
+      "Object types": escapeHtml(filter.types.join(`, `)),
+      "Members": escapeHtml(filter.member),
+      "Member type": escapeHtml(filter.memberType || `*`),
+      "Member text": filter.memberText ? escapeHtml(filter.memberText) : undefined,
+      "Member created from": filter.memberCreated ? escapeHtml(filter.memberCreated) : undefined,
+      "Member changed from": filter.memberChanged ? escapeHtml(filter.memberChanged) : undefined,
+      "Protected": filter.protected ? vscode.l10n.t(`Yes`) : undefined
     }));
     tooltip.supportHtml = true;
     return tooltip;

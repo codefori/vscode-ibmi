@@ -3,6 +3,7 @@ import { Action, ConnectionData, DeploymentMethod } from "../../types";
 
 export type DefaultOpenMode = "browse" | "edit";
 export type ReconnectMode = "always" | "never" | "ask";
+export type FilterDetails = "tooltip" | "description" | "both";
 
 export interface ConnectionConfig extends ConnectionProfile {
   host: string;
@@ -69,6 +70,7 @@ export interface GlobalConfiguration {
   safeDeleteMode: boolean;
   'ObjectBrowser.showNamesInLowercase': boolean;
   'ObjectBrowser.sortObjectsByName': boolean;
+  'ObjectBrowser.filterDetails': FilterDetails;
   autoOpenFile: boolean;
   'terminals.5250.openInEditorArea': boolean;
   'terminals.pase.openInEditorArea': boolean;
@@ -88,6 +90,8 @@ export interface ObjectFilters {
   member: string
   memberType: string
   memberText?: string
+  memberCreated?: string
+  memberChanged?: string
   protected: boolean
 }
 
