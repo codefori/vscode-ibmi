@@ -300,23 +300,25 @@ export default class Instance {
   }
 
   async processEvent(event: IBMiEvent) {
-    const eventSubscribers = this.getSubscribers(event)
+    const eventSubscribers = this.getSubscribers(event);
     console.time(event);
-    for (const [identity, callable] of eventSubscribers.entries()) {
-      try {
-        console.time(identity);
-        await callable.func();
-        console.timeEnd(identity);
-      }
-      catch (error) {
-        console.error(`${event} event function ${identity} failed`, error);
-      }
-      finally {
-        if (callable.transient) {
-          eventSubscribers.delete(identity);
+    await Promise.allSettled(
+      Array.from(eventSubscribers.entries()).map(async ([identity, callable]) => {
+        try {
+          console.time(identity);
+          await callable.func();
+          console.timeEnd(identity);
         }
-      }
-    }
+        catch (error) {
+          console.error(`${event} event function ${identity} failed`, error);
+        }
+        finally {
+          if (callable.transient) {
+            eventSubscribers.delete(identity);
+          }
+        }
+      })
+    );
     console.timeEnd(event);
   }
 }
