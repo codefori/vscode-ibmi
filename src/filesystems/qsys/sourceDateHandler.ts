@@ -33,6 +33,7 @@ const lineDecor = vscode.window.createTextEditorDecorationType({
 
 const SD_BASE = `$(history) Date Search`;
 const SD_ACTIVE = `$(history) From `;
+const SD_EXACT = `$(history) On `;
 
 const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
 
@@ -259,7 +260,12 @@ export class SourceDateHandler {
             sequenceNumbersAvailable ? `[Show sequence numbers](command:code-for-ibmi.toggleSequenceNumbers)` : undefined
           ].filter(i => i !== undefined) as string[];
 
-          if (this.highlightSince) markdownString.push(`Changes from ${String(this.highlightSince) == currentDate ? `today` : this.highlightSince} highlighted`)
+          if (this.highlightSince) {
+            const sinceLabel = String(this.highlightSince) == currentDate ? `today` : this.highlightSince;
+            markdownString.push(this.highlightSince === this.highlightBefore
+              ? `Changes on ${sinceLabel} highlighted`
+              : `Changes from ${sinceLabel} highlighted`);
+          }
 
           const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n---\n\n`));
           hoverMessage.isTrusted = true;
@@ -414,11 +420,16 @@ export class SourceDateHandler {
   private async newDateSearch() {
     const value = await vscode.window.showInputBox({
       value: currentStamp(),
-      prompt: `Show everything on or after date provided`,
+      prompt: `Show everything on a specific date (=YYMMDD), after a specific date (YYMMDD), or within a date range (FROM-TO, both YYMMDD)`,
       title: `Source Date search`,
       ignoreFocusOut: true,
       validateInput: (input) => {
-        const ranges = input.split(`-`);
+        const exact = input.startsWith(`=`);
+        const ranges = (exact ? input.substring(1) : input).split(`-`);
+
+        if (exact && ranges.length > 1) {
+          return `Only a single date is allowed when matching an exact date. (=YYMMDD)`;
+        }
 
         if (ranges.length > 2) {
           return `Up to two ranges allowed. (FROM-TO, both YYMMDD)`;
@@ -437,10 +448,12 @@ export class SourceDateHandler {
     })
 
     if (value) {
-      const dates = value.split(`-`);
-      this.sourceDateSearchBarItem.text = SD_ACTIVE + value;
+      const exact = value.startsWith(`=`);
+      const dates = (exact ? value.substring(1) : value).split(`-`);
+      this.sourceDateSearchBarItem.text = (exact ? SD_EXACT : SD_ACTIVE) + dates.join(`-`);
       this.highlightSince = Number(dates[0]);
-      this.highlightBefore = dates[1] !== undefined ? Number(dates[1]) : undefined;
+      // An exact search is a range where both ends are the same date
+      this.highlightBefore = exact ? Number(dates[0]) : (dates[1] !== undefined ? Number(dates[1]) : undefined);
     } else {
       this.sourceDateSearchBarItem.text = SD_BASE;
       this.highlightSince = undefined;
