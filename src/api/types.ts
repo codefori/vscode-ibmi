@@ -127,6 +127,7 @@ export interface IFSFile {
   size?: number
   modified?: Date
   owner?: string
+  symlink?: string
 }
 
 export interface IBMiError {

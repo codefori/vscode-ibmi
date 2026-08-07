@@ -235,8 +235,8 @@ export namespace Deployment {
   export function toMD5Entry(line: string): MD5Entry {
     const parts = line.split(/\s+/);
     return {
-      md5: parts[0].trim(),
-      path: parts[1].trim().substring(2) //these path starts with ./
+      md5: parts.shift()!,
+      path: parts.join(" ").trim().substring(2) //these path starts with ./
     };
   }
 

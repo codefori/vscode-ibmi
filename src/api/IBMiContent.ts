@@ -16,6 +16,25 @@ const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
 
+/** Separates the two `stat` runs performed by {@link IBMiContent.getFileList} */
+const STAT_SECTIONS_SEPARATOR = `--from-here-symlinks--`;
+
+/**
+ * Reads the output of a non dereferencing `stat` run and maps symbolyc link to real path
+ */
+function parseSymbolicLinks(statOutput: string) {
+  const symlinks = new Map<string, string>();
+  for (const line of statOutput.split(`\n`)) {
+    const [type, name, quotedNames] = line.split(`\t`);
+    if (type === `symbolic link` && name) {
+      const arrow = quotedNames?.lastIndexOf(` -> `) ?? -1;
+      const target = arrow > -1 ? quotedNames.substring(arrow + 4).replace(/^['"`]|['"`]$/g, ``) : ``;
+      symlinks.set(name, target);
+    }
+  }
+  return symlinks;
+}
+
 type Authority = "*ADD" | "*DLT" | "*EXECUTE" | "*READ" | "*UPD" | "*NONE" | "*ALL" | "*CHANGE" | "*USE" | "*EXCLUDE" | "*AUTLMGT";
 export type SortOrder = `name` | `type`;
 
@@ -747,7 +766,7 @@ export default class IBMiContent {
    * @param filter: the criterias used to list the members
    * @returns
    */
-  async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, memberText?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
+  async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, memberText?: string, memberCreated?: string, memberChanged?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
     const sort = filter.sort || { order: 'name' };
     const library = this.ibmi.upperCaseName(filter.library);
     const sourceFile = this.ibmi.upperCaseName(filter.sourceFile);
@@ -761,6 +780,9 @@ export default class IBMiContent {
 
     const memberTextFilter = parseFilter(filter.memberText, filter.filterType);
     const singleMemberText = memberTextFilter.noFilter && filter.memberText && !filter.memberText.includes(",") ? filter.memberText.toUpperCase().replace(/[*]/g, `%`) : undefined;
+
+    const createdFrom = Tools.parseFilterDate(filter.memberCreated);
+    const changedFrom = Tools.parseFilterDate(filter.memberChanged);
 
     const statement = /* sql */
       `SELECT RTRIM(OBJ_STAT.OBJNAME) AS SOURCE_FILE,
@@ -777,6 +799,8 @@ export default class IBMiContent {
         ${singleMember ? `AND RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember.replaceAll('_', '+_')}' escape '+'` : ``}
         ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `AND RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension.replaceAll('_', '+_')}' escape '+'` : ``}
         ${singleMemberText && singleMemberText.trim() !== '%' ? `AND UPPER(RTRIM(VARCHAR(PART_STAT.TEXT))) like '${singleMemberText.replaceAll('+', '++').replaceAll('_', '+_').replaceAll(`'`, `''`)}' escape '+'` : ``}
+        ${createdFrom ? `AND DATE(PART_STAT.CREATE_TIMESTAMP) >= DATE('${createdFrom}')` : ``}
+        ${changedFrom ? `AND DATE(PART_STAT.LAST_SOURCE_UPDATE_TIMESTAMP) >= DATE('${changedFrom}')` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
@@ -816,13 +840,18 @@ export default class IBMiContent {
     let fileListResult: CommandResult;
 
     if (STAT && SORT) {
+      //The first run dereferences links so that every item is described by its target (a link to a
+      //directory must be listed as a directory); the second one doesn't, to detect the symlinks 
       fileListResult = (await this.ibmi.sendCommand({
-        command: `cd '${remotePath}' && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
+        command: `cd '${remotePath}' && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``} ; echo "${STAT_SECTIONS_SEPARATOR}" ; ${STAT} --printf="%F\t%n\t%N\n" * .*`
       }));
 
       if (fileListResult.stdout !== '') {
-        const fileStatList = fileListResult.stdout;
-        const fileList = fileStatList.split(`\n`);
+        //Both sections are trimmed since splitting on the separator leaves the newlines around it
+        const separatorIndex = fileListResult.stdout.indexOf(STAT_SECTIONS_SEPARATOR);
+        const fileStatList = (separatorIndex > -1 ? fileListResult.stdout.substring(0, separatorIndex) : fileListResult.stdout).trim();
+        const symlinks = separatorIndex > -1 ? parseSymbolicLinks(fileListResult.stdout.substring(separatorIndex + STAT_SECTIONS_SEPARATOR.length).trim()) : new Map<string, string>();
+        const fileList = fileStatList.split(`\n`).filter(item => item);
 
         //Remove current and dir up.
         fileList.forEach(item => {
@@ -837,7 +866,8 @@ export default class IBMiContent {
               path: path.posix.join(remotePath, name),
               size: Number(size),
               modified: new Date(Number(modified) * 1000),
-              owner: owner
+              owner: owner,
+              symlink: symlinks.get(name)
             });
           };
         });
@@ -871,10 +901,12 @@ export default class IBMiContent {
       }
     }
 
-    if (fileListResult.code !== 0) {
+    //Checking stderr rather than the return code: the code is the one of the last chained command, so an
+    //error raised by the dereferencing stat only (a broken link, typically) would otherwise go unnoticed
+    if (fileListResult.stderr) {
       //Filter out the errors occurring when stat is run on a directory with no hidden or regular files
       const errors = fileListResult.stderr.split("\n")
-        .filter(e => !e.toLowerCase().includes("cannot stat '*'") && !e.toLowerCase().includes("cannot stat '.*'"))
+        .filter(e => e && !e.toLowerCase().includes("cannot stat '*'") && !e.toLowerCase().includes("cannot stat '.*'"))
         .filter(Tools.distinct);
 
       if (errors.length) {

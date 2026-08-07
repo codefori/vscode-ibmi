@@ -257,3 +257,34 @@ describe('Tools.parseLsPermissions tests', { concurrent: true }, () => {
     });
   });
 });
+describe('Tools.parseFilterDate tests', { concurrent: true }, () => {
+  it('should accept a valid date', () => {
+    expect(Tools.parseFilterDate('2024-02-29')).toBe('2024-02-29');
+  });
+
+  it('should trim surrounding spaces', () => {
+    expect(Tools.parseFilterDate('  2024-01-31  ')).toBe('2024-01-31');
+  });
+
+  it('should return undefined when no date is given', () => {
+    expect(Tools.parseFilterDate(undefined)).toBeUndefined();
+    expect(Tools.parseFilterDate('')).toBeUndefined();
+    expect(Tools.parseFilterDate('   ')).toBeUndefined();
+  });
+
+  it('should reject a wrong format', () => {
+    expect(Tools.parseFilterDate('31/01/2024')).toBeUndefined();
+    expect(Tools.parseFilterDate('2024-1-1')).toBeUndefined();
+    expect(Tools.parseFilterDate('2024-01-01 00:00:00')).toBeUndefined();
+  });
+
+  it('should reject a non existing date', () => {
+    expect(Tools.parseFilterDate('2023-02-29')).toBeUndefined();
+    expect(Tools.parseFilterDate('2024-13-01')).toBeUndefined();
+    expect(Tools.parseFilterDate('2024-04-31')).toBeUndefined();
+  });
+
+  it('should reject an SQL injection attempt', () => {
+    expect(Tools.parseFilterDate(`2024-01-01') OR 1=1 --`)).toBeUndefined();
+  });
+});

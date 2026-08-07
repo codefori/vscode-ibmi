@@ -301,7 +301,7 @@ export namespace DeployTools {
         progress?.report({ message: `creating remote MD5 hash list` });
         const md5sumOut = await Deployment.getConnection().sendCommand({
           directory: parameters.remotePath,
-          command: `/QOpenSys/pkgs/bin/md5sum $(find . -type f)`
+          command: `find -type f -print0 | xargs -0 /QOpenSys/pkgs/bin/md5sum`
         });
 
         const remoteMD5: Deployment.MD5Entry[] = md5sumOut.stdout.split(`\n`).map(line => Deployment.toMD5Entry(line.trim()));
@@ -322,7 +322,7 @@ export namespace DeployTools {
 
         const toDelete: string[] = remoteMD5
           .filter(remote => !localFiles.some(local => remote.path === local.path))
-          .map(remote => remote.path);
+          .map(remote => `"${remote.path}"`);
 
         progress?.report({ message: `removing empty folders under ${parameters.remotePath}` });
         //PASE's find doesn't support the -empty flag so rmdir is run on every directory; not very clean, but it works
