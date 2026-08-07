@@ -1638,6 +1638,32 @@
 				"icon": "$(close)"
 			},
 			{
+				"command": "code-for-ibmi.downloadAllSearchResults",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Download all results",
+				"category": "IBM i",
+				"icon": "$(cloud-download)"
+			},
+			{
+				"command": "code-for-ibmi.downloadSelectedSearchResults",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Download",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.copyAllSearchResultNames",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Copy all names",
+				"category": "IBM i",
+				"icon": "$(copy)"
+			},
+			{
+				"command": "code-for-ibmi.copySelectedSearchResultNames",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Copy names",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.sortIFSFilesByDate",
 				"title": "Date",
 				"category": "IBM i"
@@ -2127,6 +2153,14 @@
 			{
 				"id": "code-for-ibmi.structuredDownload",
 				"label": "Download..."
+			},
+			{
+				"id": "code-for-ibmi.searchResults.copy",
+				"label": "Copy"
+			},
+			{
+				"id": "code-for-ibmi.searchResults.download",
+				"label": "Download"
 			}
 		],
 		"menus": {
@@ -2142,6 +2176,26 @@
 				{
 					"command": "code-for-ibmi.downloadMembersStructured",
 					"group": "1_download@3"
+				}
+			],
+			"code-for-ibmi.searchResults.copy": [
+				{
+					"command": "code-for-ibmi.copySelectedSearchResultNames",
+					"group": "1_copy@1"
+				},
+				{
+					"command": "code-for-ibmi.copyAllSearchResultNames",
+					"group": "1_copy@2"
+				}
+			],
+			"code-for-ibmi.searchResults.download": [
+				{
+					"command": "code-for-ibmi.downloadSelectedSearchResults",
+					"group": "1_download@1"
+				},
+				{
+					"command": "code-for-ibmi.downloadAllSearchResults",
+					"group": "1_download@2"
 				}
 			],
 			"code-for-ibmi.sortIFSFiles": [
@@ -2521,6 +2575,22 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.downloadAllSearchResults",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadSelectedSearchResults",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyAllSearchResultNames",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copySelectedSearchResultNames",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.removeFromLibraryList",
 					"when": "never"
 				},
@@ -2821,7 +2891,7 @@
 				},
 				{
 					"command": "code-for-ibmi.closeSearchView",
-					"group": "navigation@2",
+					"group": "navigation@1",
 					"when": "view == searchView"
 				},
 				{
@@ -2873,6 +2943,16 @@
 				}
 			],
 			"view/item/context": [
+				{
+					"submenu": "code-for-ibmi.searchResults.copy",
+					"when": "view == searchView && viewItem == hitSource",
+					"group": "1_copy@1"
+				},
+				{
+					"submenu": "code-for-ibmi.searchResults.download",
+					"when": "view == searchView && viewItem == hitSource",
+					"group": "1_copy@2"
+				},
 				{
 					"command": "code-for-ibmi.copyConnection",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
