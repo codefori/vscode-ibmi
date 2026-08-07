@@ -29,7 +29,18 @@ const TERMINAL_TYPES = [
 ];
 
 const INVALID_TARGET_CCSIDS = ["65534", "65535"]; // invalid target CCSIDs for conversion
-const CLIENT_ONLY_SETTINGS = new Set([`statusBarColor`]);
+const CLIENT_ONLY_SETTINGS = new Set([
+  `statusBarColor`,
+  `showDescInLibList`,
+  `showHiddenFiles`,
+  `autoSortIFSShortcuts`,
+  `autoSaveBeforeAction`,
+  `sourceDateGutter`,
+  `encodingFor5250`,
+  `terminalFor5250`,
+  `setDeviceNameFor5250`,
+  `connectringStringFor5250`,
+]);
 
 const SQL_NAMING = [
   { value: "sql", text: "SQL" },

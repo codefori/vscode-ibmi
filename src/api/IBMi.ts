@@ -74,7 +74,18 @@ interface ConnectionConfigFiles {
   [key: string]: ConfigFile<any>;
 }
 
-const CLIENT_ONLY_SETTINGS = new Set([`statusBarColor`]);
+const CLIENT_ONLY_SETTINGS = new Set([
+  `statusBarColor`,
+  `showDescInLibList`,
+  `showHiddenFiles`,
+  `autoSortIFSShortcuts`,
+  `autoSaveBeforeAction`,
+  `sourceDateGutter`,
+  `encodingFor5250`,
+  `terminalFor5250`,
+  `setDeviceNameFor5250`,
+  `connectringStringFor5250`,
+]);
 
 export default class IBMi {
   public static GlobalStorage: CodeForIStorage;
