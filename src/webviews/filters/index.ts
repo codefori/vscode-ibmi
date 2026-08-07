@@ -61,8 +61,8 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
       .addInput(`member`, `Members`, `Member names filter.`, { default: filter.member })
       .addInput(`memberType`, `Member type`, `Member types filter.`, { default: filter.memberType })
       .addInput(`memberText`, `Member text`, `Member text description filter.`, { default: filter.memberText || `*` })
-      .addInput(`memberCreated`, `Member created from`, `Only list members created on or after this date. Leave blank to list members whatever their creation date is.`, { default: filter.memberCreated || ``, inputType: `date` })
-      .addInput(`memberChanged`, `Member changed from`, `Only list members last changed on or after this date. Leave blank to list members whatever their last change date is.`, { default: filter.memberChanged || ``, inputType: `date` })
+      .addInput(`memberCreated`, `Member created from`, `Only list members created on or after this date. Leave blank to list members regardless of what their creation date is.`, { default: filter.memberCreated || ``, inputType: `date` })
+      .addInput(`memberChanged`, `Member changed from`, `Only list members last changed on or after this date. Leave blank to list members regardless of what their last changed date is.`, { default: filter.memberChanged || ``, inputType: `date` })
       .addCheckbox(`protected`, `Protected`, `Make this filter protected, preventing modifications and source members from being saved.`, filter.protected)
       .addButtons({ id: `save`, label: `Save settings` })
       .loadPage<any>(`Filter: ${newFilter ? `New` : filter.name}`);
