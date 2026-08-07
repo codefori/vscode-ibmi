@@ -420,7 +420,7 @@ export class SourceDateHandler {
   private async newDateSearch() {
     const value = await vscode.window.showInputBox({
       value: currentStamp(),
-      prompt: `Show everything on or after date provided. Prefix with = to match that date only (=YYMMDD)`,
+      prompt: `Show everything on a specific date (=YYMMDD), after a specific date (YYMMDD), or within a date range (FROM-TO, both YYMMDD)`,
       title: `Source Date search`,
       ignoreFocusOut: true,
       validateInput: (input) => {
