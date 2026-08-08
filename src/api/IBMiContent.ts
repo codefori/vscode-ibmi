@@ -86,6 +86,16 @@ export default class IBMiContent {
     }
   }
 
+  private async convertFromUTF8(iconv: string, from: string, to: string, ccsid: string) {
+    const result = await this.ibmi.sendCommand({ command: `${iconv} -f UTF-8 -t IBM-${ccsid} ${Tools.escapePath(from)} > ${Tools.escapePath(to)}` });
+    if (result.code === 0) {
+      return result.stdout;
+    }
+    else {
+      throw new Error(`Failed to convert ${from} to IBM-${ccsid}: ${result.stderr}`);
+    }
+  }
+
   /**
    *
    * @param remotePath Remote IFS path
@@ -156,7 +166,7 @@ export default class IBMiContent {
       const tempFile = this.getTempRemote(fixedPath);
       try {
         await client.putFile(tmpobj, tempFile); //TODO: replace with uploadFiles
-        return await this.convertToUTF8(features.iconv, tempFile, fixedPath, ccsid);
+        return await this.convertFromUTF8(features.iconv, tempFile, fixedPath, ccsid);
       } finally {
         // Clean up temporary file
         await this.ibmi.clearTempRemote(fixedPath);
