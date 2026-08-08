@@ -357,8 +357,14 @@ class LibraryListView implements vscode.TreeDataProvider<LibraryListNode> {
       const content = connection.getContent();
       const config = connection.getConfig();
       const currentLibrary = connection.upperCaseName(config.currentLibrary);
+      const noCurrentLibrary = currentLibrary === `*CRTDFT`;
 
-      const libraries = await content.getLibraryList([currentLibrary, ...config.libraryList]);
+      const libraries = await content.getLibraryList(noCurrentLibrary ? config.libraryList : [currentLibrary, ...config.libraryList]);
+      
+      //Push manually if curlib is *CRTDFT
+      if (noCurrentLibrary) {
+        libraries.unshift({ library: `QSYS`, type: `*LIB`, name: currentLibrary, attribute: ``, text: `` });
+      }
 
       items.push(...libraries.map((lib, index) => {
         return new LibraryListNode(connection.upperCaseName(lib.name), lib, (index === 0 ? `currentLibrary` : `library`), config.showDescInLibList);
