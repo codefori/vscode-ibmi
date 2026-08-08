@@ -17,7 +17,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
   return [
     commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
       const connection = instance.getConnection()!;
-      console.log(path);
+      //console.log(path);
       options = options || {};
       options.readonly = options.readonly || connection.getContent().isProtectedPath(path);
       if (!options.readonly) {

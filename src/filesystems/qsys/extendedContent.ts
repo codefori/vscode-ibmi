@@ -44,6 +44,8 @@ export class ExtendedIBMiContent {
           this.sourceDateHandler.recordLengths.set(alias, columnLength);
         }
 
+        // getCcsid() returns the job's DEFAULT_CCSID (from ACTIVE_JOB_INFO at connect time),
+        // which IBM i guarantees is never 65535 even when the job CCSID is *HEX.
         const jobCcsid = connection.getCcsid();
 
         // Build the SELECT statement with conditional CAST for CCSID 65535
@@ -223,7 +225,7 @@ export class ExtendedIBMiContent {
         }
       }
     }
-  }  
+  }
 }
 
 function sliceUp(arr: any[], size: number): any[] {

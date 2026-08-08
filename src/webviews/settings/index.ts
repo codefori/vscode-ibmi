@@ -119,8 +119,8 @@ export class SettingsUI {
           .addHeading("SSH client (single mode)", 3)
           .addSelect(`mapepireJavaVersion`, `Mapepire Java Runtime`, ["default", "8", "11", "17", "21"].map((value, index) => ({ text: index ? `Java ${value}` : 'Default', value, description: index ? `Java ${value}` : 'Default', selected: value === config.mapepireJavaVersion })), "The Java version used to run Mapepire; it must be installed and available on the LPAR.")
           .addHorizontalRule()
-          .addHeading("HTTP client", 3)
-          .addCheckbox(`mapepireUseServer`, `Connect to remote Mapepire Server`, `When enabled, Code for IBM i will connect over HTTPS to a remote Mapepire server already running on the target IBM i instead uploading and running Mapepire in an SSH channel.`, config.mapepireUseServer)
+          .addHeading("WebSocket client", 3)
+          .addCheckbox(`mapepireUseServer`, `Connect to remote Mapepire Server`, `When enabled, Code for IBM i will connect over a secure WebSocket to a remote Mapepire server already running on the target IBM i instead uploading and running Mapepire in an SSH channel.`, config.mapepireUseServer)
           .addCheckbox(`mapepireAllowSelfCert`, `Allow all certificates`, `When enabled, allows either self-signed certificates or certificates from a CA when connecting to a remote Mapepire server.`, config.mapepireAllowSelfCert)
           .addInput(`mapepireServerPort`, `Remote Mapepire Server port`, `The TCP port number Code for IBM will use when connecting to a remote Mapepire server.`, { default: String(config.mapepireServerPort), inputType: "number", min: 1, max: 65535 })
 
@@ -156,7 +156,7 @@ export class SettingsUI {
         tempDataTab
           .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary, minlength: 1, maxlength: 10 })
           .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir, minlength: 1 })
-          .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData);
+          .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library when they are no longer needed and on startup. Also removes all <code>vscodetemp*</code> files from the chosen temporary IFS directory on startup.`, config.autoClearTempData);
 
         setFieldsReadOnly(tempDataTab);
 

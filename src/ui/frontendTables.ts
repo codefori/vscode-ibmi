@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { ViewSettings } from '../config/Configuration';
 import { codiconStyles } from '../webviews/codicons';
 import { VscodeTools } from './Tools';
 
@@ -15,7 +16,20 @@ export namespace FrontendTables {
     return VscodeTools.escapeHtml(str);
   }
 
-  /** Renders YES/NO as colored badges and integers with locale formatting; undefined if the value is neither. */
+  const MAX_FRACTION_DIGITS = 20;
+
+  /** Locale-format a number keeping exactly the decimals of the source text, so 12.50 stays "12.50". */
+  function formatNumber(num: number, strValue: string): string {
+    const fraction = strValue.split('.')[1];
+    if (fraction === undefined) {
+      // Integer, or exponential notation whose digits can't be read off the text.
+      return num.toLocaleString(undefined, Number.isInteger(num) ? undefined : { maximumFractionDigits: MAX_FRACTION_DIGITS });
+    }
+    const digits = Math.min(fraction.length, MAX_FRACTION_DIGITS);
+    return num.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  }
+
+  /** Renders YES/NO as colored badges and numbers with locale formatting; undefined if the value is neither. */
   function formatYesNoOrNumber(strValue: string, skipNumeric: boolean): string | undefined {
     if (strValue === 'YES') {
       return '<span style="color: var(--vscode-testing-iconPassed, #73c991); font-weight: 600;">✓ YES</span>';
@@ -23,13 +37,21 @@ export namespace FrontendTables {
     if (strValue === 'NO') {
       return '<span style="color: var(--vscode-testing-iconFailed, #f48771); font-weight: 600;">✗ NO</span>';
     }
-    if (!skipNumeric && !isNaN(Number(strValue)) && strValue !== '') {
+    if (!skipNumeric && strValue !== '' && isFinite(Number(strValue))) {
       const num = Number(strValue);
-      if (Number.isInteger(num)) {
-        return `<span style="font-family: var(--vscode-editor-font-family); color: var(--vscode-charts-blue);">${num.toLocaleString()}</span>`;
-      }
+      return `<span style="font-family: var(--vscode-editor-font-family); color: var(--vscode-charts-blue);">${formatNumber(num, strValue)}</span>`;
     }
     return undefined;
+  }
+
+  /**
+   * Source of fallback table identifiers. Only uniqueness within a single generated page
+   * matters, so a monotonic counter is enough; it deliberately keeps counting across pages
+   * rather than resetting, since ids never have to be reproducible between renders.
+   */
+  let autoTableIdCounter = 0;
+  function nextAutoTableId(): string {
+    return `fast-table-${++autoTableIdCounter}`;
   }
 
   /**
@@ -76,7 +98,7 @@ export namespace FrontendTables {
     searchPlaceholder?: string;
     /** Enable pagination (default: false) */
     enablePagination?: boolean;
-    /** Items per page (default: 50) */
+    /** Items per page (defaults to the `code-for-ibmi.tables.itemsPerPage` setting) */
     itemsPerPage?: number;
     /** Total items count (for server-side pagination) */
     totalItems?: number;
@@ -320,8 +342,8 @@ export namespace FrontendTables {
    */
   export interface FastTableUpdate {
     command: 'updateTable';
-    /** Target table, when the document hosts more than one */
-    tableId?: string;
+    /** Target table. Every rendered table filters incoming messages on this. */
+    tableId: string;
     /** Markup for the new <vscode-table-body> content */
     rowsHtml: string;
     /** Modal contents for collapsible columns, indexed by row */
@@ -341,7 +363,12 @@ export namespace FrontendTables {
     totalItems: number;
     currentPage: number;
     subtitle?: string;
-    tableId?: string;
+    /**
+     * Must be the same tableId the table was rendered with — an update carrying anything
+     * else is discarded by every table on the page. Tables meant to be patched therefore
+     * have to be given an explicit id in generateFastTable rather than an auto-generated one.
+     */
+    tableId: string;
   }
 
   // Format value with icons and styling for FastTable.
@@ -492,12 +519,22 @@ export namespace FrontendTables {
       enableSearch = false,
       searchPlaceholder = 'Search...',
       enablePagination = false,
-      itemsPerPage = 50,
+      itemsPerPage = ViewSettings.getItemsPerPage(),
       totalItems = data.length,
       currentPage = 1,
       searchTerm = '',
       tableId = undefined
     } = options;
+
+    // Every table gets an identifier, even when the caller didn't ask for one: it suffixes
+    // each element id and scopes the emitted script inside an IIFE. Without it, a page
+    // holding more than one table would repeat ids (so getElementById would always reach
+    // the first table) and re-declare the script's top-level `let`s in the shared global
+    // lexical scope, which kills every script after the first with a SyntaxError.
+    // An auto-generated id is fine for display-only tables; a table meant to be patched
+    // through generateFastTableUpdate needs an explicit, stable tableId from the caller.
+    const id = tableId ?? nextAutoTableId();
+    const suffix = `-${id}`;
 
     const { columnsArray, tableMinWidth } = computeColumnWidths(columns);
     const { rowsHtml: rows, collapsibleData } = buildRows(columns, data, columnsArray);
@@ -615,10 +652,36 @@ export namespace FrontendTables {
         width: 80px;
       }
 
+      /* Height capped (refined at runtime by syncTableViewport) so the horizontal
+         scrollbar stays on screen instead of sitting below a long table. */
       .table-scroll-wrapper {
-        overflow-x: auto;
+        overflow: auto;
+        max-height: 65vh;
         width: 100%;
         transition: opacity 0.15s ease;
+      }
+
+      /* The webview host only styles the document scrollbars, not the wrapper's. */
+      .table-scroll-wrapper::-webkit-scrollbar {
+        height: 12px;
+        width: 12px;
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-track,
+      .table-scroll-wrapper::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-thumb {
+        background-color: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+        background-color: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-thumb:active {
+        background-color: var(--vscode-scrollbarSlider-activeBackground, rgba(191, 191, 191, 0.4));
       }
 
       /* Search/pagination are server-side: while the extension re-queries, dim the
@@ -847,104 +910,104 @@ export namespace FrontendTables {
       ${title || subtitle ? `
       <div class="header">
         ${title ? `<h1>${escapeHtml(title)}</h1>` : ''}
-        ${subtitle ? `<div class="info" id="subtitle-info">${escapeHtml(subtitle)}</div>` : ''}
+        ${subtitle ? `<div class="info" id="subtitle-info${suffix}">${escapeHtml(subtitle)}</div>` : ''}
       </div>
       ` : ''}
 
       ${enableSearch ? `
       <div class="search-bar">
-        <label class="search-bar-label" for="search-input${tableId ? `-${tableId}` : ''}">
+        <label class="search-bar-label" for="search-input${suffix}">
           <span class="codicon codicon-search"></span> ${vscode.l10n.t('Search')}
         </label>
         <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 4px;">
-          <span class="codicon codicon-search" id="search-icon${tableId ? `-${tableId}` : ''}" style="color: var(--vscode-input-placeholderForeground);"></span>
+          <span class="codicon codicon-search" id="search-icon${suffix}" style="color: var(--vscode-input-placeholderForeground);"></span>
           <input
             type="text"
-            id="search-input${tableId ? `-${tableId}` : ''}"
+            id="search-input${suffix}"
             placeholder="${escapeHtml(searchPlaceholder)}"
             value="${searchTerm && searchTerm !== '-' ? escapeHtml(searchTerm) : ''}"
             style="flex: 1; background: transparent; border: none; outline: none; color: var(--vscode-input-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); padding: 4px 0;">
         </div>
-        <span class="sr-only" role="status" aria-live="polite" id="search-status${tableId ? `-${tableId}` : ''}"></span>
+        <span class="sr-only" role="status" aria-live="polite" id="search-status${suffix}"></span>
       </div>
       ` : ''}
 
       <!-- The table and the empty state are both always emitted and toggled with
            .hidden, so an incremental update can switch between them without the
            extension having to rebuild the page. -->
-        <div class="table-scroll-wrapper${data.length > 0 ? '' : ' hidden'}" id="table-scroll-wrapper${tableId ? `-${tableId}` : ''}">
+        <div class="table-scroll-wrapper${data.length > 0 ? '' : ' hidden'}" id="table-scroll-wrapper${suffix}">
           <vscode-table
-            id="data-table${tableId ? `-${tableId}` : ''}"
+            id="data-table${suffix}"
             bordered-rows
             columns='${JSON.stringify(columnsArray)}'
             aria-label="${escapeHtml(title)}">
             <vscode-table-header>
               ${headerCells}
             </vscode-table-header>
-            <vscode-table-body id="table-body${tableId ? `-${tableId}` : ''}">
+            <vscode-table-body id="table-body${suffix}">
               ${rows}
             </vscode-table-body>
           </vscode-table>
+        </div>
 
           ${hasCollapsibleColumns ? `
           <!-- Modal for collapsible content -->
-          <div id="collapsible-modal${tableId ? `-${tableId}` : ''}" class="modal" style="display: none;">
+          <div id="collapsible-modal${suffix}" class="modal" style="display: none;">
             <div class="modal-overlay"></div>
             <div class="modal-content">
               <div class="modal-header">
-                <h3 id="modal-title${tableId ? `-${tableId}` : ''}"></h3>
-                <button type="button" class="modal-close-btn" id="modal-close${tableId ? `-${tableId}` : ''}" title="${vscode.l10n.t('Close')}" aria-label="${vscode.l10n.t('Close')}">
+                <h3 id="modal-title${suffix}"></h3>
+                <button type="button" class="modal-close-btn" id="modal-close${suffix}" title="${vscode.l10n.t('Close')}" aria-label="${vscode.l10n.t('Close')}">
                   <span class="codicon codicon-close"></span>
                 </button>
               </div>
-              <div class="modal-body" id="modal-body${tableId ? `-${tableId}` : ''}"></div>
+              <div class="modal-body" id="modal-body${suffix}"></div>
             </div>
           </div>
           ` : ''}
 
           ${enablePagination ? `
-          <div class="pagination-controls">
-          <div class="pagination-info" id="pagination-info${tableId ? `-${tableId}` : ''}"></div>
+          <div class="pagination-controls${data.length > 0 ? '' : ' hidden'}" id="pagination-controls${suffix}">
+          <div class="pagination-info" id="pagination-info${suffix}"></div>
           <div class="pagination-buttons">
-            <vscode-button id="first-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="First page">
+            <vscode-button id="first-page${suffix}" appearance="icon" aria-label="First page">
               <span class="codicon codicon-chevron-left"></span>
               <span class="codicon codicon-chevron-left"></span>
             </vscode-button>
-            <vscode-button id="prev-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="Previous page">
+            <vscode-button id="prev-page${suffix}" appearance="icon" aria-label="Previous page">
               <span class="codicon codicon-chevron-left"></span>
             </vscode-button>
             <div class="page-input-container">
               <span>Page</span>
               <input
                 type="number"
-                id="page-input${tableId ? `-${tableId}` : ''}"
+                id="page-input${suffix}"
                 min="1"
                 style="width: 60px; padding: 4px 8px; background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); border-radius: 3px; color: var(--vscode-input-foreground); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); text-align: center;">
-              <span id="total-pages-label${tableId ? `-${tableId}` : ''}"></span>
+              <span id="total-pages-label${suffix}"></span>
             </div>
-            <vscode-button id="next-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="Next page">
+            <vscode-button id="next-page${suffix}" appearance="icon" aria-label="Next page">
               <span class="codicon codicon-chevron-right"></span>
             </vscode-button>
-            <vscode-button id="last-page${tableId ? `-${tableId}` : ''}" appearance="icon" aria-label="Last page">
+            <vscode-button id="last-page${suffix}" appearance="icon" aria-label="Last page">
               <span class="codicon codicon-chevron-right"></span>
               <span class="codicon codicon-chevron-right"></span>
             </vscode-button>
           </div>
         </div>
           ` : ''}
-        </div>
 
-        <div class="empty-state${data.length > 0 ? ' hidden' : ''}" id="empty-state${tableId ? `-${tableId}` : ''}">
+        <div class="empty-state${data.length > 0 ? ' hidden' : ''}" id="empty-state${suffix}">
           <p>${escapeHtml(emptyMessage)}</p>
         </div>
     </div>
 
     <script defer>
-      ${tableId ? `(function() {` : ''}
+      (function() {
       // Use the global vscode API acquired by webviewToolkit
       // Note: This script runs after the footer script from webviewToolkit.ts
 
-      // State management${tableId ? ` for table: ${tableId}` : ''}
+      // State management for table: ${id}
       let currentPage = ${currentPage};
       let currentSearchTerm = ${JSON.stringify(searchTerm)};
       const itemsPerPage = ${itemsPerPage};
@@ -954,23 +1017,49 @@ export namespace FrontendTables {
       const enablePagination = ${enablePagination};
 
       // Get DOM elements
-      const searchInput = document.getElementById('search-input${tableId ? `-${tableId}` : ''}');
-      const tableBody = document.getElementById('table-body${tableId ? `-${tableId}` : ''}');
-      const emptyState = document.getElementById('empty-state${tableId ? `-${tableId}` : ''}');
-      const subtitleInfo = document.getElementById('subtitle-info');
-      const searchIcon = document.getElementById('search-icon${tableId ? `-${tableId}` : ''}');
-      const searchStatus = document.getElementById('search-status${tableId ? `-${tableId}` : ''}');
-      const tableWrapper = document.getElementById('table-scroll-wrapper${tableId ? `-${tableId}` : ''}');
-      const paginationInfo = document.getElementById('pagination-info${tableId ? `-${tableId}` : ''}');
-      const pageInput = document.getElementById('page-input${tableId ? `-${tableId}` : ''}');
-      const totalPagesLabel = document.getElementById('total-pages-label${tableId ? `-${tableId}` : ''}');
-      const firstPageBtn = document.getElementById('first-page${tableId ? `-${tableId}` : ''}');
-      const prevPageBtn = document.getElementById('prev-page${tableId ? `-${tableId}` : ''}');
-      const nextPageBtn = document.getElementById('next-page${tableId ? `-${tableId}` : ''}');
-      const lastPageBtn = document.getElementById('last-page${tableId ? `-${tableId}` : ''}');
+      const searchInput = document.getElementById('search-input${suffix}');
+      const tableBody = document.getElementById('table-body${suffix}');
+      const emptyState = document.getElementById('empty-state${suffix}');
+      const subtitleInfo = document.getElementById('subtitle-info${suffix}');
+      const searchIcon = document.getElementById('search-icon${suffix}');
+      const searchStatus = document.getElementById('search-status${suffix}');
+      const tableWrapper = document.getElementById('table-scroll-wrapper${suffix}');
+      const paginationControls = document.getElementById('pagination-controls${suffix}');
+      const paginationInfo = document.getElementById('pagination-info${suffix}');
+      const pageInput = document.getElementById('page-input${suffix}');
+      const totalPagesLabel = document.getElementById('total-pages-label${suffix}');
+      const firstPageBtn = document.getElementById('first-page${suffix}');
+      const prevPageBtn = document.getElementById('prev-page${suffix}');
+      const nextPageBtn = document.getElementById('next-page${suffix}');
+      const lastPageBtn = document.getElementById('last-page${suffix}');
 
       // Calculate total pages
       let totalPages = enablePagination ? Math.ceil(totalItems / itemsPerPage) : 1;
+
+      // Fit the table to the visible area, keeping its horizontal scrollbar on screen.
+      // Measured against the document (rect.top + scrollY) so scrolling the page does
+      // not feed back into the computed height.
+      const MIN_TABLE_VIEWPORT_HEIGHT = 200;
+      const CONTAINER_BOTTOM_PADDING = 20;
+      const PAGINATION_MARGIN_TOP = 16;
+
+      function syncTableViewport() {
+        if (!tableWrapper || tableWrapper.classList.contains('hidden')) return;
+
+        const top = tableWrapper.getBoundingClientRect().top + window.scrollY;
+        const below = paginationControls && !paginationControls.classList.contains('hidden')
+          ? paginationControls.getBoundingClientRect().height + PAGINATION_MARGIN_TOP
+          : 0;
+        const available = window.innerHeight - top - below - CONTAINER_BOTTOM_PADDING;
+
+        tableWrapper.style.maxHeight = Math.max(MIN_TABLE_VIEWPORT_HEIGHT, available) + 'px';
+      }
+
+      syncTableViewport();
+      // The vscode-* elements upgrade after this script runs and shift the table down.
+      requestAnimationFrame(syncTableViewport);
+      window.addEventListener('load', syncTableViewport);
+      window.addEventListener('resize', syncTableViewport);
 
       // Busy indicator. Search and pagination are handled by the extension, which
       // answers with an 'updateTable' message; the indicator is cleared there. The
@@ -1020,7 +1109,7 @@ export namespace FrontendTables {
             page: 1,
             itemsPerPage: itemsPerPage
           };
-          ${tableId ? `message.tableId = '${tableId}';` : ''}
+          message.tableId = '${id}';
           vscode.postMessage(message);
         }, 500); // Debounce 500ms
       }
@@ -1036,7 +1125,7 @@ export namespace FrontendTables {
           page: newPage,
           itemsPerPage: itemsPerPage
         };
-        ${tableId ? `message.tableId = '${tableId}';` : ''}
+        message.tableId = '${id}';
         vscode.postMessage(message);
       }
 
@@ -1117,10 +1206,10 @@ export namespace FrontendTables {
       // Modal functionality for collapsible content
       // Mutable: replaced wholesale by an incremental update (see 'updateTable').
       let collapsibleDataArray = ${JSON.stringify(collapsibleData)};
-      const modal = document.getElementById('collapsible-modal${tableId ? `-${tableId}` : ''}');
-      const modalTitle = document.getElementById('modal-title${tableId ? `-${tableId}` : ''}');
-      const modalBody = document.getElementById('modal-body${tableId ? `-${tableId}` : ''}');
-      const modalClose = document.getElementById('modal-close${tableId ? `-${tableId}` : ''}');
+      const modal = document.getElementById('collapsible-modal${suffix}');
+      const modalTitle = document.getElementById('modal-title${suffix}');
+      const modalBody = document.getElementById('modal-body${suffix}');
+      const modalClose = document.getElementById('modal-close${suffix}');
       const modalOverlay = modal ? modal.querySelector('.modal-overlay') : null;
 
       function openModal(rowIndex, colIndex) {
@@ -1184,7 +1273,7 @@ export namespace FrontendTables {
       window.addEventListener('message', (event) => {
         const msg = event.data;
         if (!msg) return;
-        ${tableId ? `if (msg.tableId !== '${tableId}') return;` : `if (msg.tableId) return;`}
+        if (msg.tableId !== '${id}') return;
 
         // The query failed: stop the indicator and keep the rows already on screen
         // (the extension surfaces the error itself).
@@ -1207,9 +1296,13 @@ export namespace FrontendTables {
         if (tableWrapper) {
           tableWrapper.classList.toggle('hidden', msg.rowCount === 0);
         }
+        if (paginationControls) {
+          paginationControls.classList.toggle('hidden', msg.rowCount === 0);
+        }
         if (emptyState) {
           emptyState.classList.toggle('hidden', msg.rowCount > 0);
         }
+        syncTableViewport();
         if (subtitleInfo && msg.subtitle !== undefined) {
           subtitleInfo.textContent = msg.subtitle;
         }
@@ -1222,7 +1315,7 @@ export namespace FrontendTables {
 
       // Custom script
       ${customScript}
-      ${tableId ? `})();` : ''}
+      })();
     </script>
     </div>
   `;
