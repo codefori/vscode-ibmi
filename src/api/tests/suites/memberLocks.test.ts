@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
 import IBMi, { MemberParts } from '../../IBMi';
-import { MemberLocks } from '../../memberLocks';
+import { LockState, MemberLocks } from '../../memberLocks';
 import { Tools } from '../../Tools';
 
 describe(`Member Lock Tests`, () => {
@@ -54,7 +54,7 @@ describe(`Member Lock Tests`, () => {
     expect(locks.isLocked(memberParts)).toBe(expected);
 
     const rows = await connection.runSQL([
-      `SELECT * FROM QSYS2.OBJECT_LOCK_INFO`,
+      `SELECT MEMBER_LOCK_TYPE, LOCK_STATE FROM QSYS2.OBJECT_LOCK_INFO`,
       `    WHERE SYSTEM_OBJECT_SCHEMA = '${memberParts.library}'`,
       `    AND SYSTEM_OBJECT_NAME = '${memberParts.file}'`,
       `    AND OBJECT_TYPE = '*FILE'`,
@@ -63,7 +63,11 @@ describe(`Member Lock Tests`, () => {
     ].join(`\n`));
 
     if (expected) {
-      expect(rows.length).toBeGreaterThan(0);
+      const memberRow = rows.find(r => r.MEMBER_LOCK_TYPE === `MEMBER`);
+      expect(memberRow?.LOCK_STATE).toBe(`*SHRRD`);
+
+      const dataRow = rows.find(r => r.MEMBER_LOCK_TYPE === `DATA`);
+      expect(dataRow?.LOCK_STATE).toBe(LockState.SHARED_UPDATE);
     } else {
       expect(rows.length).toBe(0);
     }

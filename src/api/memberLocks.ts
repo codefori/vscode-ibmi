@@ -1,5 +1,13 @@
 import IBMi, { MemberParts } from "./IBMi";
 
+export enum LockState {
+  SHARED_READ = `*SHRRD`, 
+  SHARED_UPDATE = `*SHRUPD`,
+  SHARED_NO_UPDATE = `*SHRNUP`,
+  EXCLUSIVE_ALLOW_READ = `*EXCLRD`,
+  EXCLUSIVE_NO_READ = `*EXCL`
+}
+
 export class MemberLocks {
   private readonly lockedMembers: Map<string, MemberParts> = new Map();
 
@@ -17,7 +25,7 @@ export class MemberLocks {
    */
   async allocate(connection: IBMi, memberParts: MemberParts): Promise<boolean> {
     const result = await connection.runCommand({
-      command: `QSYS/ALCOBJ OBJ((${memberParts.library}/${memberParts.file} *FILE *EXCL ${memberParts.name})) WAIT(0) SCOPE(*JOB)`,
+      command: `QSYS/ALCOBJ OBJ((${memberParts.library}/${memberParts.file} *FILE ${LockState.SHARED_UPDATE} ${memberParts.name})) SCOPE(*JOB)`,
       noLibList: true
     });
 
@@ -35,7 +43,7 @@ export class MemberLocks {
    */
   async deallocate(connection: IBMi, memberParts: MemberParts): Promise<boolean> {
     const result = await connection.runCommand({
-      command: `QSYS/DLCOBJ OBJ((${memberParts.library}/${memberParts.file} *FILE *EXCL ${memberParts.name})) SCOPE(*JOB)`,
+      command: `QSYS/DLCOBJ OBJ((${memberParts.library}/${memberParts.file} *FILE ${LockState.SHARED_UPDATE} ${memberParts.name})) SCOPE(*JOB)`,
       noLibList: true
     });
 
@@ -56,7 +64,7 @@ export class MemberLocks {
     if (connection) {
       await Promise.all(members.map(memberParts =>
         connection.runCommand({
-          command: `QSYS/DLCOBJ OBJ((${memberParts.library}/${memberParts.file} *FILE *EXCL ${memberParts.name})) SCOPE(*JOB)`,
+          command: `QSYS/DLCOBJ OBJ((${memberParts.library}/${memberParts.file} *FILE ${LockState.SHARED_UPDATE} ${memberParts.name})) SCOPE(*JOB)`,
           noLibList: true
         }).catch(() => { })
       ));

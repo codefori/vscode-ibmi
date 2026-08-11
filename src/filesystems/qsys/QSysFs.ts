@@ -77,26 +77,6 @@ export class QSysFS implements vscode.FileSystemProvider {
             });
 
         context.subscriptions.push(
-            vscode.workspace.onDidOpenTextDocument(async doc => {
-                if (doc.uri.scheme !== `member`) {
-                    return;
-                }
-
-                const connection = instance.getConnection();
-                if (!connection) {
-                    return;
-                }
-
-                const config = connection.getConfig();
-                if (!config.lockMembers) {
-                    return;
-                }
-
-                try {
-                    const memberParts = connection.parserMemberPath(doc.uri.path);
-                    await this.memberLocks.allocate(connection, memberParts);
-                } catch { }
-            }),
             vscode.workspace.onDidCloseTextDocument(async doc => {
                 if (doc.uri.scheme !== `member`) {
                     return;
@@ -140,6 +120,8 @@ export class QSysFS implements vscode.FileSystemProvider {
 
                 if (config?.lockMembers) {
                     this.lockOpenMembers();
+                } else {
+                    this.memberLocks.deallocateAll(connection);
                 }
             })
         );
@@ -245,16 +227,27 @@ export class QSysFS implements vscode.FileSystemProvider {
         const connection = instance.getConnection();
         if (connection) {
             const contentApi = connection.getContent();
-            let { asp, library, file, name: member } = await this.parseMemberPath(connection, uri.path);
+            const memberParts = await this.parseMemberPath(connection, uri.path);
+            let { asp, library, file, name: member } = memberParts;
             asp = asp || await connection.getLibraryIAsp(library);
+
+            const config = connection.getConfig();
+            if (config.lockMembers) {
+                if (!this.memberLocks.isLocked(memberParts)) {
+                    await this.memberLocks.allocate(connection, memberParts);
+                }
+            }
 
             let memberContent;
             try {
                 memberContent = this.extendedMemberSupport ?
                     await this.extendedContent.downloadMemberContentWithDates(uri) :
                     await contentApi.downloadMemberContent(library, file, member);
-            } catch (error) {
-                if (!retrying && await this.stat(uri)) { //Check if exists on an iASP and retry if so
+            } catch (error: any) {
+                const messages = Tools.parseMessages(error.message);
+                if (messages.findId(`CPF5729`)) { // CPF5729 - Not able to allocate object
+                    throw new FileSystemError(error.message);
+                } else if (!retrying && await this.stat(uri)) { //Check if exists on an iASP and retry if so
                     return this.readFile(uri, true);
                 }
                 throw error;
