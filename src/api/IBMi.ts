@@ -1240,6 +1240,8 @@ export default class IBMi {
   }
 
   async disconnect() {
+    await this.sqlJob?.close();
+
     if (this.client?.connection) {
       await (await this.getComponent<Mapepire>(Mapepire.ID))?.endJobs();
       //Close the connection and triggers its 'end' event
