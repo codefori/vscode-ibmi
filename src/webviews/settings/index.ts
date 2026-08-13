@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import vscode, { window } from "vscode";
 import { CCSIDS } from "../../api/CCSIDs";
 import { extensionComponentRegistry } from "../../api/components/manager";
-import IBMi from "../../api/IBMi";
+import IBMi, { CLIENT_ONLY_SETTINGS } from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { deleteStoredPassphrase, deleteStoredPassword, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from "../../config/passwords";
 import { isManaged } from "../../debug";
@@ -29,18 +29,6 @@ const TERMINAL_TYPES = [
 ];
 
 const INVALID_TARGET_CCSIDS = ["65534", "65535"]; // invalid target CCSIDs for conversion
-const CLIENT_ONLY_SETTINGS = new Set([
-  `statusBarColor`,
-  `showDescInLibList`,
-  `showHiddenFiles`,
-  `autoSortIFSShortcuts`,
-  `autoSaveBeforeAction`,
-  `sourceDateGutter`,
-  `encodingFor5250`,
-  `terminalFor5250`,
-  `setDeviceNameFor5250`,
-  `connectringStringFor5250`,
-]);
 
 const SQL_NAMING = [
   { value: "sql", text: "SQL" },

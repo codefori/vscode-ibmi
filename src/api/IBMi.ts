@@ -74,7 +74,11 @@ interface ConnectionConfigFiles {
   [key: string]: ConfigFile<any>;
 }
 
-const CLIENT_ONLY_SETTINGS = new Set([
+/**
+ * Settings that are always owned by the client and must never be overridden
+ * by the remote `codefori` configuration.
+ */
+export const CLIENT_ONLY_SETTINGS = new Set([
   `statusBarColor`,
   `showDescInLibList`,
   `showHiddenFiles`,
