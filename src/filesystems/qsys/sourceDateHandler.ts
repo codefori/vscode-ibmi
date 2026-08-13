@@ -1,6 +1,8 @@
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
+import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { instance } from "../../instantiate";
+import { VscodeTools } from "../../ui/Tools";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);
@@ -72,12 +74,22 @@ export class SourceDateHandler {
       vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => this.clearDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => this.newDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.toggleSequenceNumbers`, () => this.toggleSequenceNumbers()),
+      onCodeForIBMiConfigurationChange(`connectionSettings`, () => this.updateStatusBarColor()),
       this.sourceDateSearchBarItem
     );
   }
 
+  /**
+   * Use the same status bar colour as the other Code for IBM i bar items.
+   */
+  private updateStatusBarColor() {
+    const config = instance.getConnection()?.getConfig();
+    this.sourceDateSearchBarItem.color = VscodeTools.parseStatusBarColor(config?.statusBarColor);
+  }
+
   setEnabled(enabled: boolean) {
     if (enabled) {
+      this.updateStatusBarColor();
       this.sourceDateSearchBarItem.show();
     } else {
       this.sourceDateSearchBarItem.hide();

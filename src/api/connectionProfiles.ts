@@ -21,8 +21,9 @@ export async function updateConnectionProfile(profile: ConnectionProfile, option
     }
 
     if (isActiveProfile(profile)) {
-      //Only update the setLibraryListCommand in the current config since the editor is the only place it can be changed
+      //Only update the setLibraryListCommand and statusBarColor in the current config since the editor is the only place they can be changed
       config.setLibraryListCommand = profile.setLibraryListCommand;
+      config.statusBarColor = profile.statusBarColor || ``;
     }
 
     await IBMi.connectionManager.update(config);
@@ -80,6 +81,7 @@ export function assignProfile(fromProfile: ConnectionProfile, toProfile: Connect
   toProfile.ifsShortcuts = fromProfile.ifsShortcuts;
   toProfile.customVariables = fromProfile.customVariables;
   toProfile.setLibraryListCommand = fromProfile.setLibraryListCommand;
+  toProfile.statusBarColor = fromProfile.statusBarColor ?? toProfile.statusBarColor;
   return toProfile;
 }
 

@@ -110,6 +110,7 @@ export interface ConnectionProfile {
   customVariables: CustomVariable[]
   setLibraryListCommand?: string
   iasp?: string
+  statusBarColor?: string
 }
 
 export interface StoredConnection {
