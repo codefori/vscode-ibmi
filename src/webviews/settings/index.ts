@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import vscode, { window } from "vscode";
 import { CCSIDS } from "../../api/CCSIDs";
 import { extensionComponentRegistry } from "../../api/components/manager";
-import IBMi from "../../api/IBMi";
+import IBMi, { CLIENT_ONLY_SETTINGS } from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { deleteStoredPassphrase, deleteStoredPassword, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from "../../config/passwords";
 import { isManaged } from "../../debug";
@@ -92,7 +92,7 @@ export class SettingsUI {
             for (const field of currentSection.fields) {
               if (!field.id) continue;
 
-              if (serverConfig.codefori[field.id] !== undefined) {
+              if (!CLIENT_ONLY_SETTINGS.has(field.id) && serverConfig.codefori[field.id] !== undefined) {
                 field.readonly = true;
               }
             }
