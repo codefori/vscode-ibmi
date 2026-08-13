@@ -46,14 +46,11 @@ export type SortOptions = {
 export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
-  private dummyDSPF = false;
-
   private get config() {
     return this.ibmi.getConfig();
   }
 
   reset() {
-    this.dummyDSPF = false;
   }
 
   private getTempRemote(path: string) {
@@ -592,35 +589,24 @@ export default class IBMiContent {
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
-    const sourceFileNameLike = () => objectFilter ? ` and PHFILE ${(objectFilter.includes('*') ? `like` : `=`)} '${objectFilter.replace('*', '%')}'` : '';
+    const sourceFileNameLike = () => objectFilter ? ` AND SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? `LIKE` : `=`)} '${objectFilter.replace('*', '%')}'` : '';
 
     let createOBJLIST: string[];
-
-    if (sourceFilesOnly || withSourceFiles) {
-      if (!this.dummyDSPF) {
-        //Drop if already exists
-        await this.ibmi.runSQL('drop table if exists SESSION.PFS');
-        //Create an empty PFS table
-        await this.ibmi.runSQL('declare global temporary table SESSION.PFS like QSYS.QAFDPHY rcdfmt QWHFDPHY');
-        this.dummyDSPF = true;
-      }
-      //Clear and fill the PFs list - if the command crashes it won't break the queries below
-      await this.ibmi.runSQL(`delete from SESSION.PFS`);
-      await this.ibmi.runCommand({ command: `QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)` });
-    }
 
     if (sourceFilesOnly) {
       createOBJLIST = [
         /* sql */
-        `select
-            trim(PHFILE) NAME,
-            PHFATR ATTRIBUTE,
-            trim(PHTXT) TEXT,
-            PHMXRL SOURCE_LENGTH,
-            1 as IS_SOURCE,
-            '*FILE' as TYPE
-            from SESSION.PFS
-            where PHDTAT = 'S'
+        `SELECT
+            TRIM(SYSTEM_TABLE_NAME) NAME,
+            '' ATTRIBUTE,
+            TRIM(TEXT_DESCRIPTION) TEXT,
+            MAXIMUM_RECORD_LENGTH SOURCE_LENGTH,
+            1 AS IS_SOURCE,
+            '*FILE' AS TYPE
+          FROM QSYS2.SYSFILES
+          WHERE LIB_NAME = '${localLibrary}'
+            AND NATIVE_TYPE = 'PHYSICAL'
+            AND FILE_TYPE = 'SOURCE'
             ${sourceFileNameLike()}`
       ];
     } else if (!withSourceFiles) {
@@ -643,13 +629,15 @@ export default class IBMiContent {
     else {
       createOBJLIST = [
         /* sql */
-        `with SRCFILES as (
-          select
-            trim(PHFILE) NAME,
-            1 as IS_SOURCE,
-            PHMXRL as SOURCE_LENGTH
-          from SESSION.PFS
-          where PHDTAT = 'S'
+        `WITH SRCFILES AS (
+          SELECT
+            TRIM(SYSTEM_TABLE_NAME) NAME,
+            1 AS IS_SOURCE,
+            MAXIMUM_RECORD_LENGTH AS SOURCE_LENGTH
+          FROM QSYS2.SYSFILES
+          WHERE LIB_NAME = '${localLibrary}'
+            AND NATIVE_TYPE = 'PHYSICAL'
+            AND FILE_TYPE = 'SOURCE'
         ),
          OBJD as (
           select
