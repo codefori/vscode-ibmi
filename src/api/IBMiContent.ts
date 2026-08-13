@@ -535,6 +535,21 @@ export default class IBMiContent {
   }
 
   /**
+   * Returns the names of libraries currently in the system portion of the library list.
+   * @returns Array of library names in the system portion
+   */
+  async getSystemLibraries(): Promise<string[]> {
+    try {
+      const result = await this.ibmi.runSQL(
+        `SELECT SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL()) WHERE TYPE = 'SYSTEM'`
+      );
+      return result.map(row => String(row.SYSTEM_SCHEMA_NAME));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
    * Validates a list of libraries
    * @param newLibl Array of libraries to validate
    * @returns Bad libraries
