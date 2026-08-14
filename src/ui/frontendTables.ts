@@ -424,6 +424,19 @@ export namespace FrontendTables {
   }
 
   /**
+   * A value this short is never worth wrapping: splitting it over two lines to save
+   * a few pixels reads worse than a slightly wider column. Cells holding one are
+   * marked `.nowrap-cell`, and the page widens their column at runtime
+   * (fitNoWrapColumns) so keeping them on one line never clips them.
+   */
+  const NOWRAP_MAX_LENGTH = 30;
+
+  function isShortValue(value: string | number): boolean {
+    const str = String(value ?? '').trim();
+    return str.length > 0 && str.length < NOWRAP_MAX_LENGTH;
+  }
+
+  /**
    * Build the table body markup, plus the modal payload for collapsible columns.
    * Shared by the initial page render and by incremental updates, so both produce
    * identical markup.
@@ -462,7 +475,8 @@ export namespace FrontendTables {
           }
         }
         const value = col.getValue(row);
-        const cellClass = col.cellClass ? ` class="${col.cellClass}"` : '';
+        const classes = [col.cellClass, isShortValue(value) ? 'nowrap-cell' : undefined].filter(Boolean);
+        const cellClass = classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
         const widthStyle = columnsArray[index] !== 'auto' ? ` style="width: ${columnsArray[index]};"` : '';
         return `<vscode-table-cell${cellClass}${widthStyle}>${formatFastValue(value)}</vscode-table-cell>`;
       }).join('\n        ');
@@ -761,6 +775,18 @@ export namespace FrontendTables {
         box-sizing: border-box;
       }
 
+      /* Cells that must stay on a single line: action columns, where wrapping would
+         push the last button onto a second row and stretch the whole row, and short
+         values (see NOWRAP_MAX_LENGTH), which read worse split in two than in a
+         slightly wider column. Both are measured by fitNoWrapColumns, which grows
+         the column so a single line is never clipped. */
+      vscode-table-cell.nowrap-cell,
+      vscode-table-cell:has(vscode-button),
+      vscode-table-cell:has(button) {
+        white-space: nowrap;
+        text-overflow: clip;
+      }
+
       /* Add spacing between buttons in action columns */
       vscode-table-cell vscode-button {
         margin-right: 8px;
@@ -1018,6 +1044,7 @@ export namespace FrontendTables {
 
       // Get DOM elements
       const searchInput = document.getElementById('search-input${suffix}');
+      const dataTable = document.getElementById('data-table${suffix}');
       const tableBody = document.getElementById('table-body${suffix}');
       const emptyState = document.getElementById('empty-state${suffix}');
       const subtitleInfo = document.getElementById('subtitle-info${suffix}');
@@ -1055,10 +1082,70 @@ export namespace FrontendTables {
         tableWrapper.style.maxHeight = Math.max(MIN_TABLE_VIEWPORT_HEIGHT, available) + 'px';
       }
 
+      // Cells that never wrap (buttons, short values — see the stylesheet) would be
+      // clipped by a column narrower than their single line, and the widths computed
+      // when the page was generated cannot know how wide a rendered button or string
+      // ends up being. So measure them here and grow the column — and the table with
+      // it, so the wrapper still scrolls all the way to the widest cell.
+      const baseColumnWidths = ${JSON.stringify(columnsArray.map(width => parseFloat(width)))};
+      const CELL_PADDING_RIGHT = 16;
+      let columnWidths = baseColumnWidths.slice();
+
+      function forEachCell(row, callback) {
+        Array.from(row.children).forEach((cell, index) => {
+          if (index < columnWidths.length) callback(cell, index);
+        });
+      }
+
+      function fitNoWrapColumns() {
+        if (!dataTable || !tableBody) return;
+
+        const rows = Array.from(tableBody.querySelectorAll('vscode-table-row'));
+        if (!rows.length) return;
+
+        rows.forEach(row => forEachCell(row, (cell, index) => {
+          if (!cell.classList.contains('nowrap-cell') && !cell.querySelector('vscode-button, button')) return;
+
+          // The content overflows the clipped cell, but it is still laid out: a range
+          // over it measures the line the column actually has to fit.
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          const contentRect = range.getBoundingClientRect();
+          if (!contentRect.width) return;
+
+          const needed = Math.ceil(contentRect.right - cell.getBoundingClientRect().left) + CELL_PADDING_RIGHT;
+          if (needed > columnWidths[index]) columnWidths[index] = needed;
+        }));
+
+        // Nothing to widen, and no widening carried over from a previous page.
+        if (columnWidths.every((width, index) => width === baseColumnWidths[index])) return;
+
+        // Widths are written straight onto the cells rather than through the table's
+        // own 'columns' property: that one converts them to percentages of the width
+        // the table had before growing, which would leave the columns misaligned.
+        // Rows are re-applied on every call, since an incremental update replaces
+        // them with markup still carrying the generated widths.
+        dataTable.style.minWidth = columnWidths.reduce((sum, width) => sum + width, 0) + 'px';
+        dataTable.querySelectorAll('vscode-table-header-cell').forEach((cell, index) => {
+          if (index < columnWidths.length) cell.style.width = columnWidths[index] + 'px';
+        });
+        rows.forEach(row => forEachCell(row, (cell, index) => {
+          cell.style.width = columnWidths[index] + 'px';
+        }));
+
+        syncTableViewport();
+      }
+
       syncTableViewport();
       // The vscode-* elements upgrade after this script runs and shift the table down.
-      requestAnimationFrame(syncTableViewport);
-      window.addEventListener('load', syncTableViewport);
+      requestAnimationFrame(() => {
+        syncTableViewport();
+        fitNoWrapColumns();
+      });
+      window.addEventListener('load', () => {
+        syncTableViewport();
+        fitNoWrapColumns();
+      });
       window.addEventListener('resize', syncTableViewport);
 
       // Busy indicator. Search and pagination are handled by the extension, which
@@ -1303,6 +1390,9 @@ export namespace FrontendTables {
           emptyState.classList.toggle('hidden', msg.rowCount > 0);
         }
         syncTableViewport();
+        // The replaced rows carry the generated widths again; their buttons are only
+        // measurable once laid out.
+        requestAnimationFrame(fitNoWrapColumns);
         if (subtitleInfo && msg.subtitle !== undefined) {
           subtitleInfo.textContent = msg.subtitle;
         }
