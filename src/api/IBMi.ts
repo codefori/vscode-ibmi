@@ -190,6 +190,27 @@ export default class IBMi {
     }
   }
 
+  /**
+   * loads the remote configuration files /etc/vscode/settings.json and applies
+   * runs on every connection
+   */
+  private async loadAndApplyRemoteConfigs() {
+    await this.loadRemoteConfigs();
+
+    const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
+    if (this.config && remoteConnectionConfig.getState() === `ok`) {
+      const remoteConfig = await remoteConnectionConfig.get();
+
+      if (remoteConfig.codefori) {
+        for (const [key, value] of Object.entries(remoteConfig.codefori)) {
+          if (!CLIENT_ONLY_SETTINGS.has(key) && this.config[key] !== undefined) {
+            this.config[key] = value;
+          }
+        }
+      }
+    }
+  }
+
   get dangerousVariants() {
     return this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
   };
@@ -600,6 +621,9 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
+      callbacks.progress({ message: `Loading remote configuration files.` });
+      await this.loadAndApplyRemoteConfigs();
+
       callbacks.progress({ message: `Checking Mapepire status.` });
       const tempDirSet = await this.checkOrCreateTempDirectory();
       if (!tempDirSet) {
@@ -838,24 +862,6 @@ export default class IBMi {
       }
 
       this.appendOutput(`\n`);
-
-      // Load the remote connection configuration and apply it to the connection
-
-      callbacks.progress({ message: `Loading remote configuration files.` });
-      await this.loadRemoteConfigs();
-
-      const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
-      if (remoteConnectionConfig.getState() === `ok`) {
-        const remoteConfig = await remoteConnectionConfig.get();
-
-        if (remoteConfig.codefori) {
-          for (const [key, value] of Object.entries(remoteConfig.codefori)) {
-            if (!CLIENT_ONLY_SETTINGS.has(key) && this.config[key] !== undefined) {
-              this.config[key] = value;
-            }
-          }
-        }
-      }
 
       callbacks.progress({
         message: `Checking temporary directory and temporary library configuration.`
