@@ -67,7 +67,7 @@ export class Mapepire implements IBMiComponent {
 
   async update(connection: IBMi): Promise<SecureComponentState> {
     if (connection.getConfig().mapepireUseServer) {
-      //no upload the remote JAR file in server mode
+      //No need to upload the remote JAR file in server mode
       return { status: "Installed", remoteSignature: Mapepire.SIGNATURE };
     }
 
