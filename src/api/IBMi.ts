@@ -87,8 +87,6 @@ export const CLIENT_ONLY_SETTINGS = new Set([
   `sourceDateGutter`,
   `encodingFor5250`,
   `terminalFor5250`,
-  `setDeviceNameFor5250`,
-  `connectringStringFor5250`,
 ]);
 
 export default class IBMi {
