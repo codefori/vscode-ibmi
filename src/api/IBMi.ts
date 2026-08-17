@@ -1509,9 +1509,16 @@ export default class IBMi {
             error = new Tools.SqlError(e.message);
             error.cause = statement
 
-            const parts: string[] = e.message.split(`,`);
-            if (parts.length > 3) {
-              error.sqlstate = parts[parts.length - 2].trim();
+            // First attempt to extract sqlstate using a regex
+            const sqlstateMatch = /,\s*([0-9A-Z]{5}),\s*-?\d+\s*$/.exec(e.message);
+            if (sqlstateMatch) {
+              error.sqlstate = sqlstateMatch[1];
+            } else {
+              // Fallback to splitting the message by commas and taking the second to last part
+              const parts: string[] = e.message.split(`,`);
+              if (parts.length >= 3) {
+                error.sqlstate = parts[parts.length - 2].trim();
+              }
             }
 
             this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}`);

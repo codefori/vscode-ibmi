@@ -245,6 +245,16 @@ describe('Content Tests', { concurrent: true }, () => {
     }
   });
 
+  it('Test runSQL (column not found)', async () => {
+    try {
+      await connection.runSQL(`SELECT DOES_NOT_EXIST FROM QSYS2.PROGRAM_INFO WHERE PROGRAM_LIBRARY = 'RPGUNIT' AND PROGRAM_NAME = 'RUTESTCASE' AND OBJECT_TYPE = '*SRVPGM'`);
+      expect.fail('Should have thrown an error');
+    } catch (e: any) {
+      expect(e.message.endsWith('42703, -206')).toBeTruthy();
+      expect(e.sqlstate).toBe('42703');
+    }
+  });
+
   it('Test runSQL (with comments)', async () => {
 
     const rows = await connection.runSQL([
