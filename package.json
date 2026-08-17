@@ -3501,7 +3501,8 @@
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
 		"types": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node --resolveJsonModule",
-		"postinstall": "npx tsx tools/downloadMapepire"
+		"postinstall": "npx tsx tools/downloadMapepire",
+		"sqlsignature": "npx tsx tools/sqlSignature"
 	},
 	"devDependencies": {
 		"@octokit/rest": "22.0.1",

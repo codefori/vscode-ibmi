@@ -69,7 +69,8 @@ export async function newConnection(reloadSettings?: boolean) {
 
   const conn = new IBMi();
 
-  const mapepire = new Mapepire(path.join(__dirname, `..`, `..`, `..`, `dist`));
+  //The password is required when connecting to a Mapepire Server (mapepireUseServer)
+  const mapepire = new Mapepire(path.join(__dirname, `..`, `..`, `..`, `dist`), async () => ENV_CREDS.password);
 
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);
