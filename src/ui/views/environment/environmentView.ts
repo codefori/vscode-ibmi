@@ -1,18 +1,21 @@
 
+import path from "path";
 import { parse as parseQuery } from "querystring";
-import vscode, { l10n, QuickPickItem } from 'vscode';
+import vscode, { l10n, QuickInputButton, QuickPickItem } from 'vscode';
 import { ActionTools } from '../../../api/actions';
 import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
+import { SharedTemplateTools } from '../../../api/sharedTemplates';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
 import { editConnectionProfile, isProfileEdited } from '../../../editors/connectionProfileEditor';
 import { instance } from '../../../instantiate';
-import { Action, ActionEnvironment, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions } from '../../../typings';
+import { Action, ActionEnvironment, BrowserItem, ConnectionProfile, CustomVariable, FocusOptions, SharedTemplate } from '../../../typings';
 import { uriToActionTarget } from '../../actions';
 import { ActionItem, Actions, ActionsNode, ActionTypeNode } from './actions';
 import { ConnectionProfiles, ProfileItem, ProfilesNode } from './connectionProfiles';
 import { CustomVariableItem, CustomVariables, CustomVariablesNode } from './customVariables';
+import { insertTemplate, openIndex, SharedTemplateCompletionItemProvider, TemplateItem, Templates, TemplatesNode } from './templates';
 
 export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   const environmentView = new EnvironmentView();
@@ -38,6 +41,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     environmentTreeViewer,
     localActionsWatcher,
+    vscode.languages.registerCompletionItemProvider('*', new SharedTemplateCompletionItemProvider()),
     vscode.window.onDidChangeActiveTextEditor(async editor => environmentView.actionsNode?.activeEditorChanged(editor)),
     vscode.window.registerFileDecorationProvider({
       provideFileDecoration(uri: vscode.Uri, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FileDecoration> {
@@ -151,6 +155,176 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.actions.focus", () => environmentView.actionsNode?.reveal({ focus: true, expand: true })),
+
+    vscode.commands.registerCommand("code-for-ibmi.environment.template.create", async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const existingNames = (await SharedTemplateTools.getTemplates(connection)).map(template => template.name);
+        const name = await vscode.window.showInputBox({
+          title: l10n.t("New shared template"),
+          placeHolder: l10n.t("Template name..."),
+          validateInput: name => Templates.validateName(name, existingNames)
+        });
+
+        if (name) {
+          const prefix = await vscode.window.showInputBox({
+            title: l10n.t("Shared template prefix"),
+            prompt: l10n.t("Typed to trigger the snippet completion"),
+            placeHolder: l10n.t("Prefix..."),
+            validateInput: Templates.validatePrefix
+          });
+
+          if (prefix) {
+            const description = await vscode.window.showInputBox({
+              title: l10n.t("Shared template description"),
+              placeHolder: l10n.t("Description (optional)...")
+            });
+
+            const template: SharedTemplate = {
+              name,
+              prefix,
+              description: description || "",
+              body: [""],
+              extensions: ["GLOBAL"]
+            };
+
+            await SharedTemplateTools.createTemplate(connection, template);
+            environmentView.refresh(environmentView.templatesNode);
+            vscode.window.showInformationMessage(l10n.t("Created shared template '{0}'. Fill in its body in {1}.", name, SharedTemplateTools.getIndexFile()), l10n.t("Edit now"))
+              .then(edit => edit ? openIndex() : undefined);
+          }
+        }
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.environment.template.publish", async () => {
+      const connection = instance.getConnection();
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) {
+        vscode.window.showWarningMessage(l10n.t("No active editor to publish as a shared template."));
+      }
+      else if (connection) {
+        const existingNames = (await SharedTemplateTools.getTemplates(connection)).map(template => template.name);
+        const name = await vscode.window.showInputBox({
+          title: l10n.t("Publish active editor as shared template"),
+          placeHolder: l10n.t("Template name..."),
+          validateInput: name => Templates.validateName(name, existingNames)
+        });
+
+        if (name) {
+          const prefix = await vscode.window.showInputBox({
+            title: l10n.t("Shared template prefix"),
+            prompt: l10n.t("Typed to trigger the snippet completion"),
+            placeHolder: l10n.t("Prefix..."),
+            validateInput: Templates.validatePrefix
+          });
+
+          if (prefix) {
+            const description = await vscode.window.showInputBox({
+              title: l10n.t("Shared template description"),
+              placeHolder: l10n.t("Description (optional)...")
+            });
+
+            const text = editor.selection.isEmpty ? editor.document.getText() : editor.document.getText(editor.selection);
+            const extension = path.extname(editor.document.uri.path).substring(1).toLocaleLowerCase();
+
+            const template: SharedTemplate = {
+              name,
+              prefix,
+              description: description || "",
+              body: text.split(/\r\n|\r|\n/),
+              extensions: extension ? [extension] : ["GLOBAL"]
+            };
+
+            await SharedTemplateTools.createTemplate(connection, template);
+            environmentView.refresh(environmentView.templatesNode);
+            vscode.window.showInformationMessage(l10n.t("Published shared template '{0}'.", name));
+          }
+        }
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.environment.template.insert", (node: TemplateItem) => insertTemplate(node.template)),
+    vscode.commands.registerCommand("code-for-ibmi.environment.template.edit", () => openIndex()),
+    vscode.commands.registerCommand("code-for-ibmi.environment.template.rename", async (node: TemplateItem) => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const existingNames = (await SharedTemplateTools.getTemplates(connection)).map(template => template.name).filter(name => name !== node.template.name);
+        const newName = await vscode.window.showInputBox({
+          title: l10n.t("Rename shared template"),
+          placeHolder: l10n.t("Template name..."),
+          value: node.template.name,
+          validateInput: name => Templates.validateName(name, existingNames)
+        });
+
+        if (newName) {
+          const newPrefix = await vscode.window.showInputBox({
+            title: l10n.t("Shared template prefix"),
+            placeHolder: l10n.t("Prefix..."),
+            value: node.template.prefix,
+            validateInput: Templates.validatePrefix
+          });
+
+          if (newPrefix) {
+            const newDescription = await vscode.window.showInputBox({
+              title: l10n.t("Shared template description"),
+              placeHolder: l10n.t("Description (optional)..."),
+              value: node.template.description
+            });
+
+            await SharedTemplateTools.updateTemplate(connection, node.template, { newName, newPrefix, newDescription: newDescription ?? node.template.description });
+            environmentView.refresh(environmentView.templatesNode);
+          }
+        }
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.environment.template.delete", async (node: TemplateItem) => {
+      const connection = instance.getConnection();
+      if (connection && await vscode.window.showInformationMessage(l10n.t("Do you really want to delete shared template '{0}' ?", node.template.name), { modal: true }, l10n.t("Yes"))) {
+        await SharedTemplateTools.updateTemplate(connection, node.template, { delete: true });
+        environmentView.refresh(environmentView.templatesNode);
+      }
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.openSharedTemplate", async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const templates = await SharedTemplateTools.getTemplates(connection);
+        if (!templates.length) {
+          vscode.window.showInformationMessage(l10n.t("No shared templates found. Create one from the Environment view first."));
+          return;
+        }
+
+        const editButton: QuickInputButton = {
+          iconPath: new vscode.ThemeIcon("json"),
+          tooltip: l10n.t("Edit {0}", SharedTemplateTools.getIndexFile())
+        };
+
+        const quickPick = vscode.window.createQuickPick<QuickPickItem & { template: SharedTemplate }>();
+        quickPick.title = l10n.t("Insert Shared Template");
+        quickPick.placeholder = l10n.t("Select a template to insert at the cursor");
+        quickPick.items = templates.map(template => ({
+          label: `$(symbol-snippet) ${template.name}`,
+          description: template.prefix,
+          detail: template.description,
+          buttons: [editButton],
+          template
+        }));
+
+        quickPick.onDidAccept(() => {
+          const selected = quickPick.selectedItems[0];
+          if (selected) {
+            quickPick.hide();
+            insertTemplate(selected.template);
+          }
+        });
+
+        quickPick.onDidTriggerItemButton(() => {
+          quickPick.hide();
+          openIndex();
+        });
+
+        quickPick.onDidHide(() => quickPick.dispose());
+        quickPick.show();
+      }
+    }),
 
     vscode.commands.registerCommand("code-for-ibmi.environment.variable.declare", async (variablesNode: CustomVariablesNode, from?: CustomVariable) => {
       const existingNames = CustomVariables.getAll().map(v => v.name);
@@ -393,6 +567,7 @@ class EnvironmentView implements vscode.TreeDataProvider<BrowserItem> {
   readonly onDidChangeTreeData = this.emitter.event;
   readonly actionsNode = new ActionsNode();
   readonly profilesNode = new ProfilesNode();
+  readonly templatesNode = new TemplatesNode();
 
   refresh(target?: BrowserItem) {
     this.emitter.fire(target);
@@ -414,7 +589,8 @@ class EnvironmentView implements vscode.TreeDataProvider<BrowserItem> {
       return [
         this.actionsNode,
         new CustomVariablesNode(),
-        this.profilesNode
+        this.profilesNode,
+        this.templatesNode
       ];
     }
   }

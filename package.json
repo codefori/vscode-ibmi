@@ -62,6 +62,12 @@
 					"/etc/vscode/settings.json"
 				],
 				"url": "./schemas/settings.json"
+			},
+			{
+				"fileMatch": [
+					"/etc/vscode/Code4iRepo.json"
+				],
+				"url": "./schemas/Code4iRepo.json"
 			}
 		],
 		"configuration": {
@@ -1855,6 +1861,53 @@
 				"icon": "$(debug-start)"
 			},
 			{
+				"command": "code-for-ibmi.environment.template.create",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Create shared template",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.environment.template.publish",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Publish active editor as shared template",
+				"category": "IBM i",
+				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "code-for-ibmi.environment.template.insert",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Insert at cursor",
+				"category": "IBM i",
+				"icon": "$(insert)"
+			},
+			{
+				"command": "code-for-ibmi.environment.template.edit",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Edit shared templates file",
+				"category": "IBM i",
+				"icon": "$(json)"
+			},
+			{
+				"command": "code-for-ibmi.environment.template.rename",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Rename...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.environment.template.delete",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Delete...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.openSharedTemplate",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Insert Shared Template",
+				"category": "IBM i",
+				"icon": "$(list-selection)"
+			},
+			{
 				"command": "code-for-ibmi.environment.variable.declare",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Declare custom variable",
@@ -2727,6 +2780,30 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.environment.template.create",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.publish",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.edit",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.insert",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.rename",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.delete",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.environment.variable.declare",
 					"when": "never"
 				},
@@ -3027,6 +3104,21 @@
 					"command": "code-for-ibmi.environment.action.create",
 					"when": "view === environmentView && viewItem =~ /^(actionsNode|actionTypeNode)/",
 					"group": "inline@01"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.create",
+					"when": "view === environmentView && viewItem =~ /^templatesNode/",
+					"group": "inline@01"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.publish",
+					"when": "view === environmentView && viewItem =~ /^templatesNode/",
+					"group": "inline@02"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.edit",
+					"when": "view === environmentView && viewItem =~ /^templatesNode/",
+					"group": "inline@03"
 				},
 				{
 					"command": "code-for-ibmi.createMember",
@@ -3402,6 +3494,26 @@
 					"command": "code-for-ibmi.environment.action.delete",
 					"when": "view === environmentView && viewItem =~ /^actionItem/",
 					"group": "20_actionItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.insert",
+					"when": "view === environmentView && viewItem =~ /^templateItem/",
+					"group": "inline@00"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.edit",
+					"when": "view === environmentView && viewItem =~ /^templateItem/",
+					"group": "00_templateItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.rename",
+					"when": "view === environmentView && viewItem =~ /^templateItem/",
+					"group": "10_templateItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.environment.template.delete",
+					"when": "view === environmentView && viewItem =~ /^templateItem/",
+					"group": "20_templateItemAction01"
 				},
 				{
 					"command": "code-for-ibmi.environment.variable.declare",

@@ -130,6 +130,24 @@ export interface IFSFile {
   symlink?: string
 }
 
+/**
+ * A shared, server-side VS Code snippet, stored in the shared snippet index
+ * `/etc/vscode/Code4iRepo.json`. Behaves like a native VS Code user snippet
+ * (prefix/body/description), except it's loaded dynamically from the IFS
+ * instead of being bundled with an extension.
+ */
+export interface SharedTemplate {
+  /** display name; the stable key used for lookups */
+  name: string
+  /** typed to trigger the snippet completion */
+  prefix: string
+  description: string
+  /** snippet body lines; may contain tabstop/placeholder syntax such as $1, ${1:default} */
+  body: string[]
+  /** file extensions this snippet applies to; ['GLOBAL'] (or omitted) applies to any file */
+  extensions?: string[]
+}
+
 export interface IBMiError {
   code: string
   text: string
