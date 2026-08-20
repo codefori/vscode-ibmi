@@ -113,6 +113,15 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
               .split(` `)
               .map(lib => connection.upperCaseName(lib))
               .filter((lib, idx, libl) => lib && libl.indexOf(lib) === idx);
+
+            // Validate no library is already in the system portion
+            const sysLibs = await content.getSystemLibraries();
+            const sysLibsFound = newLibraryList.filter(lib => sysLibs.includes(lib));
+            if (sysLibsFound.length > 0) {
+              newLibraryList = newLibraryList.filter(lib => !sysLibsFound.includes(lib));
+              vscode.window.showWarningMessage(l10n.t(`The following libraries are already in the system portion of the library list and were removed: {0}`, sysLibsFound.join(', ')));
+            }
+
             const badLibs = await content.validateLibraryList(newLibraryList);
 
             if (badLibs.length > 0) {
@@ -158,20 +167,19 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
         }
 
         // Validate library exists
-        let badLibs = await content.validateLibraryList([addingLib]);
+        const badLibs = await content.validateLibraryList([addingLib]);
         if (badLibs.length > 0) {
-          usrLibs = usrLibs.filter(lib => !badLibs.includes(lib));
           vscode.window.showWarningMessage(l10n.t(`Library {0} does not exist.`, badLibs.join(', ')));
-        } else {
-          usrLibs.push(addingLib);
-          vscode.window.showInformationMessage(l10n.t(`Library {0} was added to the library list.`, addingLib));
+          return;
         }
 
-        badLibs = await content.validateLibraryList(usrLibs);
+        usrLibs.push(addingLib);
+        vscode.window.showInformationMessage(l10n.t(`Library {0} was added to the library list.`, addingLib));
 
-        if (badLibs.length > 0) {
-          usrLibs = usrLibs.filter(lib => !badLibs.includes(lib));
-          vscode.window.showWarningMessage(l10n.t(`The following libraries were removed from the updated library list as they are invalid: {0}`, badLibs.join(', ')));
+        const invalidLibs = await content.validateLibraryList(usrLibs);
+        if (invalidLibs.length > 0) {
+          usrLibs = usrLibs.filter(lib => !invalidLibs.includes(lib));
+          vscode.window.showWarningMessage(l10n.t(`The following libraries were removed from the updated library list as they are invalid: {0}`, invalidLibs.join(', ')));
         }
 
         config.libraryList = usrLibs;
@@ -372,7 +380,7 @@ class LibraryListView implements vscode.TreeDataProvider<LibraryListNode> {
 
       items.push(...curAndUsrLibs.map((lib, index) => {
         const upperCaseLibName = connection.upperCaseName(lib.name);
-        const isSystemLib = index > 0 && sysLibs.includes(upperCaseLibName);
+        const isSystemLib = sysLibs.includes(upperCaseLibName);
         return new LibraryListNode(upperCaseLibName, lib, (index === 0 ? `currentLibrary` : `library`), config.showDescInLibList, isSystemLib);
       }));
     }

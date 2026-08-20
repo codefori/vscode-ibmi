@@ -67,7 +67,15 @@ async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
         }
       }
 
-      const libraryList = data.libraryList.split(',').map(library => library.trim());
+      let libraryList = data.libraryList.split(',').map(library => library.trim());
+
+      const systemLibraries = await content.getSystemLibraries();
+      const librariesInSystemPortion = libraryList.filter(library => systemLibraries.includes(connection.upperCaseName(library)));
+      if (librariesInSystemPortion.length) {
+        libraryList = libraryList.filter(library => !librariesInSystemPortion.includes(library));
+        vscode.window.showWarningMessage(l10n.t("The following libraries are already in the system portion of the library list and were removed: {0}", librariesInSystemPortion.sort().join(', ')));
+      }
+
       const badLibraries = await content.validateLibraryList(libraryList);
       if (badLibraries.length && !await vscode.window.showWarningMessage(l10n.t("The following libraries are invalid. Do you still want to save that profile?"), {
         modal: true,
