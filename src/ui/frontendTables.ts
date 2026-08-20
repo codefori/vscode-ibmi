@@ -580,11 +580,17 @@ export namespace FrontendTables {
         background-color: var(--vscode-editor-background);
       }
 
-      .container {
+      /* Every rule below is scoped under #fast-table${suffix} (the container's own
+         id). A page can hold more than one fast table (e.g. several tabs of the
+         same custom editor); without this scoping, plain element/class selectors
+         like "vscode-table" or ".table-scroll-wrapper" would be global and the
+         last <style> block declared on the page would win for every table's
+         min-width, cutting off/wrapping the others instead of letting them scroll. */
+      #fast-table${suffix} {
         padding: 20px;
       }
 
-      .header {
+      #fast-table${suffix} .header {
         margin-top: 0;
         margin-bottom: 24px;
         padding: 16px 20px;
@@ -594,20 +600,20 @@ export namespace FrontendTables {
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
 
-      .header h1 {
+      #fast-table${suffix} .header h1 {
         margin: 0 0 8px 0;
         font-size: 1.8em;
         font-weight: 600;
         color: var(--vscode-foreground);
       }
 
-      .header .info {
+      #fast-table${suffix} .header .info {
         color: var(--vscode-descriptionForeground);
         font-size: 0.95em;
         margin-top: 4px;
       }
 
-      .search-bar {
+      #fast-table${suffix} .search-bar {
         margin-bottom: 20px;
         padding: 16px;
         background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.03);
@@ -615,7 +621,7 @@ export namespace FrontendTables {
         border: 1px solid rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.1);
       }
 
-      .search-bar-label {
+      #fast-table${suffix} .search-bar-label {
         display: flex;
         align-items: center;
         gap: 6px;
@@ -627,15 +633,15 @@ export namespace FrontendTables {
         letter-spacing: 0.5px;
       }
 
-      .search-bar-label .codicon {
+      #fast-table${suffix} .search-bar-label .codicon {
         font-size: 1.1em;
       }
 
-      .search-bar vscode-text-field {
+      #fast-table${suffix} .search-bar vscode-text-field {
         width: 100%;
       }
 
-      .pagination-controls {
+      #fast-table${suffix} .pagination-controls {
         margin-top: 16px;
         display: flex;
         align-items: center;
@@ -645,30 +651,30 @@ export namespace FrontendTables {
         border-radius: 4px;
       }
 
-      .pagination-info {
+      #fast-table${suffix} .pagination-info {
         color: var(--vscode-descriptionForeground);
         font-size: 0.9em;
       }
 
-      .pagination-buttons {
+      #fast-table${suffix} .pagination-buttons {
         display: flex;
         gap: 8px;
         align-items: center;
       }
 
-      .page-input-container {
+      #fast-table${suffix} .page-input-container {
         display: flex;
         align-items: center;
         gap: 8px;
       }
 
-      .page-input-container vscode-text-field {
+      #fast-table${suffix} .page-input-container vscode-text-field {
         width: 80px;
       }
 
       /* Height capped (refined at runtime by syncTableViewport) so the horizontal
          scrollbar stays on screen instead of sitting below a long table. */
-      .table-scroll-wrapper {
+      #fast-table${suffix} .table-scroll-wrapper {
         overflow: auto;
         max-height: 65vh;
         width: 100%;
@@ -676,37 +682,37 @@ export namespace FrontendTables {
       }
 
       /* The webview host only styles the document scrollbars, not the wrapper's. */
-      .table-scroll-wrapper::-webkit-scrollbar {
+      #fast-table${suffix} .table-scroll-wrapper::-webkit-scrollbar {
         height: 12px;
         width: 12px;
       }
 
-      .table-scroll-wrapper::-webkit-scrollbar-track,
-      .table-scroll-wrapper::-webkit-scrollbar-corner {
+      #fast-table${suffix} .table-scroll-wrapper::-webkit-scrollbar-track,
+      #fast-table${suffix} .table-scroll-wrapper::-webkit-scrollbar-corner {
         background: transparent;
       }
 
-      .table-scroll-wrapper::-webkit-scrollbar-thumb {
+      #fast-table${suffix} .table-scroll-wrapper::-webkit-scrollbar-thumb {
         background-color: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
       }
 
-      .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+      #fast-table${suffix} .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
         background-color: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
       }
 
-      .table-scroll-wrapper::-webkit-scrollbar-thumb:active {
+      #fast-table${suffix} .table-scroll-wrapper::-webkit-scrollbar-thumb:active {
         background-color: var(--vscode-scrollbarSlider-activeBackground, rgba(191, 191, 191, 0.4));
       }
 
       /* Search/pagination are server-side: while the extension re-queries, dim the
          stale rows so it is obvious the content on screen is not the answer yet. */
-      .table-scroll-wrapper.is-busy {
+      #fast-table${suffix} .table-scroll-wrapper.is-busy {
         opacity: 0.55;
         pointer-events: none;
       }
 
       /* Visually hidden, but still announced by screen readers. */
-      .sr-only {
+      #fast-table${suffix} .sr-only {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -718,7 +724,10 @@ export namespace FrontendTables {
         border: 0;
       }
 
-      vscode-table {
+      /* Scoped to this table's own wrapper: an unscoped "vscode-table" selector
+         would apply this min-width to every <vscode-table> on the page (see the
+         note above the #fast-table${suffix} rule). */
+      #fast-table${suffix} vscode-table {
         min-width: ${tableMinWidth}px;
         width: 100%;
         border-radius: 6px;
@@ -727,12 +736,12 @@ export namespace FrontendTables {
         table-layout: fixed;
       }
 
-      vscode-table-header {
+      #fast-table${suffix} vscode-table-header {
         background: linear-gradient(180deg, rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.08) 0%, rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.05) 100%);
         border-bottom: 2px solid var(--vscode-focusBorder);
       }
 
-      vscode-table-header-cell {
+      #fast-table${suffix} vscode-table-header-cell {
         white-space: normal;
         word-wrap: break-word;
         padding: 14px 16px;
@@ -743,24 +752,24 @@ export namespace FrontendTables {
         color: var(--vscode-foreground);
       }
 
-      vscode-table-row {
+      #fast-table${suffix} vscode-table-row {
         transition: background-color 0.2s ease, transform 0.1s ease;
       }
 
-      vscode-table-row:nth-child(odd) {
+      #fast-table${suffix} vscode-table-row:nth-child(odd) {
         background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.06);
       }
 
-      vscode-table-row:nth-child(even) {
+      #fast-table${suffix} vscode-table-row:nth-child(even) {
         background-color: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.20);
       }
 
-      vscode-table-row:hover {
+      #fast-table${suffix} vscode-table-row:hover {
         background-color: var(--vscode-list-hoverBackground);
         transform: translateX(2px);
       }
 
-      vscode-table-cell {
+      #fast-table${suffix} vscode-table-cell {
         white-space: normal;
         word-wrap: break-word;
         overflow-wrap: break-word;
@@ -770,8 +779,8 @@ export namespace FrontendTables {
         text-overflow: ellipsis;
       }
 
-      vscode-table-header-cell,
-      vscode-table-cell {
+      #fast-table${suffix} vscode-table-header-cell,
+      #fast-table${suffix} vscode-table-cell {
         box-sizing: border-box;
       }
 
@@ -780,34 +789,34 @@ export namespace FrontendTables {
          values (see NOWRAP_MAX_LENGTH), which read worse split in two than in a
          slightly wider column. Both are measured by fitNoWrapColumns, which grows
          the column so a single line is never clipped. */
-      vscode-table-cell.nowrap-cell,
-      vscode-table-cell:has(vscode-button),
-      vscode-table-cell:has(button) {
+      #fast-table${suffix} vscode-table-cell.nowrap-cell,
+      #fast-table${suffix} vscode-table-cell:has(vscode-button),
+      #fast-table${suffix} vscode-table-cell:has(button) {
         white-space: nowrap;
         text-overflow: clip;
       }
 
       /* Add spacing between buttons in action columns */
-      vscode-table-cell vscode-button {
+      #fast-table${suffix} vscode-table-cell vscode-button {
         margin-right: 8px;
       }
 
-      vscode-table-cell vscode-button:last-child {
+      #fast-table${suffix} vscode-table-cell vscode-button:last-child {
         margin-right: 0;
       }
 
-      .empty-state {
+      #fast-table${suffix} .empty-state {
         text-align: center;
         padding: 40px;
         color: var(--vscode-descriptionForeground);
       }
 
-      .hidden {
+      #fast-table${suffix} .hidden {
         display: none !important;
       }
 
       /* Modal button styles */
-      .show-modal-btn {
+      #fast-table${suffix} .show-modal-btn {
         background: transparent;
         border: none;
         border-radius: 4px;
@@ -817,17 +826,17 @@ export namespace FrontendTables {
         padding: 4px;
       }
 
-      .show-modal-btn:hover {
+      #fast-table${suffix} .show-modal-btn:hover {
         background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.15);
       }
 
-      .show-modal-btn:focus-visible {
+      #fast-table${suffix} .show-modal-btn:focus-visible {
         outline: 1px solid var(--vscode-focusBorder);
         outline-offset: 2px;
       }
 
       /* Modal styles */
-      .modal {
+      #fast-table${suffix} .modal {
         position: fixed;
         top: 0;
         left: 0;
@@ -839,7 +848,7 @@ export namespace FrontendTables {
         justify-content: center;
       }
 
-      .modal-overlay {
+      #fast-table${suffix} .modal-overlay {
         position: absolute;
         top: 0;
         left: 0;
@@ -849,7 +858,7 @@ export namespace FrontendTables {
         backdrop-filter: blur(2px);
       }
 
-      .modal-content {
+      #fast-table${suffix} .modal-content {
         position: relative;
         background: var(--vscode-editor-background);
         border: 1px solid var(--vscode-panel-border);
@@ -874,7 +883,7 @@ export namespace FrontendTables {
         }
       }
 
-      .modal-header {
+      #fast-table${suffix} .modal-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -882,14 +891,14 @@ export namespace FrontendTables {
         border-bottom: 1px solid var(--vscode-panel-border);
       }
 
-      .modal-header h3 {
+      #fast-table${suffix} .modal-header h3 {
         margin: 0;
         font-size: 1.2em;
         font-weight: 600;
         color: var(--vscode-foreground);
       }
 
-      .modal-close-btn {
+      #fast-table${suffix} .modal-close-btn {
         background: transparent;
         border: none;
         border-radius: 4px;
@@ -901,22 +910,22 @@ export namespace FrontendTables {
         padding: 4px 8px;
       }
 
-      .modal-close-btn:hover {
+      #fast-table${suffix} .modal-close-btn:hover {
         background: rgba(var(--vscode-editor-foreground-rgb, 204, 204, 204), 0.15);
       }
 
-      .modal-close-btn:focus-visible {
+      #fast-table${suffix} .modal-close-btn:focus-visible {
         outline: 1px solid var(--vscode-focusBorder);
         outline-offset: 2px;
       }
 
-      .modal-body {
+      #fast-table${suffix} .modal-body {
         padding: 20px;
         overflow-y: auto;
         flex: 1;
       }
 
-      .modal-body pre {
+      #fast-table${suffix} .modal-body pre {
         background: var(--vscode-textCodeBlock-background);
         padding: 16px;
         border-radius: 4px;
@@ -932,7 +941,7 @@ export namespace FrontendTables {
 
       ${customStyles}
     </style>
-    <div class="container">
+    <div class="container" id="fast-table${suffix}">
       ${title || subtitle ? `
       <div class="header">
         ${title ? `<h1>${escapeHtml(title)}</h1>` : ''}
