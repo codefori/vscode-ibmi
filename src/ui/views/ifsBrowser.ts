@@ -1,6 +1,6 @@
 import os from "os";
 import path, { dirname, extname } from "path";
-import vscode, { CancellationToken, FileDecoration, FileDecorationProvider, FileType, l10n, ProviderResult, ThemeColor, Uri, window } from "vscode";
+import vscode, { CancellationToken, FileDecorationProvider, FileType, l10n, ThemeColor, Uri, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import IBMi from "../../api/IBMi";
@@ -1146,21 +1146,16 @@ export class ShortcutDecorationProvider implements FileDecorationProvider {
   private readonly _onDidChangeFileDecorations = new vscode.EventEmitter<vscode.Uri | vscode.Uri[] | undefined>();
   readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
-  provideFileDecoration(uri: Uri, token: CancellationToken): ProviderResult<FileDecoration> {
-    if (uri.scheme === 'shortcut') {
-      return instance.getConnection()?.getContent().isDirectory(uri.path).then(isFound => {
-        if (!isFound) {
-          return {
-            badge: '⚠',
-            color: new ThemeColor('errorForeground'),
-            tooltip: l10n.t(`Directory does not exist.`)
-          };
-        }
-        return undefined;
-      });
+  async provideFileDecoration(uri: Uri, token: CancellationToken) {
+    if (uri.scheme === 'shortcut' && !await instance.getConnection()?.getContent().isDirectory(uri.path)) {
+      return {
+        badge: '⚠',
+        color: new ThemeColor('errorForeground'),
+        tooltip: l10n.t(`Directory does not exist.`)
+      };
     }
   }
-  
+
   refresh(uri?: vscode.Uri | vscode.Uri[]) {
     this._onDidChangeFileDecorations.fire(uri);
   }
