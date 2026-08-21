@@ -1,7 +1,7 @@
 {
   "type": "array",
   "title": "Shared Templates",
-  "description": "Shared, server-side VS Code snippets, dynamically loaded from the IFS. Behaves like a native VS Code user snippet (prefix/body/description).",
+  "description": "Index of the shared source templates stored under /etc/vscode/Code4iRepo. Each template is also loadable as a dynamic VS Code snippet, triggered by its prefix.",
   "items": {
     "$ref": "#/$defs/sharedTemplate"
   },
@@ -9,12 +9,13 @@
     "sharedTemplate": {
       "type": "object",
       "title": "Shared Template",
-      "description": "A single shared snippet.",
+      "description": "A single shared source template.",
       "required": [
         "name",
-        "prefix",
         "description",
-        "body"
+        "prefix",
+        "file",
+        "extensions"
       ],
       "properties": {
         "name": {
@@ -22,31 +23,25 @@
           "title": "Name",
           "description": "The display name of the template."
         },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A short description of what this template is for."
+        },
         "prefix": {
           "type": "string",
           "title": "Prefix",
           "description": "Typed to trigger the snippet completion."
         },
-        "description": {
+        "file": {
           "type": "string",
-          "title": "Description",
-          "description": "A short description of what this snippet is for."
-        },
-        "body": {
-          "type": "array",
-          "title": "Body",
-          "description": "The snippet body, one array entry per line. May contain tabstop/placeholder syntax such as $1, ${1:default}.",
-          "items": {
-            "type": "string"
-          }
+          "title": "File",
+          "description": "The filename of the source file inside /etc/vscode/Code4iRepo."
         },
         "extensions": {
           "type": "array",
           "title": "Extensions",
-          "description": "File extensions this snippet applies to. Use GLOBAL (the default) to apply to any file.",
-          "default": [
-            "GLOBAL"
-          ],
+          "description": "File extensions / languageIds the snippet completion triggers on, e.g. [\"rpgle\", \"sqlrpgle\"].",
           "items": {
             "type": "string"
           }
