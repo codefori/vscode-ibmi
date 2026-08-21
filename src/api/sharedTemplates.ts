@@ -20,8 +20,17 @@ export namespace SharedTemplateTools {
     return INDEX_FILE;
   }
 
+  export function getRepoDir() {
+    return REPO_DIR;
+  }
+
   export function getTemplatePath(template: SharedTemplate) {
     return path.posix.join(REPO_DIR, template.file);
+  }
+
+  /** Drops a cached file's content, e.g. after it was edited/saved outside of {@link createTemplate}/{@link getTemplateContent}. */
+  export function invalidateContent(connection: IBMi, file: string) {
+    contentCache.get(connection)?.delete(file);
   }
 
   export async function getTemplates(connection: IBMi, options?: { forceReload?: boolean }): Promise<SharedTemplate[]> {

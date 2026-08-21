@@ -1,5 +1,5 @@
 import path from "path";
-import { commands, CompletionItem, CompletionItemKind, CompletionItemProvider, Disposable, l10n, languages, MarkdownString, QuickInputButton, QuickPickItem, SnippetString, TextDocument, ThemeIcon, window } from "vscode";
+import { commands, CompletionItem, CompletionItemKind, CompletionItemProvider, Disposable, l10n, languages, MarkdownString, QuickInputButton, QuickPickItem, SnippetString, TextDocument, ThemeIcon, window, workspace } from "vscode";
 import IBMi from "../api/IBMi";
 import { SharedTemplateTools } from "../api/sharedTemplates";
 import Instance from "../Instance";
@@ -39,6 +39,16 @@ export function registerTemplateCommands(instance: Instance): Disposable[] {
       [{ scheme: 'file' }, { scheme: 'untitled' }, { scheme: 'member' }, { scheme: 'streamfile' }],
       new SharedTemplateCompletionItemProvider(instance)
     ),
+
+    // A template's file can be edited/saved through the generic IFS editor (not just our own
+    // commands), which knows nothing about our content cache - drop the stale entry on every save.
+    workspace.onDidSaveTextDocument(document => {
+      const connection = instance.getConnection();
+      const repoDir = SharedTemplateTools.getRepoDir();
+      if (connection && document.uri.scheme === 'streamfile' && document.uri.path.startsWith(`${repoDir}/`)) {
+        SharedTemplateTools.invalidateContent(connection, document.uri.path.substring(repoDir.length + 1));
+      }
+    }),
 
     commands.registerCommand("code-for-ibmi.template.create", async () => {
       const connection = instance.getConnection();
