@@ -130,6 +130,20 @@ export interface IFSFile {
   symlink?: string
 }
 
+/**
+ * A shared source template: a real file under `/etc/vscode/Code4iRepo`,
+ * indexed by `/etc/vscode/Code4iRepo.json`. Can be opened like any other IFS
+ * source file, or triggered as a snippet by typing its `prefix`.
+ */
+export interface SharedTemplate {
+  name: string
+  description: string
+  prefix: string
+  file: string
+  /** file extensions / languageIds the snippet completion triggers on, e.g. ["rpgle", "sqlrpgle"] */
+  extensions: string[]
+}
+
 export interface IBMiError {
   code: string
   text: string

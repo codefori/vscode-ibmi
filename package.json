@@ -62,6 +62,12 @@
 					"/etc/vscode/settings.json"
 				],
 				"url": "./schemas/settings.json"
+			},
+			{
+				"fileMatch": [
+					"/etc/vscode/Code4iRepo.json"
+				],
+				"url": "./schemas/Code4iRepo.json"
 			}
 		],
 		"configuration": {
@@ -1855,6 +1861,51 @@
 				"icon": "$(debug-start)"
 			},
 			{
+				"command": "code-for-ibmi.template.create",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Create shared template",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.template.publish",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Publish active editor as shared template",
+				"category": "IBM i",
+				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "code-for-ibmi.template.open",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Open shared template",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.template.insert",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Insert shared template at cursor",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.template.rename",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Rename...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.template.delete",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Delete...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.openSharedTemplate",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Shared Templates",
+				"category": "IBM i",
+				"icon": "$(symbol-snippet)"
+			},
+			{
 				"command": "code-for-ibmi.environment.variable.declare",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Declare custom variable",
@@ -2724,6 +2775,22 @@
 				},
 				{
 					"command": "code-for-ibmi.environment.action.runOnEditor",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.template.open",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.template.insert",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.template.rename",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.template.delete",
 					"when": "never"
 				},
 				{

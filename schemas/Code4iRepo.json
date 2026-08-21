@@ -1,0 +1,53 @@
+{
+  "type": "array",
+  "title": "Shared Templates",
+  "description": "Index of the shared source templates stored under /etc/vscode/Code4iRepo. Each template is also loadable as a dynamic VS Code snippet, triggered by its prefix.",
+  "items": {
+    "$ref": "#/$defs/sharedTemplate"
+  },
+  "$defs": {
+    "sharedTemplate": {
+      "type": "object",
+      "title": "Shared Template",
+      "description": "A single shared source template.",
+      "required": [
+        "name",
+        "description",
+        "prefix",
+        "file",
+        "extensions"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "title": "Name",
+          "description": "The display name of the template."
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A short description of what this template is for."
+        },
+        "prefix": {
+          "type": "string",
+          "title": "Prefix",
+          "description": "Typed to trigger the snippet completion."
+        },
+        "file": {
+          "type": "string",
+          "title": "File",
+          "description": "The filename of the source file inside /etc/vscode/Code4iRepo."
+        },
+        "extensions": {
+          "type": "array",
+          "title": "Extensions",
+          "description": "File extensions / languageIds the snippet completion triggers on, e.g. [\"rpgle\", \"sqlrpgle\"].",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
