@@ -1018,12 +1018,12 @@ export default class IBMiContent {
 
   async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
-      command: this.toCl(`QSYS/CHKOBJ`, {
-        obj: `${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`,
-        objtype: object.type.toLocaleUpperCase(),
-        aut: authorities.join(" "),
-        mbr: object.member
-      }),
+      command: [`QSYS/CHKOBJ`,
+        `OBJ(${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)})`,
+        `OBJTYPE(${object.type.toLocaleUpperCase()})`,
+        `AUT(${authorities.join(" ")})`,
+        (object.member !== undefined ? ` MBR(${object.member})` : '')]
+        .join(` `),
       noLibList: true
     })).code === 0;
   }

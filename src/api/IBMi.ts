@@ -1429,21 +1429,23 @@ export default class IBMi {
    * @param name
    */
   upperCaseName(name: string) {
-    if (this.dangerousVariants && new RegExp(`[${this.variantChars.local}]`).test(name)) {
-      const upperCased = [];
-      for (const char of name) {
-        const upChar = char.toLocaleUpperCase();
-        if (new RegExp(`[A-Z${this.variantChars.local}]`).test(upChar)) {
-          upperCased.push(upChar);
+    if (name.startsWith(`"`)) {
+      return name;
+    } else {
+      if (this.dangerousVariants && new RegExp(`[${this.variantChars.local}]`).test(name)) {
+        const upperCased = [];
+        for (const char of name) {
+          const upChar = char.toLocaleUpperCase();
+          if (new RegExp(`[A-Z${this.variantChars.local}]`).test(upChar)) {
+            upperCased.push(upChar);
+          } else {
+            upperCased.push(char);
+          }
         }
-        else {
-          upperCased.push(char);
-        }
+        return upperCased.join("");
+      } else {
+        return name.toLocaleUpperCase();
       }
-      return upperCased.join("");
-    }
-    else {
-      return name.toLocaleUpperCase();
     }
   }
 
