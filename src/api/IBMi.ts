@@ -1555,9 +1555,17 @@ export default class IBMi {
       this.variantChars.qsysNameRegex = new RegExp(regexTest);
     }
 
-    if (name.length > 10) return false;
-    name = this.upperCaseName(name);
-    return this.variantChars.qsysNameRegex.test(name);
+    if (name.startsWith(`"`)) {
+      const qsysQuotedNameRegex = new RegExp(`^"[^*?'"]{0,8}"$`);
+      return qsysQuotedNameRegex.test(name);
+    } else {
+      if (name.length > 10) {
+        return false;
+      }
+
+      name = this.upperCaseName(name);
+      return this.variantChars.qsysNameRegex.test(name);
+    }
   }
 
   getCcsid() {

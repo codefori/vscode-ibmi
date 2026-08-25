@@ -457,6 +457,20 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(objects[0].text).toBe('DATA BASE FILE FOR C INCLUDES FOR MI');
   });
 
+  it('Test getObjectList (quoted names)', async () => {
+    const content = connection.getContent();
+
+    const library = "QTEMP";
+    const sourceFile = `"deFg"`;
+    await connection!.runCommand({
+      command: `QSYS/CRTSRCPF ${library}/${sourceFile} RCDLEN(112)`,
+      environment: 'ile'
+    });
+
+    const object1 = await content?.getObjectList({ library: library, types: [`*SRCPF`], object: `${sourceFile.slice(0, 2)}*` });
+    expect(object1.length).toBe(1);
+  });
+
   it('getLibraries (simple filters)', async () => {
     const content = connection.getContent();
 
@@ -635,6 +649,20 @@ describe('Content Tests', { concurrent: true }, () => {
 
     const exists = await content?.checkObject({ library: 'QSYSINC', name: 'BOOOP', type: '*FILE' });
     expect(exists).toBe(false);
+  });
+
+  it('Check object (quoted name)', async () => {
+    const content = connection.getContent();
+
+    const library = "QTEMP";
+    const sourceFile = `"aBcD"`;
+    await connection!.runCommand({
+      command: `QSYS/CRTSRCPF ${library}/${sourceFile} RCDLEN(112)`,
+      environment: 'ile'
+    });
+
+    const exists = await content?.checkObject({ library: library, name: sourceFile, type: '*FILE' });
+    expect(exists).toBeTruthy();
   });
 
   it('Check object (source member)', async () => {
