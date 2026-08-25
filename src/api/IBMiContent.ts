@@ -549,7 +549,7 @@ export default class IBMiContent {
         );
         this.systemLibraries = result.map(row => String(row.SYSTEM_SCHEMA_NAME));
       } catch {
-        return [];
+        this.systemLibraries = [];
       }
     }
 
