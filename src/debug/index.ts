@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { ILELibrarySettings } from "../api/CompileTools";
 import { getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
 import IBMi from "../api/IBMi";
+import { Tools } from "../api/Tools";
 import { clearPassword, getPassword } from "../extension";
 import { Env, getEnvConfig } from "../filesystems/local/env";
 import { instance } from "../instantiate";
@@ -55,8 +56,8 @@ export async function initialize(context: ExtensionContext) {
           const password = await getPassword(connection, `Password for user profile ${connection.currentUser} is required to debug. Password is not stored on device, but is stored temporarily for this connection.`);
 
           const libraries: ILELibrarySettings = {
-            currentLibrary: config?.currentLibrary,
-            libraryList: config?.libraryList
+            currentLibrary: config.currentLibrary,
+            libraryList: config.libraryList
           };
 
           // If we are debugging from a workspace, perhaps
@@ -169,6 +170,8 @@ export async function initialize(context: ExtensionContext) {
         if (qualifiedPath.object.endsWith(`.PGM`))
           qualifiedPath.object = qualifiedPath.object.substring(0, qualifiedPath.object.length - 4);
       }
+
+      qualifiedPath.library = Tools.getCurLib(qualifiedPath.library);
     }
 
     return qualifiedPath;

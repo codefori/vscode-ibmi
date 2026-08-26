@@ -224,7 +224,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                   name = name.substring(0, name.indexOf(`-`));
                 }
 
-                evfeventInfo.library = connection.upperCaseName(variables.get(`&CURLIB`) || config.currentLibrary);
+                evfeventInfo.library = Tools.getCurLib(connection.upperCaseName(variables.get(`&CURLIB`) || config.currentLibrary));
                 evfeventInfo.object = connection.upperCaseName(name);
                 evfeventInfo.extension = ext;
 

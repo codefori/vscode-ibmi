@@ -43,6 +43,8 @@ export namespace CompileTools {
         currentLibrary: variables.get(`&CURLIB`) || config.currentLibrary,
         libraryList: variables.get(`&LIBL`)?.split(` `) || config.libraryList,
       };
+
+      ileSetup.currentLibrary = (ileSetup.currentLibrary === "*CURLIB" ? "*CRTDFT" : ileSetup.currentLibrary);
       // Remove any duplicates from the library list
       ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
 
