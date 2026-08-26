@@ -278,4 +278,12 @@ export namespace Tools {
     }
     return permissions.map(String).join("");
   }
+
+  /**
+   * Helper function to deal with *CRTDFT special value 
+   * @returns `*CURLIB` if `value` is falsy or equal to *CRTDFT; returns `value` otherwise
+   */
+  export function getCurLib(value?:string){
+    return !value || value.toUpperCase() === "*CRTDFT" ? "*CURLIB" : value;
+  }
 }
