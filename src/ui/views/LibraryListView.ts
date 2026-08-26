@@ -113,6 +113,15 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
               .split(` `)
               .map(lib => connection.upperCaseName(lib))
               .filter((lib, idx, libl) => lib && libl.indexOf(lib) === idx);
+
+            // Validate no library is already in the system portion
+            const sysLibs = await content.getSystemLibraries();
+            const sysLibsFound = newLibraryList.filter(lib => sysLibs.includes(lib));
+            if (sysLibsFound.length > 0) {
+              newLibraryList = newLibraryList.filter(lib => !sysLibsFound.includes(lib));
+              vscode.window.showWarningMessage(l10n.t(`The following libraries are already in the system portion of the library list and were removed: {0}`, sysLibsFound.join(', ')));
+            }
+
             const badLibs = await content.validateLibraryList(newLibraryList);
 
             if (badLibs.length > 0) {
@@ -143,31 +152,37 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
           return;
         }
 
-        let libraryList = [...config.libraryList];
+        // Validate library is not in the system portion
+        const sysLibs = await content.getSystemLibraries();
+        if (sysLibs.includes(addingLib)) {
+          vscode.window.showErrorMessage(l10n.t(`Library {0} is already in the system portion of the library list.`, addingLib));
+          return;
+        }
 
-        if (libraryList.includes(addingLib)) {
+        // Validate library is not already in the user portion
+        let usrLibs = [...config.libraryList];
+        if (usrLibs.includes(addingLib)) {
           vscode.window.showWarningMessage(l10n.t(`Library {0} was already in the library list.`, addingLib));
           return;
         }
 
-        let badLibs = await content.validateLibraryList([addingLib]);
-
+        // Validate library exists
+        const badLibs = await content.validateLibraryList([addingLib]);
         if (badLibs.length > 0) {
-          libraryList = libraryList.filter(lib => !badLibs.includes(lib));
           vscode.window.showWarningMessage(l10n.t(`Library {0} does not exist.`, badLibs.join(', ')));
-        } else {
-          libraryList.push(addingLib);
-          vscode.window.showInformationMessage(l10n.t(`Library {0} was added to the library list.`, addingLib));
+          return;
         }
 
-        badLibs = await content.validateLibraryList(libraryList);
+        usrLibs.push(addingLib);
+        vscode.window.showInformationMessage(l10n.t(`Library {0} was added to the library list.`, addingLib));
 
-        if (badLibs.length > 0) {
-          libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-          vscode.window.showWarningMessage(l10n.t(`The following libraries were removed from the updated library list as they are invalid: {0}`, badLibs.join(', ')));
+        const invalidLibs = await content.validateLibraryList(usrLibs);
+        if (invalidLibs.length > 0) {
+          usrLibs = usrLibs.filter(lib => !invalidLibs.includes(lib));
+          vscode.window.showWarningMessage(l10n.t(`The following libraries were removed from the updated library list as they are invalid: {0}`, invalidLibs.join(', ')));
         }
 
-        config.libraryList = libraryList;
+        config.libraryList = usrLibs;
         await updateConfig(config);
       }
     }),
@@ -359,15 +374,19 @@ class LibraryListView implements vscode.TreeDataProvider<LibraryListNode> {
       const currentLibrary = connection.upperCaseName(config.currentLibrary);
       const noCurrentLibrary = currentLibrary === `*CRTDFT`;
 
-      const libraries = await content.getLibraryList(noCurrentLibrary ? config.libraryList : [currentLibrary, ...config.libraryList]);
+      const curAndUsrLibs = await content.getLibraryList(noCurrentLibrary ? config.libraryList : [currentLibrary, ...config.libraryList]);
       
       //Push manually if curlib is *CRTDFT
       if (noCurrentLibrary) {
-        libraries.unshift({ library: `QSYS`, type: `*LIB`, name: currentLibrary, attribute: ``, text: `` });
+        curAndUsrLibs.unshift({ library: `QSYS`, type: `*LIB`, name: currentLibrary, attribute: ``, text: `` });
       }
+      
+      const sysLibs = await content.getSystemLibraries();
 
-      items.push(...libraries.map((lib, index) => {
-        return new LibraryListNode(connection.upperCaseName(lib.name), lib, (index === 0 ? `currentLibrary` : `library`), config.showDescInLibList);
+      items.push(...curAndUsrLibs.map((lib, index) => {
+        const upperCaseLibName = connection.upperCaseName(lib.name);
+        const isSystemLib = sysLibs.includes(upperCaseLibName);
+        return new LibraryListNode(upperCaseLibName, lib, (index === 0 ? `currentLibrary` : `library`), config.showDescInLibList, isSystemLib);
       }));
     }
     return items;
@@ -375,13 +394,13 @@ class LibraryListView implements vscode.TreeDataProvider<LibraryListNode> {
 }
 
 class LibraryListNode extends vscode.TreeItem implements WithLibrary {
-  constructor(readonly library: string, readonly object: IBMiObject, context: 'currentLibrary' | 'library' = `library`, showDescInLibList: boolean) {
+  constructor(readonly library: string, readonly object: IBMiObject, context: 'currentLibrary' | 'library' = `library`, showDescInLibList: boolean, isSystemLib: boolean = false) {
     super(library, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = context;
     this.iconPath = new ThemeIcon('library');
     const isFound = object.text !== `*** NOT FOUND ***`;
-    this.resourceUri = Uri.parse(`${context}:${library}?isFound=${isFound}`);
+    this.resourceUri = Uri.parse(`${context}:${library}?isFound=${isFound}&isSystemLib=${isSystemLib}`);
     this.description =
       ((context === `currentLibrary` ? `${l10n.t(`(current library)`)}` : ``)
         + (object.text !== `` && showDescInLibList ? ` ${object.text}` : ``)
@@ -420,7 +439,8 @@ export class LiblDecorationProvider implements FileDecorationProvider {
 
     if (uri.scheme === 'currentLibrary' || uri.scheme === 'library') {
       const isNotFound = params.get('isFound') === 'false';
-      if (isNotFound) {
+      const isSystemLib = params.get('isSystemLib') === 'true';
+      if (isNotFound || isSystemLib) {
         return {
           badge: '⚠',
           color: new ThemeColor('errorForeground')

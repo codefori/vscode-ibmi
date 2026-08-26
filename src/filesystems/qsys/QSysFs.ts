@@ -215,6 +215,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                 if (addMember.code === 0) {
                     this.savedAsMembers.add(uri.path);
                     vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+                    return;
                 } else {
                     const copyMessages = Tools.parseMessages(addMember.stderr);
                     if (!copyMessages.findId(`CPF5812`)) { // CPF5812 - Member already exists
@@ -222,14 +223,13 @@ export class QSysFS implements vscode.FileSystemProvider {
                     }
                 }
             }
-            else {
-                this.savedAsMembers.delete(uri.path);
-                if (this.extendedMemberSupport) {
-                    await this.extendedContent.uploadMemberContentWithDates(uri, content.toString());
-                } else {
-                    await warnAboutSourceDates();
-                    await contentApi.uploadMemberContent(library, file, member, content);
-                }
+
+            this.savedAsMembers.delete(uri.path);
+            if (this.extendedMemberSupport) {
+                await this.extendedContent.uploadMemberContentWithDates(uri, content.toString());
+            } else {
+                await warnAboutSourceDates();
+                await contentApi.uploadMemberContent(library, file, member, content);
             }
         }
         else {

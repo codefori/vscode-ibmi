@@ -16,7 +16,20 @@ export namespace FrontendTables {
     return VscodeTools.escapeHtml(str);
   }
 
-  /** Renders YES/NO as colored badges and integers with locale formatting; undefined if the value is neither. */
+  const MAX_FRACTION_DIGITS = 20;
+
+  /** Locale-format a number keeping exactly the decimals of the source text, so 12.50 stays "12.50". */
+  function formatNumber(num: number, strValue: string): string {
+    const fraction = strValue.split('.')[1];
+    if (fraction === undefined) {
+      // Integer, or exponential notation whose digits can't be read off the text.
+      return num.toLocaleString(undefined, Number.isInteger(num) ? undefined : { maximumFractionDigits: MAX_FRACTION_DIGITS });
+    }
+    const digits = Math.min(fraction.length, MAX_FRACTION_DIGITS);
+    return num.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  }
+
+  /** Renders YES/NO as colored badges and numbers with locale formatting; undefined if the value is neither. */
   function formatYesNoOrNumber(strValue: string, skipNumeric: boolean): string | undefined {
     if (strValue === 'YES') {
       return '<span style="color: var(--vscode-testing-iconPassed, #73c991); font-weight: 600;">✓ YES</span>';
@@ -24,11 +37,9 @@ export namespace FrontendTables {
     if (strValue === 'NO') {
       return '<span style="color: var(--vscode-testing-iconFailed, #f48771); font-weight: 600;">✗ NO</span>';
     }
-    if (!skipNumeric && !isNaN(Number(strValue)) && strValue !== '') {
+    if (!skipNumeric && strValue !== '' && isFinite(Number(strValue))) {
       const num = Number(strValue);
-      if (Number.isInteger(num)) {
-        return `<span style="font-family: var(--vscode-editor-font-family); color: var(--vscode-charts-blue);">${num.toLocaleString()}</span>`;
-      }
+      return `<span style="font-family: var(--vscode-editor-font-family); color: var(--vscode-charts-blue);">${formatNumber(num, strValue)}</span>`;
     }
     return undefined;
   }
@@ -413,6 +424,19 @@ export namespace FrontendTables {
   }
 
   /**
+   * A value this short is never worth wrapping: splitting it over two lines to save
+   * a few pixels reads worse than a slightly wider column. Cells holding one are
+   * marked `.nowrap-cell`, and the page widens their column at runtime
+   * (fitNoWrapColumns) so keeping them on one line never clips them.
+   */
+  const NOWRAP_MAX_LENGTH = 30;
+
+  function isShortValue(value: string | number): boolean {
+    const str = String(value ?? '').trim();
+    return str.length > 0 && str.length < NOWRAP_MAX_LENGTH;
+  }
+
+  /**
    * Build the table body markup, plus the modal payload for collapsible columns.
    * Shared by the initial page render and by incremental updates, so both produce
    * identical markup.
@@ -451,7 +475,8 @@ export namespace FrontendTables {
           }
         }
         const value = col.getValue(row);
-        const cellClass = col.cellClass ? ` class="${col.cellClass}"` : '';
+        const classes = [col.cellClass, isShortValue(value) ? 'nowrap-cell' : undefined].filter(Boolean);
+        const cellClass = classes.length > 0 ? ` class="${classes.join(' ')}"` : '';
         const widthStyle = columnsArray[index] !== 'auto' ? ` style="width: ${columnsArray[index]};"` : '';
         return `<vscode-table-cell${cellClass}${widthStyle}>${formatFastValue(value)}</vscode-table-cell>`;
       }).join('\n        ');
@@ -641,10 +666,36 @@ export namespace FrontendTables {
         width: 80px;
       }
 
+      /* Height capped (refined at runtime by syncTableViewport) so the horizontal
+         scrollbar stays on screen instead of sitting below a long table. */
       .table-scroll-wrapper {
-        overflow-x: auto;
+        overflow: auto;
+        max-height: 65vh;
         width: 100%;
         transition: opacity 0.15s ease;
+      }
+
+      /* The webview host only styles the document scrollbars, not the wrapper's. */
+      .table-scroll-wrapper::-webkit-scrollbar {
+        height: 12px;
+        width: 12px;
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-track,
+      .table-scroll-wrapper::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-thumb {
+        background-color: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+        background-color: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
+      }
+
+      .table-scroll-wrapper::-webkit-scrollbar-thumb:active {
+        background-color: var(--vscode-scrollbarSlider-activeBackground, rgba(191, 191, 191, 0.4));
       }
 
       /* Search/pagination are server-side: while the extension re-queries, dim the
@@ -722,6 +773,18 @@ export namespace FrontendTables {
       vscode-table-header-cell,
       vscode-table-cell {
         box-sizing: border-box;
+      }
+
+      /* Cells that must stay on a single line: action columns, where wrapping would
+         push the last button onto a second row and stretch the whole row, and short
+         values (see NOWRAP_MAX_LENGTH), which read worse split in two than in a
+         slightly wider column. Both are measured by fitNoWrapColumns, which grows
+         the column so a single line is never clipped. */
+      vscode-table-cell.nowrap-cell,
+      vscode-table-cell:has(vscode-button),
+      vscode-table-cell:has(button) {
+        white-space: nowrap;
+        text-overflow: clip;
       }
 
       /* Add spacing between buttons in action columns */
@@ -911,6 +974,7 @@ export namespace FrontendTables {
               ${rows}
             </vscode-table-body>
           </vscode-table>
+        </div>
 
           ${hasCollapsibleColumns ? `
           <!-- Modal for collapsible content -->
@@ -929,7 +993,7 @@ export namespace FrontendTables {
           ` : ''}
 
           ${enablePagination ? `
-          <div class="pagination-controls">
+          <div class="pagination-controls${data.length > 0 ? '' : ' hidden'}" id="pagination-controls${suffix}">
           <div class="pagination-info" id="pagination-info${suffix}"></div>
           <div class="pagination-buttons">
             <vscode-button id="first-page${suffix}" appearance="icon" aria-label="First page">
@@ -958,7 +1022,6 @@ export namespace FrontendTables {
           </div>
         </div>
           ` : ''}
-        </div>
 
         <div class="empty-state${data.length > 0 ? ' hidden' : ''}" id="empty-state${suffix}">
           <p>${escapeHtml(emptyMessage)}</p>
@@ -981,12 +1044,14 @@ export namespace FrontendTables {
 
       // Get DOM elements
       const searchInput = document.getElementById('search-input${suffix}');
+      const dataTable = document.getElementById('data-table${suffix}');
       const tableBody = document.getElementById('table-body${suffix}');
       const emptyState = document.getElementById('empty-state${suffix}');
       const subtitleInfo = document.getElementById('subtitle-info${suffix}');
       const searchIcon = document.getElementById('search-icon${suffix}');
       const searchStatus = document.getElementById('search-status${suffix}');
       const tableWrapper = document.getElementById('table-scroll-wrapper${suffix}');
+      const paginationControls = document.getElementById('pagination-controls${suffix}');
       const paginationInfo = document.getElementById('pagination-info${suffix}');
       const pageInput = document.getElementById('page-input${suffix}');
       const totalPagesLabel = document.getElementById('total-pages-label${suffix}');
@@ -997,6 +1062,91 @@ export namespace FrontendTables {
 
       // Calculate total pages
       let totalPages = enablePagination ? Math.ceil(totalItems / itemsPerPage) : 1;
+
+      // Fit the table to the visible area, keeping its horizontal scrollbar on screen.
+      // Measured against the document (rect.top + scrollY) so scrolling the page does
+      // not feed back into the computed height.
+      const MIN_TABLE_VIEWPORT_HEIGHT = 200;
+      const CONTAINER_BOTTOM_PADDING = 20;
+      const PAGINATION_MARGIN_TOP = 16;
+
+      function syncTableViewport() {
+        if (!tableWrapper || tableWrapper.classList.contains('hidden')) return;
+
+        const top = tableWrapper.getBoundingClientRect().top + window.scrollY;
+        const below = paginationControls && !paginationControls.classList.contains('hidden')
+          ? paginationControls.getBoundingClientRect().height + PAGINATION_MARGIN_TOP
+          : 0;
+        const available = window.innerHeight - top - below - CONTAINER_BOTTOM_PADDING;
+
+        tableWrapper.style.maxHeight = Math.max(MIN_TABLE_VIEWPORT_HEIGHT, available) + 'px';
+      }
+
+      // Cells that never wrap (buttons, short values — see the stylesheet) would be
+      // clipped by a column narrower than their single line, and the widths computed
+      // when the page was generated cannot know how wide a rendered button or string
+      // ends up being. So measure them here and grow the column — and the table with
+      // it, so the wrapper still scrolls all the way to the widest cell.
+      const baseColumnWidths = ${JSON.stringify(columnsArray.map(width => parseFloat(width)))};
+      const CELL_PADDING_RIGHT = 16;
+      let columnWidths = baseColumnWidths.slice();
+
+      function forEachCell(row, callback) {
+        Array.from(row.children).forEach((cell, index) => {
+          if (index < columnWidths.length) callback(cell, index);
+        });
+      }
+
+      function fitNoWrapColumns() {
+        if (!dataTable || !tableBody) return;
+
+        const rows = Array.from(tableBody.querySelectorAll('vscode-table-row'));
+        if (!rows.length) return;
+
+        rows.forEach(row => forEachCell(row, (cell, index) => {
+          if (!cell.classList.contains('nowrap-cell') && !cell.querySelector('vscode-button, button')) return;
+
+          // The content overflows the clipped cell, but it is still laid out: a range
+          // over it measures the line the column actually has to fit.
+          const range = document.createRange();
+          range.selectNodeContents(cell);
+          const contentRect = range.getBoundingClientRect();
+          if (!contentRect.width) return;
+
+          const needed = Math.ceil(contentRect.right - cell.getBoundingClientRect().left) + CELL_PADDING_RIGHT;
+          if (needed > columnWidths[index]) columnWidths[index] = needed;
+        }));
+
+        // Nothing to widen, and no widening carried over from a previous page.
+        if (columnWidths.every((width, index) => width === baseColumnWidths[index])) return;
+
+        // Widths are written straight onto the cells rather than through the table's
+        // own 'columns' property: that one converts them to percentages of the width
+        // the table had before growing, which would leave the columns misaligned.
+        // Rows are re-applied on every call, since an incremental update replaces
+        // them with markup still carrying the generated widths.
+        dataTable.style.minWidth = columnWidths.reduce((sum, width) => sum + width, 0) + 'px';
+        dataTable.querySelectorAll('vscode-table-header-cell').forEach((cell, index) => {
+          if (index < columnWidths.length) cell.style.width = columnWidths[index] + 'px';
+        });
+        rows.forEach(row => forEachCell(row, (cell, index) => {
+          cell.style.width = columnWidths[index] + 'px';
+        }));
+
+        syncTableViewport();
+      }
+
+      syncTableViewport();
+      // The vscode-* elements upgrade after this script runs and shift the table down.
+      requestAnimationFrame(() => {
+        syncTableViewport();
+        fitNoWrapColumns();
+      });
+      window.addEventListener('load', () => {
+        syncTableViewport();
+        fitNoWrapColumns();
+      });
+      window.addEventListener('resize', syncTableViewport);
 
       // Busy indicator. Search and pagination are handled by the extension, which
       // answers with an 'updateTable' message; the indicator is cleared there. The
@@ -1233,9 +1383,16 @@ export namespace FrontendTables {
         if (tableWrapper) {
           tableWrapper.classList.toggle('hidden', msg.rowCount === 0);
         }
+        if (paginationControls) {
+          paginationControls.classList.toggle('hidden', msg.rowCount === 0);
+        }
         if (emptyState) {
           emptyState.classList.toggle('hidden', msg.rowCount > 0);
         }
+        syncTableViewport();
+        // The replaced rows carry the generated widths again; their buttons are only
+        // measurable once laid out.
+        requestAnimationFrame(fitNoWrapColumns);
         if (subtitleInfo && msg.subtitle !== undefined) {
           subtitleInfo.textContent = msg.subtitle;
         }

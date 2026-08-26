@@ -170,8 +170,7 @@ export async function handleEvfeventLines(connection: IBMi, lines: string[], evf
         // findExistingDocumentByName searches all open tabs — no workspace needed — so this works for
         // member-type actions too (where evfeventInfo.workspace is not set).
         if (!file.startsWith(`/`) && evfeventInfo.extension) {
-          const baseName = file.split(`/`).pop();
-          const lookupName = `${baseName}.${evfeventInfo.extension}`;
+          const lookupName = `${file}.${evfeventInfo.extension}`;
           const openFile = VscodeTools.findExistingDocumentByName(lookupName);
           if (openFile) {
             ileDiagnostics.set(openFile, diagnostics);

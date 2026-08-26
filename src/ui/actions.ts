@@ -631,6 +631,11 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         message: actionMessage
       };
     }
+    else if (targets.some(t => t.protected)) {
+      actionMessage = l10n.t(`Action cannot be applied on a read only target.`);
+      vscode.window.showErrorMessage(actionMessage);
+      return { success: false, output: [], message: actionMessage };
+    }
     else {
       actionMessage = l10n.t(`No suitable actions found for {0} - {1}`, scheme, targets.map(t => t.extension).filter(Tools.distinct).join(", "));
       vscode.window.showErrorMessage(actionMessage);

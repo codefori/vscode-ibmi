@@ -46,7 +46,7 @@ interface WebviewMessageRequest {
   data?: any;
 }
 
-type InputType = "text" | "number" | "color";
+type InputType = "text" | "number" | "color" | "date";
 
 export class Section {
   readonly fields: Field[] = [];
@@ -206,6 +206,10 @@ export class CustomHTML extends Section {
               width: 15%;
             }
 
+            .date-input {
+              width: 12em;
+            }
+
             :root{
               --dropdown-z-index: 666;
             }
@@ -270,7 +274,7 @@ export class CustomHTML extends Section {
                   const field = document.getElementById(response.field);
                   if (field) {
                     field.value = newValue;
-                    let innerInput = field.shadowRoot.querySelector("input");
+                    let innerInput = field.shadowRoot?.querySelector("input");
                     if (innerInput) {
                       innerInput.value = newValue;
                     }
@@ -595,7 +599,24 @@ export class Field {
       case `input`:
         const multiline = (this.rows || 1) > 1;
         const tag = multiline ? "vscode-textarea" : "vscode-textfield";
-        const inputClass = this.inputType === 'color' ? `short-input` : `long-input`;
+        const inputClass = this.inputType === 'color' ? `short-input` : this.inputType === 'date' ? `date-input` : `long-input`;
+
+        if (this.inputType === 'color' && !multiline) {
+          return /* html */`
+            <vscode-form-group variant="settings-group">
+                ${this.renderLabel()}
+                ${this.renderDescription()}
+                <input
+                  class="${inputClass}"
+                  id="${this.id}"
+                  name="${this.id}"
+                  type="color"
+                  ${this.default ? `value="${this.default}"` : ``}
+                  ${this.readonly ? `disabled` : ``}
+                  style="height: 28px; padding: 0; background: transparent; border: 1px solid var(--vscode-input-border); cursor: ${this.readonly ? `not-allowed` : `pointer`};"
+                />
+            </vscode-form-group>`;
+        }
         return /* html */`
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
@@ -611,7 +632,7 @@ export class Field {
                 ${this.max ? `max="${this.max}"` : ``}
                 ${this.inputType === 'number' ? `step="1"` : ``}
                 >
-              <${tag}>
+              </${tag}>
           </vscode-form-group>`;
 
       case `paragraph`:
@@ -678,7 +699,7 @@ export class Field {
     return /* html */ `<vscode-tree-item ${treeItem.active ? "active " : " "}${treeItem.open ? "open " : " "}${treeItem.selected ? "selected " : " "}${treeItem.value ? `data-value="${treeItem.value}"` : ""}>
       ${treeItem.icons?.branch ? this.renderIcon("icon-branch", treeItem.icons?.branch) : ""}
       ${treeItem.icons?.open ? this.renderIcon("icon-branch-opened", treeItem.icons?.open) : ""}
-      ${treeItem.icons?.leaf ? this.renderIcon("icon-leaf", treeItem.icons?.leaf) : ""}      
+      ${treeItem.icons?.leaf ? this.renderIcon("icon-leaf", treeItem.icons?.leaf) : ""}
       ${treeItem.label}
     </vscode-tree-item>`;
   }

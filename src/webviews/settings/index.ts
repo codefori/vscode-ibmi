@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import vscode, { window } from "vscode";
 import { CCSIDS } from "../../api/CCSIDs";
 import { extensionComponentRegistry } from "../../api/components/manager";
-import IBMi from "../../api/IBMi";
+import IBMi, { CLIENT_ONLY_SETTINGS } from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { deleteStoredPassphrase, deleteStoredPassword, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from "../../config/passwords";
 import { isManaged } from "../../debug";
@@ -92,7 +92,7 @@ export class SettingsUI {
             for (const field of currentSection.fields) {
               if (!field.id) continue;
 
-              if (serverConfig.codefori[field.id] !== undefined) {
+              if (!CLIENT_ONLY_SETTINGS.has(field.id) && serverConfig.codefori[field.id] !== undefined) {
                 field.readonly = true;
               }
             }
@@ -148,7 +148,7 @@ export class SettingsUI {
           .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
           .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) })
           .addHorizontalRule()
-          .addInput(`statusBarColor`, vscode.l10n.t(`Status bar color`), vscode.l10n.t(`The color of this system's name in the status bar. Useful to tell your systems apart at a glance. Pick black to keep the color of the current theme.`), { default: config.statusBarColor || `#000000`, inputType: "color" })
+          .addInput(`statusBarColor`, vscode.l10n.t(`Status bar color`), vscode.l10n.t(`The color of this system's name in the status bar. Useful to tell your systems apart at a glance. Pick black to keep the color of the current theme.<br/>Each profile can carry its own color: when a profile is active, this is the color of that profile.`), { default: config.statusBarColor || `#000000`, inputType: "color" })
 
         setFieldsReadOnly(featuresTab);
 

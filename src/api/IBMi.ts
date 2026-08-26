@@ -74,6 +74,21 @@ interface ConnectionConfigFiles {
   [key: string]: ConfigFile<any>;
 }
 
+/**
+ * Settings that are always owned by the client and must never be overridden
+ * by the remote `codefori` configuration.
+ */
+export const CLIENT_ONLY_SETTINGS = new Set([
+  `statusBarColor`,
+  `showDescInLibList`,
+  `showHiddenFiles`,
+  `autoSortIFSShortcuts`,
+  `autoSaveBeforeAction`,
+  `sourceDateGutter`,
+  `encodingFor5250`,
+  `terminalFor5250`,
+]);
+
 export default class IBMi {
   public static GlobalStorage: CodeForIStorage;
   public static connectionManager: ConnectionManager = new ConnectionManager();
@@ -170,6 +185,27 @@ export default class IBMi {
       } catch (e) { }
 
       this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+    }
+  }
+
+  /**
+   * loads the remote configuration files /etc/vscode/settings.json and applies
+   * runs on every connection
+   */
+  private async loadAndApplyRemoteConfigs() {
+    await this.loadRemoteConfigs();
+
+    const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
+    if (this.config && remoteConnectionConfig.getState() === `ok`) {
+      const remoteConfig = await remoteConnectionConfig.get();
+
+      if (remoteConfig.codefori) {
+        for (const [key, value] of Object.entries(remoteConfig.codefori)) {
+          if (!CLIENT_ONLY_SETTINGS.has(key) && this.config[key] !== undefined) {
+            this.config[key] = value;
+          }
+        }
+      }
     }
   }
 
@@ -583,6 +619,9 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
+      callbacks.progress({ message: `Loading remote configuration files.` });
+      await this.loadAndApplyRemoteConfigs();
+
       callbacks.progress({ message: `Checking Mapepire status.` });
       const tempDirSet = await this.checkOrCreateTempDirectory();
       if (!tempDirSet) {
@@ -821,24 +860,6 @@ export default class IBMi {
       }
 
       this.appendOutput(`\n`);
-
-      // Load the remote connection configuration and apply it to the connection
-
-      callbacks.progress({ message: `Loading remote configuration files.` });
-      await this.loadRemoteConfigs();
-
-      const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
-      if (remoteConnectionConfig.getState() === `ok`) {
-        const remoteConfig = await remoteConnectionConfig.get();
-
-        if (remoteConfig.codefori) {
-          for (const [key, value] of Object.entries(remoteConfig.codefori)) {
-            if (this.config[key] !== undefined) {
-              this.config[key] = value;
-            }
-          }
-        }
-      }
 
       callbacks.progress({
         message: `Checking temporary directory and temporary library configuration.`
@@ -1223,6 +1244,8 @@ export default class IBMi {
   }
 
   async disconnect() {
+    await this.sqlJob?.close();
+
     if (this.client?.connection) {
       await (await this.getComponent<Mapepire>(Mapepire.ID))?.endJobs();
       //Close the connection and triggers its 'end' event
@@ -1492,9 +1515,16 @@ export default class IBMi {
             error = new Tools.SqlError(e.message);
             error.cause = statement
 
-            const parts: string[] = e.message.split(`,`);
-            if (parts.length > 3) {
-              error.sqlstate = parts[parts.length - 2].trim();
+            // First attempt to extract sqlstate using a regex
+            const sqlstateMatch = /,\s*([0-9A-Z]{5}),\s*-?\d+\s*$/.exec(e.message);
+            if (sqlstateMatch) {
+              error.sqlstate = sqlstateMatch[1];
+            } else {
+              // Fallback to splitting the message by commas and taking the second to last part
+              const parts: string[] = e.message.split(`,`);
+              if (parts.length >= 3) {
+                error.sqlstate = parts[parts.length - 2].trim();
+              }
             }
 
             this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}`);

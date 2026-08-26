@@ -160,6 +160,23 @@ export namespace Tools {
   }
   
   /**
+   * Validates a date used in a filter and returns it in its `YYYY-MM-DD` canonical form.
+   * @param date a date string, expected to be in the `YYYY-MM-DD` format
+   * @returns the validated date, or `undefined` if it's blank or invalid
+   */
+  export function parseFilterDate(date?: string) {
+    const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec((date || ``).trim());
+    if (parts) {
+      const [year, month, day] = parts.slice(1).map(Number);
+      const parsed = new Date(Date.UTC(year, month - 1, day));
+      if (parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day) {
+        return parts[0];
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * Transforms a file path into an OS agnostic path.
    * - Replaces full home directory path by ~
    * - Replaces all \ into / on Windows
