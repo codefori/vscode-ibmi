@@ -9,7 +9,6 @@ export async function mergeCommandProfiles() {
       settings.connectionProfiles.push({
         name: commandProfile.name as string,
         setLibraryListCommand: commandProfile.command as string,
-        currentLibrary: "*CRTDFT",
         customVariables: [],
         homeDirectory: settings.homeDirectory,
         ifsShortcuts: [],

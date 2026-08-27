@@ -1227,6 +1227,13 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.removeCurrentLibrary",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Remove Current Library",
+				"category": "IBM i",
+				"icon":"$(clear-all)"
+			},
+			{
 				"command": "code-for-ibmi.changeUserLibraryList",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change Library List...",
@@ -2555,6 +2562,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.removeCurrentLibrary",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.addToLibraryList",
 					"when": "never"
 				},
@@ -3035,13 +3046,23 @@
 				},
 				{
 					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem =~ /^currentLibrary/",
+					"group": "inline@01"
+				},
+				{
+					"command": "code-for-ibmi.removeCurrentLibrary",
 					"when": "view == libraryListView && viewItem == currentLibrary",
-					"group": "inline"
+					"group": "inline@02"
 				},
 				{
 					"command": "code-for-ibmi.changeCurrentLibrary",
-					"when": "view == libraryListView && viewItem == currentLibrary",
+					"when": "view == libraryListView && viewItem =~ /^currentLibrary/",
 					"group": "libraryChangeCurrent@1"
+				},
+				{
+					"command": "code-for-ibmi.removeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "libraryChangeCurrent@2"
 				},
 				{
 					"command": "code-for-ibmi.setCurrentLibrary",

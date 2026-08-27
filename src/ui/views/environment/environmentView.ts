@@ -220,7 +220,6 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         const profile: ConnectionProfile = from ? cloneProfile(from, name) : {
           name,
           homeDirectory,
-          currentLibrary: '*CRTDFT',
           libraryList: ["QGPL", "QTEMP"],
           customVariables: [],
           ifsShortcuts: [homeDirectory],

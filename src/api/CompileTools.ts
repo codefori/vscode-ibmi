@@ -6,7 +6,7 @@ import { CommandResult, RemoteCommand, StandardIO } from './types';
 import { Variables } from './variables';
 
 export interface ILELibrarySettings {
-  currentLibrary: string;
+  currentLibrary?: string;
   libraryList: string[];
 }
 
@@ -44,7 +44,7 @@ export namespace CompileTools {
         libraryList: variables.get(`&LIBL`)?.split(` `) || config.libraryList,
       };
 
-      ileSetup.currentLibrary = (ileSetup.currentLibrary === "*CURLIB" ? "*CRTDFT" : ileSetup.currentLibrary);
+      ileSetup.currentLibrary = (ileSetup.currentLibrary === "*CURLIB" ? "" : ileSetup.currentLibrary);
       // Remove any duplicates from the library list
       ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
 
@@ -64,7 +64,7 @@ export namespace CompileTools {
 
         if (events.writeEvent) {
           if (options.environment === `ile` && !options.noLibList) {
-            events.writeEvent(`Current library: ` + ileSetup.currentLibrary + NEWLINE);
+            events.writeEvent(`Current library: ` + (ileSetup.currentLibrary || "no current library") + NEWLINE);
             events.writeEvent(`Library list: ` + ileSetup.libraryList.join(` `) + NEWLINE);
           }
           if (options.cwd) {
@@ -118,7 +118,7 @@ export namespace CompileTools {
               try {
                 await connection.runSQL([
                   ...(cwd ? [`@QSYS/CHGCURDIR DIR('${cwd}')`] : []),
-                  ...(options.noLibList ? [] : [`@QSYS/CHGLIBL CURLIB(${ileSetup.currentLibrary}) LIBL(${ileSetup.libraryList.join(` `)})`]),
+                  ...(options.noLibList ? [] : [`@QSYS/CHGLIBL CURLIB(${ileSetup.currentLibrary || "*CRTDFT"}) LIBL(${ileSetup.libraryList.join(` `)})`]),
                   ...commands.map(c => `@${c}`)
                 ]);
               } catch (e: any) {
@@ -194,9 +194,9 @@ export namespace CompileTools {
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
-      `liblist -d ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(connection.defaultUserLibraries).join(` `))}`,
-      `liblist -c ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase([config.currentLibrary])[0])}`,
-      `liblist -a ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(buildLibraryList(config)).join(` `))}`
+      `liblist -d ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(...connection.defaultUserLibraries).join(` `))}`,
+      `liblist -c ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(config.currentLibrary || "*CRTDFT")[0])}`,
+      `liblist -a ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(...buildLibraryList(config)).join(` `))}`
     ];
   }
 }
