@@ -229,9 +229,9 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                 evfeventInfo.extension = ext;
 
                 if (chosenAction.command.includes(`&SRCFILE`)) {
-                  variables.set(`&SRCLIB`, evfeventInfo.library)
+                  variables.set(`&SRCLIB`, 'QTEMP')
                     .set(`&SRCPF`, `QTMPSRC`)
-                    .set(`&SRCFILE`, `${evfeventInfo.library}/QTMPSRC`);
+                    .set(`&SRCFILE`, `${variables.get('&SRCLIB')}/${variables.get('&SRCPF')}`);
                 }
 
                 switch (chosenAction.type) {
@@ -342,31 +342,38 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                         const fullPath = variables.get(`&FULLPATH`);
                         const srcFile = variables.get(`&SRCFILE`);
                         if (fullPath && srcFile && evfeventInfo.object) {
-                          const [lib, srcpf] = srcFile.split(`/`);
-
-                          const createSourceFile = content.toCl(`CRTSRCPF`, {
-                            rcdlen: 112, //NICE: this configurable in a VS Code setting?
-                            file: `${lib}/${srcpf}`,
+                          const crtsrcpfResult = await CompileTools.runCommand(connection, {
+                            command: content.toCl(`CRTSRCPF`, {
+                              rcdlen: 112, //NICE: this configurable in a VS Code setting?
+                              file: srcFile,
+                            }),
+                            environment: `ile`,
+                            noLibList: true
                           });
 
-                          const copyFromStreamfile = content.toCl(`QSYS/CPYFRMSTMF`, {
-                            fromstmf: fullPath,
-                            tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
-                            mbropt: `*REPLACE`,
-                            dbfccsid: `*FILE`,
-                            stmfccsid: 1208,
-                          });
-
-                          // We don't care if this fails. Usually it's because the source file already exists.
-                          await CompileTools.runCommand(connection, { command: createSourceFile, environment: `ile`, noLibList: true });
-
-                          // Attempt to copy to member
-                          const copyResult = await CompileTools.runCommand(connection, { command: copyFromStreamfile, environment: `ile`, noLibList: true });
-
-                          if (copyResult.code !== 0) {
-                            writeEmitter.fire(`Failed to copy file to a temporary member.\n\t${copyResult.stderr}\n\n`);
-                            closeEmitter.fire(copyResult.code || 1);
+                          //CPF5813: file already exists, which is OK here
+                          if (crtsrcpfResult.code !== 0 && Tools.parseMessages(crtsrcpfResult.stderr).findId("CPF5813") === undefined) {
+                            throw new Error(l10n.t("Failed to create temporary source file {0}: {1}", srcFile, crtsrcpfResult.stderr));
                           }
+
+                          const [library, sourcePF] = srcFile.split('/');
+                          const copyFromStreamfile = await CompileTools.runCommand(connection, {
+                            command: content.toCl(`QSYS/CPYFRMSTMF`, {
+                              fromstmf: fullPath,
+                              tombr: `'${Tools.qualifyPath(library, sourcePF, evfeventInfo.object)}'`,
+                              mbropt: `*REPLACE`,
+                              dbfccsid: `*FILE`,
+                              stmfccsid: 1208,
+                            }),
+                            environment: `ile`,
+                            noLibList: true
+                          });
+
+                          if (copyFromStreamfile.code !== 0) {
+                            throw new Error(l10n.t("Failed to copy file to temporary member: {0}", copyFromStreamfile.stderr));
+                          }
+
+                          evfeventInfo.tempSourceMember = new Map().set(connection.upperCaseName(`${library}/${sourcePF}/${evfeventInfo.object}`), target.uri);
                         }
 
                         const commandResult = await CompileTools.runCommand(connection,
@@ -412,12 +419,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             }
                             else {
                               //Add a default eventf target
-                              evfeventInfos.push({
-                                library: evfeventInfo.library,
-                                object: evfeventInfo.object,
-                                extension: evfeventInfo.extension,
-                                asp: evfeventInfo.asp
-                              });
+                              evfeventInfos.push({ ...evfeventInfo });
                             }
                           }
 
@@ -675,7 +677,7 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
   });
 
   // Get the sort preference from settings
-  const sortBy = IBMi.connectionManager.get<'name'|'usage'|'config'>(`sortActionsBy`) || `usage`;
+  const sortBy = IBMi.connectionManager.get<'name' | 'usage' | 'config'>(`sortActionsBy`) || `usage`;
 
   // Then we get all the available Actions for the current context
   const contextActions = allActions.filter(action => action.type === scheme)
