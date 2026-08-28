@@ -37,14 +37,18 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
       const storage = instance.getStorage();
       if (connection && storage) {
         const config = connection.getConfig();
-        const currentLibrary = connection.upperCaseName(config.currentLibrary || "*CRTDFT");
+        const currentLibrary = config.currentLibrary ? connection.upperCaseName(config.currentLibrary) : undefined;
         let prevCurLibs = storage.getPreviousCurLibs();
         let list = [...prevCurLibs];
-        const listHeader = [
-          { label: l10n.t(`Currently active`), kind: vscode.QuickPickItemKind.Separator },
-          { label: currentLibrary },
-          { label: l10n.t(`Recently used`), kind: vscode.QuickPickItemKind.Separator }
-        ];
+        const listHeader: vscode.QuickPickItem[] = [];
+        if (currentLibrary) {
+          listHeader.push(
+            { label: l10n.t(`Currently active`), kind: vscode.QuickPickItemKind.Separator },
+            { label: currentLibrary }
+          );
+        }
+        listHeader.push({ label: l10n.t(`Recently used`), kind: vscode.QuickPickItemKind.Separator });
+
         const clearList = l10n.t(`$(trash) Clear list`);
         const clearListArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
 
@@ -435,13 +439,12 @@ async function changeCurrentLibrary(library?: string) {
         vscode.window.showInformationMessage(l10n.t(`Current library removed.`));
       }
 
-      if (library) {
-        const previousCurLibs = storage.getPreviousCurLibs().filter(lib => lib !== library);
-        if (currentLibrary) {
-          previousCurLibs.splice(0, 0, currentLibrary);
-        }
-        await storage.setPreviousCurLibs(previousCurLibs);
+      const previousCurLibs = storage.getPreviousCurLibs().filter(lib => lib !== library && lib !== "*CRTDFT");
+      if (currentLibrary) {
+        previousCurLibs.splice(0, 0, currentLibrary);
       }
+      await storage.setPreviousCurLibs(previousCurLibs);
+
       await IBMi.connectionManager.update(config);
       return true;
     } else {
