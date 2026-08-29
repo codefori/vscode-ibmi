@@ -631,6 +631,11 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         message: actionMessage
       };
     }
+    else if (targets.some(t => t.protected)) {
+      actionMessage = l10n.t(`Action cannot be applied on a read only target.`);
+      vscode.window.showErrorMessage(actionMessage);
+      return { success: false, output: [], message: actionMessage };
+    }
     else {
       actionMessage = l10n.t(`No suitable actions found for {0} - {1}`, scheme, targets.map(t => t.extension).filter(Tools.distinct).join(", "));
       vscode.window.showErrorMessage(actionMessage);
@@ -669,15 +674,27 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
     };
   });
 
+  // Get the sort preference from settings
+  const sortBy = IBMi.connectionManager.get<'name'|'usage'|'config'>(`sortActionsBy`) || `usage`;
+
   // Then we get all the available Actions for the current context
-  const availableActions: AvailableAction[] = allActions.filter(action => action.type === scheme)
+  const contextActions = allActions.filter(action => action.type === scheme)
     .filter(action => !action.extensions || action.extensions.every(e => !e) || targets.every(t => action.extensions!.includes(t.extension) || action.extensions!.includes(t.fragment)) || action.extensions.includes(`GLOBAL`))
-    .filter(action => action.runOnProtected || !targets.some(t => t.protected))
-    .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
-    .map(action => ({
-      label: action.name,
-      action
-    }));
+    .filter(action => action.runOnProtected || !targets.some(t => t.protected));
+
+  if (sortBy === `name`) {
+    // Sort alphabetically by name
+    contextActions.sort((a, b) => a.name.localeCompare(b.name));
+  } else if (sortBy === `usage`) {
+    // Sort by most recently used (default behavior).
+    // `config` keeps actions in the order they are defined, regardless of their origin.
+    contextActions.sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0));
+  }
+
+  const availableActions: AvailableAction[] = contextActions.map(action => ({
+    label: action.name,
+    action
+  }));
 
   return availableActions;
 }

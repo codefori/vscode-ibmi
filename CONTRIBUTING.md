@@ -75,3 +75,6 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@MerelSoftware](https://github.com/MerelSoftware)
 * [@agatabrzeczek](https://github.com/agatabrzeczek)
 * [@phpdave](https://github.com/phpdave)
+* [@neerup](https://github.com/neerup)
+* [@Frank-Hildebrandt](https://github.com/Frank-Hildebrandt)
+* [@christianlarsen](https://github.com/christianlarsen)

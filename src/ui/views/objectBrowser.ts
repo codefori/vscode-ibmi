@@ -7,6 +7,7 @@ import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
 import { SearchTools } from "../../api/SearchTools";
 import { Tools } from "../../api/Tools";
+import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
 import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
@@ -16,6 +17,7 @@ import { BrowserItem, BrowserItemParameters } from "../types";
 
 const objectNamesLower = () => IBMi.connectionManager.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
 const objectSortOrder = () => IBMi.connectionManager.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
+const filterDetails = () => IBMi.connectionManager.get(`ObjectBrowser.filterDetails`) || `both`;
 
 const correctCase = (value: string) => {
   ;
@@ -176,8 +178,16 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
     super(filter, filter.name, { icon: filter.protected ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
     this.library = parseFilter(filter.library, filter.filterType).noFilter ? filter.library : '';
     this.contextValue = `filter${this.library ? "_library" : ''}${this.isProtected() ? `_readonly` : ``}`;
-    this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
-    this.tooltip = ``;
+    const details = filterDetails();
+    if (details !== `tooltip`) {
+      const memberTextSuffix = filter.memberText && !/^\*(?:ALL)?$/.test(filter.memberText.trim()) ? ` [${filter.memberText}]` : ``;
+      const dateSuffix = [
+        filter.memberCreated ? `created ≥ ${filter.memberCreated}` : ``,
+        filter.memberChanged ? `changed ≥ ${filter.memberChanged}` : ``
+      ].filter(Boolean).join(`, `);
+      this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})${memberTextSuffix}${dateSuffix ? ` {${dateSuffix}}` : ``}`;
+    }
+    this.tooltip = details !== `description` ? VscodeTools.filterToToolTip(filter) : ``;
 
     if (this.library) {
       this.resourceUri = vscode.Uri.from({
@@ -282,6 +292,9 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
         sourceFile: this.object.name,
         members: this.filter.member,
         extensions: this.filter.memberType,
+        memberText: this.filter.memberText,
+        memberCreated: this.filter.memberCreated,
+        memberChanged: this.filter.memberChanged,
         filterType: this.filter.filterType,
         sort: this.sort
       });
@@ -559,6 +572,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     objectTreeViewer,
 
+    onCodeForIBMiConfigurationChange(`ObjectBrowser.filterDetails`, () => objectBrowser.refresh()),
+
     vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, (item: ObjectBrowserSourcePhysicalFileItem | ObjectBrowserMemberItem) => {
       item.sortBy({ order: "name" });
     }),
@@ -812,7 +827,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             if (IBMi.connectionManager.get(`autoOpenFile`)) {
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, connection.upperCaseName(fullPath));
             }
 
             if (oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()) {
@@ -954,7 +969,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       if (newNameOK && newMemberPath) {
         oldMemberTabs.forEach((tab) => {
           vscode.window.tabGroups.close(tab).then(() => {
-            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, connection.upperCaseName(newMemberPath));
           });
         })
       }
@@ -1058,6 +1073,27 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           }
         }
 
+        // Resolve the real source file CCSID (COMMON_CCSID) per distinct file, so the
+        // stream file conversion uses the actual CCSID instead of the config default.
+        const ccsidByFile = new Map<string, string>();
+        for (const item of toBeDownloaded.filter(m => m.copy)) {
+          const fileKey = `${item.member.library}/${item.member.file}`;
+          if (!ccsidByFile.has(fileKey)) {
+            const ccsid = config.sourceFileCCSID;
+            try {
+              const [row] = await connection.runSQL(`SELECT COMMON_CCSID FROM TABLE(QSYS2.SYSFILES('${item.member.library}', '${item.member.file}'))`);
+              if (row?.COMMON_CCSID === 65535) {
+                // 65535 file can't be copied, fall back to the user job CCSID
+                ccsidByFile.set(fileKey, String(connection.getCcsid()));
+              } else {
+                ccsidByFile.set(fileKey, ccsid);
+              }
+            } catch (e) {
+              // iter if query has an error
+            }
+          }
+        }
+
         // Download members
         vscode.window.withProgress({ title: vscode.l10n.t(`Downloading {0} members`, toBeDownloaded.filter(m => m.copy).length), location: vscode.ProgressLocation.Notification }, async (task) => {
           try {
@@ -1065,11 +1101,14 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
               task.report({ message: vscode.l10n.t(`copying to streamfiles`), increment: -1 })
               const copyToStreamFiles = toBeDownloaded
                 .filter(item => item.copy)
-                .flatMap(item =>
-                  [
+                .flatMap(item => {
+                  const dbfCcsid = ccsidByFile.get(`${item.member.library}/${item.member.file}`) ?? config.sourceFileCCSID;
+                  return [
+                    `@QSYS/RUNSQL SQL('DROP TABLE IF EXISTS QTEMP.QTEMPSRC') COMMIT(*NONE) NAMING(*SYS)`,
                     `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(TEMPMBR) MBROPT(*REPLACE) CRTFILE(*YES)`,
-                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMBR")}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID})`
-                  ]);
+                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMBR")}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${dbfCcsid})`
+                  ];
+                });
               await connection.runSQL(copyToStreamFiles);
 
               task.report({ message: vscode.l10n.t(`getting streamfiles`), increment: -1 })
@@ -1225,7 +1264,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           IBMi.connectionManager.update(config);
           const autoRefresh = objectBrowser.autoRefresh();
 
-          if(!existsInLibl) {
+          if (!existsInLibl) {
             // Add to library list ?
             await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Yes`))
               .then(async result => {
@@ -1330,12 +1369,12 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
 
           newPathOK = true;
 
-          let command:string;
+          let command: string;
 
-          if(node.object.type.toLocaleLowerCase() === `*lib`){
-            command= `QSYS/CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})`;
+          if (node.object.type.toLocaleLowerCase() === `*lib`) {
+            command = `QSYS/CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})`;
           } else {
-            command=`QSYS/CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
+            command = `QSYS/CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
           }
 
           const commandRes = await connection.runCommand({

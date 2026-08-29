@@ -81,6 +81,7 @@ export interface ConnectionData {
   readyTimeout?: number;
   sshDebug?: boolean;
   enableMfa?: boolean;
+  useSshAgent?: boolean;
 }
 
 export interface Server {
@@ -126,6 +127,7 @@ export interface IFSFile {
   size?: number
   modified?: Date
   owner?: string
+  symlink?: string
 }
 
 export interface IBMiError {

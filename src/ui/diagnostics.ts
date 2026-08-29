@@ -69,10 +69,10 @@ export function refreshDiagnosticsFromServer(connection: IBMi, evfeventInfo: Evf
         .map(row => String(row.EVFEVENT));
 
       if (lines.length) {
-        handleEvfeventLines(connection, lines, e);
+        await handleEvfeventLines(connection, lines, e);
       }
     }
-    finally{
+    finally {
       connection.getContent().deleteOVRDBFile(overFile);
     }
   });
@@ -94,7 +94,7 @@ export async function refreshDiagnosticsFromLocal(connection: IBMi, evfeventInfo
         const eol = content.includes(`\r\n`) ? `\r\n` : `\n`;
         const lines = content.split(eol);
 
-        handleEvfeventLines(connection, lines, evfeventInfo);
+        await handleEvfeventLines(connection, lines, evfeventInfo);
       }
 
     } else {
@@ -103,92 +103,89 @@ export async function refreshDiagnosticsFromLocal(connection: IBMi, evfeventInfo
   }
 }
 
-export function handleEvfeventLines(connection: IBMi, lines: string[], evfeventInfo: EvfEventInfo) {
+export async function handleEvfeventLines(connection: IBMi, lines: string[], evfeventInfo: EvfEventInfo) {
   const config = connection.getConfig();
-  const asp = evfeventInfo.asp ? `${connection.getLibraryIAsp(evfeventInfo.library)}/` : ``;
-
   const errorsByFiles = parseErrors(lines);
 
-  const diagnostics: vscode.Diagnostic[] = [];
   if (errorsByFiles.size) {
-    for (const [file, errors] of errorsByFiles.entries()) {
-      diagnostics.length = 0;
-      for (const error of errors) {
-        error.column = Math.max(error.column - 1, 0);
-        error.lineNum = Math.max(error.lineNum - 1, 0);
-        error.toLineNum = Math.max(error.toLineNum - 1, 0);
+    for (const [file, errors] of errorsByFiles) {
+      if (file !== '.') {
+        const diagnostics: vscode.Diagnostic[] = [];
+        for (const error of errors) {
+          error.column = Math.max(error.column - 1, 0);
+          error.lineNum = Math.max(error.lineNum - 1, 0);
+          error.toLineNum = Math.max(error.toLineNum - 1, 0);
 
-        if (error.column === 0 && error.toColumn === 0) {
-          error.column = 0;
-          error.toColumn = 100;
-        }
+          if (error.column === 0 && error.toColumn === 0) {
+            error.column = 0;
+            error.toColumn = 100;
+          }
 
-        const diagnostic = new vscode.Diagnostic(
-          new vscode.Range(error.lineNum, error.column, error.toLineNum, error.toColumn),
-          `${error.text} (${error.sev})`,
-          diagnosticSeverity(error)
-        );
+          const diagnostic = new vscode.Diagnostic(
+            new vscode.Range(error.lineNum, error.column, error.toLineNum, error.toColumn),
+            `${error.text} (${error.sev})`,
+            diagnosticSeverity(error)
+          );
 
-        diagnostic.code = error.code;
+          diagnostic.code = error.code;
 
-        if (config) {
           if (!config.hideCompileErrors.includes(error.code)) {
             diagnostics.push(diagnostic);
           }
-        } else {
-          diagnostics.push(diagnostic);
         }
-      }
 
-      if (evfeventInfo.workspace) {
-        const workspaceFolder = evfeventInfo.workspace;
-        const storage = instance.getStorage();
+        if (evfeventInfo.workspace) {
+          const workspaceFolder = evfeventInfo.workspace;
+          const storage = instance.getStorage();
 
-        if (workspaceFolder && storage) {
-          const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceFolder.uri.fsPath);
-          const deployPathIndex = file.toLowerCase().indexOf(workspaceDeployPath.toLowerCase());
+          if (workspaceFolder && storage) {
+            const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceFolder.uri.fsPath);
+            const deployPathIndex = file.toLowerCase().indexOf(workspaceDeployPath.toLowerCase());
 
-          let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : undefined);
+            let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : undefined);
 
-          if (relativeCompilePath) {
-            if (asp) {
-              // Believe it or not, sometimes if the deploy directory is symlinked into an ASP, this can be a problem              
-              const aspRoot = `/${asp}`;
-              if (relativeCompilePath.startsWith(aspRoot)) {
-                relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
-                break;
+            if (relativeCompilePath) {
+              if (evfeventInfo.asp) {
+                // Believe it or not, sometimes if the deploy directory is symlinked into an ASP, this can be a problem              
+                const aspRoot = `/${evfeventInfo.asp}`;
+                if (relativeCompilePath.startsWith(aspRoot)) {
+                  relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
+                  break;
+                }
               }
-            }
 
-            const diagnosticTargetFile = vscode.Uri.joinPath(workspaceFolder.uri, relativeCompilePath);
-            if (diagnosticTargetFile !== undefined) {
-              ileDiagnostics.set(diagnosticTargetFile, diagnostics);
-            } else {
-              vscode.window.showWarningMessage("Couldn't show compile error(s) in problem view.");
-            }
-            continue;
-          }
-
-          // If we get there, that means that even though we compiled from local, we likely had to use a temp member.
-          // We should try to find the file in the workspace. Since we can use findFile (it's async), then we look for open
-          // tabs like we do below.
-          if (evfeventInfo.extension) {
-            const baseName = file.split(`/`).pop();
-            const openFile = VscodeTools.findExistingDocumentByName(`${baseName}.${evfeventInfo.extension}`);
-            if (openFile) {
-              ileDiagnostics.set(openFile, diagnostics);
+              const diagnosticTargetFile = vscode.Uri.joinPath(workspaceFolder.uri, relativeCompilePath);
+              if (diagnosticTargetFile !== undefined) {
+                ileDiagnostics.set(diagnosticTargetFile, diagnostics);
+              } else {
+                vscode.window.showWarningMessage("Couldn't show compile error(s) in problem view.");
+              }
               continue;
             }
+
           }
         }
-      }
 
-      if (file.startsWith(`/`)) {
-        ileDiagnostics.set(VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
-      }
-      else {
-        const memberUri = VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
-        ileDiagnostics.set(memberUri, diagnostics);
+        // For member paths: try to find an open local document by name before falling back to server URI.
+        // findExistingDocumentByName searches all open tabs — no workspace needed — so this works for
+        // member-type actions too (where evfeventInfo.workspace is not set).
+        if (!file.startsWith(`/`) && evfeventInfo.extension) {
+          const lookupName = `${file}.${evfeventInfo.extension}`;
+          const openFile = VscodeTools.findExistingDocumentByName(lookupName);
+          if (openFile) {
+            ileDiagnostics.set(openFile, diagnostics);
+            continue;
+          }
+        }
+
+        if (file.startsWith(`/`)) {
+          ileDiagnostics.set(VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
+        }
+        else {
+          const asp = await connection.getLibraryIAsp(file.split('/')[0]);
+          const memberUri = VscodeTools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp ? `${asp}/` : ''}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
+          ileDiagnostics.set(memberUri, diagnostics);
+        }
       }
     }
   } else {

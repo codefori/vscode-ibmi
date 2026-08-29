@@ -1,6 +1,6 @@
 import os from "os";
 import path, { dirname, extname } from "path";
-import vscode, { CancellationToken, FileDecoration, FileDecorationProvider, FileType, l10n, ProviderResult, ThemeColor, Uri, window } from "vscode";
+import vscode, { CancellationToken, FileDecorationProvider, FileType, l10n, ThemeColor, Uri, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import IBMi from "../../api/IBMi";
@@ -24,6 +24,39 @@ function isProtected(path: string) {
 
 function alwaysShow(name: string) {
   return ALWAYS_SHOW_FILES.test(name);
+}
+
+function trimPath(path: string) {
+  return path.length > 1 && path.endsWith(`/`) ? path.substring(0, path.length - 1) : path;
+}
+
+/**
+ * Checks whether copying or moving `sources` to `target` would overwrite existing items and asks confirmation
+ */
+async function confirmOverwrite(connection: IBMi, sources: string[], target: string) {
+  const content = connection.getContent();
+  target = trimPath(target);
+  //When the target is an existing directory, the sources are put inside of it
+  const targetIsDirectory = await content.testStreamFile(target, "d");
+
+  const overwritten: string[] = [];
+  for (const source of sources.map(trimPath)) {
+    const finalPath = targetIsDirectory ? path.posix.join(target, path.posix.basename(source)) : target;
+    if (finalPath !== source && await content.testStreamFile(finalPath, "e")) {
+      overwritten.push(finalPath);
+    }
+  }
+
+  if (overwritten.length) {
+    return await vscode.window.showWarningMessage(
+      overwritten.length > 1 ?
+        l10n.t(`{0} items already exist in {1} and will be overwritten. Do you want to continue?`, overwritten.length, target) :
+        l10n.t(`{0} already exists and will be overwritten. Do you want to continue?`, overwritten[0]),
+      { modal: true, detail: overwritten.length > 1 ? overwritten.join(`\n`) : undefined },
+      l10n.t(`Overwrite`)) !== undefined;
+  }
+
+  return true;
 }
 
 class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
@@ -130,7 +163,7 @@ class IFSFileItem extends IFSItem {
     super(file, { parent: ifsParent });
 
     this.contextValue = "streamfile";
-    this.iconPath = vscode.ThemeIcon.File;
+    this.iconPath = file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-file") : vscode.ThemeIcon.File;
 
     this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
 
@@ -151,7 +184,8 @@ class IFSDirectoryItem extends IFSItem {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
     const protectedDir = isProtected(this.file.path);
     this.contextValue = `directory${protectedDir ? `_protected` : ``}`;
-    this.iconPath = protectedDir ? new vscode.ThemeIcon("lock-small") : vscode.ThemeIcon.Folder;
+    this.iconPath = protectedDir ? new vscode.ThemeIcon("lock-small") :
+      file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-directory") : vscode.ThemeIcon.Folder;
   }
 
   async getChildren(): Promise<BrowserItem[]> {
@@ -254,6 +288,10 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         let result;
         const froms = ifsBrowserItems.map(item => item.path);
         const to = toDirectory.path;
+        if (!await confirmOverwrite(connection, froms, to)) {
+          return;
+        }
+
         switch (action) {
           case "copy":
             result = await connection.getContent().copy(froms, to);
@@ -671,6 +709,10 @@ Please type "{0}" to confirm deletion.`, dirName);
 
           if (target) {
             const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
+            if (!await confirmOverwrite(connection, [node.path], targetPath)) {
+              return;
+            }
+
             try {
               const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
               if (moveResult.code !== 0) {
@@ -733,6 +775,10 @@ Please type "{0}" to confirm deletion.`, dirName);
 
         if (target) {
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
+          if (!await confirmOverwrite(connection, [node.path], targetPath)) {
+            return;
+          }
+
           try {
             const result = await connection.getContent().copy(node.path, targetPath);
             if (result.code !== 0) {
@@ -939,8 +985,7 @@ Please type "{0}" to confirm deletion.`, dirName);
                   }
                   else {
                     if (!existsSync(target) || await vscode.window.showWarningMessage(l10n.t(`{0} already exists.
-Do you want to replace it?`, target), { modal: true }, l10n.t(`{0} already exists.
-Do you want to replace it?`, target))) {
+Do you want to replace it?`, target), { modal: true }, l10n.t(`Yes`))) {
                       await ibmi.getContent().downloadFile(target, targetPath);
                     }
                   }
@@ -1101,21 +1146,16 @@ export class ShortcutDecorationProvider implements FileDecorationProvider {
   private readonly _onDidChangeFileDecorations = new vscode.EventEmitter<vscode.Uri | vscode.Uri[] | undefined>();
   readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
-  provideFileDecoration(uri: Uri, token: CancellationToken): ProviderResult<FileDecoration> {
-    if (uri.scheme === 'shortcut') {
-      return instance.getConnection()?.getContent().isDirectory(uri.path).then(isFound => {
-        if (!isFound) {
-          return {
-            badge: '⚠',
-            color: new ThemeColor('errorForeground'),
-            tooltip: l10n.t(`Directory does not exist.`)
-          };
-        }
-        return undefined;
-      });
+  async provideFileDecoration(uri: Uri, token: CancellationToken) {
+    if (uri.scheme === 'shortcut' && !await instance.getConnection()?.getContent().isDirectory(uri.path)) {
+      return {
+        badge: '⚠',
+        color: new ThemeColor('errorForeground'),
+        tooltip: l10n.t(`Directory does not exist.`)
+      };
     }
   }
-  
+
   refresh(uri?: vscode.Uri | vscode.Uri[]) {
     this._onDidChangeFileDecorations.fire(uri);
   }

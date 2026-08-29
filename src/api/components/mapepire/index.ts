@@ -5,6 +5,7 @@ import path from "path";
 import { SemanticVersion } from "../../../typings";
 import { getJavaHome } from "../../configuration/DebugConfiguration";
 import IBMi from "../../IBMi";
+import { Tools } from "../../Tools";
 import { IBMiComponent, SecureComponentState } from "../component";
 import { SSHSQLJob } from "./sshSqlJob";
 import { SERVER_FILE_PREFIX, SERVER_VERSION_FILE, VERSION } from "./version";
@@ -47,13 +48,13 @@ export class Mapepire implements IBMiComponent {
       return { status: "Installed", remoteSignature: Mapepire.SIGNATURE };
     }
 
-    const remoteVersions = (await connection.sendCommand({ command: `/QOpenSys/usr/bin/find ${installDirectory} -type f -name ${SERVER_FILE_PREFIX}\\*` }))
+    const remoteVersions = (await connection.sendCommand({ command: `/QOpenSys/usr/bin/find "${Tools.escapePath(installDirectory, true)}" -type f -name ${SERVER_FILE_PREFIX}\\*` }))
       .stdout.split("\n")
       .map(line => line.trim().substring(2))
       .map(line => new RegExp(`${SERVER_FILE_PREFIX}(\\d+)\\.(\\d+)\\.(\\d+)\\.jar$`).exec(line))
       .filter(Boolean)
       .map(version => ({ major: Number(version![1]), minor: Number(version![2]), patch: Number(version![3]) } as SemanticVersion));
-    if (!remoteVersions) {
+    if (remoteVersions.length === 0) {
       return { status: "NotInstalled" };
     }
     else if (remoteVersions.every(remoteVersion => remoteVersion.major < this.version.major || (remoteVersion.major === this.version.major && remoteVersion.minor < this.version.minor) || (remoteVersion.major === this.version.major && remoteVersion.minor === this.version.minor && remoteVersion.patch < this.version.patch))) {
@@ -65,6 +66,11 @@ export class Mapepire implements IBMiComponent {
 
 
   async update(connection: IBMi): Promise<SecureComponentState> {
+    if (connection.getConfig().mapepireUseServer) {
+      //No need to upload the remote JAR file in server mode
+      return { status: "Installed", remoteSignature: Mapepire.SIGNATURE };
+    }
+
     try {
       if (!this.localAssetPath) {
         throw "Local Mapepire asset not set!";
@@ -76,7 +82,7 @@ export class Mapepire implements IBMiComponent {
       }
 
       await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
-      const result = await connection.sendCommand({ command: `chmod +x ${this.installPath}` });
+      const result = await connection.sendCommand({ command: `chmod +x "${Tools.escapePath(this.installPath, true)}"` });
       if (result.code !== 0) {
         throw `Failed to make Mapepire jar file executable: ${result.stderr}`;
       }
@@ -91,7 +97,7 @@ export class Mapepire implements IBMiComponent {
 
   getInitCommand(javaHome: string): string | undefined {
     if (this.installPath) {
-      return `${javaHome ? path.posix.join(javaHome, `bin`, `java`) : 'java'} -Dos400.stdio.convert=N -jar ${this.installPath} --single`
+      return `${javaHome ? path.posix.join(javaHome, `bin`, `java`) : 'java'} -Dos400.stdio.convert=N -jar "${Tools.escapePath(this.installPath, true)}" --single`
     }
   }
 
@@ -119,6 +125,7 @@ export class Mapepire implements IBMiComponent {
     const useServer = config.mapepireUseServer;
     const sqlJob = useServer ? new SQLJob(options?.jdbc) : new SSHSQLJob(options?.jdbc);
     sqlJob.options.secure = sqlJob.options.secure || config.secureSQL;
+    sqlJob.options.naming = sqlJob.options.naming || config.sqlJobNaming as ("sql" | "system" | undefined);
     if (useServer) {
       connection.appendOutput(`Connecting to Mapepire over HTTP on port ${config.mapepireServerPort}${config.mapepireAllowSelfCert ? ", allowing self-signed certificates" : ""}`);
       //HTTP connection

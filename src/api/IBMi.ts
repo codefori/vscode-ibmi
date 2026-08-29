@@ -74,6 +74,21 @@ interface ConnectionConfigFiles {
   [key: string]: ConfigFile<any>;
 }
 
+/**
+ * Settings that are always owned by the client and must never be overridden
+ * by the remote `codefori` configuration.
+ */
+export const CLIENT_ONLY_SETTINGS = new Set([
+  `statusBarColor`,
+  `showDescInLibList`,
+  `showHiddenFiles`,
+  `autoSortIFSShortcuts`,
+  `autoSaveBeforeAction`,
+  `sourceDateGutter`,
+  `encodingFor5250`,
+  `terminalFor5250`,
+]);
+
 export default class IBMi {
   public static GlobalStorage: CodeForIStorage;
   public static connectionManager: ConnectionManager = new ConnectionManager();
@@ -149,7 +164,7 @@ export default class IBMi {
   /**
    * getConfigFile can return pre-defined configuration files,
    * but can lazy load new configuration files as well.
-   * 
+   *
    * This does not load the configuration file from the server,
    * it only returns a ConfigFile instance. You should check the
    * state of the ConfigFile instance to see if it has been loaded,
@@ -173,12 +188,25 @@ export default class IBMi {
     }
   }
 
-
   /**
-   * Primarily used for running SQL statements.
+   * loads the remote configuration files /etc/vscode/settings.json and applies
+   * runs on every connection
    */
-  get userCcsidInvalid() {
-    return this.userJobCcsid === IBMi.CCSID_NOCONVERSION;
+  private async loadAndApplyRemoteConfigs() {
+    await this.loadRemoteConfigs();
+
+    const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
+    if (this.config && remoteConnectionConfig.getState() === `ok`) {
+      const remoteConfig = await remoteConnectionConfig.get();
+
+      if (remoteConfig.codefori) {
+        for (const [key, value] of Object.entries(remoteConfig.codefori)) {
+          if (!CLIENT_ONLY_SETTINGS.has(key) && this.config[key] !== undefined) {
+            this.config[key] = value;
+          }
+        }
+      }
+    }
   }
 
   get dangerousVariants() {
@@ -286,12 +314,39 @@ export default class IBMi {
         }
       }
 
-      await this.client.connect({
+      const connectConfig: node_ssh.Config = {
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
         passphrase: connectionObject.privateKeyPath ? connectionObject.passphrase : undefined,
         debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
-      });
+      };
+
+      if (connectionObject.useSshAgent) {
+        // Determine the SSH agent path based on platform
+        let agentPath: string;
+
+        if (process.platform === 'win32') {
+          // On Windows, use the OpenSSH named pipe
+          agentPath = '\\\\.\\pipe\\openssh-ssh-agent';
+          this.appendOutput(`Using Windows SSH Agent: ${agentPath}\n`);
+        } else {
+          // On Unix-like systems, use SSH_AUTH_SOCK
+          if (!process.env.SSH_AUTH_SOCK) {
+            throw new Error(`SSH Agent is not available. Please start your SSH agent (SSH_AUTH_SOCK is not set).`);
+          }
+          agentPath = process.env.SSH_AUTH_SOCK;
+          this.appendOutput(`Using SSH Agent: ${agentPath}\n`);
+        }
+
+        // Set agent and authentication options
+        connectConfig.agent = agentPath;
+        connectConfig.agentForward = true;
+        delete connectConfig.password;
+        delete connectConfig.privateKeyPath;
+        delete connectConfig.passphrase;
+      }
+
+      await this.client.connect(connectConfig);
       this.connectionSuccessful = true;
 
       this.currentConnectionName = connectionObject.name;
@@ -342,7 +397,7 @@ export default class IBMi {
       if (this.client.connection) {
         //end: Disconnected by the user
         this.client.connection.once(`end`, onDisconnected);
-        //error/tiemout: connection dropped for some reason (details given in the SSHError type) 
+        //error/tiemout: connection dropped for some reason (details given in the SSHError type)
         this.client.connection.once(`error`, onDisconnected);
         this.client.connection.once(`timeout`, onDisconnected);
       }
@@ -430,7 +485,7 @@ export default class IBMi {
         // and chmod follows the link, so detection must follow it too or it can never converge.
         // Returns 'error' when the output can't be parsed (empty stdout, ls error, banner noise).
         const getPermissions = async (path: string) => {
-          const out = (await this.sendCommand({ command: `ls -ldL "${path}" 2>/dev/null` })).stdout;
+          const out = (await this.sendCommand({ command: `ls -ldL "${Tools.escapePath(path, true)}" 2>/dev/null` })).stdout;
           return Tools.parseLsPermissions(out) ?? 'error';
         };
 
@@ -439,14 +494,14 @@ export default class IBMi {
         // Check if .vscode directory exists and get its permissions
         const vscodeDir = `${defaultHomeDir}/.vscode`;
         const vscodeExistsResult = await this.sendCommand({
-          command: `test -d ${vscodeDir} && echo "exists" || echo "notexists"`
+          command: `test -d "${Tools.escapePath(vscodeDir, true)}" && echo "exists" || echo "notexists"`
         });
         const vscodeExists = vscodeExistsResult.stdout.trim() === 'exists';
         const vscodePerms = vscodeExists ? await getPermissions(vscodeDir) : '';
 
         // Check if permissions need updating
         const needsPermissionUpdate =
-          (homePerms !== 'error' && homePerms !== '750') ||
+          (homePerms !== 'error' && homePerms !== '750' && homePerms !== '700') ||
           !vscodeExists ||
           (vscodeExists && vscodePerms !== 'error' && vscodePerms !== '700');
 
@@ -564,6 +619,9 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
+      callbacks.progress({ message: `Loading remote configuration files.` });
+      await this.loadAndApplyRemoteConfigs();
+
       callbacks.progress({ message: `Checking Mapepire status.` });
       const tempDirSet = await this.checkOrCreateTempDirectory();
       if (!tempDirSet) {
@@ -619,7 +677,9 @@ export default class IBMi {
         // TODO: since we are using Mapepire, we only need the QCCSID and the job CCSID now
 
         // Fetch conversion values?
-        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.qccsid) {
+        // Do not restore a cached CCSID_NOCONVERSION value via quick-connect: it must go through
+        // the full resolution path (ACTIVE_JOB_INFO) to obtain a usable CCSID.
+        if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.jobCcsid !== IBMi.CCSID_NOCONVERSION && cachedServerSettings?.qccsid) {
           this.qccsid = cachedServerSettings.qccsid;
           this.userJobCcsid = cachedServerSettings.jobCcsid;
         } else {
@@ -651,6 +711,21 @@ export default class IBMi {
               this.userJobCcsid = this.qccsid;
             }
 
+            if (this.userJobCcsid === IBMi.CCSID_NOCONVERSION) {
+              //At this point, if it's still *HEX, we get the job's default CCSID.
+              // IBM i guarantees DEFAULT_CCSID in ACTIVE_JOB_INFO is never 65535 — it is the
+              // authoritative value IBM i uses when the job CCSID is set to *HEX (65535).
+              const [row] = await this.runSQL(/* sql */`
+                select DEFAULT_CCSID from table(
+                  QSYS2.ACTIVE_JOB_INFO(
+                    JOB_NAME_FILTER => '*',
+                    DETAILED_INFO => 'WORK'
+                  )
+                )`);
+              if (row?.DEFAULT_CCSID) {
+                this.userJobCcsid = Number(row.DEFAULT_CCSID);
+              }
+            }
           } catch (e) {
             // Oh well!
             console.log(e);
@@ -786,24 +861,6 @@ export default class IBMi {
 
       this.appendOutput(`\n`);
 
-      // Load the remote connection configuration and apply it to the connection
-
-      callbacks.progress({ message: `Loading remote configuration files.` });
-      await this.loadRemoteConfigs();
-
-      const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
-      if (remoteConnectionConfig.getState() === `ok`) {
-        const remoteConfig = await remoteConnectionConfig.get();
-
-        if (remoteConfig.codefori) {
-          for (const [key, value] of Object.entries(remoteConfig.codefori)) {
-            if (this.config[key] !== undefined) {
-              this.config[key] = value;
-            }
-          }
-        }
-      }
-
       callbacks.progress({
         message: `Checking temporary directory and temporary library configuration.`
       });
@@ -864,7 +921,7 @@ export default class IBMi {
               if ((!quickConnect() || !cachedServerSettings?.pathChecked)) {
                 const currentPaths = (await this.sendCommand({ command: "echo $PATH" })).stdout.split(":");
                 const bashrcFile = `${defaultHomeDir}/.bashrc`;
-                let bashrcExists = (await this.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0;
+                let bashrcExists = (await this.sendCommand({ command: `test -e "${Tools.escapePath(bashrcFile, true)}"` })).code === 0;
                 let reason;
                 const requiredPaths = ["/QOpenSys/pkgs/bin", "/usr/bin", "/QOpenSys/usr/bin"]
                 let missingPath;
@@ -1187,6 +1244,8 @@ export default class IBMi {
   }
 
   async disconnect() {
+    await this.sqlJob?.close();
+
     if (this.client?.connection) {
       await (await this.getComponent<Mapepire>(Mapepire.ID))?.endJobs();
       //Close the connection and triggers its 'end' event
@@ -1223,6 +1282,10 @@ export default class IBMi {
 
   public getSqlJobId() {
     return this.sqlJob?.id;
+  }
+
+  public getSqlJobJDBCOptions() {
+    return this.sqlJob?.options;
   }
 
   /**
@@ -1452,9 +1515,16 @@ export default class IBMi {
             error = new Tools.SqlError(e.message);
             error.cause = statement
 
-            const parts: string[] = e.message.split(`,`);
-            if (parts.length > 3) {
-              error.sqlstate = parts[parts.length - 2].trim();
+            // First attempt to extract sqlstate using a regex
+            const sqlstateMatch = /,\s*([0-9A-Z]{5}),\s*-?\d+\s*$/.exec(e.message);
+            if (sqlstateMatch) {
+              error.sqlstate = sqlstateMatch[1];
+            } else {
+              // Fallback to splitting the message by commas and taking the second to last part
+              const parts: string[] = e.message.split(`,`);
+              if (parts.length >= 3) {
+                error.sqlstate = parts[parts.length - 2].trim();
+              }
             }
 
             this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}`);
@@ -1507,7 +1577,7 @@ export default class IBMi {
     library = this.upperCaseName(library);
     let libraryIASP = this.libraryAsps.get(library);
     if (!libraryIASP) {
-      const [row] = await this.runSQL(`select IASP_NAME from table(QSYS2.LIBRARY_INFO('${library}'));`);
+      const [row] = await this.runSQL(`select IASP_NAME from table(QSYS2.LIBRARY_INFO('${library}', DETAILED_INFO => 'NO'));`);
       libraryIASP = row?.IASP_NAME ? String(row.IASP_NAME) : "*SYSBAS";
       this.libraryAsps.set(library, libraryIASP);
     }
@@ -1549,7 +1619,7 @@ export default class IBMi {
       this.ccsidCache.delete(cacheKey);
     }
 
-    // Call getAttributes to fetch CCSID 
+    // Call getAttributes to fetch CCSID
     const attrs = await this.getContent().getAttributes(lookupPath, 'CCSID');
     const ccsid = Number(attrs?.CCSID) || 0;
 

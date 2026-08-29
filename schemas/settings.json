@@ -30,71 +30,29 @@
           "default": "*FILE",
           "description": "The CCSID of source files on your system. You should only change this setting from `*FILE` if you have a source file that is 65535 - otherwise use `*FILE`. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems."
         },
+        "autoConvertIFSccsid": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically convert IFS to UTF8 when reading and writing."
+        },
+        "hideCompileErrors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "title": "IBM i error code"
+          },
+          "default": [],
+          "description": "List of codes that will be hidden in the result of an action (from the EVFEVENT file)"
+        },
         "enableSourceDates": {
           "type": "boolean",
           "default": true,
           "description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
         },
-        "encodingFor5250": {
-          "type": "string",
-          "default": "default",
-          "enum": [
-            "default",
-            "37",
-            "256",
-            "273",
-            "277",
-            "278",
-            "280",
-            "284",
-            "285",
-            "297",
-            "500",
-            "871",
-            "870",
-            "905",
-            "880",
-            "420",
-            "875",
-            "424",
-            "1026",
-            "290",
-            "win37",
-            "win256",
-            "win273",
-            "win277",
-            "win278",
-            "win280",
-            "win284",
-            "win285",
-            "win297",
-            "win500",
-            "win871",
-            "win870",
-            "win905",
-            "win880",
-            "win420",
-            "win875",
-            "win424",
-            "win1026"
-          ],
-          "description": "The encoding for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
-        },
-        "terminalFor5250": {
-          "type": "string",
-          "default": "default",
-          "enum": [
-            "default",
-            "IBM-3477-FC",
-            "IBM-3477-FG",
-            "IBM-3180-2 ",
-            "IBM-3179-2 ",
-            "IBM-3196-A1",
-            "IBM-5292-2",
-            "IBM-5291-1",
-            "IBM-5251-11"
-          ],
-          "description": "The terminal type for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+        "setDeviceNameFor5250": {
+          "type": "boolean",
+          "default": false,
+          "description": "If enabled, user will be prompted for the terminal device name."
         },
         "connectringStringFor5250": {
           "type": "string",
@@ -110,6 +68,16 @@
           "type": "string",
           "default": "8008",
           "description": "Port to connect to IBM i Debug Service for SEP."
+        },
+        "debugUpdateProductionFiles": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the job being debugged can update objects in production (*PROD) libraries"
+        },
+        "debugEnableDebugTracing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Tells the debug service to send more data to the client. Only useful for debugging issues in the service."
         },
         "secureSQL": {
           "type": "boolean",
@@ -142,6 +110,32 @@
             "21"
           ],
           "description": "The Java version used to run Mapepire."
+        },
+        "mapepireUseServer": {
+          "type": "boolean",
+          "default": false,
+          "description": "Connect to a remote Mapepire Server over HTTPS instead of running it in single mode."
+        },
+        "mapepireServerPort": {
+          "type": "number",
+          "default": 8076,
+          "maximum": 65535,
+          "minimum": 1,
+          "description": "Remote Mapepire Server port."
+        },
+        "mapepireAllowSelfCert": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow all self-signed certificates or certificates from a CA when connecting to Mapepire."
+        },
+        "sqlJobNaming": {
+          "type": "string",
+          "default": "sql",
+          "enum": [
+            "system",
+            "sql"
+          ],
+          "description": "The job naming convention to use when running SQL queries. 'system' will use the system naming convention, 'sql' will use the SQL naming convention."
         }
       }
     },

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { parse } from 'csv-parse/sync';
 import fs from 'fs';
 import * as node_ssh from "node-ssh";
@@ -15,6 +16,25 @@ const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
 
+/** Separates the two `stat` runs performed by {@link IBMiContent.getFileList} */
+const STAT_SECTIONS_SEPARATOR = `--from-here-symlinks--`;
+
+/**
+ * Reads the output of a non dereferencing `stat` run and maps symbolyc link to real path
+ */
+function parseSymbolicLinks(statOutput: string) {
+  const symlinks = new Map<string, string>();
+  for (const line of statOutput.split(`\n`)) {
+    const [type, name, quotedNames] = line.split(`\t`);
+    if (type === `symbolic link` && name) {
+      const arrow = quotedNames?.lastIndexOf(` -> `) ?? -1;
+      const target = arrow > -1 ? quotedNames.substring(arrow + 4).replace(/^['"`]|['"`]$/g, ``) : ``;
+      symlinks.set(name, target);
+    }
+  }
+  return symlinks;
+}
+
 type Authority = "*ADD" | "*DLT" | "*EXECUTE" | "*READ" | "*UPD" | "*NONE" | "*ALL" | "*CHANGE" | "*USE" | "*EXCLUDE" | "*AUTLMGT";
 export type SortOrder = `name` | `type`;
 
@@ -27,6 +47,7 @@ export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
   private dummyDSPF = false;
+  private systemLibraries?: string[];
 
   private get config() {
     return this.ibmi.getConfig();
@@ -34,6 +55,7 @@ export default class IBMiContent {
 
   reset() {
     this.dummyDSPF = false;
+    this.systemLibraries = undefined;
   }
 
   private getTempRemote(path: string) {
@@ -45,7 +67,7 @@ export default class IBMiContent {
   }
 
   private async getNotUTF8CCSID(attr: string, remotePath: string): Promise<string> {
-    const result = await this.ibmi.sendCommand({ command: `${attr} "${remotePath}" CCSID` });
+    const result = await this.ibmi.sendCommand({ command: `${attr} "${Tools.escapePath(remotePath, true)}" CCSID` });
     if (result.code === 0) {
       //What's the point of converting 1208?
       let ccsid = result.stdout.trim();
@@ -63,6 +85,16 @@ export default class IBMiContent {
     }
     else {
       throw new Error(`Failed to convert ${from} to UTF-8: ${result.stderr}`);
+    }
+  }
+
+  private async convertFromUTF8(iconv: string, from: string, to: string, ccsid: string) {
+    const result = await this.ibmi.sendCommand({ command: `${iconv} -f UTF-8 -t IBM-${ccsid} ${Tools.escapePath(from)} > ${Tools.escapePath(to)}` });
+    if (result.code === 0) {
+      return result.stdout;
+    }
+    else {
+      throw new Error(`Failed to convert ${from} to IBM-${ccsid}: ${result.stderr}`);
     }
   }
 
@@ -136,7 +168,7 @@ export default class IBMiContent {
       const tempFile = this.getTempRemote(fixedPath);
       try {
         await client.putFile(tmpobj, tempFile); //TODO: replace with uploadFiles
-        return await this.convertToUTF8(features.iconv, tempFile, fixedPath, ccsid);
+        return await this.convertFromUTF8(features.iconv, tempFile, fixedPath, ccsid);
       } finally {
         // Clean up temporary file
         await this.ibmi.clearTempRemote(fixedPath);
@@ -472,7 +504,7 @@ export default class IBMiContent {
           OBJTYPELIST => '*LIB',
           OBJECT_NAME => libs.ELEMENT
         )) AS os
-        CROSS JOIN TABLE(QSYS2.LIBRARY_INFO(library_name => os.OBJNAME)) AS li
+        CROSS JOIN TABLE(QSYS2.LIBRARY_INFO(library_name => os.OBJNAME, DETAILED_INFO => 'NO')) AS li
       `;
     const results = await this.ibmi.runSQL(statement);
 
@@ -502,6 +534,26 @@ export default class IBMiContent {
         text: `*** NOT FOUND ***`
       };
     });
+  }
+
+  /**
+   * Returns the names of libraries currently in the system portion of the library list.
+   * We use cache because SYSLIBL cannot change (the only way is to run chgsyslibl)
+   * @returns Array of library names in the system portion
+   */
+  async getSystemLibraries(): Promise<string[]> {
+    if (!this.systemLibraries) {
+      try {
+        const result = await this.ibmi.runSQL(
+          `SELECT SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL()) WHERE TYPE = 'SYSTEM'`
+        );
+        this.systemLibraries = result.map(row => String(row.SYSTEM_SCHEMA_NAME));
+      } catch {
+        this.systemLibraries = [];
+      }
+    }
+
+    return this.systemLibraries;
   }
 
   /**
@@ -538,9 +590,9 @@ export default class IBMiContent {
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
 
-     // Libraries (*LIB) can only be listed from QSYS
-    const isListingLibraries = !!filters?.types?.some(type => type === '*LIB'); 
-     
+    // Libraries (*LIB) can only be listed from QSYS
+    const isListingLibraries = !!filters?.types?.some(type => type === '*LIB');
+
     if (isListingLibraries && localLibrary !== `QSYS`) {
       // Return empty array when trying to list libraries from non-QSYS library
       return [];
@@ -596,7 +648,7 @@ export default class IBMiContent {
     } else if (!withSourceFiles) {
       createOBJLIST = [
         /* sql */
-        `select 
+        `select
           OBJNAME          as NAME,
           OBJTYPE          as TYPE,
           OBJATTRIBUTE     as ATTRIBUTE,
@@ -622,7 +674,7 @@ export default class IBMiContent {
           where PHDTAT = 'S'
         ),
          OBJD as (
-          select 
+          select
             OBJNAME           as NAME,
             OBJTYPE           as TYPE,
             OBJATTRIBUTE      as ATTRIBUTE,
@@ -746,7 +798,7 @@ export default class IBMiContent {
    * @param filter: the criterias used to list the members
    * @returns
    */
-  async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
+  async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, memberText?: string, memberCreated?: string, memberChanged?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
     const sort = filter.sort || { order: 'name' };
     const library = this.ibmi.upperCaseName(filter.library);
     const sourceFile = this.ibmi.upperCaseName(filter.sourceFile);
@@ -757,6 +809,12 @@ export default class IBMiContent {
 
     const memberExtensionFilter = parseFilter(filter.extensions, filter.filterType);
     const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? this.ibmi.upperCaseName(filter.extensions).replace(/[*]/g, `%`) : undefined;
+
+    const memberTextFilter = parseFilter(filter.memberText, filter.filterType);
+    const singleMemberText = memberTextFilter.noFilter && filter.memberText && !filter.memberText.includes(",") ? filter.memberText.toUpperCase().replace(/[*]/g, `%`) : undefined;
+
+    const createdFrom = Tools.parseFilterDate(filter.memberCreated);
+    const changedFrom = Tools.parseFilterDate(filter.memberChanged);
 
     const statement = /* sql */
       `SELECT RTRIM(OBJ_STAT.OBJNAME) AS SOURCE_FILE,
@@ -769,8 +827,12 @@ export default class IBMiContent {
              EXTRACT(EPOCH FROM (PART_STAT.LAST_SOURCE_UPDATE_TIMESTAMP)) * 1000 AS CHANGED
         FROM TABLE (qsys2.object_statistics('${library}', '*FILE', '${sourceFile}')) OBJ_STAT,
         LATERAL (SELECT * FROM TABLE (qsys2.PARTITION_STATISTICS(RPAD(OBJ_STAT.OBJLIB, 10), RPAD(OBJ_STAT.OBJNAME, 10)))) PART_STAT
-        ${singleMember ? `WHERE RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember}'` : ``}
-        ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `${singleMember ? `AND` : `WHERE`} RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension}'` : ``}
+        WHERE TRIM(PART_STAT.SYSTEM_TABLE_MEMBER) <> ''
+        ${singleMember ? `AND RTRIM(PART_STAT.SYSTEM_TABLE_MEMBER) like '${singleMember.replaceAll('_', '+_')}' escape '+'` : ``}
+        ${singleMemberExtension && singleMemberExtension.trim() !== '%' ? `AND RTRIM(CAST(PART_STAT.SOURCE_TYPE AS VARCHAR(10))) like '${singleMemberExtension.replaceAll('_', '+_')}' escape '+'` : ``}
+        ${singleMemberText && singleMemberText.trim() !== '%' ? `AND UPPER(RTRIM(VARCHAR(PART_STAT.TEXT))) like '${singleMemberText.replaceAll('+', '++').replaceAll('_', '+_').replaceAll(`'`, `''`)}' escape '+'` : ``}
+        ${createdFrom ? `AND DATE(PART_STAT.CREATE_TIMESTAMP) >= DATE('${createdFrom}')` : ``}
+        ${changedFrom ? `AND DATE(PART_STAT.LAST_SOURCE_UPDATE_TIMESTAMP) >= DATE('${changedFrom}')` : ``}
         ORDER BY ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
@@ -789,7 +851,8 @@ export default class IBMiContent {
         changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
       } as IBMiMember))
         .filter(member => memberFilter.test(member.name))
-        .filter(member => memberExtensionFilter.test(member.extension));
+        .filter(member => memberExtensionFilter.test(member.extension))
+        .filter(member => memberTextFilter.test(member.text || ``));
     }
     else {
       return [];
@@ -809,13 +872,18 @@ export default class IBMiContent {
     let fileListResult: CommandResult;
 
     if (STAT && SORT) {
+      //The first run dereferences links so that every item is described by its target (a link to a
+      //directory must be listed as a directory); the second one doesn't, to detect the symlinks 
       fileListResult = (await this.ibmi.sendCommand({
-        command: `cd '${remotePath}' && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
+        command: `cd '${remotePath}' && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``} ; echo "${STAT_SECTIONS_SEPARATOR}" ; ${STAT} --printf="%F\t%n\t%N\n" * .*`
       }));
 
       if (fileListResult.stdout !== '') {
-        const fileStatList = fileListResult.stdout;
-        const fileList = fileStatList.split(`\n`);
+        //Both sections are trimmed since splitting on the separator leaves the newlines around it
+        const separatorIndex = fileListResult.stdout.indexOf(STAT_SECTIONS_SEPARATOR);
+        const fileStatList = (separatorIndex > -1 ? fileListResult.stdout.substring(0, separatorIndex) : fileListResult.stdout).trim();
+        const symlinks = separatorIndex > -1 ? parseSymbolicLinks(fileListResult.stdout.substring(separatorIndex + STAT_SECTIONS_SEPARATOR.length).trim()) : new Map<string, string>();
+        const fileList = fileStatList.split(`\n`).filter(item => item);
 
         //Remove current and dir up.
         fileList.forEach(item => {
@@ -830,7 +898,8 @@ export default class IBMiContent {
               path: path.posix.join(remotePath, name),
               size: Number(size),
               modified: new Date(Number(modified) * 1000),
-              owner: owner
+              owner: owner,
+              symlink: symlinks.get(name)
             });
           };
         });
@@ -864,10 +933,12 @@ export default class IBMiContent {
       }
     }
 
-    if (fileListResult.code !== 0) {
+    //Checking stderr rather than the return code: the code is the one of the last chained command, so an
+    //error raised by the dereferencing stat only (a broken link, typically) would otherwise go unnoticed
+    if (fileListResult.stderr) {
       //Filter out the errors occurring when stat is run on a directory with no hidden or regular files
       const errors = fileListResult.stderr.split("\n")
-        .filter(e => !e.toLowerCase().includes("cannot stat '*'") && !e.toLowerCase().includes("cannot stat '.*'"))
+        .filter(e => e && !e.toLowerCase().includes("cannot stat '*'") && !e.toLowerCase().includes("cannot stat '.*'"))
         .filter(Tools.distinct);
 
       if (errors.length) {
@@ -1161,22 +1232,33 @@ export default class IBMiContent {
 
   /**
    * Returns the signature of an SQL component
-   * @param library 
-   * @param name 
-   * @param type 
-   * @returns 
+   * @param library
+   * @param name
+   * @param type
+   *
+   * @returns the routine program if it's external, the sha256 hash of the routine's body otherwise
    */
   async getSQLRoutineSignature(library: string, name: string, type: "PROCEDURE" | "FUNCTION") {
-    return (await this.ibmi.runSQL(
-      /* sql */`select HASH_SHA256(ROUTINEDEF) SIGNATURE from qsys2.sysroutines where routine_type = '${type}' and rtnschema = '${library}' and RTNNAME = '${name}' fetch first row only`
-    )).at(0)?.SIGNATURE as string;
+    const [row] = await this.ibmi.runSQL(/* sql */`
+      select ROUTINE_BODY, EXTERNAL_NAME, ROUTINEDEF
+      from QSYS2.SYSROUTINES
+      where ROUTINE_TYPE = '${type}' and
+            RTNSCHEMA = '${library}' and
+            RTNNAME = '${name}'
+      fetch first row only`
+    );
+    if (row?.ROUTINE_BODY === "EXTERNAL") {
+      return row.EXTERNAL_NAME as string
+    }
+    else if (row?.ROUTINEDEF) {
+      return crypto.createHash('sha256').update(row.ROUTINEDEF as string).digest('hex').toUpperCase();
+    }
   }
 
   async getSHA256FileHash(remoteFile: string) {
-
-    //We use OPENSSL that is already build in inside os   
+    //We use OPENSSL that is already build in inside os
     if (this.ibmi.remoteFeatures.openssl) {
-      const objhash = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 ${remoteFile} ` });
+      const objhash = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.openssl} dgst -sha256 "${Tools.escapePath(remoteFile, true)}" ` });
       if (objhash.code === 0) {
         return objhash.stdout.split(' ').pop();
       }
@@ -1202,6 +1284,7 @@ export default class IBMiContent {
           if (libraryName !== '1') {
             throw new Error(`Failed to run Library List Command ${command}`);
           }
+          break;
         case 'CURRENT':
           result.currentLibrary = libraryName;
           break;

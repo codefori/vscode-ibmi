@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "3.0.11-dev.0",
+	"version": "3.0.13-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -130,6 +130,11 @@
 											"type": "string",
 											"description": "Member type filter",
 											"maxLength": 10,
+											"default": "*"
+										},
+										"memberText": {
+											"type": "string",
+											"description": "Member text description filter",
 											"default": "*"
 										}
 									}
@@ -391,6 +396,32 @@
 									"21"
 								],
 								"description": "The Java version used to run Mapepire."
+							},
+							"mapepireUseServer": {
+								"type": "boolean",
+								"default": false,
+								"description": "Connect to a remote Mapepire Server over HTTPS instead of running it in single mode."
+							},
+							"mapepireServerPort": {
+								"type": "number",
+								"default": 8076,
+								"maximum": 65535,
+								"minimum": 1,
+								"description": "Remote Mapepire Server port."
+							},
+							"mapepireAllowSelfCert": {
+								"type": "boolean",
+								"default": false,
+								"description": "Allow all self-signed certificates or certificates from a CA when connecting to Mapepire."
+							},
+							"sqlJobNaming": {
+								"type": "string",
+								"default": "sql",
+								"enum": [
+									"system",
+									"sql"
+								],
+								"description": "The job naming convention to use when running SQL queries. 'system' will use the system naming convention, 'sql' will use the SQL naming convention."
 							}
 						}
 					}
@@ -404,6 +435,21 @@
 						"none"
 					],
 					"description": "Determine which view should be shown when running Actions"
+				},
+				"code-for-ibmi.sortActionsBy": {
+					"type": "string",
+					"default": "usage",
+					"enum": [
+						"usage",
+						"name",
+						"config"
+					],
+					"enumDescriptions": [
+						"Sort actions by most recently used",
+						"Sort actions alphabetically by name",
+						"Sort actions in the order they are defined in the configuration, regardless of their origin"
+					],
+					"description": "Determine how actions should be sorted in the action selection menu"
 				},
 				"code-for-ibmi.clearErrorsBeforeBuild": {
 					"type": "boolean",
@@ -468,6 +514,21 @@
 					"default": true,
 					"description": "If enabled, objects will be sorted by object name. If disabled, objects will be sorted by object type (MI object type)."
 				},
+				"code-for-ibmi.ObjectBrowser.filterDetails": {
+					"type": "string",
+					"default": "both",
+					"enum": [
+						"both",
+						"tooltip",
+						"description"
+					],
+					"enumDescriptions": [
+						"Show the details next to the filter name and in its hover",
+						"Only show the details in the filter's hover",
+						"Only show the details next to the filter name"
+					],
+					"description": "Where the details of an object filter (libraries, objects, members, etc.) are shown in the Object Browser."
+				},
 				"code-for-ibmi.IfsBrowser.DragAndDropDefaultBehavior": {
 					"type": "string",
 					"default": "ask",
@@ -509,6 +570,18 @@
 						"Keep the 20 most recently opened files",
 						"Keep the 30 most recently opened files"
 					]
+				},
+				"code-for-ibmi.tables.itemsPerPage": {
+					"type": "integer",
+					"default": 50,
+					"minimum": 30,
+					"description": "Number of rows shown per page in the extension's table views (job log, object lists, etc.). Minimum is 30."
+				},
+				"code-for-ibmi.views.autoRefreshInterval": {
+					"type": "integer",
+					"default": 30,
+					"minimum": 0,
+					"markdownDescription": "Auto-refresh interval, **in seconds**, for the auto-refreshing views (Job Log, Work with Job, Message Queue). Typical values are `30`, `60` or `120`; any other number of seconds is accepted. Set to `0` to disable auto-refresh. The refresh runs even when the tab is in the background."
 				},
 				"code-for-ibmi.safeDeleteMode": {
 					"type": "boolean",
@@ -1026,6 +1099,19 @@
 				"enablement": "code-for-ibmi:connected",
 				"title": "Open Errors",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.showJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Display Job Log",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.refreshJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Refresh Job Log",
+				"category": "IBM i",
+				"icon": "$(refresh)"
 			},
 			{
 				"command": "code-for-ibmi.launchTerminalPicker",
@@ -1552,6 +1638,32 @@
 				"icon": "$(close)"
 			},
 			{
+				"command": "code-for-ibmi.downloadAllSearchResults",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Download all results",
+				"category": "IBM i",
+				"icon": "$(cloud-download)"
+			},
+			{
+				"command": "code-for-ibmi.downloadSelectedSearchResults",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Download",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.copyAllSearchResultNames",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Copy all names",
+				"category": "IBM i",
+				"icon": "$(copy)"
+			},
+			{
+				"command": "code-for-ibmi.copySelectedSearchResultNames",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Copy names",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.sortIFSFilesByDate",
 				"title": "Date",
 				"category": "IBM i"
@@ -2041,6 +2153,14 @@
 			{
 				"id": "code-for-ibmi.structuredDownload",
 				"label": "Download..."
+			},
+			{
+				"id": "code-for-ibmi.searchResults.copy",
+				"label": "Copy"
+			},
+			{
+				"id": "code-for-ibmi.searchResults.download",
+				"label": "Download"
 			}
 		],
 		"menus": {
@@ -2056,6 +2176,26 @@
 				{
 					"command": "code-for-ibmi.downloadMembersStructured",
 					"group": "1_download@3"
+				}
+			],
+			"code-for-ibmi.searchResults.copy": [
+				{
+					"command": "code-for-ibmi.copySelectedSearchResultNames",
+					"group": "1_copy@1"
+				},
+				{
+					"command": "code-for-ibmi.copyAllSearchResultNames",
+					"group": "1_copy@2"
+				}
+			],
+			"code-for-ibmi.searchResults.download": [
+				{
+					"command": "code-for-ibmi.downloadSelectedSearchResults",
+					"group": "1_download@1"
+				},
+				{
+					"command": "code-for-ibmi.downloadAllSearchResults",
+					"group": "1_download@2"
 				}
 			],
 			"code-for-ibmi.sortIFSFiles": [
@@ -2192,6 +2332,10 @@
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.showJobLog",
 					"when": "code-for-ibmi:connected"
 				},
 				{
@@ -2428,6 +2572,22 @@
 				},
 				{
 					"command": "code-for-ibmi.closeSearchView",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadAllSearchResults",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadSelectedSearchResults",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyAllSearchResultNames",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copySelectedSearchResultNames",
 					"when": "never"
 				},
 				{
@@ -2731,7 +2891,7 @@
 				},
 				{
 					"command": "code-for-ibmi.closeSearchView",
-					"group": "navigation@2",
+					"group": "navigation@1",
 					"when": "view == searchView"
 				},
 				{
@@ -2751,6 +2911,11 @@
 				}
 			],
 			"editor/title": [
+				{
+					"command": "code-for-ibmi.refreshJobLog",
+					"when": "activeWebviewPanelId == 'jobLogView'",
+					"group": "navigation@1"
+				},
 				{
 					"submenu": "code-for-ibmi.debug.group",
 					"when": "code-for-ibmi:connected && editorLangId =~ /^rpg(le)?|cl(le)?|(ile)?cobol|c?$/i",
@@ -2778,6 +2943,16 @@
 				}
 			],
 			"view/item/context": [
+				{
+					"submenu": "code-for-ibmi.searchResults.copy",
+					"when": "view == searchView && viewItem == hitSource",
+					"group": "1_copy@1"
+				},
+				{
+					"submenu": "code-for-ibmi.searchResults.download",
+					"when": "view == searchView && viewItem == hitSource",
+					"group": "1_copy@2"
+				},
 				{
 					"command": "code-for-ibmi.copyConnection",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
@@ -3326,7 +3501,8 @@
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
 		"types": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node --resolveJsonModule",
-		"postinstall": "npx tsx tools/downloadMapepire"
+		"postinstall": "npx tsx tools/downloadMapepire",
+		"sqlsignature": "npx tsx tools/sqlSignature"
 	},
 	"devDependencies": {
 		"@octokit/rest": "22.0.1",
@@ -3352,6 +3528,7 @@
 		"@ibm/ibmi-eventf-parser": "2.0.2",
 		"@ibm/mapepire-js": "0.6.1",
 		"@vscode-elements/elements": "2.5.1",
+		"@vscode/codicons": "0.0.45",
 		"adm-zip": "0.5.16",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
 		"csv": "6.4.1",

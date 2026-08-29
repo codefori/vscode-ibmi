@@ -1,5 +1,5 @@
 import { ConnectionData } from "../../types";
-import { ConnectionConfig } from "./types";
+import { ConnectionConfig, GlobalConfiguration } from "./types";
 import { Config, VirtualConfig } from "./VirtualConfig";
 
 function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
@@ -51,16 +51,19 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     ccsidConversionEnabled: (parameters.ccsidConversionEnabled === true),
     ccsidConvertFrom: parameters.ccsidConvertFrom || ``,
     ccsidConvertTo: parameters.ccsidConvertTo || ``,
+    sqlJobNaming: parameters.sqlJobNaming || `sql`,
+    statusBarColor: parameters.statusBarColor || ``,
   }
 }
 
 export class ConnectionManager {
   configMethod: Config = new VirtualConfig();
 
-  /**
-   * A bit of a hack to access any piece of configuration. (like actions)
-   */
-  get<T>(key: string) {
+  /** Typed access to a known global setting. */
+  get<K extends keyof GlobalConfiguration>(key: K): GlobalConfiguration[K] | undefined;
+  /** Loose access to any other config (stored blobs, dynamic keys). */
+  get<T>(key: string): T | undefined;
+  get<T>(key: string): T | undefined {
     return this.configMethod.get<T>(key);
   }
 

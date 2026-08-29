@@ -22,6 +22,9 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
           types: [...filter.types],
           member: filter.member,
           memberType: filter.memberType,
+          memberText: filter.memberText || `*`,
+          memberCreated: filter.memberCreated,
+          memberChanged: filter.memberChanged,
           protected: filter.protected
         }
 
@@ -37,6 +40,9 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
         types: [`*SRCPF`],
         member: `*`,
         memberType: `*`,
+        memberText: `*`,
+        memberCreated: ``,
+        memberChanged: ``,
         protected: false
       }
 
@@ -54,6 +60,9 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
       .addInput(`types`, `Object types`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM</code>, <code>*SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, { default: filter.types.join(`, `) })
       .addInput(`member`, `Members`, `Member names filter.`, { default: filter.member })
       .addInput(`memberType`, `Member type`, `Member types filter.`, { default: filter.memberType })
+      .addInput(`memberText`, `Member text`, `Member text description filter.`, { default: filter.memberText || `*` })
+      .addInput(`memberCreated`, `Member created from`, `Only list members created on or after this date. Leave blank to list members regardless of what their creation date is.`, { default: filter.memberCreated || ``, inputType: `date` })
+      .addInput(`memberChanged`, `Member changed from`, `Only list members last changed on or after this date. Leave blank to list members regardless of what their last changed date is.`, { default: filter.memberChanged || ``, inputType: `date` })
       .addCheckbox(`protected`, `Protected`, `Make this filter protected, preventing modifications and source members from being saved.`, filter.protected)
       .addButtons({ id: `save`, label: `Save settings` })
       .loadPage<any>(`Filter: ${newFilter ? `New` : filter.name}`);
@@ -87,6 +96,14 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
             break;
           case `memberType`:
             data[key] = String(data[key].trim()) || `*`;
+            break;
+          case `memberText`:
+            data[key] = String(data[key].trim()) || `*`;
+            break;
+          case `memberCreated`:
+          case `memberChanged`:
+            // reset anything that isn't a valid date 
+            data[key] = Tools.parseFilterDate(String(data[key])) || ``;
             break;
           case `protected`:
             // Do nothing. It's a boolean

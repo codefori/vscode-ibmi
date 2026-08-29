@@ -61,6 +61,7 @@ export const extensionComponentRegistry = new ComponentRegistry();
 
 export class ComponentManager {
   private readonly registered: IBMiComponentRuntime[] = [];
+  private readonly statesCheckTimeout = new Map<string, Date>();
 
   constructor(private readonly connection: IBMi) { }
 
@@ -187,7 +188,7 @@ export class ComponentManager {
   async get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): Promise<T | undefined> {
     const componentEngine = this.registered.find(c => c.component.getIdentification().name === id);
     if (componentEngine && (options.ignoreState || componentEngine.getState().status === `Installed`)) {
-      if (componentEngine.getState().status === `Installed`) {
+      if (componentEngine.getState().status === `Installed` && this.mustCheck(id)) {
         const currentState = await componentEngine.getCurrentState();
         if (currentState.remoteSignature !== componentEngine.getState().remoteSignature) {
           const identification = componentEngine.component.getIdentification();
@@ -196,6 +197,16 @@ export class ComponentManager {
       }
       return componentEngine.component as T;
     }
+  }
+
+  private mustCheck(id:string){
+    const checkDate = this.statesCheckTimeout.get(id);
+    if(!checkDate || checkDate.valueOf() + 60000 < new Date().valueOf() ){
+      //never checked or checked less than one minute ago
+      this.statesCheckTimeout.set(id, new Date())
+      return true;
+    }
+    return false;
   }
 }
 

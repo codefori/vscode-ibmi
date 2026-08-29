@@ -31,14 +31,16 @@ if (!process.env.VITE_SERVER || !process.env.VITE_DB_USER) {
   process.exit(1);
 }
 
-// Validate that either password or private key is provided
-if (!process.env.VITE_DB_PASS && !process.env.VITE_PRIVATE_KEY_PATH) {
+// Validate that either password, private key, or SSH agent is provided
+if (!process.env.VITE_DB_PASS && !process.env.VITE_PRIVATE_KEY_PATH && !process.env.VITE_USE_SSH_AGENT) {
   const messages = [
     ``,
-    `Authentication error: You must provide either:`,
+    `Authentication error: You must provide one of:`,
     `\tVITE_DB_PASS (for password authentication)`,
     `\tOR`,
     `\tVITE_PRIVATE_KEY_PATH (for SSH key authentication)`,
+    `\tOR`,
+    `\tVITE_USE_SSH_AGENT=true (for SSH agent authentication)`,
     ``,
   ];
 
@@ -53,6 +55,7 @@ const ENV_CREDS = {
   password: process.env.VITE_DB_PASS,
   privateKeyPath: process.env.VITE_PRIVATE_KEY_PATH,
   passphrase: process.env.VITE_PASSPHRASE,
+  useSshAgent: process.env.VITE_USE_SSH_AGENT === 'true',
   port: parseInt(process.env.VITE_DB_PORT || `22`),
   tempLibrary: process.env.VITE_TEMP_LIB || 'ILEDITOR',
   iasp: process.env.VITE_IASP
@@ -66,7 +69,8 @@ export async function newConnection(reloadSettings?: boolean) {
 
   const conn = new IBMi();
 
-  const mapepire = new Mapepire(path.join(__dirname, `..`, `..`, `..`, `dist`));
+  //The password is required when connecting to a Mapepire Server (mapepireUseServer)
+  const mapepire = new Mapepire(path.join(__dirname, `..`, `..`, `..`, `dist`), async () => ENV_CREDS.password);
 
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);

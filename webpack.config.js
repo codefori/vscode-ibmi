@@ -90,6 +90,18 @@ const config = {
         type: `asset/source`
       },
       {
+        // Codicon stylesheet, inlined into the webviews as a string
+        test: /\.css$/,
+        include: path.resolve(__dirname, `node_modules/@vscode/codicons/dist`),
+        type: `asset/source`
+      },
+      {
+        // Codicon font, inlined into the stylesheet above as a base64 data URI
+        test: /\.ttf$/,
+        include: path.resolve(__dirname, `node_modules/@vscode/codicons/dist`),
+        type: `asset/inline`
+      },
+      {
         test: /\.(ts|tsx)$/i,
         exclude: /node_modules/,
         use: [
