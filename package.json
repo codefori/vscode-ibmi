@@ -3325,7 +3325,7 @@
 				},
 				{
 					"command": "code-for-ibmi.changeObjectDesc",
-					"when": "view == objectBrowser && !listMultiSelection && (viewItem =~ /^object/ || viewItem == SPF)",
+					"when": "view == objectBrowser && !listMultiSelection && (viewItem =~ /^object/ || viewItem == SPF) && !(viewItem =~ /_readonly/)",
 					"group": "1_objActions@1"
 				},
 				{
@@ -3335,12 +3335,12 @@
 				},
 				{
 					"command": "code-for-ibmi.objectBrowser.delete",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && viewItem =~ /^object/ && !(viewItem =~ /_readonly/)",
 					"group": "1_objActions@5"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object(?!.lib)/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object(?!.lib)/ && !(viewItem =~ /_readonly/)",
 					"group": "1_objActions@4"
 				},
 				{

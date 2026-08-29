@@ -1312,6 +1312,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.changeObjectDesc`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       let newText = node.object.text;
       let newTextOK;
       do {
@@ -1399,6 +1402,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       let [, newObject] = node.path.split(`/`);
       let newObjectOK;
       do {
@@ -1435,6 +1441,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.moveObject`, async (node: ObjectBrowserObjectItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       let [newLibrary,] = node.path.split(`/`);
       let newLibraryOK;
       do {
@@ -1484,6 +1493,10 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       }
 
       const toBeDeleted = candidates.filter(item => item instanceof ObjectBrowserFilterItem || !item.isProtected());
+      const protectedItems = candidates.filter(item => !(item instanceof ObjectBrowserFilterItem) && item.isProtected());
+      if (protectedItems.length) {
+        vscode.window.showWarningMessage(vscode.l10n.t(`{0} cannot be deleted because they are in a protected filter or library: {1}`, protectedItems.length, protectedItems.map(item => item.toString()).join(`, `)));
+      }
       if (toBeDeleted.length) {
         const message = toBeDeleted.length === 1 ? vscode.l10n.t(`Are you sure you want to delete {0}?`, toBeDeleted[0].toString()) : vscode.l10n.t("Are you sure you want to delete these {0} elements?", toBeDeleted.length);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(item => `- ${item.toString()}`).join("\n");
@@ -1534,6 +1547,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
     vscode.commands.registerCommand(`code-for-ibmi.renameQSYS`, async (node?: (ObjectBrowserMemberItem | ObjectBrowserObjectItem)) => {
       node = getSelectedItems(node).at(0);
+      if (node instanceof ObjectBrowserItem && checkProtected(node)) {
+        return;
+      }
       if (node instanceof ObjectBrowserObjectItem || node instanceof ObjectBrowserSourcePhysicalFileItem) {
         vscode.commands.executeCommand(`code-for-ibmi.renameObject`, node);
       }
@@ -1543,6 +1559,14 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
     vscode.commands.registerCommand(`code-for-ibmi.objectBrowser.selection`, getSelectedItems)
   );
+}
+
+function checkProtected(node: { isProtected?: () => boolean, toString(): string }): boolean {
+  if (node?.isProtected?.()) {
+    vscode.window.showWarningMessage(vscode.l10n.t(`{0} is in a protected filter or library and cannot be modified.`, node.toString()));
+    return true;
+  }
+  return false;
 }
 
 function getConfig() {
