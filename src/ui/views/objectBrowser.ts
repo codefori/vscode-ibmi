@@ -827,7 +827,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             if (IBMi.connectionManager.get(`autoOpenFile`)) {
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, connection.upperCaseName(fullPath));
             }
 
             if (oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()) {
@@ -969,7 +969,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       if (newNameOK && newMemberPath) {
         oldMemberTabs.forEach((tab) => {
           vscode.window.tabGroups.close(tab).then(() => {
-            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, connection.upperCaseName(newMemberPath));
           });
         })
       }
