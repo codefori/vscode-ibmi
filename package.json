@@ -2219,7 +2219,8 @@
 					"command": "code-for-ibmi.browse"
 				},
 				{
-					"command": "code-for-ibmi.edit"
+					"command": "code-for-ibmi.edit",
+					"when": "viewItem == streamfile"
 				}
 			],
 			"code-for-ibmi.openMember": [
@@ -3110,12 +3111,12 @@
 				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile) && !listMultiSelection",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem =~ /^streamfile.*$/) && !listMultiSelection",
 					"group": "7_sourceFileStuff@1"
 				},
 				{
 					"submenu": "code-for-ibmi.compareWith",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem =~ /^streamfile.*$/)",
 					"group": "7_sourceFileStuff@2"
 				},
 				{
@@ -3190,12 +3191,12 @@
 				},
 				{
 					"submenu": "code-for-ibmi.openIFSFile",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem =~ /^streamfile.*$/",
 					"group": "0_open@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem =~ /^streamfile.*$/",
 					"group": "1_workspace@1"
 				},
 				{
@@ -3295,7 +3296,7 @@
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*|streamfile$/",
+					"when": "view == ifsBrowser && viewItem =~ /^(directory|streamfile).*$/",
 					"group": "3_ifsTransfer@1"
 				},
 				{

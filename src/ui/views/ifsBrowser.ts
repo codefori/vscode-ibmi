@@ -145,7 +145,7 @@ class IFSItem extends BrowserItem implements WithPath {
   }
 
   isProtected(): boolean {
-    return isProtected(this.path);
+    return this.file.type === "directory" ? isProtected(this.path) : this.parent?.isProtected() || false;
   }
 
   sortBy(sort: SortOptions) {
@@ -174,7 +174,7 @@ class IFSFileItem extends IFSItem {
   constructor(file: IFSFile, readonly ifsParent: IFSDirectoryItem) {
     super(file, { parent: ifsParent });
 
-    this.contextValue = "streamfile";
+    this.contextValue = `streamfile${this.isProtected() ? `_protected` : ``}`;
     this.iconPath = file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-file") : vscode.ThemeIcon.File;
 
     this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
@@ -745,6 +745,10 @@ Please type "{0}" to confirm deletion.`, dirName);
 
           if (target) {
             const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
+            if (checkProtected(path.posix.dirname(trimPath(targetPath)))) {
+              return;
+            }
+
             if (!await confirmOverwrite(connection, [node.path], targetPath)) {
               return;
             }
@@ -811,6 +815,10 @@ Please type "{0}" to confirm deletion.`, dirName);
 
         if (target) {
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
+          if (checkProtected(path.posix.dirname(trimPath(targetPath)))) {
+            return;
+          }
+
           if (!await confirmOverwrite(connection, [node.path], targetPath)) {
             return;
           }
