@@ -3200,12 +3200,12 @@
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@2"
 				},
 				{
@@ -3250,12 +3250,12 @@
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@2"
 				},
 				{
@@ -3300,7 +3300,7 @@
 				},
 				{
 					"command": "code-for-ibmi.uploadStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "3_ifsTransfer@2"
 				},
 				{
