@@ -782,9 +782,8 @@ export default class IBMi {
         message: `Checking library list configuration.`
       });
 
-      //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
-      //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
-      let currentLibrary = `QGPL`;
+
+      let currentLibrary = undefined;
       this.defaultUserLibraries = [];
 
       const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL())`);
@@ -799,13 +798,14 @@ export default class IBMi {
         }
       }
 
-      //If this is the first time the config is made, then these arrays will be empty
+      //If this is the first time the config is made, then this array will be empty
       if (this.config.libraryList.length === 0) {
+        this.config.currentLibrary = currentLibrary;
         this.config.libraryList = this.defaultUserLibraries;
       }
 
       callbacks.progress({ message: `Checking temporary library.` });
-      const tempLibrarySet = await this.checkOrCreateTempLibrary(currentLibrary, callbacks.message);
+      const tempLibrarySet = await this.checkOrCreateTempLibrary(currentLibrary || "QGPL", callbacks.message);
       if (tempLibrarySet && this.config.autoClearTempData) {
         callbacks.progress({
           message: `Clearing temporary data.`
