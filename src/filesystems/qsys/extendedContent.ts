@@ -145,7 +145,7 @@ export class ExtendedIBMiContent {
           const recordLength = await this.readRecordLength(connection, alias, overFile);
 
           const decimalSequence = sourceData.length >= 10000;
-          const tabSize = vscode.workspace.getConfiguration(`editor`, uri).get<number>(`tabSize`) || 4;
+          const tabSize = (vscode.window.activeTextEditor?.options.tabSize as number) || 4;
 
           let rows = [],
             sequence = 0;
