@@ -62,7 +62,7 @@ async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
     try {
       await connection.setCurrentASP(profile.iasp);
 
-      data.currentLibrary = data.currentLibrary.trim();
+      data.currentLibrary = connection.upperCaseName(data.currentLibrary.trim());
       if (!data.currentLibrary || data.currentLibrary === '*CRTDFT'){
         profile.currentLibrary = undefined;
       }
