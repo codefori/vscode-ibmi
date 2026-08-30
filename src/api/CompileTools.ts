@@ -2,13 +2,8 @@
 import IBMi from './IBMi';
 import { SimpleQueue } from './queue';
 import { Tools } from './Tools';
-import { CommandResult, RemoteCommand, StandardIO } from './types';
+import { CommandResult, ILELibrarySettings, RemoteCommand, StandardIO } from './types';
 import { Variables } from './variables';
-
-export interface ILELibrarySettings {
-  currentLibrary?: string;
-  libraryList: string[];
-}
 
 export namespace CompileTools {
   export const NEWLINE = `\r\n`;

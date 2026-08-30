@@ -1,16 +1,16 @@
 import { Ignore } from "ignore";
 import { ConfigurationChangeEvent, Disposable, Uri, WorkspaceFolder } from "vscode";
 import Instance from "./Instance";
+import { SearchTools } from "./api/SearchTools";
+import { ActionTools } from "./api/actions";
 import { ComponentRegistry } from './api/components/manager';
 import { ConnectionManager } from "./api/configuration/config/ConnectionManager";
-import { ViewSettings } from "./config/Configuration";
 import { DeploymentMethod, FileError } from "./api/types";
+import { ViewSettings } from "./config/Configuration";
 import { CustomEditor } from "./editors/customEditorProvider";
 import { DeployTools } from "./filesystems/local/deployTools";
-import { ActionTools } from "./api/actions";
 import { VscodeTools } from "./ui/Tools";
 import { FrontendTables } from "./ui/frontendTables";
-import { SearchTools } from "./api/SearchTools";
 import { CustomUI } from "./webviews/CustomUI";
 
 export interface CodeForIBMi {
@@ -39,4 +39,3 @@ export interface DeploymentParameters {
 
 export * from "./api/types";
 export * from "./ui/types";
-

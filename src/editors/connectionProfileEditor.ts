@@ -73,10 +73,10 @@ async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
         throw new Error(l10n.t("Current library {0} is invalid", data.currentLibrary));
       }
 
-      let libraryList = data.libraryList.split(',').map(library => connection.upperCaseName(library.trim()));
+      let libraryList = data.libraryList.split(',').map(library => connection.upperCaseName(library.trim())).filter(Boolean);
 
       const systemLibraries = await content.getSystemLibraries();
-      const librariesInSystemPortion = libraryList.filter(library => systemLibraries.includes(connection.upperCaseName(library)));
+      const librariesInSystemPortion = libraryList.filter(library => systemLibraries.includes(library));
       if (librariesInSystemPortion.length) {
         libraryList = libraryList.filter(library => !librariesInSystemPortion.includes(library));
         vscode.window.showWarningMessage(l10n.t("The following libraries are already in the system portion of the library list and were removed: {0}", librariesInSystemPortion.sort().join(', ')));
