@@ -22,6 +22,7 @@ Contributions and pull requests are welcome, however, it is essential that the f
 2. Pull requests must be accompanied by thorough documentation on how to test them, as well as documentation on how to reproduce the issues being fixed
 3. For PRs related to the user interface, screenshots of the proposed changes, a “before and after” comparison must be included in the PR body
 4. The use of AI is permitted; however, auto-generated PRs will not be accepted. Furthermore, responsibility for the code will rest with the author in the same way as for hand-written code
+5. All strings within the modified code must be translated into all existing languages using the l10n framework.
 
 
 # Previous contributors
