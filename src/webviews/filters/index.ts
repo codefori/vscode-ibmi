@@ -63,7 +63,7 @@ export async function editFilter(filter?: ObjectFilters, copy = false) {
       .addInput(`memberText`, `Member text`, `Member text description filter.`, { default: filter.memberText || `*` })
       .addInput(`memberCreated`, `Member created from`, `Only list members created on or after this date. Leave blank to list members regardless of what their creation date is.`, { default: filter.memberCreated || ``, inputType: `date` })
       .addInput(`memberChanged`, `Member changed from`, `Only list members last changed on or after this date. Leave blank to list members regardless of what their last changed date is.`, { default: filter.memberChanged || ``, inputType: `date` })
-      .addCheckbox(`protected`, `Protected`, `Make this filter protected: objects can't be renamed, moved, deleted or have their description changed, source members are read-only and can't be saved, and Actions run only when flagged to run on protected targets.`, filter.protected)
+      .addCheckbox(`protected`, `Protected`, `Make this filter protected: objects and members can't be altered and Actions can only run if flagged to run on protected targets.`, filter.protected)
       .addButtons({ id: `save`, label: `Save settings` })
       .loadPage<any>(`Filter: ${newFilter ? `New` : filter.name}`);
 
