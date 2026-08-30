@@ -63,17 +63,17 @@ async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
       await connection.setCurrentASP(profile.iasp);
 
       data.currentLibrary = connection.upperCaseName(data.currentLibrary.trim());
-      if (!data.currentLibrary || data.currentLibrary === '*CRTDFT'){
+      if (!data.currentLibrary || data.currentLibrary === '*CRTDFT') {
         profile.currentLibrary = undefined;
       }
-      else if(await content.checkObject({ library: "QSYS", name: data.currentLibrary, type: "*LIB" })) {
+      else if (await content.checkObject({ library: "QSYS", name: data.currentLibrary, type: "*LIB" })) {
         profile.currentLibrary = data.currentLibrary;
       }
       else {
         throw new Error(l10n.t("Current library {0} is invalid", data.currentLibrary));
       }
 
-      let libraryList = data.libraryList.split(',').map(library => library.trim());
+      let libraryList = data.libraryList.split(',').map(library => connection.upperCaseName(library.trim()));
 
       const systemLibraries = await content.getSystemLibraries();
       const librariesInSystemPortion = libraryList.filter(library => systemLibraries.includes(connection.upperCaseName(library)));
