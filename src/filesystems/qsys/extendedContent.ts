@@ -150,7 +150,8 @@ export class ExtendedIBMiContent {
             sequence = 0;
           for (let i = 0; i < sourceData.length; i++) {
             sequence = decimalSequence ? ((i + 1) / 100) : i + 1;
-            sourceData[i] = sourceData[i].trimEnd();
+            // Convert tabs to spaces to avoid escaping issues with special characters
+            sourceData[i] = sourceData[i].replace(/\t/g, (_, offset) => ' '.repeat(4 - (offset % 4))).trimEnd();
             if (sourceData[i].length > recordLength) {
               sourceData[i] = sourceData[i].substring(0, recordLength);
             }
@@ -237,7 +238,9 @@ function sliceUp(arr: any[], size: number): any[] {
 }
 
 function escapeString(val: string): string {
-  val = val.replace(/[\0\n\r\b\t'\x1a]/g, function (s) {
+  // Note: Tabs are converted to spaces before this function is called (in uploadMemberContentWithDates),
+  // so we don't need to handle them here. This prevents the backslash artifacts in #2463 and #3086.
+  val = val.replace(/[\0\n\r\b'\x1a]/g, function (s) {
     switch (s) {
       case `\0`:
         return `\\0`;
