@@ -301,6 +301,6 @@ export namespace Tools {
    * @returns `*CURLIB` if `value` is falsy or equal to *CRTDFT; returns `value` otherwise
    */
   export function getCurLib(value?:string){
-    return !value || value.toUpperCase() === "*CRTDFT" ? "*CURLIB" : value;
+    return !value || /\*CRTDFT/i.test(value) ? "*CURLIB" : value;
   }
 }

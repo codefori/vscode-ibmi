@@ -39,14 +39,12 @@ export namespace CompileTools {
       const cwd = options.cwd;
       const variables = new Variables(connection, options.env);
 
-      const ileSetup: ILELibrarySettings = {
-        currentLibrary: variables.get(`&CURLIB`) || config.currentLibrary,
-        libraryList: variables.get(`&LIBL`)?.split(` `) || config.libraryList,
-      };
+      const currentLibrary = variables.get(`&CURLIB`) || config.currentLibrary || "";
 
-      ileSetup.currentLibrary = (ileSetup.currentLibrary === "*CURLIB" ? "" : ileSetup.currentLibrary);
-      // Remove any duplicates from the library list
-      ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
+      const ileSetup: ILELibrarySettings = {
+        currentLibrary: (/\*CURLIB/i.test(currentLibrary) ? "" : currentLibrary),
+        libraryList: (variables.get(`&LIBL`)?.split(` `) || config.libraryList).filter(Tools.distinct),
+      };
 
       const libraryList = buildLibraryList(ileSetup);
       variables.set(`&LIBLS`, libraryList.join(` `));
