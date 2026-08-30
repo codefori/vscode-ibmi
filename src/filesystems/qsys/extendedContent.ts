@@ -145,13 +145,14 @@ export class ExtendedIBMiContent {
           const recordLength = await this.readRecordLength(connection, alias, overFile);
 
           const decimalSequence = sourceData.length >= 10000;
+          const tabSize = vscode.workspace.getConfiguration(`editor`, uri).get<number>(`tabSize`) || 4;
 
           let rows = [],
             sequence = 0;
           for (let i = 0; i < sourceData.length; i++) {
             sequence = decimalSequence ? ((i + 1) / 100) : i + 1;
             // Convert tabs to spaces to avoid escaping issues with special characters
-            sourceData[i] = sourceData[i].replace(/\t/g, (_, offset) => ' '.repeat(4 - (offset % 4))).trimEnd();
+            sourceData[i] = sourceData[i].replace(/\t/g, (_, offset) => ' '.repeat(tabSize - (offset % tabSize))).trimEnd();
             if (sourceData[i].length > recordLength) {
               sourceData[i] = sourceData[i].substring(0, recordLength);
             }
