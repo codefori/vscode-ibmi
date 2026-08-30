@@ -19,7 +19,7 @@ type DragNDropBehavior = DragNDropAction | "ask";
 const getDragDropBehavior = () => IBMi.connectionManager.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
 function isProtected(path: string) {
-  return PROTECTED_DIRS.test(path) || instance.getConnection()?.getContent().isProtectedPath(path);
+  return PROTECTED_DIRS.test(path) || instance.getConnection()?.getContent().isProtectedPath(path) || false;
 }
 
 function alwaysShow(name: string) {
@@ -136,6 +136,10 @@ class IFSItem extends BrowserItem implements WithPath {
     this.tooltip = VscodeTools.ifsFileToToolTip(this.path, file);
   }
 
+  isProtected(): boolean {
+    return isProtected(this.path);
+  }
+
   sortBy(sort: SortOptions) {
     if (this.sort.order !== sort.order) {
       this.sort.order = sort.order;
@@ -182,7 +186,7 @@ class IFSFileItem extends IFSItem {
 class IFSDirectoryItem extends IFSItem {
   constructor(file: IFSFile, parent?: IFSDirectoryItem) {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
-    const protectedDir = isProtected(this.file.path);
+    const protectedDir = this.isProtected();
     this.contextValue = `directory${protectedDir ? `_protected` : ``}`;
     this.iconPath = protectedDir ? new vscode.ThemeIcon("lock-small") :
       file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-directory") : vscode.ThemeIcon.Folder;
@@ -217,7 +221,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
   constructor(readonly shortcut: string) {
     super({ name: shortcut, path: shortcut, type: "directory" })
 
-    const protectedDir = isProtected(this.file.path);
+    const protectedDir = this.isProtected();
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon(protectedDir ? "lock-small" : "folder-library");
     this.tooltip = ``;

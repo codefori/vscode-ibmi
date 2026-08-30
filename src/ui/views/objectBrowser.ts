@@ -198,7 +198,7 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
   }
 
   isProtected(): boolean {
-    return this.filter.protected;
+    return this.filter.protected || (Boolean(this.library) && getContent().isProtectedPath(this.library));
   }
 
   async getChildren(): Promise<ObjectBrowserItem[]> {
@@ -366,7 +366,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
   }
 
   isProtected(): boolean {
-    return this.filter.protected || getContent().isProtectedPath(this.object.library);
+    return this.filter.protected || getContent().isProtectedPath(this.library || this.object.library);
   }
 
   updateDescription() {
@@ -1285,6 +1285,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node: ObjectBrowserFilterItem | ObjectBrowserObjectItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       if (node.library) {
         const connection = getConnection();
         const fileName = await vscode.window.showInputBox({
@@ -1547,7 +1550,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
     vscode.commands.registerCommand(`code-for-ibmi.renameQSYS`, async (node?: (ObjectBrowserMemberItem | ObjectBrowserObjectItem)) => {
       node = getSelectedItems(node).at(0);
-      if (node instanceof ObjectBrowserItem && checkProtected(node)) {
+      if (node && checkProtected(node)) {
         return;
       }
       if (node instanceof ObjectBrowserObjectItem || node instanceof ObjectBrowserSourcePhysicalFileItem) {
@@ -1561,8 +1564,8 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
   );
 }
 
-function checkProtected(node: { isProtected?: () => boolean, toString(): string }): boolean {
-  if (node?.isProtected?.()) {
+function checkProtected(node: ObjectBrowserItem): boolean {
+  if (node.isProtected()) {
     vscode.window.showWarningMessage(vscode.l10n.t(`{0} is in a protected filter or library and cannot be modified.`, node.toString()));
     return true;
   }

@@ -43,15 +43,20 @@ export function registerActionTools(context: vscode.ExtensionContext) {
 }
 
 export function uriToActionTarget(uri: vscode.Uri, workspaceFolder?: WorkspaceFolder, ibmi?: IBMi): ActionTarget {
+  const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
+  let path = uri.path;
+  if (uri.scheme === `object`) {
+    const qsysPath = Tools.parseQSysPath(path);
+    path = (extension === `LIB` ? qsysPath.name.split(`.`)[0] : qsysPath.library);
+  }
   return {
     uri,
-    extension: uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase(),
+    extension,
     fragment: uri.fragment.toUpperCase(),
-    protected: parseFSOptions(uri).readonly || ibmi?.getConfig().readOnlyMode
-      || (uri.scheme === `object`
-        ? ibmi?.getContent().isProtectedPath(Tools.parseQSysPath(uri.path).library)
-        : ibmi?.getContent().isProtectedPath(uri.path))
-      || false,
+    protected: ibmi?.getConfig().readOnlyMode ||
+      parseFSOptions(uri).readonly ||
+      ibmi?.getContent().isProtectedPath(path) ||
+      false,
     workspaceFolder: workspaceFolder || vscode.workspace.getWorkspaceFolder(uri),
     executionOK: false,
     hasRun: false,
@@ -80,7 +85,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
 
     // To perform an action on Objects/members protected filter you need "runOnProtected" action
     const protectedUris = new Set((browserItems || [])
-      .filter(item => (item as { isProtected?: () => boolean }).isProtected?.())
+      .filter(item => item.isProtected())
       .map(item => item.resourceUri?.toString())
       .filter((value): value is string => Boolean(value)));
     targets.forEach(target => {
