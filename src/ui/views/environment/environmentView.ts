@@ -349,10 +349,14 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
                 const newSettings = await connection.getContent().getLibraryListFromCommand(command);
 
                 if (newSettings) {
-                  config.libraryList = newSettings.libraryList;
-                  config.currentLibrary = newSettings.currentLibrary;
+                  config.libraryList = profile.libraryList = newSettings.libraryList;
+                  config.currentLibrary = profile.currentLibrary = newSettings.currentLibrary;
+
                   await IBMi.connectionManager.update(config);
-                  await vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+                  vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+
+                  await updateConnectionProfile(profile);
+                  environmentView.refresh(environmentView.profilesNode);
                 } else {
                   vscode.window.showWarningMessage(l10n.t(`Failed to get library list from command. Feature not installed; try to reload settings when connecting.`));
                 }
