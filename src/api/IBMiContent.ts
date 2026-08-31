@@ -5,6 +5,7 @@ import * as node_ssh from "node-ssh";
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
+import escapeStringRegexp from 'escape-string-regexp';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -1062,7 +1063,9 @@ export default class IBMiContent {
 
   isProtectedPath(path: string) {
     if (path.startsWith('/')) { //IFS path
-      return this.config.protectedPaths.some(p => path.startsWith(p));
+      //the IFS is case insensitive, except for the QOpenSys file system
+      const flags = /^\/QOpenSys/i.test(path) ? '' : 'i';
+      return this.config.protectedPaths.some(p => new RegExp(`^${escapeStringRegexp(p)}`, flags).test(path));
     }
     else { //QSYS path
       const qsysObject = Tools.parseQSysPath(path);
