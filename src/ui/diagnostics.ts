@@ -14,6 +14,7 @@ export interface EvfEventInfo {
   object: string,
   extension?: string,
   workspace?: vscode.WorkspaceFolder
+  tempSourceMember?: Map<string, vscode.Uri>
 }
 
 export function registerDiagnostics(): vscode.Disposable[] {
@@ -132,6 +133,12 @@ export async function handleEvfeventLines(connection: IBMi, lines: string[], evf
           if (!config.hideCompileErrors.includes(error.code)) {
             diagnostics.push(diagnostic);
           }
+        }
+
+        const localUri = evfeventInfo.tempSourceMember?.get(file);
+        if (localUri) {
+          ileDiagnostics.set(localUri, diagnostics);
+          continue;
         }
 
         if (evfeventInfo.workspace) {

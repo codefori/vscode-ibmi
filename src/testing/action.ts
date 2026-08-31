@@ -66,7 +66,7 @@ export const ActionSuite: TestSuite = {
     await DeployTools.launchDeploy(workspaceFolder.index, 'all');
 
     const envFileVars = await getEnvConfig(workspaceFolder);
-    currentLibrary = envFileVars['CURLIB'] ? envFileVars['CURLIB'] : config!.currentLibrary;
+    currentLibrary = Tools.getCurLib(envFileVars['CURLIB'] ? envFileVars['CURLIB'] : config.currentLibrary);
 
     const tempLib = config!.tempLibrary;
     await connection!.runCommand({ command: `DLTOBJ OBJ(${tempLib}/QRPGLESRC) OBJTYPE(*FILE)`, noLibList: true });

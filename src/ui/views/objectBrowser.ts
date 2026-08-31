@@ -1243,7 +1243,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         const isSuccess = createResult.code === 0;
         if (isSuccess) {
           const config = connection.getConfig();
-          const libl = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+          const libl = [config.currentLibrary || "", ...config.libraryList].map(library => connection.upperCaseName(library));
           const existsInLibl = libl.includes(connection.upperCaseName(newLibrary));
           if (existsInLibl) {
             commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
@@ -1688,7 +1688,7 @@ async function deleteObject(object: IBMiObject) {
   const isSuccess = deleteResult.code === 0;
   if (isSuccess) {
     const config = connection.getConfig();
-    const libl = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+    const libl = [config.currentLibrary || "", ...config.libraryList].map(library => connection.upperCaseName(library));
     if (libl.includes(connection.upperCaseName(object.name))) {
       commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
     }

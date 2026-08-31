@@ -244,5 +244,9 @@ export interface CacheItem<T> {
   createdAt?: number; // milliseconds elapsed since the epoch
 }
 
-export * from "./configuration/config/types";
+export interface ILELibrarySettings {
+  currentLibrary?: string;
+  libraryList: string[];
+}
 
+export * from "./configuration/config/types";
