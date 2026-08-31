@@ -4,14 +4,13 @@ import Instance from "../Instance";
 import path from "path";
 import * as vscode from 'vscode';
 
-import { ILELibrarySettings } from "../api/CompileTools";
 import { getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { clearPassword, getPassword } from "../extension";
 import { Env, getEnvConfig } from "../filesystems/local/env";
 import { instance } from "../instantiate";
-import { ObjectItem } from "../typings";
+import { ILELibrarySettings, ObjectItem } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 import * as certificates from "./certificates";
 import * as server from "./server";
