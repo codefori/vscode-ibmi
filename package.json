@@ -65,9 +65,9 @@
 			},
 			{
 				"fileMatch": [
-					"/etc/vscode/Code4iRepo.json"
+					"/etc/vscode/snippets.json"
 				],
-				"url": "./schemas/Code4iRepo.json"
+				"url": "./schemas/snippets.json"
 			}
 		],
 		"configuration": {
@@ -1861,47 +1861,53 @@
 				"icon": "$(debug-start)"
 			},
 			{
-				"command": "code-for-ibmi.template.create",
+				"command": "code-for-ibmi.snippet.create",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Create shared template",
+				"title": "Create shared snippet",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
 			{
-				"command": "code-for-ibmi.template.publish",
+				"command": "code-for-ibmi.snippet.publish",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Publish active editor as shared template",
+				"title": "Publish active editor as shared snippet",
 				"category": "IBM i",
 				"icon": "$(cloud-upload)"
 			},
 			{
-				"command": "code-for-ibmi.template.open",
+				"command": "code-for-ibmi.snippet.open",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Open shared template",
+				"title": "Open shared snippet",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.template.insert",
+				"command": "code-for-ibmi.snippet.openFile",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Insert shared template at cursor",
+				"title": "Open shared snippets file",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.template.rename",
+				"command": "code-for-ibmi.snippet.insert",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Insert shared snippet at cursor",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.snippet.rename",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Rename...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.template.delete",
+				"command": "code-for-ibmi.snippet.delete",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Delete...",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.openSharedTemplate",
+				"command": "code-for-ibmi.openSharedSnippets",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Shared Templates",
+				"title": "Shared Snippets",
 				"category": "IBM i",
 				"icon": "$(symbol-snippet)"
 			},
@@ -2778,19 +2784,19 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.template.open",
+					"command": "code-for-ibmi.snippet.open",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.template.insert",
+					"command": "code-for-ibmi.snippet.insert",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.template.rename",
+					"command": "code-for-ibmi.snippet.rename",
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.template.delete",
+					"command": "code-for-ibmi.snippet.delete",
 					"when": "never"
 				},
 				{

@@ -7,7 +7,7 @@ import { registerCompareCommands } from './commands/compare';
 import { registerConnectionCommands } from './commands/connection';
 import { registerOpenCommands } from './commands/open';
 import { registerPasswordCommands } from './commands/password';
-import { registerTemplateCommands } from './commands/templates';
+import { registerSnippetCommands } from './commands/snippets';
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import { debugPTFInstalled, isDebugEngineRunning } from './debug/server';
 import { setupGitEventHandler } from './filesystems/local/git';
@@ -78,7 +78,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     ...registerActionsCommands(instance),
 
-    ...registerTemplateCommands(instance),
+    ...registerSnippetCommands(instance),
 
     ...Terminal.registerTerminalCommands(context),
 
@@ -118,7 +118,7 @@ async function updateConnectedBar() {
     connectedBarItem.text = `$(${systemReadOnly ? "shield" : (config.readOnlyMode ? "lock" : "settings-gear")}) ${config.name}${config.currentProfile ? ` (${config.currentProfile})` : ''}`;
     const terminalMenuItem = systemReadOnly ? `` : `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`;
     const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.environment.actions.focus)`;
-    const templatesMenuItem = systemReadOnly ? `` : `[$(repo) Templates](command:code-for-ibmi.openSharedTemplate)`;
+    const snippetsMenuItem = systemReadOnly ? `` : `[$(symbol-snippet) Snippets](command:code-for-ibmi.openSharedSnippets)`;
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
 
@@ -140,7 +140,7 @@ async function updateConnectedBar() {
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       terminalMenuItem,
       actionsMenuItem,
-      templatesMenuItem,
+      snippetsMenuItem,
       `[$(key) Change Password](command:code-for-ibmi.changePassword)`,
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`

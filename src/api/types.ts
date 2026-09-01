@@ -131,17 +131,19 @@ export interface IFSFile {
 }
 
 /**
- * A shared source template: a real file under `/etc/vscode/Code4iRepo`,
- * indexed by `/etc/vscode/Code4iRepo.json`. Can be opened like any other IFS
- * source file, or triggered as a snippet by typing its `prefix`.
+ * A shared snippet, stored in `/etc/vscode/snippets.json` using the same layout as
+ * VS Code's user defined snippets. Can be edited like any other source file, or
+ * triggered as a snippet completion by typing its `prefix`.
  */
-export interface SharedTemplate {
+export interface SharedSnippet {
   name: string
   description: string
-  prefix: string
-  file: string
+  /** typed to trigger the snippet completion */
+  prefix: string[]
   /** file extensions / languageIds the snippet completion triggers on, e.g. ["rpgle", "sqlrpgle"] */
-  extensions: string[]
+  scope: string[]
+  /** the snippet's content, one entry per line */
+  body: string[]
 }
 
 export interface IBMiError {
