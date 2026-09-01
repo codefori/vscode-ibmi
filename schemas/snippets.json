@@ -1,0 +1,62 @@
+{
+  "type": "object",
+  "title": "Shared Snippets",
+  "description": "Shared snippets stored in /etc/vscode/snippets.json, using the same layout as VS Code's user defined snippets. Each snippet is offered as a completion, triggered by its prefix.",
+  "additionalProperties": {
+    "$ref": "#/$defs/sharedSnippet"
+  },
+  "$defs": {
+    "sharedSnippet": {
+      "type": "object",
+      "title": "Shared Snippet",
+      "description": "A single shared snippet, named by its property key.",
+      "required": [
+        "prefix",
+        "body"
+      ],
+      "properties": {
+        "prefix": {
+          "title": "Prefix",
+          "description": "Typed to trigger the snippet completion. Several prefixes can be given as an array.",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "body": {
+          "title": "Body",
+          "description": "The snippet's content, one entry per line. Supports the VS Code snippet syntax ($1, ${1:label}, $0, ...).",
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "description": "A short description of what this snippet is for."
+        },
+        "scope": {
+          "type": "string",
+          "title": "Scope",
+          "description": "Comma separated file extensions / languageIds the snippet completion triggers on, e.g. \"rpgle,sqlrpgle\"."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
