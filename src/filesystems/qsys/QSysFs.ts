@@ -2,6 +2,7 @@ import { parse as parsePath } from "path";
 import { parse, ParsedUrlQueryInput, stringify } from "querystring";
 import vscode, { FilePermission, FileSystemError, l10n } from "vscode";
 import IBMi from "../../api/IBMi";
+import { MemberLocks } from "../../api/memberLocks";
 import { Tools } from "../../api/Tools";
 import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { instance } from "../../instantiate";
@@ -48,6 +49,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     private readonly savedAsMembers: Set<string> = new Set;
     private readonly sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
+    private readonly memberLocks = new MemberLocks();
     private extendedMemberSupport = false;
     private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
     onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
@@ -59,32 +61,94 @@ export class QSysFS implements vscode.FileSystemProvider {
         instance.subscribe(
             context,
             'connected',
-            `Update member support`,
-            () => this.updateMemberSupport());
+            `Update member support & lock open members`,
+            () => {
+                this.updateMemberSupport();
+                this.lockOpenMembers();
+            });
 
         instance.subscribe(
             context,
             'disconnected',
-            `Update member support & clear library ASP cache`,
+            `Update member support & release all locks`,
             () => {
                 this.updateMemberSupport();
+                this.memberLocks.deallocateAll(undefined);
             });
 
-        context.subscriptions.push(onCodeForIBMiConfigurationChange("connectionSettings", () => {
-            if (this.extendedMemberSupport !== instance.getConnection()?.getConfig().enableSourceDates) {
-                instance.getStorage()?.unmarkMessageAsShown(SOURCE_DATES_RESET_WARNING);
-                this.updateMemberSupport();
-                const openedMembers = vscode.window.tabGroups.all
-                    .flatMap(group => group.tabs)
-                    .filter(tab => tab.input instanceof vscode.TabInputText)
-                    .map(tab => (tab.input as vscode.TabInputText).uri)
-                    .filter(uri => uri.scheme === "member");
-                if (this.extendedMemberSupport === instance.getConnection()?.getConfig().enableSourceDates && openedMembers.length) {
-                    vscode.window.showWarningMessage(l10n.t("Source date support is now {0}. Please backup and then close opened IBM i source member(s):", this.extendedMemberSupport ? l10n.t("enabled") : l10n.t("disabled")),
-                        { modal: true, detail: openedMembers.map(e => `- ${e.path.substring(1)}`).join("\n") });
+        context.subscriptions.push(
+            vscode.workspace.onDidCloseTextDocument(async doc => {
+                if (doc.uri.scheme !== `member`) {
+                    return;
                 }
-            }
-        }));
+
+                const connection = instance.getConnection();
+                if (!connection) {
+                    return;
+                }
+
+                const config = connection.getConfig();
+                if (!config.lockMembers) {
+                    return;
+                }
+
+                try {
+                    const memberParts = connection.parserMemberPath(doc.uri.path);
+                    if (this.memberLocks.isLocked(memberParts)) {
+                        await this.memberLocks.deallocate(connection, memberParts);
+                    }
+                } catch { }
+
+            }),
+            onCodeForIBMiConfigurationChange("connectionSettings", () => {
+                const connection = instance.getConnection();
+                const config = connection?.getConfig();
+
+                if (this.extendedMemberSupport !== config?.enableSourceDates) {
+                    instance.getStorage()?.unmarkMessageAsShown(SOURCE_DATES_RESET_WARNING);
+                    this.updateMemberSupport();
+                    const openedMembers = vscode.window.tabGroups.all
+                        .flatMap(group => group.tabs)
+                        .filter(tab => tab.input instanceof vscode.TabInputText)
+                        .map(tab => (tab.input as vscode.TabInputText).uri)
+                        .filter(uri => uri.scheme === "member");
+                    if (this.extendedMemberSupport === config?.enableSourceDates && openedMembers.length) {
+                        vscode.window.showWarningMessage(l10n.t("Source date support is now {0}. Please backup and then close opened IBM i source member(s):", this.extendedMemberSupport ? l10n.t("enabled") : l10n.t("disabled")),
+                            { modal: true, detail: openedMembers.map(e => `- ${e.path.substring(1)}`).join("\n") });
+                    }
+                }
+
+                if (config?.lockMembers) {
+                    this.lockOpenMembers();
+                } else {
+                    this.memberLocks.deallocateAll(connection);
+                }
+            })
+        );
+    }
+
+    private async lockOpenMembers(): Promise<void> {
+        const connection = instance.getConnection();
+        if (!connection) {
+            return;
+        }
+
+        const config = connection.getConfig();
+        if (!config.lockMembers) {
+            return;
+        }
+
+        const openMemberTextDocuments = vscode.workspace.textDocuments
+            .filter(doc => doc.uri.scheme === `member` && !doc.isClosed);
+
+        for (const doc of openMemberTextDocuments) {
+            try {
+                const memberParts = connection.parserMemberPath(doc.uri.path);
+                if (!this.memberLocks.isLocked(memberParts)) {
+                    await this.memberLocks.allocate(connection, memberParts);
+                }
+            } catch { }
+        }
     }
 
     private updateMemberSupport() {
@@ -163,16 +227,27 @@ export class QSysFS implements vscode.FileSystemProvider {
         const connection = instance.getConnection();
         if (connection) {
             const contentApi = connection.getContent();
-            let { asp, library, file, name: member } = await this.parseMemberPath(connection, uri.path);
+            const memberParts = await this.parseMemberPath(connection, uri.path);
+            let { asp, library, file, name: member } = memberParts;
             asp = asp || await connection.getLibraryIAsp(library);
+
+            const config = connection.getConfig();
+            if (config.lockMembers) {
+                if (!this.memberLocks.isLocked(memberParts)) {
+                    await this.memberLocks.allocate(connection, memberParts);
+                }
+            }
 
             let memberContent;
             try {
                 memberContent = this.extendedMemberSupport ?
                     await this.extendedContent.downloadMemberContentWithDates(uri) :
                     await contentApi.downloadMemberContent(library, file, member);
-            } catch (error) {
-                if (!retrying && await this.stat(uri)) { //Check if exists on an iASP and retry if so
+            } catch (error: any) {
+                const messages = Tools.parseMessages(error.message);
+                if (messages.findId(`CPF5729`)) { // CPF5729 - Not able to allocate object
+                    throw new FileSystemError(error.message);
+                } else if (!retrying && await this.stat(uri)) { //Check if exists on an iASP and retry if so
                     return this.readFile(uri, true);
                 }
                 throw error;
