@@ -23,6 +23,7 @@ import { Deployment } from "./filesystems/local/deployment";
 import { handleEditorsLeftOpened } from "./filesystems/qsys/FSUtils";
 import { instance, loadAllofExtension } from './instantiate';
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
+import { registerRpgleProcedureFolding } from "./languages/rpgle/folding";
 import { mergeCommandProfiles } from "./mergeProfiles";
 import { initialise } from "./testing";
 import { CodeForIBMi } from "./typings";
@@ -99,6 +100,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     workspace.registerFileSystemProvider(`streamfile`, new IFSFS(), {
       isCaseSensitive: false
     }),
+    registerRpgleProcedureFolding(),
     languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&"),
     window.registerCustomEditorProvider(`code-for-ibmi.editor`, new CustomEditorProvider(), {
       webviewOptions: {
