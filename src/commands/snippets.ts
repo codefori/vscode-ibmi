@@ -1,422 +1,437 @@
 import path from "path";
-import { commands, CompletionItem, CompletionItemKind, CompletionItemProvider, Disposable, Event, EventEmitter, FileChangeEvent, FileChangeType, FileStat, FileSystemError, FileSystemProvider, FileType, l10n, languages, MarkdownString, QuickInputButton, QuickPickItem, SnippetString, TextDocument, ThemeIcon, Uri, window, workspace } from "vscode";
+import tmp from "tmp";
+import util from "util";
+import { commands, CompletionItem, CompletionItemKind, CompletionItemProvider, Disposable, l10n, languages, MarkdownString, Position, ProgressLocation, QuickPickItem, QuickPickItemKind, Range, Selection, SnippetString, TextDocument, TextEditor, Uri, window, workspace, WorkspaceEdit } from "vscode";
 import IBMi from "../api/IBMi";
-import { SharedSnippetTools } from "../api/sharedSnippets";
+import { NamedSharedSnippet, SharedSnippets } from "../api/sharedSnippets";
+import { getUriFromPath } from "../filesystems/qsys/QSysFs";
 import Instance from "../Instance";
 import { SharedSnippet } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 
-/** Virtual files holding a snippet's body, so it can be edited like a source file. */
-const SNIPPET_SCHEME = `code4isnippet`;
+const SNIPPETS_LANGUAGE = `snippets`;
 
-export namespace Snippets {
-  export function validateName(name: string, names: string[]) {
-    if (!name) {
-      return l10n.t("Name cannot be empty");
-    }
-    else if (VscodeTools.includesCaseInsensitive(names, name)) {
-      return l10n.t("This name is already used by another shared snippet");
-    }
+const tmpDirectory = util.promisify(tmp.dir);
+
+function parseScope(scope: string) {
+  return scope.split(`,`).map(languageId => languageId.trim().toLocaleLowerCase()).filter(Boolean);
+}
+
+function parsePrefixes(input: string) {
+  return [...new Set(input.split(`,`).map(prefix => prefix.trim()).filter(Boolean))];
+}
+
+function validateName(name: string, existing: string[]) {
+  if (!name.trim()) {
+    return l10n.t("Name cannot be empty");
   }
-
-  export function validatePrefix(prefix: string) {
-    if (!parsePrefixes(prefix).length) {
-      return l10n.t("Prefix cannot be empty");
-    }
-    else if (parsePrefixes(prefix).some(p => /\s/.test(p))) {
-      return l10n.t("Prefix cannot contain spaces");
-    }
-  }
-
-  /** "ordh, ORDHDR ,," -> ["ordh", "ORDHDR"] */
-  export function parsePrefixes(input: string): string[] {
-    return [...new Set(input.split(",").map(prefix => prefix.trim()).filter(Boolean))];
-  }
-
-  /** "rpgle, SQLRPGLE ,," -> ["rpgle", "sqlrpgle"] */
-  export function parseScope(input: string): string[] {
-    return [...new Set(input.split(",").map(scope => scope.trim().replace(/^\.+/, "").toLocaleLowerCase()).filter(Boolean))];
-  }
-
-  /** A snippet applies when one of its scopes matches the document's extension or language. */
-  export function matches(snippet: SharedSnippet, extension: string, languageId: string) {
-    return snippet.scope.some(scope => {
-      const snippetScope = scope.toLocaleLowerCase();
-      return snippetScope === extension || snippetScope === languageId;
-    });
+  else if (VscodeTools.includesCaseInsensitive(existing, name)) {
+    return l10n.t("This name is already used by another shared snippet");
   }
 }
 
+function validatePrefix(input: string) {
+  const prefixes = parsePrefixes(input);
+  if (!prefixes.length) {
+    return l10n.t("Prefix cannot be empty");
+  }
+  else if (prefixes.some(prefix => /\s/.test(prefix))) {
+    return l10n.t("Prefix cannot contain spaces");
+  }
+}
+
+/** `$` and `\` drive the snippet syntax, so captured code must be escaped to be inserted back as it is. */
+function escapeBody(text: string) {
+  return text.replace(/[\\$]/g, matched => `\\${matched}`);
+}
+
+function toArray(value?: string | string[]) {
+  return value === undefined ? [] : Array.isArray(value) ? value : [value];
+}
+
+/** The glob patterns VS Code supports for snippets: `*`, `**`, `?`, `{a,b}` and `[abc]`, case insensitive. */
+function matchGlob(pattern: string, target: string) {
+  let expression = ``;
+  let braces = 0;
+
+  for (let i = 0; i < pattern.length; i++) {
+    const current = pattern[i];
+    switch (current) {
+      case `*`:
+        if (pattern[i + 1] === `*`) {
+          i++;
+          if (pattern[i + 1] === `/`) {
+            i++;
+            expression += `(?:[^/]*\\/)*`; //any number of segments, none included
+          }
+          else {
+            expression += `.*`;
+          }
+        }
+        else {
+          expression += `[^/]*`;
+        }
+        break;
+
+      case `?`:
+        expression += `[^/]`;
+        break;
+
+      case `{`:
+        braces++;
+        expression += `(?:`;
+        break;
+
+      case `}`:
+        if (braces) {
+          braces--;
+          expression += `)`;
+        }
+        else {
+          expression += `\\}`;
+        }
+        break;
+
+      case `,`:
+        expression += braces ? `|` : `,`;
+        break;
+
+      case `[`: {
+        const end = pattern.indexOf(`]`, i + 1);
+        if (end > i + 1) {
+          expression += `[${pattern.substring(i + 1, end).replace(/^[!^]/, `^`)}]`;
+          i = end;
+        }
+        else {
+          expression += `\\[`;
+        }
+        break;
+      }
+
+      default:
+        expression += current.replace(/[.+^$|()\\\-\]]/, matched => `\\${matched}`);
+    }
+  }
+
+  return new RegExp(`^${expression}$`, `i`).test(target);
+}
+
+function matches(snippet: SharedSnippet, document: { languageId: string, uri: Uri }) {
+  if (snippet.scope && !parseScope(snippet.scope).includes(document.languageId.toLocaleLowerCase())) {
+    return false;
+  }
+
+  return isFileIncluded(snippet, document.uri);
+}
+
+/** Same rules as VS Code: a pattern with a `/` matches the whole path, others match the file name only. */
+function isFileIncluded(snippet: SharedSnippet, uri: Uri) {
+  const uriPath = uri.scheme === `file` ? uri.fsPath : uri.path;
+  const fileName = path.basename(uriPath);
+  const getMatchTarget = (pattern: string) => pattern.includes(`/`) ? uriPath : fileName;
+
+  if (toArray(snippet.exclude).filter(Boolean).some(pattern => matchGlob(pattern, getMatchTarget(pattern)))) {
+    return false;
+  }
+
+  const include = toArray(snippet.include).filter(Boolean);
+  return include.length ? include.some(pattern => matchGlob(pattern, getMatchTarget(pattern))) : true;
+}
+
 export function registerSnippetCommands(instance: Instance): Disposable[] {
-  const snippetFiles = new SharedSnippetFileSystemProvider(instance);
-
   return [
-    workspace.registerFileSystemProvider(SNIPPET_SCHEME, snippetFiles, { isCaseSensitive: true }),
-
-    // '*' as selector isn't reliably invoked for custom schemes like "member" - list the
-    // schemes explicitly instead. Language filtering happens inside the provider itself.
+    // '*' as selector isn't reliably invoked for custom schemes like "member" - list them explicitly instead
     languages.registerCompletionItemProvider(
-      [{ scheme: 'file' }, { scheme: 'untitled' }, { scheme: 'member' }, { scheme: 'streamfile' }],
+      [{ scheme: `file` }, { scheme: `untitled` }, { scheme: `member` }, { scheme: `streamfile` }],
       new SharedSnippetCompletionItemProvider(instance)
     ),
 
-    // The snippets file can also be edited through the generic IFS editor, which knows
-    // nothing about our cache - drop it on every save.
+    // Snippets files are edited like any other streamfile, and the editor knows nothing about our cache
     workspace.onDidSaveTextDocument(document => {
       const connection = instance.getConnection();
-      if (connection && document.uri.scheme === 'streamfile' && document.uri.path === SharedSnippetTools.getSnippetsFile()) {
-        SharedSnippetTools.invalidate(connection);
+      if (connection && document.uri.scheme === `streamfile` && SharedSnippets.isSnippetsFile(document.uri.path)) {
+        SharedSnippets.invalidate(connection);
       }
     }),
 
-    commands.registerCommand("code-for-ibmi.snippet.create", async () => {
-      const connection = instance.getConnection();
-      if (connection) {
-        const existingNames = (await SharedSnippetTools.getSnippets(connection)).map(snippet => snippet.name);
-        const name = await window.showInputBox({
-          title: l10n.t("New shared snippet"),
-          placeHolder: l10n.t("Snippet name..."),
-          validateInput: name => Snippets.validateName(name, existingNames)
-        });
-
-        if (name) {
-          const prefix = await window.showInputBox({
-            title: l10n.t("Shared snippet prefix"),
-            prompt: l10n.t("Typed to trigger the snippet completion"),
-            placeHolder: l10n.t("Prefix..."),
-            validateInput: Snippets.validatePrefix
-          });
-
-          if (prefix) {
-            const description = await window.showInputBox({
-              title: l10n.t("Shared snippet description"),
-              placeHolder: l10n.t("Description (optional)...")
-            });
-
-            const scopeInput = await window.showInputBox({
-              title: l10n.t("Shared snippet scope"),
-              prompt: l10n.t("Which file extensions/languages this snippet applies to"),
-              placeHolder: l10n.t("File extension(s), comma separated, e.g. rpgle, sqlrpgle..."),
-              value: "txt"
-            });
-
-            const scope = scopeInput ? Snippets.parseScope(scopeInput) : [];
-            if (scope.length) {
-              const snippet: SharedSnippet = {
-                name,
-                prefix: Snippets.parsePrefixes(prefix),
-                description: description || "",
-                scope,
-                body: [""]
-              };
-
-              await SharedSnippetTools.createSnippet(connection, snippet);
-              window.showInformationMessage(l10n.t("Created shared snippet '{0}'.", name));
-              await commands.executeCommand("code-for-ibmi.snippet.open", snippet);
-            }
-          }
-        }
-      }
-    }),
-
-    commands.registerCommand("code-for-ibmi.snippet.publish", async () => {
-      const connection = instance.getConnection();
-      const editor = window.activeTextEditor;
-      if (!editor) {
-        window.showWarningMessage(l10n.t("No active editor to publish as a shared snippet."));
-      }
-      else if (connection) {
-        const existingNames = (await SharedSnippetTools.getSnippets(connection)).map(snippet => snippet.name);
-        const name = await window.showInputBox({
-          title: l10n.t("Publish active editor as shared snippet"),
-          placeHolder: l10n.t("Snippet name..."),
-          validateInput: name => Snippets.validateName(name, existingNames)
-        });
-
-        if (name) {
-          const prefix = await window.showInputBox({
-            title: l10n.t("Shared snippet prefix"),
-            prompt: l10n.t("Typed to trigger the snippet completion"),
-            placeHolder: l10n.t("Prefix..."),
-            validateInput: Snippets.validatePrefix
-          });
-
-          if (prefix) {
-            const description = await window.showInputBox({
-              title: l10n.t("Shared snippet description"),
-              placeHolder: l10n.t("Description (optional)...")
-            });
-
-            const text = editor.selection.isEmpty ? editor.document.getText() : editor.document.getText(editor.selection);
-            const detectedScope = path.extname(editor.document.uri.path).substring(1).toLocaleLowerCase() || "txt";
-
-            const scopeInput = await window.showInputBox({
-              title: l10n.t("Shared snippet scope"),
-              prompt: l10n.t("Which file extensions/languages this snippet applies to"),
-              placeHolder: l10n.t("File extension(s), comma separated, e.g. rpgle, sqlrpgle..."),
-              value: detectedScope
-            });
-
-            const scope = scopeInput ? Snippets.parseScope(scopeInput) : [detectedScope];
-            const snippet: SharedSnippet = {
-              name,
-              prefix: Snippets.parsePrefixes(prefix),
-              description: description || "",
-              scope: scope.length ? scope : [detectedScope],
-              body: SharedSnippetTools.toBody(text)
-            };
-
-            await SharedSnippetTools.createSnippet(connection, snippet);
-            window.showInformationMessage(l10n.t("Published shared snippet '{0}'.", name));
-          }
-        }
-      }
-    }),
-
-    commands.registerCommand("code-for-ibmi.snippet.open", async (snippet: SharedSnippet) => {
-      const document = await workspace.openTextDocument(snippetFiles.getUri(snippet));
-      await window.showTextDocument(document);
-    }),
-
-    commands.registerCommand("code-for-ibmi.snippet.openFile", () =>
-      commands.executeCommand("code-for-ibmi.openEditable", SharedSnippetTools.getSnippetsFile())),
-
-    commands.registerCommand("code-for-ibmi.snippet.insert", async (snippet: SharedSnippet) => {
-      const editor = window.activeTextEditor;
-      if (!editor) {
-        window.showWarningMessage(l10n.t("No active editor to insert the shared snippet into."));
-      }
-      else {
-        editor.insertSnippet(new SnippetString(SharedSnippetTools.getBodyText(snippet)));
-      }
-    }),
-
-    commands.registerCommand("code-for-ibmi.snippet.rename", async (snippet: SharedSnippet) => {
-      const connection = instance.getConnection();
-      if (connection) {
-        const existingNames = (await SharedSnippetTools.getSnippets(connection)).map(s => s.name).filter(n => n !== snippet.name);
-        const newName = await window.showInputBox({
-          title: l10n.t("Rename shared snippet"),
-          placeHolder: l10n.t("Snippet name..."),
-          value: snippet.name,
-          validateInput: name => Snippets.validateName(name, existingNames)
-        });
-
-        if (newName) {
-          const newPrefix = await window.showInputBox({
-            title: l10n.t("Shared snippet prefix"),
-            placeHolder: l10n.t("Prefix..."),
-            value: snippet.prefix.join(", "),
-            validateInput: Snippets.validatePrefix
-          });
-
-          if (newPrefix) {
-            const newDescription = await window.showInputBox({
-              title: l10n.t("Shared snippet description"),
-              placeHolder: l10n.t("Description (optional)..."),
-              value: snippet.description
-            });
-
-            const newScopeInput = await window.showInputBox({
-              title: l10n.t("Shared snippet scope"),
-              placeHolder: l10n.t("File extension(s), comma separated, e.g. rpgle, sqlrpgle..."),
-              value: snippet.scope.join(", ")
-            });
-            const newScope = newScopeInput ? Snippets.parseScope(newScopeInput) : snippet.scope;
-
-            await SharedSnippetTools.updateSnippet(connection, snippet, {
-              newName,
-              newPrefix: Snippets.parsePrefixes(newPrefix),
-              newDescription: newDescription ?? snippet.description,
-              newScope: newScope.length ? newScope : snippet.scope
-            });
-            snippetFiles.renamed(snippet.name, newName);
-            window.showInformationMessage(l10n.t("Updated shared snippet '{0}'.", newName));
-          }
-        }
-      }
-    }),
-
-    commands.registerCommand("code-for-ibmi.snippet.delete", async (snippet: SharedSnippet) => {
-      const connection = instance.getConnection();
-      if (connection && await window.showInformationMessage(l10n.t("Do you really want to delete shared snippet '{0}' ?", snippet.name), { modal: true }, l10n.t("Yes"))) {
-        await SharedSnippetTools.updateSnippet(connection, snippet, { delete: true });
-        window.showInformationMessage(l10n.t("Deleted shared snippet '{0}'.", snippet.name));
-      }
-    }),
-
-    commands.registerCommand("code-for-ibmi.openSharedSnippets", async () => {
+    commands.registerCommand(`code-for-ibmi.openSharedSnippets`, async () => {
       const connection = instance.getConnection();
       if (connection) {
         await showSnippetsMenu(connection);
+      }
+    }),
+
+    commands.registerCommand(`code-for-ibmi.createSharedSnippet`, async (languageId?: string) => {
+      const connection = instance.getConnection();
+      if (connection) {
+        await createSnippet(connection, languageId !== undefined ? { languageId } : undefined);
       }
     })
   ];
 
   async function showSnippetsMenu(connection: IBMi) {
-    const snippets = await SharedSnippetTools.getSnippets(connection);
-
-    const openButton: QuickInputButton = { iconPath: new ThemeIcon("go-to-file"), tooltip: l10n.t("Open for editing") };
-    const renameButton: QuickInputButton = { iconPath: new ThemeIcon("edit"), tooltip: l10n.t("Rename...") };
-    const deleteButton: QuickInputButton = { iconPath: new ThemeIcon("trash"), tooltip: l10n.t("Delete...") };
-
     const CREATE_LABEL = `$(add) ${l10n.t("Create new shared snippet...")}`;
-    const PUBLISH_LABEL = `$(cloud-upload) ${l10n.t("Publish active editor as shared snippet...")}`;
-    const OPEN_FILE_LABEL = `$(json) ${l10n.t("Open snippets.json...")}`;
+    const selected = await selectSnippetsFile(connection, {
+      placeHolder: l10n.t("Select a snippets file to edit"),
+      extraItems: [{ label: CREATE_LABEL }, { label: ``, kind: QuickPickItemKind.Separator }]
+    });
 
-    type SnippetQuickPickItem = QuickPickItem & { snippet?: SharedSnippet };
+    if (selected?.label === CREATE_LABEL) {
+      await createSnippet(connection);
+    }
+    else if (selected) {
+      await openSnippetsFile(connection, selected.languageId);
+    }
+  }
 
-    const items: SnippetQuickPickItem[] = [
-      { label: CREATE_LABEL },
-      ...(window.activeTextEditor ? [{ label: PUBLISH_LABEL }] : []),
-      { label: OPEN_FILE_LABEL },
-      ...snippets.map(snippet => ({
-        label: `$(symbol-snippet) ${snippet.name}`,
-        description: snippet.prefix.join(", "),
-        detail: snippet.description,
-        buttons: [openButton, renameButton, deleteButton],
-        snippet
-      }))
+  type SnippetsFileItem = QuickPickItem & { languageId?: string, newFile?: boolean };
+
+  async function selectSnippetsFile(connection: IBMi, options: { placeHolder: string, extraItems?: SnippetsFileItem[] }) {
+    const files = await SharedSnippets.getSnippetsFiles(connection, { forceReload: true });
+    const global = files.find(file => !file.languageId);
+    const languageFiles = files.filter(file => file.languageId).sort((f1, f2) => f1.languageId!.localeCompare(f2.languageId!));
+
+    const items: SnippetsFileItem[] = [
+      ...(options.extraItems || []),
+      {
+        label: `$(json) ${l10n.t("Global Snippets")}`,
+        description: SharedSnippets.getFilePath(),
+        detail: global ? countLabel(global.snippets.length) : l10n.t("Not created yet")
+      },
+      ...(languageFiles.length ? [{ label: l10n.t("Languages"), kind: QuickPickItemKind.Separator } as SnippetsFileItem] : []),
+      ...languageFiles.map(file => ({
+        label: `$(symbol-snippet) ${file.languageId}`,
+        description: file.path,
+        detail: countLabel(file.snippets.length),
+        languageId: file.languageId
+      })),
+      { label: ``, kind: QuickPickItemKind.Separator },
+      { label: `$(add) ${l10n.t("New language snippets file...")}`, newFile: true }
     ];
 
-    const quickPick = window.createQuickPick<SnippetQuickPickItem>();
-    quickPick.title = l10n.t("Shared Snippets");
-    quickPick.placeholder = l10n.t("Select a snippet to insert at the cursor");
-    quickPick.items = items;
-
-    quickPick.onDidAccept(() => {
-      const selected = quickPick.selectedItems[0];
-      if (selected) {
-        quickPick.hide();
-        if (selected.label === CREATE_LABEL) {
-          commands.executeCommand("code-for-ibmi.snippet.create");
-        }
-        else if (selected.label === PUBLISH_LABEL) {
-          commands.executeCommand("code-for-ibmi.snippet.publish");
-        }
-        else if (selected.label === OPEN_FILE_LABEL) {
-          commands.executeCommand("code-for-ibmi.snippet.openFile");
-        }
-        else if (selected.snippet) {
-          commands.executeCommand("code-for-ibmi.snippet.insert", selected.snippet);
-        }
-      }
-    });
-
-    quickPick.onDidTriggerItemButton(event => {
-      quickPick.hide();
-      const snippet = event.item.snippet;
-      if (snippet) {
-        if (event.button === openButton) {
-          commands.executeCommand("code-for-ibmi.snippet.open", snippet);
-        }
-        else if (event.button === renameButton) {
-          commands.executeCommand("code-for-ibmi.snippet.rename", snippet);
-        }
-        else if (event.button === deleteButton) {
-          commands.executeCommand("code-for-ibmi.snippet.delete", snippet);
-        }
-      }
-    });
-
-    quickPick.onDidHide(() => quickPick.dispose());
-    quickPick.show();
-  }
-}
-
-/**
- * Backs the `code4isnippet:` scheme: a snippet's body is opened as a virtual file named
- * after the snippet - so the editor picks the right language - and saving it writes the
- * body back into the shared snippets file.
- */
-class SharedSnippetFileSystemProvider implements FileSystemProvider {
-  private readonly emitter = new EventEmitter<FileChangeEvent[]>();
-  readonly onDidChangeFile: Event<FileChangeEvent[]> = this.emitter.event;
-  /** uri path -> snippet name, since the file name is sanitized and the name is not */
-  private readonly names = new Map<string, string>();
-
-  constructor(private readonly instance: Instance) { }
-
-  getUri(snippet: SharedSnippet) {
-    const fileName = SharedSnippetTools.sanitizeFileName(snippet.name, snippet.scope[0] || `txt`);
-    let uriPath = `/${fileName}`;
-    // two snippets can sanitize down to the same file name; keep one path per snippet
-    for (let suffix = 2; this.names.has(uriPath) && this.names.get(uriPath) !== snippet.name; suffix++) {
-      uriPath = `/${suffix}_${fileName}`;
+    const selected = await window.showQuickPick(items, { title: l10n.t("Shared Snippets"), placeHolder: options.placeHolder });
+    if (selected?.newFile) {
+      const languageId = await selectLanguage(languageFiles.map(file => file.languageId!));
+      return languageId ? { label: languageId, languageId } : undefined;
     }
 
-    this.names.set(uriPath, snippet.name);
-    return Uri.from({ scheme: SNIPPET_SCHEME, path: uriPath });
+    return selected;
   }
 
-  /** Keeps open editors pointing at a snippet that was renamed. */
-  renamed(oldName: string, newName: string) {
-    for (const [uriPath, name] of this.names) {
-      if (name === oldName) {
-        this.names.set(uriPath, newName);
-      }
+  async function selectLanguage(existing: string[]) {
+    const available = (await languages.getLanguages())
+      //a language file named after the global one would silently take its place
+      .filter(languageId => !existing.includes(languageId) && SharedSnippets.getFilePath(languageId) !== SharedSnippets.getFilePath())
+      .sort((l1, l2) => l1.localeCompare(l2));
+
+    return window.showQuickPick(available, {
+      title: l10n.t("New language snippets file"),
+      placeHolder: l10n.t("Select the language the snippets will apply to")
+    });
+  }
+
+  async function createSnippet(connection: IBMi, target?: { languageId?: string }) {
+    //Grabbed before any quick pick steals the focus from it
+    const editor = window.activeTextEditor;
+
+    const file = target || await selectSnippetsFile(connection, { placeHolder: l10n.t("Select the snippets file to add the snippet to") });
+    if (!file) {
+      return;
     }
-  }
 
-  async stat(uri: Uri): Promise<FileStat> {
-    const snippet = await this.getSnippet(uri);
-    return {
-      type: FileType.File,
-      ctime: 0,
-      mtime: 0,
-      size: Buffer.byteLength(SharedSnippetTools.getBodyText(snippet), `utf8`)
+    const filePath = SharedSnippets.getFilePath(file.languageId);
+    if (await connection.getContent().testStreamFile(filePath, `e`) && !await connection.getContent().testStreamFile(filePath, `w`)) {
+      window.showErrorMessage(l10n.t("You don't have the rights to write into {0}.", filePath));
+      return;
+    }
+
+    const existingNames = (await SharedSnippets.getSnippetsFiles(connection)).find(f => f.path === filePath)?.snippets.map(snippet => snippet.name) || [];
+    const name = await window.showInputBox({
+      title: l10n.t("New shared snippet"),
+      prompt: l10n.t("How the snippet is listed in the completion"),
+      placeHolder: l10n.t("Snippet name..."),
+      validateInput: input => validateName(input, existingNames)
+    });
+
+    if (!name) {
+      return;
+    }
+
+    const prefix = await window.showInputBox({
+      title: l10n.t("Shared snippet prefix"),
+      prompt: l10n.t("Typed to trigger the snippet completion. Several prefixes can be given, comma separated"),
+      placeHolder: l10n.t("Prefix..."),
+      validateInput: validatePrefix
+    });
+
+    if (!prefix) {
+      return;
+    }
+
+    const description = await window.showInputBox({
+      title: l10n.t("Shared snippet description"),
+      placeHolder: l10n.t("Description (optional)...")
+    });
+
+    if (description === undefined) {
+      return;
+    }
+
+    //A language file's name already is its scope
+    let scope;
+    if (!file.languageId) {
+      const languageIds = await selectScope();
+      if (!languageIds) {
+        return;
+      }
+      scope = languageIds.join(`,`) || undefined;
+    }
+
+    const body = await selectBody(name.trim(), file.languageId || scope?.split(`,`)[0] || editor?.document.languageId, editor);
+    if (!body) {
+      return;
+    }
+
+    const prefixes = parsePrefixes(prefix);
+    const snippet: SharedSnippet = {
+      prefix: prefixes.length === 1 ? prefixes[0] : prefixes,
+      body: body.length === 1 ? body[0] : body,
+      ...(description ? { description } : undefined),
+      ...(scope ? { scope } : undefined)
     };
+
+    await insertSnippet(connection, file.languageId, name.trim(), snippet);
   }
 
-  async readFile(uri: Uri): Promise<Uint8Array> {
-    return Buffer.from(SharedSnippetTools.getBodyText(await this.getSnippet(uri)), `utf8`);
+  /** Picking no language leaves the snippet unscoped, so that it applies to every language. */
+  async function selectScope() {
+    const available = (await languages.getLanguages()).sort((l1, l2) => l1.localeCompare(l2));
+    return window.showQuickPick(available, {
+      title: l10n.t("Shared snippet scope"),
+      placeHolder: l10n.t("Select the languages the snippet applies to, or none to apply it to all of them"),
+      canPickMany: true
+    });
   }
 
-  async writeFile(uri: Uri, content: Uint8Array): Promise<void> {
-    const connection = this.instance.getConnection();
-    if (!connection) {
-      throw FileSystemError.Unavailable(uri);
+  async function selectBody(name: string, languageId: string | undefined, editor?: TextEditor) {
+    type BodyItem = QuickPickItem & { getText?: () => string };
+
+    const items: BodyItem[] = [
+      {
+        label: `$(edit) ${l10n.t("Write the snippet's content...")}`,
+        detail: l10n.t("Opens an editor where tab stops and placeholders can be used")
+      },
+      ...(editor && !editor.selection.isEmpty ? [{
+        label: `$(selection) ${l10n.t("Use the current selection")}`,
+        description: path.posix.basename(editor.document.uri.path),
+        getText: () => editor.document.getText(editor.selection)
+      }] : []),
+      ...(editor ? [{
+        label: `$(file-code) ${l10n.t("Use the whole active editor")}`,
+        description: path.posix.basename(editor.document.uri.path),
+        getText: () => editor.document.getText()
+      }] : [])
+    ];
+
+    const selected = items.length === 1 ? items[0] : await window.showQuickPick(items, {
+      title: l10n.t("Shared snippet content"),
+      placeHolder: l10n.t("Select the snippet's content")
+    });
+
+    if (!selected) {
+      return;
     }
 
-    const snippet = await this.getSnippet(uri);
-    await SharedSnippetTools.updateSnippet(connection, snippet, { newBody: SharedSnippetTools.toBody(Buffer.from(content).toString(`utf8`)) });
-    this.emitter.fire([{ type: FileChangeType.Changed, uri }]);
+    //A hand written body is left alone, so that it can carry tab stops and placeholders
+    return selected.getText ? escapeBody(selected.getText()).split(/\r?\n/) : writeBody(name, languageId);
   }
 
-  watch(): Disposable {
-    return new Disposable(() => { });
-  }
+  /**
+   * An input box only takes a single line, so the content is written in a scratch file: saving it keeps
+   * the content, closing it drops the snippet. A file rather than an untitled document, so that saving
+   * is the plain save command and closing never asks where the content should be stored.
+   */
+  async function writeBody(name: string, languageId?: string) {
+    const directory = await tmpDirectory();
+    const scratch = Uri.file(path.join(directory, name.replace(/[\\/:*?"<>|]/g, `_`)));
+    await workspace.fs.writeFile(scratch, Buffer.from(``, `utf8`));
 
-  readDirectory(): [string, FileType][] {
-    return [];
-  }
+    try {
+      let document = await workspace.openTextDocument(scratch);
+      if (languageId && document.languageId !== languageId) {
+        //This reopens the document, so it has to be done before listening to its events
+        document = await languages.setTextDocumentLanguage(document, languageId);
+      }
+      await window.showTextDocument(document, { preview: false });
 
-  createDirectory(uri: Uri): void {
-    throw FileSystemError.NoPermissions(uri);
-  }
+      //A notification only stays up while it carries a running progress, and this one must stand
+      //until the content is written - which is anything but a matter of seconds
+      const body = await window.withProgress({
+        location: ProgressLocation.Notification,
+        title: l10n.t("Write the snippet's content, then save the editor to add it. Tab stops and placeholders can be used."),
+        cancellable: true
+      }, (progress, token) => new Promise<string | undefined>(resolve => {
+        const listeners: Disposable[] = [];
+        const finish = (written?: string) => {
+          listeners.forEach(listener => listener.dispose());
+          resolve(written);
+        };
 
-  delete(uri: Uri): void {
-    throw FileSystemError.NoPermissions(uri);
-  }
+        listeners.push(
+          workspace.onDidSaveTextDocument(saved => saved.uri.toString() === scratch.toString() ? finish(saved.getText()) : undefined),
+          workspace.onDidCloseTextDocument(closed => closed.uri.toString() === scratch.toString() ? finish() : undefined),
+          token.onCancellationRequested(() => finish())
+        );
+      }));
 
-  rename(uri: Uri): void {
-    throw FileSystemError.NoPermissions(uri);
-  }
-
-  private async getSnippet(uri: Uri) {
-    const connection = this.instance.getConnection();
-    const name = this.names.get(uri.path);
-    const snippet = connection && name ? (await SharedSnippetTools.getSnippets(connection)).find(s => s.name === name) : undefined;
-    if (!snippet) {
-      throw FileSystemError.FileNotFound(uri);
+      return body?.split(/\r?\n/);
     }
-    return snippet;
+    finally {
+      //Reverted, so a cancelled snippet never asks to be saved
+      const editor = window.visibleTextEditors.find(visible => visible.document.uri.toString() === scratch.toString());
+      if (editor) {
+        await window.showTextDocument(editor.document, { preview: false });
+        await commands.executeCommand(`workbench.action.revertAndCloseActiveEditor`);
+      }
+      await workspace.fs.delete(Uri.file(directory), { recursive: true });
+    }
+  }
+
+  /** Written through the editor, so that it and the IFS never disagree on the file's content. */
+  async function insertSnippet(connection: IBMi, languageId: string | undefined, name: string, snippet: SharedSnippet) {
+    const editor = await openSnippetsFile(connection, languageId);
+    const document = editor.document;
+    const insertion = SharedSnippets.buildInsertion(document.getText(), name, snippet);
+    const position = document.positionAt(insertion.offset);
+
+    const edit = new WorkspaceEdit();
+    edit.insert(document.uri, position, insertion.text);
+    if (!await workspace.applyEdit(edit) || !await document.save()) {
+      throw new Error(l10n.t("Could not add shared snippet '{0}' to {1}.", name, document.uri.path));
+    }
+
+    SharedSnippets.invalidate(connection);
+    window.showInformationMessage(l10n.t("Created shared snippet '{0}'.", name));
+
+    const added = new Position(position.line + 1, 0);
+    editor.selection = new Selection(added, added);
+    editor.revealRange(new Range(added, document.positionAt(insertion.offset + insertion.text.length)));
+  }
+
+  async function openSnippetsFile(connection: IBMi, languageId?: string) {
+    const filePath = await SharedSnippets.createSnippetsFile(connection, languageId);
+    let document = await workspace.openTextDocument(getUriFromPath(filePath));
+    if (document.languageId !== SNIPPETS_LANGUAGE) {
+      document = await languages.setTextDocumentLanguage(document, SNIPPETS_LANGUAGE);
+    }
+    return window.showTextDocument(document);
+  }
+
+  function countLabel(count: number) {
+    return count === 1 ? l10n.t("1 snippet") : l10n.t("{0} snippets", count);
   }
 }
 
-/**
- * Offers the shared snippets as completions (prefix -> Tab to expand).
- */
 class SharedSnippetCompletionItemProvider implements CompletionItemProvider {
   constructor(private readonly instance: Instance) { }
 
@@ -426,20 +441,33 @@ class SharedSnippetCompletionItemProvider implements CompletionItemProvider {
       return;
     }
 
-    // extension covers saved files; languageId also catches an untitled buffer with a manually-picked language
-    // used for example in db2 ext
-    const extension = path.extname(document.uri.path).substring(1).toLocaleLowerCase();
-    const languageId = document.languageId.toLocaleLowerCase();
-    const snippets = await SharedSnippetTools.getSnippets(connection);
+    const items: CompletionItem[] = [];
+    for (const file of await SharedSnippets.getSnippetsFiles(connection)) {
+      if (file.languageId && file.languageId !== document.languageId) {
+        continue;
+      }
 
-    return snippets.filter(snippet => Snippets.matches(snippet, extension, languageId))
-      .flatMap(snippet => snippet.prefix.map(prefix => {
-        const item = new CompletionItem(prefix, CompletionItemKind.Snippet);
-        item.detail = snippet.name;
-        item.documentation = new MarkdownString(snippet.description);
-        item.sortText = `0_${prefix}`; // push above other providers' matches
-        item.insertText = new SnippetString(SharedSnippetTools.getBodyText(snippet));
-        return item;
-      }));
+      for (const snippet of file.snippets.filter(snippet => matches(snippet, document))) {
+        items.push(...toCompletionItems(snippet));
+      }
+    }
+
+    return items;
   }
+}
+
+function toCompletionItems(snippet: NamedSharedSnippet) {
+  const body = toArray(snippet.body).join(`\n`);
+  const description = toArray(snippet.description).join(`\n`);
+
+  //Like VS Code does, a snippet with no prefix is offered under its name
+  const prefixes = toArray(snippet.prefix).filter(Boolean);
+  return (prefixes.length ? prefixes : [snippet.name]).map(prefix => {
+    const item = new CompletionItem(prefix, CompletionItemKind.Snippet);
+    item.detail = snippet.name;
+    item.documentation = new MarkdownString(description);
+    item.sortText = `0_${prefix}`; //push above other providers' matches
+    item.insertText = new SnippetString(body);
+    return item;
+  });
 }

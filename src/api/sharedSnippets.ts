@@ -1,144 +1,261 @@
+import path from "path";
 import vscode, { l10n } from "vscode";
 import IBMi from "./IBMi";
-import { CacheItem, SharedSnippet } from "./types";
+import { Tools } from "./Tools";
+import { SharedSnippet } from "./types";
 
-const SNIPPETS_FILE = `/etc/vscode/snippets.json`;
-const CACHE_TTL = 30000; // 30 seconds, so external edits to the file still show up eventually
+const SNIPPETS_DIRECTORY = `/etc/vscode/snippets`;
+const GLOBAL_SNIPPETS = `global`;
+const LISTING_TTL = 30000;
 
-// per-connection, so the completion provider isn't hitting the IFS on every keystroke
-const cache = new WeakMap<IBMi, CacheItem<SharedSnippet[]>>();
+const NEW_FILE_CONTENT = [
+  `{`,
+  `\t// Place your shared snippets here. Each snippet is defined under a snippet name`,
+  `\t// and has a "prefix", a "body" and an optional "description".`,
+  `\t// See https://code.visualstudio.com/docs/editing/userdefinedsnippets`,
+  `\t// Example:`,
+  `\t// "Print to console": {`,
+  `\t// \t"prefix": "log",`,
+  `\t// \t"body": [`,
+  `\t// \t\t"console.log('$1');",`,
+  `\t// \t\t"$2"`,
+  `\t// \t],`,
+  `\t// \t"description": "Log output to console"`,
+  `\t// }`,
+  `}`
+].join(`\n`);
+
+export type NamedSharedSnippet = SharedSnippet & {
+  name: string
+};
+
+export type SharedSnippetsFile = {
+  path: string
+  languageId?: string
+  snippets: NamedSharedSnippet[]
+};
+
+type CachedFile = {
+  modified?: number
+  file: SharedSnippetsFile
+};
+
+type Cache = {
+  listedAt: number
+  files: Map<string, CachedFile>
+};
+
+const cache = new WeakMap<IBMi, Cache>();
 
 /**
- * Manages the shared snippets file, which uses the same layout as VS Code's own
- * user defined snippets: https://code.visualstudio.com/docs/editing/userdefinedsnippets
+ * Manages the shared snippets files, stored in the /etc/vscode/snippets IFS folder using the same
+ * layout as https://code.visualstudio.com/docs/editing/userdefinedsnippets
  */
-export namespace SharedSnippetTools {
-  export function getSnippetsFile() {
-    return SNIPPETS_FILE;
+export namespace SharedSnippets {
+
+  export function getFilePath(languageId?: string) {
+    return path.posix.join(SNIPPETS_DIRECTORY, `${languageId || GLOBAL_SNIPPETS}.json`);
   }
 
-  /** Drops the cached snippets, e.g. after {@link getSnippetsFile} was edited outside of our own commands. */
+  export function getLanguageId(filePath: string) {
+    const basename = path.posix.basename(filePath, `.json`);
+    return basename === GLOBAL_SNIPPETS ? undefined : basename;
+  }
+
+  export function isSnippetsFile(filePath: string) {
+    return path.posix.dirname(filePath) === SNIPPETS_DIRECTORY && filePath.toLocaleLowerCase().endsWith(`.json`);
+  }
+
   export function invalidate(connection: IBMi) {
     cache.delete(connection);
   }
 
-  export async function getSnippets(connection: IBMi, options?: { forceReload?: boolean }): Promise<SharedSnippet[]> {
+  /** Only the files that changed since the last listing are read again. */
+  export async function getSnippetsFiles(connection: IBMi, options?: { forceReload?: boolean }): Promise<SharedSnippetsFile[]> {
     const cached = cache.get(connection);
-    if (!options?.forceReload && cached && (!cached.createdAt || cached.createdAt + CACHE_TTL >= Date.now())) {
-      return cached.value;
+    if (!options?.forceReload && cached && cached.listedAt + LISTING_TTL >= Date.now()) {
+      return toFiles(cached);
     }
 
-    const snippets: SharedSnippet[] = [];
     const content = connection.getContent();
+    const files = new Map<string, CachedFile>();
 
-    if (await content.testStreamFile(SNIPPETS_FILE, "r")) {
-      try {
-        const raw = await content.downloadStreamfileRaw(SNIPPETS_FILE);
-        const parsed = JSON.parse(raw.toString("utf8"));
-
-        // Maybe one day replace this with real schema validation
-        if (parsed && typeof parsed === `object` && !Array.isArray(parsed)) {
-          for (const [name, entry] of Object.entries<any>(parsed)) {
-            if (entry && typeof entry === `object` && (typeof entry.prefix === `string` || Array.isArray(entry.prefix)) && (typeof entry.body === `string` || Array.isArray(entry.body))) {
-              snippets.push({
-                name,
-                prefix: toStringArray(entry.prefix),
-                description: typeof entry.description === `string` ? entry.description : ``,
-                scope: typeof entry.scope === `string` ? splitScope(entry.scope) : Array.isArray(entry.scope) ? entry.scope.map(String) : [],
-                body: toStringArray(entry.body)
-              });
-            } else {
-              throw new Error(l10n.t("Invalid shared snippet '{0}'.", name));
-            }
+    if (await content.testStreamFile(SNIPPETS_DIRECTORY, `d`)) {
+      for (const found of await content.getFileList(SNIPPETS_DIRECTORY)) {
+        if (found.type === `streamfile` && isSnippetsFile(found.path)) {
+          const modified = found.modified?.getTime();
+          const previous = cached?.files.get(found.path);
+          if (previous && modified !== undefined && previous.modified === modified) {
+            files.set(found.path, previous);
+          }
+          else {
+            files.set(found.path, { modified, file: await read(connection, found.path) });
           }
         }
-      } catch (e: any) {
-        vscode.window.showErrorMessage(l10n.t("Error parsing {0}: {1}", SNIPPETS_FILE, e.message));
       }
     }
 
-    return setCache(connection, snippets);
+    const newCache = { listedAt: Date.now(), files };
+    cache.set(connection, newCache);
+    return toFiles(newCache);
   }
 
-  export async function createSnippet(connection: IBMi, snippet: SharedSnippet) {
-    const snippets = await getSnippets(connection);
-    await writeSnippets(connection, [...snippets, snippet]);
-  }
+  export async function createSnippetsFile(connection: IBMi, languageId?: string) {
+    const filePath = getFilePath(languageId);
+    const content = connection.getContent();
 
-  export async function updateSnippet(connection: IBMi, snippet: SharedSnippet, options?: { newName?: string, newPrefix?: string[], newDescription?: string, newScope?: string[], newBody?: string[], delete?: boolean }) {
-    const snippets = await getSnippets(connection);
-    const index = snippets.findIndex(s => s.name === snippet.name);
-    if (index < 0) {
-      throw new Error(l10n.t("Cannot find shared snippet {0} for update.", snippet.name));
+    if (!await content.testStreamFile(filePath, `e`)) {
+      // Everyone reads, the owner writes; same as /etc/vscode/settings.json. Sys admins can fine tune afterwards.
+      const directory = await connection.sendCommand({ command: `mkdir -p "${Tools.escapePath(SNIPPETS_DIRECTORY, true)}" && chmod 755 "${Tools.escapePath(SNIPPETS_DIRECTORY, true)}"` });
+      if (directory.code !== 0) {
+        throw new Error(l10n.t("Could not create {0}: {1}", SNIPPETS_DIRECTORY, directory.stderr));
+      }
+
+      await content.createStreamFile(filePath);
+      await content.writeStreamfileRaw(filePath, NEW_FILE_CONTENT, `utf8`);
+      await connection.sendCommand({ command: `chmod 644 "${Tools.escapePath(filePath, true)}"` });
+      invalidate(connection);
     }
 
-    if (options?.delete) {
-      snippets.splice(index, 1);
-    } else {
-      if (options?.newName !== undefined) {
-        snippets[index].name = options.newName;
+    return filePath;
+  }
+
+  /**
+   * Where and what to insert to add a snippet to a snippets file. It goes at the top of the file,
+   * so the rest of it - comments and formatting included - stays untouched.
+   */
+  export function buildInsertion(fileContent: string, name: string, snippet: SharedSnippet) {
+    const existing = Object.keys(parseJsonWithComments(fileContent));
+    if (existing.some(existingName => existingName.toLocaleUpperCase() === name.toLocaleUpperCase())) {
+      throw new Error(l10n.t("This name is already used by another shared snippet"));
+    }
+
+    const brace = findSnippetsBrace(fileContent);
+    if (brace < 0) {
+      throw new Error(l10n.t("No snippets object found in the file."));
+    }
+
+    const entry = JSON.stringify({ [name]: snippet }, undefined, `\t`)
+      .split(`\n`)
+      .slice(1, -1) //the wrapping braces are the file's own
+      .join(`\n`);
+
+    const followingContent = fileContent.substring(brace + 1);
+    return {
+      offset: brace + 1,
+      text: `\n${entry}${existing.length ? `,` : ``}${/^\r?\n/.test(followingContent) ? `` : `\n`}`
+    };
+  }
+
+  function findSnippetsBrace(content: string) {
+    for (let i = 0; i < content.length; i++) {
+      const current = content[i];
+      const next = content[i + 1];
+
+      if (current === `/` && next === `/`) {
+        while (i < content.length && content[i] !== `\n`) {
+          i++;
+        }
       }
-      if (options?.newPrefix !== undefined) {
-        snippets[index].prefix = options.newPrefix;
+      else if (current === `/` && next === `*`) {
+        i += 2;
+        while (i < content.length && !(content[i] === `*` && content[i + 1] === `/`)) {
+          i++;
+        }
+        i++;
       }
-      if (options?.newDescription !== undefined) {
-        snippets[index].description = options.newDescription;
+      else if (current === `{`) {
+        return i;
       }
-      if (options?.newScope !== undefined) {
-        snippets[index].scope = options.newScope;
-      }
-      if (options?.newBody !== undefined) {
-        snippets[index].body = options.newBody;
+      else if (!/\s/.test(current)) {
+        return -1;
       }
     }
 
-    await writeSnippets(connection, snippets);
+    return -1;
   }
 
-  /** The snippet's body, as it is shown in an editor. */
-  export function getBodyText(snippet: SharedSnippet) {
-    return snippet.body.join(`\n`);
-  }
+  async function read(connection: IBMi, filePath: string): Promise<SharedSnippetsFile> {
+    const snippets: NamedSharedSnippet[] = [];
 
-  export function toBody(text: string) {
-    return text.split(/\r?\n/);
-  }
+    try {
+      const raw = await connection.getContent().downloadStreamfileRaw(filePath);
+      const parsed = parseJsonWithComments(raw.toString(`utf8`));
 
-  /** e.g. ("i hate spaces", "rpgle") -> "i_hate_spaces.rpgle" */
-  export function sanitizeFileName(name: string, extension: string): string {
-    // no spaces on the IFS, ever! underscores only, sysadmin's orders
-    const base = name.trim().toLocaleLowerCase().replace(/\s+/g, `_`).replace(/[^a-z0-9_]+/g, ``).replace(/^_+|_+$/g, ``) || `snippet`;
-    const ext = extension.trim().replace(/^\.+/, ``).toLocaleLowerCase() || `txt`;
-    return `${base}.${ext}`;
-  }
-
-  function splitScope(scope: string) {
-    return scope.split(`,`).map(part => part.trim()).filter(Boolean);
-  }
-
-  function toStringArray(value: string | string[]) {
-    return Array.isArray(value) ? value.map(String) : [value];
-  }
-
-  function setCache(connection: IBMi, snippets: SharedSnippet[]) {
-    const sorted = [...snippets].sort((s1, s2) => s1.name.localeCompare(s2.name));
-    cache.set(connection, { value: sorted, createdAt: Date.now() });
-    return sorted;
-  }
-
-  async function writeSnippets(connection: IBMi, snippets: SharedSnippet[]) {
-    const file: Record<string, any> = {};
-    for (const snippet of [...snippets].sort((s1, s2) => s1.name.localeCompare(s2.name))) {
-      file[snippet.name] = {
-        // a single prefix/body line is written as a plain string, like VS Code does
-        prefix: snippet.prefix.length === 1 ? snippet.prefix[0] : snippet.prefix,
-        body: snippet.body.length === 1 ? snippet.body[0] : snippet.body,
-        description: snippet.description,
-        scope: snippet.scope.join(`,`)
-      };
+      // Maybe one day replace this with real schema validation
+      if (parsed && typeof parsed === `object` && !Array.isArray(parsed)) {
+        for (const [name, snippet] of Object.entries<any>(parsed)) {
+          if (snippet && typeof snippet === `object` && (typeof snippet.body === `string` || Array.isArray(snippet.body))) {
+            snippets.push({ ...snippet, name });
+          }
+          else {
+            throw new Error(l10n.t("Invalid shared snippet '{0}'.", name));
+          }
+        }
+      }
+    } catch (error: any) {
+      vscode.window.showErrorMessage(l10n.t("Error parsing {0}: {1}", filePath, error.message));
     }
 
-    await connection.getContent().writeStreamfileRaw(SNIPPETS_FILE, JSON.stringify(file, undefined, 2), `utf8`);
-    setCache(connection, snippets);
+    return { path: filePath, languageId: getLanguageId(filePath), snippets };
+  }
+
+  function toFiles(cached: Cache) {
+    return [...cached.files.values()].map(entry => entry.file);
+  }
+
+  /** VS Code allows comments and trailing commas in snippets files, and its own template is made of comments. */
+  function parseJsonWithComments(content: string) {
+    let json = ``;
+    let pendingComma = false;
+
+    const append = (text: string) => {
+      if (pendingComma) {
+        pendingComma = false;
+        if (!text.startsWith(`}`) && !text.startsWith(`]`)) {
+          json += `,`;
+        }
+      }
+      json += text;
+    };
+
+    for (let i = 0; i < content.length; i++) {
+      const current = content[i];
+      const next = content[i + 1];
+
+      if (current === `"`) {
+        let string = current;
+        while (++i < content.length) {
+          string += content[i];
+          if (content[i] === `\\`) {
+            string += content[++i];
+          }
+          else if (content[i] === `"`) {
+            break;
+          }
+        }
+        append(string);
+      }
+      else if (current === `/` && next === `/`) {
+        while (i < content.length && content[i] !== `\n`) {
+          i++;
+        }
+      }
+      else if (current === `/` && next === `*`) {
+        i += 2;
+        while (i < content.length && !(content[i] === `*` && content[i + 1] === `/`)) {
+          i++;
+        }
+        i++;
+      }
+      else if (current === `,`) {
+        pendingComma = true; //only kept if something other than the end of an object or an array follows
+      }
+      else if (!/\s/.test(current)) {
+        append(current);
+      }
+    }
+
+    return json ? JSON.parse(json) : {};
   }
 }

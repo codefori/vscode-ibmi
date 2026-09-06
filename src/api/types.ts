@@ -131,19 +131,17 @@ export interface IFSFile {
 }
 
 /**
- * A shared snippet, stored in `/etc/vscode/snippets.json` using the same layout as
- * VS Code's user defined snippets. Can be edited like any other source file, or
- * triggered as a snippet completion by typing its `prefix`.
+ * A shared snippet, stored in the `/etc/vscode/snippets` IFS folder. Follows the VS Code user
+ * defined snippets schemas
  */
 export interface SharedSnippet {
-  name: string
-  description: string
-  /** typed to trigger the snippet completion */
-  prefix: string[]
-  /** file extensions / languageIds the snippet completion triggers on, e.g. ["rpgle", "sqlrpgle"] */
-  scope: string[]
-  /** the snippet's content, one entry per line */
-  body: string[]
+  isFileTemplate?: boolean
+  prefix?: string | string[]
+  body: string | string[]
+  description?: string | string[]
+  scope?: string
+  include?: string | string[]
+  exclude?: string | string[]
 }
 
 export interface IBMiError {

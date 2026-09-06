@@ -65,9 +65,16 @@
 			},
 			{
 				"fileMatch": [
-					"/etc/vscode/snippets.json"
+					"/etc/vscode/snippets/*.json",
+					"!/etc/vscode/snippets/global.json"
 				],
-				"url": "./schemas/snippets.json"
+				"url": "vscode://schemas/snippets"
+			},
+			{
+				"fileMatch": [
+					"/etc/vscode/snippets/global.json"
+				],
+				"url": "vscode://schemas/global-snippets"
 			}
 		],
 		"configuration": {
@@ -1861,48 +1868,11 @@
 				"icon": "$(debug-start)"
 			},
 			{
-				"command": "code-for-ibmi.snippet.create",
+				"command": "code-for-ibmi.createSharedSnippet",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Create shared snippet",
 				"category": "IBM i",
 				"icon": "$(add)"
-			},
-			{
-				"command": "code-for-ibmi.snippet.publish",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Publish active editor as shared snippet",
-				"category": "IBM i",
-				"icon": "$(cloud-upload)"
-			},
-			{
-				"command": "code-for-ibmi.snippet.open",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Open shared snippet",
-				"category": "IBM i"
-			},
-			{
-				"command": "code-for-ibmi.snippet.openFile",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Open shared snippets file",
-				"category": "IBM i"
-			},
-			{
-				"command": "code-for-ibmi.snippet.insert",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Insert shared snippet at cursor",
-				"category": "IBM i"
-			},
-			{
-				"command": "code-for-ibmi.snippet.rename",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Rename...",
-				"category": "IBM i"
-			},
-			{
-				"command": "code-for-ibmi.snippet.delete",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Delete...",
-				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.openSharedSnippets",
@@ -2781,22 +2751,6 @@
 				},
 				{
 					"command": "code-for-ibmi.environment.action.runOnEditor",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.snippet.open",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.snippet.insert",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.snippet.rename",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.snippet.delete",
 					"when": "never"
 				},
 				{
