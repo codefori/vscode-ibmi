@@ -109,7 +109,7 @@ function matchGlob(pattern: string, target: string) {
       }
 
       default:
-        expression += current.replace(/[.+^$|()\\\-\]]/, matched => `\\${matched}`);
+        expression += current.replace(/[.+^$|()\\\-\]]/g, matched => `\\${matched}`);
     }
   }
 
