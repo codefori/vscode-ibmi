@@ -1,7 +1,5 @@
 import path from "path";
-import tmp from "tmp";
-import util from "util";
-import { commands, CompletionItem, CompletionItemKind, CompletionItemProvider, Disposable, l10n, languages, MarkdownString, ProgressLocation, QuickPickItem, QuickPickItemKind, Range, Selection, SnippetString, TextDocument, TextEditor, Uri, window, workspace, WorkspaceEdit } from "vscode";
+import { commands, CompletionItem, CompletionItemKind, CompletionItemProvider, Disposable, l10n, languages, MarkdownString, QuickPickItem, QuickPickItemKind, Range, Selection, SnippetString, TextDocument, TextEditor, Uri, window, workspace, WorkspaceEdit } from "vscode";
 import IBMi from "../api/IBMi";
 import { NamedSharedSnippet, SharedSnippets } from "../api/sharedSnippets";
 import { getUriFromPath } from "../filesystems/qsys/QSysFs";
@@ -10,8 +8,6 @@ import { SharedSnippet } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 
 const SNIPPETS_LANGUAGE = `snippets`;
-
-const tmpDirectory = util.promisify(tmp.dir);
 
 function parseScope(scope: string) {
   return scope.split(`,`).map(languageId => languageId.trim().toLocaleLowerCase()).filter(Boolean);
@@ -161,13 +157,19 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
       }
     }),
 
-    commands.registerCommand(`code-for-ibmi.createSharedSnippet`, async (languageId?: string) => {
-      const connection = instance.getConnection();
-      if (connection) {
-        await reportFailure(() => createSnippet(connection, languageId !== undefined ? { languageId } : undefined));
-      }
-    })
+    commands.registerCommand(`code-for-ibmi.createSharedSnippetFromDocument`, () => createSnippetFromEditor(editor => editor.document.getText())),
+
+    commands.registerCommand(`code-for-ibmi.createSharedSnippetFromSelection`, () => createSnippetFromEditor(editor => editor.document.getText(editor.selection)))
   ];
+
+  async function createSnippetFromEditor(getContent: (editor: TextEditor) => string) {
+    //Grabbed before any quick pick steals the focus from it
+    const editor = window.activeTextEditor;
+    const connection = instance.getConnection();
+    if (connection && editor) {
+      await reportFailure(() => createSnippet(connection, editor.document.languageId, getContent(editor)));
+    }
+  }
 
   /** Snippets live on the IFS: creating or writing them can always be turned down by the system. */
   async function reportFailure(action: () => Promise<void>) {
@@ -179,30 +181,22 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
     }
   }
 
+  /** Writing a snippet by hand is what opening a snippets file is for: the JSON schema drives the content assist. */
   async function showSnippetsMenu(connection: IBMi) {
-    const CREATE_LABEL = `$(add) ${l10n.t("Create new shared snippet...")}`;
-    const selected = await selectSnippetsFile(connection, {
-      placeHolder: l10n.t("Select a snippets file to edit"),
-      extraItems: [{ label: CREATE_LABEL }, { label: ``, kind: QuickPickItemKind.Separator }]
-    });
-
-    if (selected?.label === CREATE_LABEL) {
-      await createSnippet(connection);
-    }
-    else if (selected) {
+    const selected = await selectSnippetsFile(connection, l10n.t("Select a snippets file to open"));
+    if (selected) {
       await openSnippetsFile(connection, selected.languageId);
     }
   }
 
   type SnippetsFileItem = QuickPickItem & { languageId?: string, newFile?: boolean };
 
-  async function selectSnippetsFile(connection: IBMi, options: { placeHolder: string, extraItems?: SnippetsFileItem[] }) {
+  async function selectSnippetsFile(connection: IBMi, placeHolder: string) {
     const files = await SharedSnippets.getSnippetsFiles(connection, { forceReload: true });
     const global = files.find(file => !file.languageId);
     const languageFiles = files.filter(file => file.languageId).sort((f1, f2) => f1.languageId!.localeCompare(f2.languageId!));
 
     const items: SnippetsFileItem[] = [
-      ...(options.extraItems || []),
       {
         label: `$(json) ${l10n.t("Global Snippets")}`,
         description: SharedSnippets.getFilePath(),
@@ -219,7 +213,7 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
       { label: `$(add) ${l10n.t("New language snippets file...")}`, newFile: true }
     ];
 
-    const selected = await window.showQuickPick(items, { title: l10n.t("Shared Snippets"), placeHolder: options.placeHolder });
+    const selected = await window.showQuickPick(items, { title: l10n.t("Shared Snippets"), placeHolder });
     if (selected?.newFile) {
       const languageId = await selectLanguage(languageFiles.map(file => file.languageId!));
       return languageId ? { label: languageId, languageId } : undefined;
@@ -240,11 +234,14 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
     });
   }
 
-  async function createSnippet(connection: IBMi, target?: { languageId?: string }) {
-    //Grabbed before any quick pick steals the focus from it
-    const editor = window.activeTextEditor;
+  /** The snippet's content always comes from an editor: the wizard only asks for what surrounds it. */
+  async function createSnippet(connection: IBMi, sourceLanguageId: string, content: string) {
+    if (!content.trim()) {
+      window.showWarningMessage(l10n.t("There is nothing to make a shared snippet out of."));
+      return;
+    }
 
-    const file = target || await selectSnippetsFile(connection, { placeHolder: l10n.t("Select the snippets file to add the snippet to") });
+    const file = await selectSnippetsFile(connection, l10n.t("Select the snippets file to add the snippet to"));
     if (!file) {
       return;
     }
@@ -290,18 +287,14 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
     //A language file's name already is its scope
     let scope;
     if (!file.languageId) {
-      const languageIds = await selectScope();
+      const languageIds = await selectScope(sourceLanguageId);
       if (!languageIds) {
         return;
       }
       scope = languageIds.join(`,`) || undefined;
     }
 
-    const body = await selectBody(name.trim(), file.languageId || scope?.split(`,`)[0] || editor?.document.languageId, editor);
-    if (!body) {
-      return;
-    }
-
+    const body = escapeBody(content).split(/\r?\n/);
     const prefixes = parsePrefixes(prefix);
     const snippet: SharedSnippet = {
       prefix: prefixes.length === 1 ? prefixes[0] : prefixes,
@@ -314,97 +307,18 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
   }
 
   /** Picking no language leaves the snippet unscoped, so that it applies to every language. */
-  async function selectScope() {
-    const available = (await languages.getLanguages()).sort((l1, l2) => l1.localeCompare(l2));
-    return window.showQuickPick(available, {
+  async function selectScope(sourceLanguageId: string) {
+    const available = (await languages.getLanguages())
+      .sort((l1, l2) => l1.localeCompare(l2))
+      .map(languageId => ({ label: languageId, picked: languageId === sourceLanguageId }));
+
+    const selected = await window.showQuickPick(available, {
       title: l10n.t("Shared snippet scope"),
       placeHolder: l10n.t("Select the languages the snippet applies to, or none to apply it to all of them"),
       canPickMany: true
     });
-  }
 
-  async function selectBody(name: string, languageId: string | undefined, editor?: TextEditor) {
-    type BodyItem = QuickPickItem & { getText?: () => string };
-
-    const items: BodyItem[] = [
-      {
-        label: `$(edit) ${l10n.t("Write the snippet's content...")}`,
-        detail: l10n.t("Opens an editor where tab stops and placeholders can be used")
-      },
-      ...(editor && !editor.selection.isEmpty ? [{
-        label: `$(selection) ${l10n.t("Use the current selection")}`,
-        description: path.posix.basename(editor.document.uri.path),
-        getText: () => editor.document.getText(editor.selection)
-      }] : []),
-      ...(editor ? [{
-        label: `$(file-code) ${l10n.t("Use the whole active editor")}`,
-        description: path.posix.basename(editor.document.uri.path),
-        getText: () => editor.document.getText()
-      }] : [])
-    ];
-
-    const selected = items.length === 1 ? items[0] : await window.showQuickPick(items, {
-      title: l10n.t("Shared snippet content"),
-      placeHolder: l10n.t("Select the snippet's content")
-    });
-
-    if (!selected) {
-      return;
-    }
-
-    //A hand written body is left alone, so that it can carry tab stops and placeholders
-    return selected.getText ? escapeBody(selected.getText()).split(/\r?\n/) : writeBody(name, languageId);
-  }
-
-  /**
-   * An input box only takes a single line, so the content is written in a scratch file: saving it keeps
-   * the content, closing it drops the snippet. A file rather than an untitled document, so that saving
-   * is the plain save command and closing never asks where the content should be stored.
-   */
-  async function writeBody(name: string, languageId?: string) {
-    const directory = await tmpDirectory();
-    const scratch = Uri.file(path.join(directory, name.replace(/[\\/:*?"<>|]/g, `_`)));
-    await workspace.fs.writeFile(scratch, Buffer.from(``, `utf8`));
-
-    try {
-      let document = await workspace.openTextDocument(scratch);
-      if (languageId && document.languageId !== languageId) {
-        //This reopens the document, so it has to be done before listening to its events
-        document = await languages.setTextDocumentLanguage(document, languageId);
-      }
-      await window.showTextDocument(document, { preview: false });
-
-      //A notification only stays up while it carries a running progress, and this one must stand
-      //until the content is written - which is anything but a matter of seconds
-      const body = await window.withProgress({
-        location: ProgressLocation.Notification,
-        title: l10n.t("Write the snippet's content, then save the editor to add it. Tab stops and placeholders can be used."),
-        cancellable: true
-      }, (progress, token) => new Promise<string | undefined>(resolve => {
-        const listeners: Disposable[] = [];
-        const finish = (written?: string) => {
-          listeners.forEach(listener => listener.dispose());
-          resolve(written);
-        };
-
-        listeners.push(
-          workspace.onDidSaveTextDocument(saved => saved.uri.toString() === scratch.toString() ? finish(saved.getText()) : undefined),
-          workspace.onDidCloseTextDocument(closed => closed.uri.toString() === scratch.toString() ? finish() : undefined),
-          token.onCancellationRequested(() => finish())
-        );
-      }));
-
-      return body?.split(/\r?\n/);
-    }
-    finally {
-      //Reverted, so a cancelled snippet never asks to be saved
-      const editor = window.visibleTextEditors.find(visible => visible.document.uri.toString() === scratch.toString());
-      if (editor) {
-        await window.showTextDocument(editor.document, { preview: false });
-        await commands.executeCommand(`workbench.action.revertAndCloseActiveEditor`);
-      }
-      await workspace.fs.delete(Uri.file(directory), { recursive: true });
-    }
+    return selected?.map(item => item.label);
   }
 
   /** Written through the editor, so that it and the IFS never disagree on the file's content. */
