@@ -1,7 +1,7 @@
 import path from "path";
 import tmp from "tmp";
 import util from "util";
-import { commands, CompletionItem, CompletionItemKind, CompletionItemProvider, Disposable, l10n, languages, MarkdownString, Position, ProgressLocation, QuickPickItem, QuickPickItemKind, Range, Selection, SnippetString, TextDocument, TextEditor, Uri, window, workspace, WorkspaceEdit } from "vscode";
+import { commands, CompletionItem, CompletionItemKind, CompletionItemProvider, Disposable, l10n, languages, MarkdownString, ProgressLocation, QuickPickItem, QuickPickItemKind, Range, Selection, SnippetString, TextDocument, TextEditor, Uri, window, workspace, WorkspaceEdit } from "vscode";
 import IBMi from "../api/IBMi";
 import { NamedSharedSnippet, SharedSnippets } from "../api/sharedSnippets";
 import { getUriFromPath } from "../filesystems/qsys/QSysFs";
@@ -150,24 +150,34 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
     workspace.onDidSaveTextDocument(document => {
       const connection = instance.getConnection();
       if (connection && document.uri.scheme === `streamfile` && SharedSnippets.isSnippetsFile(document.uri.path)) {
-        SharedSnippets.invalidate(connection);
+        SharedSnippets.invalidate(connection, document.uri.path);
       }
     }),
 
     commands.registerCommand(`code-for-ibmi.openSharedSnippets`, async () => {
       const connection = instance.getConnection();
       if (connection) {
-        await showSnippetsMenu(connection);
+        await reportFailure(() => showSnippetsMenu(connection));
       }
     }),
 
     commands.registerCommand(`code-for-ibmi.createSharedSnippet`, async (languageId?: string) => {
       const connection = instance.getConnection();
       if (connection) {
-        await createSnippet(connection, languageId !== undefined ? { languageId } : undefined);
+        await reportFailure(() => createSnippet(connection, languageId !== undefined ? { languageId } : undefined));
       }
     })
   ];
+
+  /** Snippets live on the IFS: creating or writing them can always be turned down by the system. */
+  async function reportFailure(action: () => Promise<void>) {
+    try {
+      await action();
+    }
+    catch (error: any) {
+      window.showErrorMessage(String(error.message || error));
+    }
+  }
 
   async function showSnippetsMenu(connection: IBMi) {
     const CREATE_LABEL = `$(add) ${l10n.t("Create new shared snippet...")}`;
@@ -407,13 +417,14 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
     const edit = new WorkspaceEdit();
     edit.insert(document.uri, position, insertion.text);
     if (!await workspace.applyEdit(edit) || !await document.save()) {
-      throw new Error(l10n.t("Could not add shared snippet '{0}' to {1}.", name, document.uri.path));
+      throw new Error(l10n.t("Could not add shared snippet '{0}' to {1}; you may not be allowed to write into this file.", name, document.uri.path));
     }
 
-    SharedSnippets.invalidate(connection);
+    SharedSnippets.invalidate(connection, document.uri.path);
     window.showInformationMessage(l10n.t("Created shared snippet '{0}'.", name));
 
-    const added = new Position(position.line + 1, 0);
+    //The entry doesn't always start right at the insertion point: the separator comes first
+    const added = document.positionAt(insertion.offset + insertion.text.match(/^[,\s]*/)![0].length);
     editor.selection = new Selection(added, added);
     editor.revealRange(new Range(added, document.positionAt(insertion.offset + insertion.text.length)));
   }
@@ -464,7 +475,7 @@ function toCompletionItems(snippet: NamedSharedSnippet) {
   const prefixes = toArray(snippet.prefix).filter(Boolean);
   return (prefixes.length ? prefixes : [snippet.name]).map(prefix => {
     const item = new CompletionItem(prefix, CompletionItemKind.Snippet);
-    item.detail = snippet.name;
+    item.detail = l10n.t("{0} (IBM i shared)", snippet.name);
     item.documentation = new MarkdownString(description);
     item.sortText = `0_${prefix}`; //push above other providers' matches
     item.insertText = new SnippetString(body);

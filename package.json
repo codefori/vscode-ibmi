@@ -65,16 +65,9 @@
 			},
 			{
 				"fileMatch": [
-					"/etc/vscode/snippets/*.json",
-					"!/etc/vscode/snippets/global.json"
+					"/etc/vscode/snippets/*.json"
 				],
 				"url": "vscode://schemas/snippets"
-			},
-			{
-				"fileMatch": [
-					"/etc/vscode/snippets/global.json"
-				],
-				"url": "vscode://schemas/global-snippets"
 			}
 		],
 		"configuration": {

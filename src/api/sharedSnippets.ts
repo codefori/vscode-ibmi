@@ -66,8 +66,16 @@ export namespace SharedSnippets {
     return path.posix.dirname(filePath) === SNIPPETS_DIRECTORY && filePath.toLocaleLowerCase().endsWith(`.json`);
   }
 
-  export function invalidate(connection: IBMi) {
-    cache.delete(connection);
+  /** Dropping a single file keeps the others cached: only that one gets read again. */
+  export function invalidate(connection: IBMi, filePath?: string) {
+    const cached = cache.get(connection);
+    if (filePath && cached) {
+      cached.files.delete(filePath);
+      cached.listedAt = 0; //the folder must be listed again to read the dropped file back
+    }
+    else {
+      cache.delete(connection);
+    }
   }
 
   /** Only the files that changed since the last listing are read again. */
@@ -105,24 +113,40 @@ export namespace SharedSnippets {
     const content = connection.getContent();
 
     if (!await content.testStreamFile(filePath, `e`)) {
+      const escapedDirectory = Tools.escapePath(SNIPPETS_DIRECTORY, true);
+
       // Everyone reads, the owner writes; same as /etc/vscode/settings.json. Sys admins can fine tune afterwards.
-      const directory = await connection.sendCommand({ command: `mkdir -p "${Tools.escapePath(SNIPPETS_DIRECTORY, true)}" && chmod 755 "${Tools.escapePath(SNIPPETS_DIRECTORY, true)}"` });
-      if (directory.code !== 0) {
-        throw new Error(l10n.t("Could not create {0}: {1}", SNIPPETS_DIRECTORY, directory.stderr));
+      if (!await content.testStreamFile(SNIPPETS_DIRECTORY, `d`)) {
+        const directory = await connection.sendCommand({ command: `mkdir -p "${escapedDirectory}" && chmod 755 "${escapedDirectory}"` });
+        if (directory.code !== 0) {
+          throw new Error(l10n.t("Could not create the shared snippets folder {0}; you may not be allowed to write into {1}. ({2})", SNIPPETS_DIRECTORY, path.posix.dirname(SNIPPETS_DIRECTORY), directory.stderr.trim()));
+        }
+      }
+      else if (!await content.testStreamFile(SNIPPETS_DIRECTORY, `w`)) {
+        throw new Error(l10n.t("You are not allowed to create files into {0}; ask your system administrator to grant you write access to this folder.", SNIPPETS_DIRECTORY));
       }
 
-      await content.createStreamFile(filePath);
-      await content.writeStreamfileRaw(filePath, NEW_FILE_CONTENT, `utf8`);
+      try {
+        await content.createStreamFile(filePath);
+        await content.writeStreamfileRaw(filePath, NEW_FILE_CONTENT, `utf8`);
+      }
+      catch (error: any) {
+        throw new Error(l10n.t("Could not create the shared snippets file {0}. ({1})", filePath, String(error.message || error).trim()));
+      }
+
       await connection.sendCommand({ command: `chmod 644 "${Tools.escapePath(filePath, true)}"` });
-      invalidate(connection);
+      invalidate(connection, filePath);
+    }
+    else if (!await content.testStreamFile(filePath, `w`)) {
+      vscode.window.showWarningMessage(l10n.t("You are not allowed to write into {0}: the file will open as read only.", filePath));
     }
 
     return filePath;
   }
 
   /**
-   * Where and what to insert to add a snippet to a snippets file. It goes at the top of the file,
-   * so the rest of it - comments and formatting included - stays untouched.
+   * Where and what to insert to add a snippet to a snippets file. It goes after the last snippet,
+   * so the rest of the file - comments and formatting included - stays untouched.
    */
   export function buildInsertion(fileContent: string, name: string, snippet: SharedSnippet) {
     const existing = Object.keys(parseJsonWithComments(fileContent));
@@ -130,8 +154,8 @@ export namespace SharedSnippets {
       throw new Error(l10n.t("This name is already used by another shared snippet"));
     }
 
-    const brace = findSnippetsBrace(fileContent);
-    if (brace < 0) {
+    const snippets = findSnippetsObject(fileContent);
+    if (!snippets) {
       throw new Error(l10n.t("No snippets object found in the file."));
     }
 
@@ -140,14 +164,30 @@ export namespace SharedSnippets {
       .slice(1, -1) //the wrapping braces are the file's own
       .join(`\n`);
 
-    const followingContent = fileContent.substring(brace + 1);
-    return {
-      offset: brace + 1,
-      text: `\n${entry}${existing.length ? `,` : ``}${/^\r?\n/.test(followingContent) ? `` : `\n`}`
-    };
+    if (existing.length) {
+      //Right after the last snippet, so the separating comma never lands after a trailing comment
+      const offset = snippets.lastEntryEnd;
+      return {
+        offset,
+        text: `${fileContent[offset - 1] === `,` ? `` : `,`}\n${entry}`
+      };
+    }
+    else {
+      //Nothing but comments in there: the snippet goes last, right before the closing brace
+      const offset = snippets.close;
+      return {
+        offset,
+        text: `${/(^|\n)[ \t]*$/.test(fileContent.substring(0, offset)) ? `` : `\n`}${entry}\n`
+      };
+    }
   }
 
-  function findSnippetsBrace(content: string) {
+  /** Where the snippets object closes, along with where its last entry ends - i.e. before any trailing comment. */
+  function findSnippetsObject(content: string) {
+    let open = -1;
+    let depth = 0;
+    let lastEntryEnd = -1;
+
     for (let i = 0; i < content.length; i++) {
       const current = content[i];
       const next = content[i + 1];
@@ -156,6 +196,7 @@ export namespace SharedSnippets {
         while (i < content.length && content[i] !== `\n`) {
           i++;
         }
+        continue;
       }
       else if (current === `/` && next === `*`) {
         i += 2;
@@ -163,16 +204,42 @@ export namespace SharedSnippets {
           i++;
         }
         i++;
+        continue;
       }
-      else if (current === `{`) {
-        return i;
+      else if (/\s/.test(current)) {
+        continue;
       }
-      else if (!/\s/.test(current)) {
-        return -1;
+
+      if (open < 0) {
+        if (current !== `{`) {
+          return undefined; //anything but a comment before the snippets object
+        }
+        open = i;
+        depth = 1;
       }
+      else if (current === `"`) {
+        while (++i < content.length) {
+          if (content[i] === `\\`) {
+            i++;
+          }
+          else if (content[i] === `"`) {
+            break;
+          }
+        }
+      }
+      else if (current === `{` || current === `[`) {
+        depth++;
+      }
+      else if (current === `}` || current === `]`) {
+        if (--depth === 0) {
+          return { close: i, lastEntryEnd };
+        }
+      }
+
+      lastEntryEnd = i + 1;
     }
 
-    return -1;
+    return undefined;
   }
 
   async function read(connection: IBMi, filePath: string): Promise<SharedSnippetsFile> {
