@@ -9,10 +9,6 @@ import { VscodeTools } from "../ui/Tools";
 
 const SNIPPETS_LANGUAGE = `snippets`;
 
-function parseScope(scope: string) {
-  return scope.split(`,`).map(languageId => languageId.trim().toLocaleLowerCase()).filter(Boolean);
-}
-
 function parsePrefixes(input: string) {
   return [...new Set(input.split(`,`).map(prefix => prefix.trim()).filter(Boolean))];
 }
@@ -112,11 +108,7 @@ function matchGlob(pattern: string, target: string) {
   return new RegExp(`^${expression}$`, `i`).test(target);
 }
 
-function matches(snippet: SharedSnippet, document: { languageId: string, uri: Uri }) {
-  if (snippet.scope && !parseScope(snippet.scope).includes(document.languageId.toLocaleLowerCase())) {
-    return false;
-  }
-
+function matches(snippet: SharedSnippet, document: { uri: Uri }) {
   return isFileIncluded(snippet, document.uri);
 }
 
@@ -191,45 +183,57 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
 
   type SnippetsFileItem = QuickPickItem & { languageId?: string, newFile?: boolean };
 
-  async function selectSnippetsFile(connection: IBMi, placeHolder: string) {
+  async function selectSnippetsFile(connection: IBMi, placeHolder: string, options?: { preferredLanguageId?: string, title?: string }) {
+    const preferredLanguageId = options?.preferredLanguageId;
+    const title = options?.title || l10n.t("Shared Snippets");
     const files = await SharedSnippets.getSnippetsFiles(connection, { forceReload: true });
     const global = files.find(file => !file.languageId);
     const languageFiles = files.filter(file => file.languageId).sort((f1, f2) => f1.languageId!.localeCompare(f2.languageId!));
 
+    //When the snippet comes from an editor, the file for its language is the likely target - offer it first, creating it if needed
+    const preferred = preferredLanguageId && SharedSnippets.getFilePath(preferredLanguageId) !== SharedSnippets.getFilePath() ? preferredLanguageId : undefined;
+    const otherLanguageFiles = languageFiles.filter(file => file.languageId !== preferred);
+
+    const languageItem = (languageId: string): SnippetsFileItem => {
+      const existing = languageFiles.find(file => file.languageId === languageId);
+      return {
+        label: `$(symbol-snippet) ${languageId}`,
+        description: SharedSnippets.getFilePath(languageId),
+        detail: existing ? countLabel(existing.snippets.length) : l10n.t("Not created yet"),
+        languageId
+      };
+    };
+
     const items: SnippetsFileItem[] = [
+      ...(preferred ? [languageItem(preferred), { label: ``, kind: QuickPickItemKind.Separator } as SnippetsFileItem] : []),
       {
         label: `$(json) ${l10n.t("Global Snippets")}`,
         description: SharedSnippets.getFilePath(),
         detail: global ? countLabel(global.snippets.length) : l10n.t("Not created yet")
       },
-      ...(languageFiles.length ? [{ label: l10n.t("Languages"), kind: QuickPickItemKind.Separator } as SnippetsFileItem] : []),
-      ...languageFiles.map(file => ({
-        label: `$(symbol-snippet) ${file.languageId}`,
-        description: file.path,
-        detail: countLabel(file.snippets.length),
-        languageId: file.languageId
-      })),
+      ...(otherLanguageFiles.length ? [{ label: l10n.t("Languages"), kind: QuickPickItemKind.Separator } as SnippetsFileItem] : []),
+      ...otherLanguageFiles.map(file => languageItem(file.languageId!)),
       { label: ``, kind: QuickPickItemKind.Separator },
       { label: `$(add) ${l10n.t("New language snippets file...")}`, newFile: true }
     ];
 
-    const selected = await window.showQuickPick(items, { title: l10n.t("Shared Snippets"), placeHolder });
+    const selected = await window.showQuickPick(items, { title, placeHolder });
     if (selected?.newFile) {
-      const languageId = await selectLanguage(languageFiles.map(file => file.languageId!));
+      const languageId = await selectLanguage(languageFiles.map(file => file.languageId!), title);
       return languageId ? { label: languageId, languageId } : undefined;
     }
 
     return selected;
   }
 
-  async function selectLanguage(existing: string[]) {
+  async function selectLanguage(existing: string[], title = l10n.t("New language snippets file")) {
     const available = (await languages.getLanguages())
       //a language file named after the global one would silently take its place
       .filter(languageId => !existing.includes(languageId) && SharedSnippets.getFilePath(languageId) !== SharedSnippets.getFilePath())
       .sort((l1, l2) => l1.localeCompare(l2));
 
     return window.showQuickPick(available, {
-      title: l10n.t("New language snippets file"),
+      title,
       placeHolder: l10n.t("Select the language the snippets will apply to")
     });
   }
@@ -241,20 +245,26 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
       return;
     }
 
-    const file = await selectSnippetsFile(connection, l10n.t("Select the snippets file to add the snippet to"));
+    //VS Code UX guidelines: keep one title and show the progress through the wizard's steps
+    const TOTAL_STEPS = 4;
+    const stepTitle = (step: number) => l10n.t("New IBM i Shared Snippet ({0}/{1})", step, TOTAL_STEPS);
+
+    const file = await selectSnippetsFile(connection, l10n.t("Select the snippets file to add the snippet to"), { preferredLanguageId: sourceLanguageId, title: stepTitle(1) });
     if (!file) {
       return;
     }
 
-    const filePath = SharedSnippets.getFilePath(file.languageId);
-    if (await connection.getContent().testStreamFile(filePath, `e`) && !await connection.getContent().testStreamFile(filePath, `w`)) {
-      window.showErrorMessage(l10n.t("You don't have the rights to write into {0}.", filePath));
+    //Fail before asking anything if the target file - or its folder - can't be written
+    const accessError = await SharedSnippets.checkWriteAccess(connection, file.languageId);
+    if (accessError) {
+      window.showErrorMessage(accessError);
       return;
     }
 
+    const filePath = SharedSnippets.getFilePath(file.languageId);
     const existingNames = (await SharedSnippets.getSnippetsFiles(connection)).find(f => f.path === filePath)?.snippets.map(snippet => snippet.name) || [];
     const name = await window.showInputBox({
-      title: l10n.t("New shared snippet"),
+      title: stepTitle(2),
       prompt: l10n.t("How the snippet is listed in the completion"),
       placeHolder: l10n.t("Snippet name..."),
       validateInput: input => validateName(input, existingNames)
@@ -265,7 +275,7 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
     }
 
     const prefix = await window.showInputBox({
-      title: l10n.t("Shared snippet prefix"),
+      title: stepTitle(3),
       prompt: l10n.t("Typed to trigger the snippet completion. Several prefixes can be given, comma separated"),
       placeHolder: l10n.t("Prefix..."),
       validateInput: validatePrefix
@@ -276,7 +286,8 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
     }
 
     const description = await window.showInputBox({
-      title: l10n.t("Shared snippet description"),
+      title: stepTitle(4),
+      prompt: l10n.t("Shown next to the snippet in the completion details"),
       placeHolder: l10n.t("Description (optional)...")
     });
 
@@ -284,41 +295,15 @@ export function registerSnippetCommands(instance: Instance): Disposable[] {
       return;
     }
 
-    //A language file's name already is its scope
-    let scope;
-    if (!file.languageId) {
-      const languageIds = await selectScope(sourceLanguageId);
-      if (!languageIds) {
-        return;
-      }
-      scope = languageIds.join(`,`) || undefined;
-    }
-
     const body = escapeBody(content).split(/\r?\n/);
     const prefixes = parsePrefixes(prefix);
     const snippet: SharedSnippet = {
       prefix: prefixes.length === 1 ? prefixes[0] : prefixes,
       body: body.length === 1 ? body[0] : body,
-      ...(description ? { description } : undefined),
-      ...(scope ? { scope } : undefined)
+      ...(description ? { description } : undefined)
     };
 
     await insertSnippet(connection, file.languageId, name.trim(), snippet);
-  }
-
-  /** Picking no language leaves the snippet unscoped, so that it applies to every language. */
-  async function selectScope(sourceLanguageId: string) {
-    const available = (await languages.getLanguages())
-      .sort((l1, l2) => l1.localeCompare(l2))
-      .map(languageId => ({ label: languageId, picked: languageId === sourceLanguageId }));
-
-    const selected = await window.showQuickPick(available, {
-      title: l10n.t("Shared snippet scope"),
-      placeHolder: l10n.t("Select the languages the snippet applies to, or none to apply it to all of them"),
-      canPickMany: true
-    });
-
-    return selected?.map(item => item.label);
   }
 
   /** Written through the editor, so that it and the IFS never disagree on the file's content. */

@@ -139,7 +139,6 @@ export interface SharedSnippet {
   prefix?: string | string[]
   body: string | string[]
   description?: string | string[]
-  scope?: string
   include?: string | string[]
   exclude?: string | string[]
 }

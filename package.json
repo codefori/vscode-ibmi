@@ -2212,7 +2212,7 @@
 				{
 					"submenu": "code-for-ibmi.createSharedSnippet",
 					"when": "code-for-ibmi:connected && !isInDiffEditor",
-					"group": "z_commands@1"
+					"group": "1_codefori@1"
 				}
 			],
 			"code-for-ibmi.structuredDownload": [

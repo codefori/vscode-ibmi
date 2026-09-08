@@ -108,6 +108,29 @@ export namespace SharedSnippets {
     return toFiles(newCache);
   }
 
+  /**
+   * Check permissions befor creating or changing a snippet...
+   */
+  export async function checkWriteAccess(connection: IBMi, languageId?: string): Promise<string | undefined> {
+    const content = connection.getContent();
+    const filePath = getFilePath(languageId);
+    const parentDirectory = path.posix.dirname(SNIPPETS_DIRECTORY);
+
+    if (await content.testStreamFile(filePath, `e`)) {
+      if (!await content.testStreamFile(filePath, `w`)) {
+        return l10n.t("You don't have the rights to write into {0}.", filePath);
+      }
+    }
+    else if (await content.testStreamFile(SNIPPETS_DIRECTORY, `d`)) {
+      if (!await content.testStreamFile(SNIPPETS_DIRECTORY, `w`)) {
+        return l10n.t("You are not allowed to create files into {0}; ask your system administrator to grant you write access to this folder.", SNIPPETS_DIRECTORY);
+      }
+    }
+    else if (!await content.testStreamFile(parentDirectory, `w`)) {
+      return l10n.t("You are not allowed to create the shared snippets folder {0}; ask your system administrator to grant you write access to {1}.", SNIPPETS_DIRECTORY, parentDirectory);
+    }
+  }
+
   export async function createSnippetsFile(connection: IBMi, languageId?: string) {
     const filePath = getFilePath(languageId);
     const content = connection.getContent();
