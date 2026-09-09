@@ -62,6 +62,12 @@
 					"/etc/vscode/settings.json"
 				],
 				"url": "./schemas/settings.json"
+			},
+			{
+				"fileMatch": [
+					"/etc/vscode/snippets/*.json"
+				],
+				"url": "vscode://schemas/snippets"
 			}
 		],
 		"configuration": {
@@ -1862,6 +1868,29 @@
 				"icon": "$(debug-start)"
 			},
 			{
+				"command": "code-for-ibmi.createSharedSnippetFromDocument",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Create shared snippet from the active document",
+				"shortTitle": "From the active document",
+				"category": "IBM i",
+				"icon": "$(file-code)"
+			},
+			{
+				"command": "code-for-ibmi.createSharedSnippetFromSelection",
+				"enablement": "code-for-ibmi:connected && editorHasSelection",
+				"title": "Create shared snippet from the selection",
+				"shortTitle": "From the selection",
+				"category": "IBM i",
+				"icon": "$(selection)"
+			},
+			{
+				"command": "code-for-ibmi.openSharedSnippets",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Shared Snippets",
+				"category": "IBM i",
+				"icon": "$(symbol-snippet)"
+			},
+			{
 				"command": "code-for-ibmi.environment.variable.declare",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Declare custom variable",
@@ -2168,9 +2197,31 @@
 			{
 				"id": "code-for-ibmi.searchResults.download",
 				"label": "Download"
+			},
+			{
+				"id": "code-for-ibmi.createSharedSnippet",
+				"label": "Create shared IBM i snippet"
 			}
 		],
 		"menus": {
+			"code-for-ibmi.createSharedSnippet": [
+				{
+					"command": "code-for-ibmi.createSharedSnippetFromSelection",
+					"when": "editorHasSelection",
+					"group": "1_create@1"
+				},
+				{
+					"command": "code-for-ibmi.createSharedSnippetFromDocument",
+					"group": "1_create@2"
+				}
+			],
+			"editor/context": [
+				{
+					"submenu": "code-for-ibmi.createSharedSnippet",
+					"when": "code-for-ibmi:connected && !isInDiffEditor",
+					"group": "1_codefori@1"
+				}
+			],
 			"code-for-ibmi.structuredDownload": [
 				{
 					"command": "code-for-ibmi.downloadMemberAsFile",
