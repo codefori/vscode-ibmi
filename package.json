@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "3.0.13-dev.0",
+	"version": "3.0.13",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -1237,7 +1237,7 @@
 				"enablement": "code-for-ibmi:connected",
 				"title": "Remove Current Library",
 				"category": "IBM i",
-				"icon":"$(clear-all)"
+				"icon": "$(clear-all)"
 			},
 			{
 				"command": "code-for-ibmi.changeUserLibraryList",
