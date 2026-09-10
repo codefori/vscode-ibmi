@@ -39,6 +39,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     readOnlyMode: (parameters.readOnlyMode === true),
     quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
     defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
+    lockMembers: (parameters.lockMembers === true),
     protectedPaths: (parameters.protectedPaths || []),
     showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
     secureSQL: (parameters.secureSQL === true),

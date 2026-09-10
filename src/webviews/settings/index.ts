@@ -220,6 +220,8 @@ export class SettingsUI {
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()
+          .addCheckbox(`lockMembers`, `Lock Members`, `When enabled, a shared-update lock (<code>*SHRUPD</code>) will be allocated on a source member when it is opened and deallocated when it is closed.`, config.lockMembers)
+          .addHorizontalRule()
           .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
 
         setFieldsReadOnly(sourceTab);
