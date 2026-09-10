@@ -73,6 +73,9 @@ abstract class ObjectBrowserItem extends BrowserItem {
 class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
   private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
   readonly onDidChangeTreeData = this.emitter.event;
+  
+  // Track active tree search term for auto-scroll on expansion
+  private currentSearchTerm: string = '';
 
   async moveFilterInList(node: ObjectBrowserItem, filterMovement: `TOP` | `UP` | `DOWN` | `BOTTOM`) {
     const config = getConfig();
@@ -155,6 +158,22 @@ class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
     }
 
     return element;
+  }
+
+  /**
+   * Update the current search term for auto-scroll on expansion
+   * @param term The active search term (empty string if no search is active)
+   */
+  updateSearchTerm(term: string) {
+    this.currentSearchTerm = term;
+  }
+
+  /**
+   * Get the current search term
+   * @returns The active search term or empty string
+   */
+  getCurrentSearchTerm(): string {
+    return this.currentSearchTerm;
   }
 }
 
@@ -565,6 +584,51 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     showCollapseAll: true,
     canSelectMany: true,
     dragAndDropController: new ObjectBrowserMemberItemDragAndDrop()
+  });
+
+  // Handle tree expansion during active search - auto-scroll to first matching child
+  objectTreeViewer.onDidExpandElement(async (event) => {
+    const searchTerm = objectBrowser.getCurrentSearchTerm();
+    
+    // Only proceed if there's an active search term
+    if (!searchTerm || searchTerm.trim() === '') {
+      return;
+    }
+
+    // Check if the expanded element is a source physical file or library
+    if (event.element instanceof ObjectBrowserSourcePhysicalFileItem || 
+        event.element instanceof ObjectBrowserObjectItem) {
+      
+      try {
+        // Get children of the expanded node
+        const children = await event.element.getChildren();
+        
+        if (!children || children.length === 0) {
+          return;
+        }
+
+        // Find the first child that matches the search term (case-insensitive substring match)
+        const searchLower = searchTerm.toLowerCase();
+        const firstMatch = children.find(child => {
+          const label = child.label?.toString() || '';
+          return label.toLowerCase().includes(searchLower);
+        });
+
+        // If a match is found, reveal it to bring it into view
+        if (firstMatch) {
+          // Defer reveal() to allow DOM rendering to complete
+          setTimeout(() => {
+            objectTreeViewer.reveal(firstMatch, { 
+              select: false,  // Don't change selection
+              focus: false    // Don't steal focus
+            });
+          }, 50);
+        }
+      } catch (error) {
+        // Silently handle errors to avoid disrupting tree expansion
+        console.error('Error in tree expansion search handler:', error);
+      }
+    }
   });
 
   const getSelectedItems = <T>(node?: T | T[]) => node ? Array.isArray(node) ? node : [node] : objectTreeViewer.selection as T[];
@@ -1547,6 +1611,26 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async () => {
       vscode.commands.executeCommand('objectBrowser.focus');
       vscode.commands.executeCommand('list.find');
+    }),
+    
+    // Command to manually set search term for auto-scroll (workaround for VS Code API limitation)
+    vscode.commands.registerCommand(`code-for-ibmi.setObjectBrowserSearchTerm`, async () => {
+      const searchTerm = await vscode.window.showInputBox({
+        prompt: vscode.l10n.t(`Enter the search term you're using in the Object Browser (for auto-scroll on expansion)`),
+        placeHolder: vscode.l10n.t(`Search term...`),
+        value: objectBrowser.getCurrentSearchTerm()
+      });
+
+      if (searchTerm !== undefined) {
+        objectBrowser.updateSearchTerm(searchTerm);
+        if (searchTerm) {
+          vscode.window.showInformationMessage(
+            vscode.l10n.t(`Search term set to "{0}". Tree will auto-scroll to matches when expanding nodes.`, searchTerm)
+          );
+        } else {
+          vscode.window.showInformationMessage(vscode.l10n.t(`Search term cleared.`));
+        }
+      }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.renameQSYS`, async (node?: (ObjectBrowserMemberItem | ObjectBrowserObjectItem)) => {
       node = getSelectedItems(node).at(0);
