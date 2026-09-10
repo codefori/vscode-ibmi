@@ -734,7 +734,7 @@
 								"CBL"
 							],
 							"name": "Create Bound COBOL Program (CRTBNDCBL)",
-							"command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE) PGMINFO(*PCML *MODULE)"
 						},
 						{
 							"type": "member",
@@ -743,7 +743,7 @@
 								"CBL"
 							],
 							"name": "Create Module CBLLE (CRTCBLMOD)",
-							"command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE) PGMINFO(*PCML *MODULE)"
 						},
 						{
 							"type": "member",
@@ -751,7 +751,7 @@
 								"RPGLE"
 							],
 							"name": "Create Bound RPG Program (CRTBNDRPG)",
-							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) PGMINFO(*PCML *MODULE)"
 						},
 						{
 							"type": "member",
@@ -791,7 +791,7 @@
 								"RPGLE"
 							],
 							"name": "Create RPG Module (CRTRPGMOD)",
-							"command": "?CRTRPGMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+							"command": "?CRTRPGMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) PGMINFO(*PCML *MODULE)"
 						},
 						{
 							"type": "member",
