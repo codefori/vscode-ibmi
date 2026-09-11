@@ -301,7 +301,7 @@ export default class IBMiContent {
    * @param member
    * @param content
    */
-  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean> {
+  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array, extension?: string): Promise<boolean> {
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
@@ -383,6 +383,14 @@ export default class IBMiContent {
           if (messages.findId("CPIA083")) {
             // TODO: what do we do about this, really?
             // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
+          } else if (messages.findId("CPC7305")) {
+            // Member was newly created so we need to set the source type
+            if (extension) {
+              await this.ibmi.runCommand({
+                command: `QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(${extension})`,
+                noLibList: true
+              });
+            }
           }
           return true;
         } else {
