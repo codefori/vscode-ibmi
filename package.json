@@ -374,7 +374,7 @@
 							"memberLocking": {
 								"type": "boolean",
 								"default": false,
-								"description": "Experimental: lock IBM i source members while they are open for editing. Requires Mapepire."
+								"description": "Lock IBM i source members while they are open for editing. Requires Mapepire."
 							},
 							"secureSQL": {
 								"type": "boolean",
@@ -3573,7 +3573,8 @@
 	"scripts": {
 		"lint": "eslint src/**/*.js --no-error-on-unmatched-pattern",
 		"pretest": "npm run lint",
-		"test": "vitest run",
+		"test": "npm run test:unit && npm run test:integration",
+		"test:integration": "vitest run",
 		"test:unit": "vitest run --config vitest.unit.config.ts",
 		"package": "vsce package --allow-package-all-secrets",
 		"vscode:prepublish": "webpack --mode production",
