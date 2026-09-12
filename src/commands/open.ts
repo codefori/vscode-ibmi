@@ -93,6 +93,32 @@ export function registerOpenCommands(instance: Instance, memberLocks: MemberLock
           }
         }
         console.log(e);
+        if (useMemberLocking && !documentOpened && e instanceof Tools.SqlError && e.message.includes("CPF1002")) {
+          const openReadOnly = l10n.t(`Open read only`);
+          const selection = await window.showWarningMessage(
+            l10n.t(`The member is currently locked by another IBM i job.`),
+            { modal: true },
+            openReadOnly
+          );
+          if (selection === openReadOnly) {
+            return commands.executeCommand<boolean>(`code-for-ibmi.openEditable`, path, { ...options, readonly: true });
+          }
+          return false;
+        }
+        if (useMemberLocking && !documentOpened && e instanceof Error && e.message === "Member locking requires a running Mapepire SQL job.") {
+          window.showErrorMessage(
+            l10n.t(`Member locking requires a running Mapepire SQL job. Reconnect and try again.`),
+            { modal: true }
+          );
+          return false;
+        }
+        if (useMemberLocking && !documentOpened && e instanceof Tools.SqlError) {
+          window.showErrorMessage(
+            l10n.t(`Unable to lock member for editing.`),
+            { modal: true, detail: e.message }
+          );
+          return false;
+        }
         window.showErrorMessage(l10n.t(`Unable to open member for editing: {0}`, e instanceof Error ? e.message : String(e)));
         return false;
       }
