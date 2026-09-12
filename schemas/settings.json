@@ -9,6 +9,11 @@
           "default": false,
           "description": "Always open source members and IFS files in read-only mode. Content on the server can not be changed."
         },
+        "memberLocking": {
+          "type": "boolean",
+          "default": false,
+          "description": "Lock IBM i source members while they are open for editing. Requires Mapepire."
+        },
         "tempLibrary": {
           "type": "string",
           "default": "ILEDITOR",
