@@ -111,7 +111,7 @@ export class SettingsUI {
         mapepireTab
           .addHeading("General", 3)
           .addCheckbox(`secureSQL`, `Use secure SQL connection`, `When enabled, Mapepire will connect to the databse using TLS (i.e. the <code>secure</code> JDBC option will be enabled)`, config.secureSQL)
-          .addCheckbox(`memberLocking`, `Lock source members while editing`, `Experimental. Acquires an IBM i member lock for editable QSYS members.`, config.memberLocking)
+          .addCheckbox(`memberLocking`, `Lock source members while editing`, `Acquires an IBM i member lock for editable QSYS members.`, config.memberLocking)
           .addSelect(`sqlJobNaming`, `SQL Job Naming`,
             SQL_NAMING.map((naming) => ({ value: naming.value, text: naming.text, description: naming.text, selected: config.sqlJobNaming === naming.value })),
             "The naming convention used for running SQL queries and commands on the IBM i.")
