@@ -3,7 +3,6 @@ import IBMi from "../../api/IBMi";
 
 type HeldLock = {
   connection: IBMi;
-  object: string;
   releaseCommand: string;
 };
 
@@ -46,7 +45,7 @@ export class MemberLockManager implements vscode.Disposable {
     const member = path.name;
     const acquireCommand = `ALCOBJ OBJ((${object} *EXCLRD ${member})) WAIT(0)`;
     await connection.runSQL(`@${acquireCommand}`);
-    this.locks.set(key, { connection, object, releaseCommand: `DLCOBJ OBJ((${object} *EXCLRD ${member}))` });
+    this.locks.set(key, { connection, releaseCommand: `DLCOBJ OBJ((${object} *EXCLRD ${member}))` });
   }
 
   isLocked(uri: vscode.Uri, connection: IBMi): boolean {
@@ -58,10 +57,6 @@ export class MemberLockManager implements vscode.Disposable {
     if (!lock) return;
 
     this.locks.delete(uri.toString());
-    const hasOtherLockedMembers = [...this.locks.values()]
-      .some(other => other.connection === lock.connection && other.object === lock.object);
-    if (hasOtherLockedMembers) return;
-
     try {
       await lock.connection.runSQL(`@${lock.releaseCommand}`);
     } catch {
