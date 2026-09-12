@@ -207,10 +207,12 @@ export class ExtendedIBMiContent {
           }
 
           if (insertResult.code === 0) {
-            insertResult = await connection.runCommand({
-              command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
-              noLibList: true
-            });
+            try {
+              await connection.runSQL(`@QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`);
+            } catch (error: any) {
+              insertResult.code = -1;
+              insertResult.stderr = String(error);
+            }
           }
 
           if (insertResult.code !== 0) {

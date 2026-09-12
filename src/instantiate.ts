@@ -63,6 +63,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
 
   instance = new Instance(context);
+  const qsysFs = new QSysFS(context);
 
   context.subscriptions.push(
     connectedBarItem,
@@ -72,7 +73,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     onCodeForIBMiConfigurationChange("connectionSettings", updateConnectedBar),
 
-    ...registerOpenCommands(instance),
+    ...registerOpenCommands(instance, qsysFs.memberLocks),
 
     ...registerCompareCommands(),
 
@@ -91,7 +92,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   instance.subscribe(context, 'disconnected', 'Unload status bars', onDisconnected);
 
   context.subscriptions.push(
-    vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
+    vscode.workspace.registerFileSystemProvider(`member`, qsysFs, {
       isCaseSensitive: false
     })
   );

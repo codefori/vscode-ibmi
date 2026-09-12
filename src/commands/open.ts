@@ -1,9 +1,10 @@
 import path from "path";
-import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
+import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TabInputText, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
 import Instance from "../Instance";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
+import { MemberLockManager } from "../filesystems/qsys/memberLocking";
 import { DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 
@@ -12,7 +13,7 @@ const CLEAR_CACHED = `$(trash) ${l10n.t('Clear cached')}`;
 
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };
 
-export function registerOpenCommands(instance: Instance): Disposable[] {
+export function registerOpenCommands(instance: Instance, memberLocks: MemberLockManager): Disposable[] {
 
   return [
     commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
@@ -46,13 +47,27 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
         }
       }
 
-      try {
+        let lockAcquired = false;
+        let useMemberLocking = false;
+        try {
         if (options.position) {
           await commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as TextDocumentShowOptions);
         }
         else {
           await commands.executeCommand(`vscode.open`, uri);
         }
+
+          const memberLockingRequested = connection.getConfig().memberLocking
+            && !options.readonly
+            && uri.scheme === "member";
+          useMemberLocking = memberLockingRequested;
+          if (useMemberLocking) {
+            if (!connection.sqlRunnerAvailable()) {
+              throw new Error("Member locking requires a running Mapepire SQL job.");
+            }
+            await memberLocks.acquire(uri, connection);
+            lockAcquired = true;
+          }
 
         // Add file to front of recently opened files list.
         const recentLimit = IBMi.connectionManager.get<number>(`recentlyOpenedFilesLimit`);
@@ -66,7 +81,19 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
 
         return true;
       } catch (e) {
+          if (lockAcquired) {
+            await memberLocks.release(uri);
+          }
+          if (useMemberLocking) {
+            const tab = window.tabGroups.all
+              .flatMap(group => group.tabs)
+              .find(tab => tab.input instanceof TabInputText && tab.input.uri.toString() === uri.toString());
+            if (tab) {
+              await window.tabGroups.close(tab);
+            }
+          }
         console.log(e);
+          window.showErrorMessage(l10n.t(`Unable to open member for editing: {0}`, e instanceof Error ? e.message : String(e)));
         return false;
       }
     }),

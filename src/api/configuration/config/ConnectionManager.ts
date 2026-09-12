@@ -37,6 +37,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
     debugIgnoreCertificateErrors: (parameters.debugIgnoreCertificateErrors === true),
     readOnlyMode: (parameters.readOnlyMode === true),
+    memberLocking: (parameters.memberLocking === true),
     quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
     defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
     protectedPaths: (parameters.protectedPaths || []),

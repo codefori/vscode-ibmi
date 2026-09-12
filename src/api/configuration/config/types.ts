@@ -32,6 +32,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   debugEnableDebugTracing: boolean;
   debugIgnoreCertificateErrors: boolean;
   readOnlyMode: boolean;
+  memberLocking: boolean;
   quickConnect: boolean;
   defaultDeploymentMethod: DeploymentMethod | '';
   protectedPaths: string[];
