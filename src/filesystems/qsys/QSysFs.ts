@@ -8,6 +8,7 @@ import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { waitOnReconnect } from "./FSUtils";
+import { MemberLockManager } from "./memberLocking";
 import { SourceDateHandler } from "./sourceDateHandler";
 
 export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
@@ -48,6 +49,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     private readonly savedAsMembers: Set<string> = new Set;
     private readonly sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
+    readonly memberLocks: MemberLockManager;
     private extendedMemberSupport = false;
     private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
     onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
@@ -55,6 +57,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     constructor(context: vscode.ExtensionContext) {
         this.sourceDateHandler = new SourceDateHandler(context);
         this.extendedContent = new ExtendedIBMiContent(this.sourceDateHandler);
+        this.memberLocks = new MemberLockManager(context);
 
         instance.subscribe(
             context,
@@ -64,11 +67,23 @@ export class QSysFS implements vscode.FileSystemProvider {
 
         instance.subscribe(
             context,
+            'connected',
+            `Restore member locks`,
+            () => this.restoreMemberLocks());
+
+        instance.subscribe(
+            context,
             'disconnected',
             `Update member support & clear library ASP cache`,
             () => {
                 this.updateMemberSupport();
             });
+
+        instance.subscribe(
+            context,
+            'disconnected',
+            `Release member locks`,
+            () => this.memberLocks.releaseAll());
 
         context.subscriptions.push(onCodeForIBMiConfigurationChange("connectionSettings", () => {
             if (this.extendedMemberSupport !== instance.getConnection()?.getConfig().enableSourceDates) {
@@ -101,6 +116,25 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
 
         this.sourceDateHandler.setEnabled(this.extendedMemberSupport);
+    }
+
+    private async restoreMemberLocks() {
+        const connection = instance.getConnection();
+        if (!connection?.getConfig().memberLocking || !connection.sqlRunnerAvailable()) return;
+
+        const restoredMembers = vscode.window.tabGroups.all
+            .flatMap(group => group.tabs)
+            .filter((tab): tab is vscode.Tab & { input: vscode.TabInputText } => tab.input instanceof vscode.TabInputText)
+            .map(tab => tab.input.uri)
+            .filter(uri => uri.scheme === "member" && !parseFSOptions(uri).readonly);
+
+        for (const uri of restoredMembers) {
+            try {
+                await this.memberLocks.acquire(uri, connection);
+            } catch (error) {
+                connection.appendOutput(`Unable to restore member lock for ${uri.path}: ${error instanceof Error ? error.message : String(error)}\n`);
+            }
+        }
     }
 
     async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
@@ -229,7 +263,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                 await this.extendedContent.uploadMemberContentWithDates(uri, content.toString());
             } else {
                 await warnAboutSourceDates();
-                await contentApi.uploadMemberContent(library, file, member, content);
+                await contentApi.uploadMemberContent(library, file, member, content, this.memberLocks.isLocked(uri, connection));
             }
         }
         else {

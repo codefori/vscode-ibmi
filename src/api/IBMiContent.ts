@@ -301,7 +301,7 @@ export default class IBMiContent {
    * @param member
    * @param content
    */
-  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean> {
+  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array, useSqlJob = false): Promise<boolean> {
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
@@ -369,6 +369,14 @@ export default class IBMiContent {
             } catch (e: any) {
               copyResult.code = -1;
               copyResult.stderr = String(e);
+            }
+          } else if (useSqlJob) {
+            copyResult = { code: 0, stdout: '', stderr: '' };
+            try {
+              await this.ibmi.runSQL(`@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`);
+            } catch (error: any) {
+              copyResult.code = -1;
+              copyResult.stderr = String(error);
             }
           } else {
             copyResult = await this.ibmi.runCommand({
