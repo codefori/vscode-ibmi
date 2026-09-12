@@ -47,27 +47,27 @@ export function registerOpenCommands(instance: Instance, memberLocks: MemberLock
         }
       }
 
-        let lockAcquired = false;
-        let useMemberLocking = false;
-        try {
+      let lockAcquired = false;
+      let documentOpened = false;
+      const useMemberLocking = connection.getConfig().memberLocking
+        && !options.readonly
+        && uri.scheme === "member";
+      try {
+        if (useMemberLocking) {
+          if (!connection.sqlRunnerAvailable()) {
+            throw new Error("Member locking requires a running Mapepire SQL job.");
+          }
+          await memberLocks.acquire(uri, connection);
+          lockAcquired = true;
+        }
+
         if (options.position) {
           await commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as TextDocumentShowOptions);
         }
         else {
           await commands.executeCommand(`vscode.open`, uri);
         }
-
-          const memberLockingRequested = connection.getConfig().memberLocking
-            && !options.readonly
-            && uri.scheme === "member";
-          useMemberLocking = memberLockingRequested;
-          if (useMemberLocking) {
-            if (!connection.sqlRunnerAvailable()) {
-              throw new Error("Member locking requires a running Mapepire SQL job.");
-            }
-            await memberLocks.acquire(uri, connection);
-            lockAcquired = true;
-          }
+        documentOpened = true;
 
         // Add file to front of recently opened files list.
         const recentLimit = IBMi.connectionManager.get<number>(`recentlyOpenedFilesLimit`);
@@ -81,19 +81,19 @@ export function registerOpenCommands(instance: Instance, memberLocks: MemberLock
 
         return true;
       } catch (e) {
-          if (lockAcquired) {
-            await memberLocks.release(uri);
+        if (lockAcquired) {
+          await memberLocks.release(uri);
+        }
+        if (documentOpened) {
+          const tab = window.tabGroups.all
+            .flatMap(group => group.tabs)
+            .find(tab => tab.input instanceof TabInputText && tab.input.uri.toString() === uri.toString());
+          if (tab) {
+            await window.tabGroups.close(tab);
           }
-          if (useMemberLocking) {
-            const tab = window.tabGroups.all
-              .flatMap(group => group.tabs)
-              .find(tab => tab.input instanceof TabInputText && tab.input.uri.toString() === uri.toString());
-            if (tab) {
-              await window.tabGroups.close(tab);
-            }
-          }
+        }
         console.log(e);
-          window.showErrorMessage(l10n.t(`Unable to open member for editing: {0}`, e instanceof Error ? e.message : String(e)));
+        window.showErrorMessage(l10n.t(`Unable to open member for editing: {0}`, e instanceof Error ? e.message : String(e)));
         return false;
       }
     }),
