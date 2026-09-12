@@ -19,7 +19,15 @@ type DragNDropBehavior = DragNDropAction | "ask";
 const getDragDropBehavior = () => IBMi.connectionManager.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
 function isProtected(path: string) {
-  return PROTECTED_DIRS.test(path) || instance.getConnection()?.getContent().isProtectedPath(path);
+  return PROTECTED_DIRS.test(path) || instance.getConnection()?.getContent().isProtectedPath(path) || false;
+}
+
+function checkProtected(path: string): boolean {
+  if (isProtected(path)) {
+    vscode.window.showWarningMessage(l10n.t(`{0} is a protected directory and cannot be modified.`, path));
+    return true;
+  }
+  return false;
 }
 
 function alwaysShow(name: string) {
@@ -136,6 +144,10 @@ class IFSItem extends BrowserItem implements WithPath {
     this.tooltip = VscodeTools.ifsFileToToolTip(this.path, file);
   }
 
+  isProtected(): boolean {
+    return this.file.type === "directory" ? isProtected(this.path) : this.parent?.isProtected() || false;
+  }
+
   sortBy(sort: SortOptions) {
     if (this.sort.order !== sort.order) {
       this.sort.order = sort.order;
@@ -162,7 +174,7 @@ class IFSFileItem extends IFSItem {
   constructor(file: IFSFile, readonly ifsParent: IFSDirectoryItem) {
     super(file, { parent: ifsParent });
 
-    this.contextValue = "streamfile";
+    this.contextValue = `streamfile${this.isProtected() ? `_protected` : ``}`;
     this.iconPath = file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-file") : vscode.ThemeIcon.File;
 
     this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
@@ -182,7 +194,7 @@ class IFSFileItem extends IFSItem {
 class IFSDirectoryItem extends IFSItem {
   constructor(file: IFSFile, parent?: IFSDirectoryItem) {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
-    const protectedDir = isProtected(this.file.path);
+    const protectedDir = this.isProtected();
     this.contextValue = `directory${protectedDir ? `_protected` : ``}`;
     this.iconPath = protectedDir ? new vscode.ThemeIcon("lock-small") :
       file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-directory") : vscode.ThemeIcon.Folder;
@@ -217,7 +229,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
   constructor(readonly shortcut: string) {
     super({ name: shortcut, path: shortcut, type: "directory" })
 
-    const protectedDir = isProtected(this.file.path);
+    const protectedDir = this.isProtected();
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon(protectedDir ? "lock-small" : "folder-library");
     this.tooltip = ``;
@@ -246,6 +258,9 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
   handleDrop(target: IFSItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     if (target) {
       const toDirectory = (target.file.type === "streamfile" ? target.parent : target) as IFSDirectoryItem;
+      if (checkProtected(toDirectory.path)) {
+        return;
+      }
       const ifsBrowserItems = dataTransfer.get(IFS_BROWSER_MIMETYPE);
       if (ifsBrowserItems) {
         this.moveOrCopyItems(ifsBrowserItems.value as IFSItem[], toDirectory)
@@ -473,7 +488,12 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const connection = instance.getConnection();
       if (connection) {
         const config = connection.getConfig();
-        const value = `${node?.path || config.homeDirectory}/`;
+        const parent = node?.path || config.homeDirectory;
+        if (checkProtected(parent)) {
+          return;
+        }
+
+        const value = `${parent}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
           prompt: l10n.t(`Path of new folder`),
@@ -482,6 +502,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         });
 
         if (fullName) {
+          if (checkProtected(path.posix.dirname(trimPath(fullName)))) {
+            return;
+          }
+
           try {
             await connection.sendCommand({ command: `mkdir ${Tools.escapePath(fullName)}` });
 
@@ -502,7 +526,12 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (connection) {
         const config = connection.getConfig();
         const content = connection.getContent();
-        const value = `${node?.path || config.homeDirectory}/`;
+        const parent = node?.path || config.homeDirectory;
+        if (checkProtected(parent)) {
+          return;
+        }
+
+        const value = `${parent}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
           prompt: l10n.t(`Name of new streamfile`),
@@ -511,6 +540,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         });
 
         if (fullName) {
+          if (checkProtected(path.posix.dirname(trimPath(fullName)))) {
+            return;
+          }
+
           if (!await content.testStreamFile(fullName, "e") || await vscode.window.showWarningMessage(l10n.t("Streamfile {0} already exists. Do you want to overwrite it?", fullName), { modal: true }, l10n.t("Overwrite"))) {
             try {
               await content.createStreamFile(fullName);
@@ -533,6 +566,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (connection) {
         const config = connection.getConfig();
         const root = node?.path || config.homeDirectory;
+        if (checkProtected(root)) {
+          return;
+        }
 
         const chosenFiles = files || await showOpenDialog();
 
@@ -709,6 +745,10 @@ Please type "{0}" to confirm deletion.`, dirName);
 
           if (target) {
             const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
+            if (checkProtected(path.posix.dirname(trimPath(targetPath)))) {
+              return;
+            }
+
             if (!await confirmOverwrite(connection, [node.path], targetPath)) {
               return;
             }
@@ -775,6 +815,10 @@ Please type "{0}" to confirm deletion.`, dirName);
 
         if (target) {
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
+          if (checkProtected(path.posix.dirname(trimPath(targetPath)))) {
+            return;
+          }
+
           if (!await confirmOverwrite(connection, [node.path], targetPath)) {
             return;
           }

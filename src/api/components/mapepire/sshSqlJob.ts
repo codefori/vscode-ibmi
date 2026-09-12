@@ -8,7 +8,6 @@ import { JobStatus } from "./types";
 export class SSHSQLJob extends SQLJob {
   static application = "<unknown>";
   private channel: ClientChannel | undefined;
-  private onClose?: () => void;
 
   async getSshChannel(mapepire: Mapepire, connection: IBMi, javaPath: string): Promise<ClientChannel> {
     const useExec = await Mapepire.useExec(connection);
@@ -21,9 +20,7 @@ export class SSHSQLJob extends SQLJob {
         if (err) {
           reject(err);
         }
-        mapepire.jobs.set(this.getUniqueId(), this);
-        this.onClose = () => mapepire.jobs.delete(this.uniqueId);
-
+        
         let outString = ``;
 
         stream.stderr.on(`data`, (data: Buffer) => {
@@ -43,7 +40,7 @@ export class SSHSQLJob extends SQLJob {
                 const response: ServerResponse = JSON.parse(thisMsg);
                 this.responseEmitter.emit(response.id, response);
               } catch (e: any) {
-                const error = `Mapepire output error: ${e}\nData: ${thisMsg}`;                  
+                const error = `Mapepire output error: ${e}\nData: ${thisMsg}`;
                 connection.appendOutput(error + "\n");
                 console.log(e);
                 outString = ``;
@@ -80,7 +77,7 @@ export class SSHSQLJob extends SQLJob {
   /**
    * The same as mapepire-js#connect, but with SSH
    */
-  async connectSsh(connection:IBMi, channel: ClientChannel): Promise<ConnectionResult> {
+  async connectSsh(connection: IBMi, channel: ClientChannel): Promise<ConnectionResult> {
     // this.isTracingChannelData = true;
 
     this.channel = channel;
@@ -158,6 +155,5 @@ export class SSHSQLJob extends SQLJob {
     this.channel = undefined;
     this.status = JobStatus.ENDED;
     this.responseEmitter.removeAllListeners();
-    this.onClose?.();
   }
 }

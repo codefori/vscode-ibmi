@@ -5,11 +5,12 @@ import * as node_ssh from "node-ssh";
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
+import escapeStringRegexp from 'escape-string-regexp';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
 import { ObjectTypes } from './import/Objects';
-import { AttrOperands, CommandResult, EditorPath, IBMiError, IBMiMember, IBMiObject, IFSFile, ModuleExport, ProgramExportImportInfo, QsysPath, SpecialAuthorities } from './types';
+import { AttrOperands, CommandResult, EditorPath, IBMiError, IBMiMember, IBMiObject, IFSFile, ILELibrarySettings, ModuleExport, ProgramExportImportInfo, QsysPath, SpecialAuthorities } from './types';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -482,6 +483,11 @@ export default class IBMiContent {
    * @returns an array of libraries as IBMiObject
    */
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
+    if (!libraries.length) {
+      //An empty list would generate an invalid VALUES clause
+      return [];
+    }
+
     let objects: IBMiObject[];
     const statement = /*sql*/`
         SELECT
@@ -562,14 +568,15 @@ export default class IBMiContent {
    * @returns Bad libraries
    */
   async validateLibraryList(newLibl: string[]): Promise<string[]> {
-    return (await this.ibmi.runSQL(/* sql */`
+    return newLibl.length === 0 ? [] :
+      (await this.ibmi.runSQL(/* sql */`
       with LIBRARIES (LIBRARY) as (
         values ${newLibl.map(lib => `'${lib}'`).join(',')}
       )
       select LIBRARY, QSYS2.QCMDEXC('CHKOBJ OBJ(QSYS/' concat LIBRARY concat ') OBJTYPE(*LIB)') VALID from LIBRARIES
     `))
-      .filter(row => row.VALID !== 1)
-      .map(row => String(row.LIBRARY));
+        .filter(row => row.VALID !== 1)
+        .map(row => String(row.LIBRARY));
   }
 
   async getLibraries(filters: { library: string; filterType?: FilterType }) {
@@ -1056,7 +1063,9 @@ export default class IBMiContent {
 
   isProtectedPath(path: string) {
     if (path.startsWith('/')) { //IFS path
-      return this.config.protectedPaths.some(p => path.startsWith(p));
+      //the IFS is case insensitive, except for the QOpenSys file system
+      const flags = /^\/QOpenSys/i.test(path) ? '' : 'i';
+      return this.config.protectedPaths.some(p => new RegExp(`^${escapeStringRegexp(p)}`, flags).test(path));
     }
     else { //QSYS path
       const qsysObject = Tools.parseQSysPath(path);
@@ -1268,7 +1277,7 @@ export default class IBMiContent {
     }
   }
 
-  async getLibraryListFromCommand(command: string) {
+  async getLibraryListFromCommand(command: string): Promise<ILELibrarySettings> {
     //Run the command in the same query as QSQLIBL so there is no concurrency issues with other pending statements
     const libraryList = await this.ibmi.runSQL(
       `With CHGLIBL(SYSTEM_SCHEMA_NAME, TYPE, ORDINAL_POSITION) as ( values (cast(QSYS2.qcmdexc('${command.replace(new RegExp(`'`, 'g'), `''`)}') as Char(1)), 'RESULT', 0 ) )
@@ -1299,9 +1308,8 @@ export default class IBMiContent {
 
       return result;
     }, {
-      currentLibrary: '',
-      libraryList: [] as string[]
-    });
+      libraryList: []
+    } as ILELibrarySettings);
   }
 
   async overDBFile(library: string, file: string, member: string) {

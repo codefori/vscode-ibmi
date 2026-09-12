@@ -20,7 +20,7 @@ export class Mapepire implements IBMiComponent {
   private installPath = "";
   private readonly version: SemanticVersion;
 
-  readonly jobs: Map<string, SQLJob> = new Map;
+  private readonly jobs: Map<string, SQLJob> = new Map;
 
   constructor(localAssetRoot: string, private readonly passwordProvider?: (connectionName: IBMi) => Promise<string | undefined>) {
     this.localAssetPath = path.join(localAssetRoot, SERVER_VERSION_FILE);
@@ -139,7 +139,7 @@ export class Mapepire implements IBMiComponent {
         password,
         rejectUnauthorized: (config.mapepireAllowSelfCert !== true),
         port: config.mapepireServerPort
-      });
+      });      
     }
     else {
       //Single mode over SSH
@@ -159,8 +159,15 @@ export class Mapepire implements IBMiComponent {
       await sshJob.connectSsh(connection, stream);
     }
 
-    // sqlJob.setTraceConfig(`IN_MEM`, `ON`);
-    // sqlJob.enableLocalTrace();
+    this.jobs.set(sqlJob.getUniqueId(), sqlJob);
+
+    let closeJob = sqlJob.close;
+    closeJob = closeJob.bind(sqlJob);
+    sqlJob.close = async () => {
+      this.jobs.delete(sqlJob.getUniqueId());
+      closeJob();
+    }
+
     return sqlJob;
   }
 

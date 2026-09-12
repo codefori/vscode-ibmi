@@ -1,6 +1,5 @@
 import { EventEmitter } from "stream";
 import * as vscode from "vscode";
-import { ILELibrarySettings } from "./api/CompileTools";
 import IBMi, { ConnectionResult, DisconnectedCallback } from "./api/IBMi";
 import { BaseStorage } from "./api/configuration/storage/BaseStorage";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
@@ -8,7 +7,7 @@ import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage
 import { VsCodeConfig } from "./config/Configuration";
 import { clearPassword } from "./extension";
 import { getEnvConfig } from "./filesystems/local/env";
-import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
+import { ConnectionConfig, ConnectionData, IBMiEvent, ILELibrarySettings } from "./typings";
 import { VscodeTools } from "./ui/Tools";
 import { handleConnectionResults, inputBoxCallback, messageCallback } from "./ui/connection";
 

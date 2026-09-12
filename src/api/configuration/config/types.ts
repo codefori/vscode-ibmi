@@ -103,7 +103,7 @@ export interface CustomVariable {
 export interface ConnectionProfile {
   name: string
   homeDirectory: string
-  currentLibrary: string
+  currentLibrary?: string
   libraryList: string[]
   objectFilters: ObjectFilters[]
   ifsShortcuts: string[]

@@ -56,7 +56,6 @@ export function getDefaultProfile() {
         name: '',
         homeDirectory: '',
         ifsShortcuts: [],
-        currentLibrary: '',
         objectFilters: [],
         customVariables: [],
         libraryList: []

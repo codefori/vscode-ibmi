@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "3.0.13-dev.0",
+	"version": "3.0.14-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -62,6 +62,12 @@
 					"/etc/vscode/settings.json"
 				],
 				"url": "./schemas/settings.json"
+			},
+			{
+				"fileMatch": [
+					"/etc/vscode/snippets/*.json"
+				],
+				"url": "vscode://schemas/snippets"
 			}
 		],
 		"configuration": {
@@ -1227,6 +1233,13 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.removeCurrentLibrary",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Remove Current Library",
+				"category": "IBM i",
+				"icon": "$(clear-all)"
+			},
+			{
 				"command": "code-for-ibmi.changeUserLibraryList",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change Library List...",
@@ -1855,6 +1868,29 @@
 				"icon": "$(debug-start)"
 			},
 			{
+				"command": "code-for-ibmi.createSharedSnippetFromDocument",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Create shared snippet from the active document",
+				"shortTitle": "From the active document",
+				"category": "IBM i",
+				"icon": "$(file-code)"
+			},
+			{
+				"command": "code-for-ibmi.createSharedSnippetFromSelection",
+				"enablement": "code-for-ibmi:connected && editorHasSelection",
+				"title": "Create shared snippet from the selection",
+				"shortTitle": "From the selection",
+				"category": "IBM i",
+				"icon": "$(selection)"
+			},
+			{
+				"command": "code-for-ibmi.openSharedSnippets",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Shared Snippets",
+				"category": "IBM i",
+				"icon": "$(symbol-snippet)"
+			},
+			{
 				"command": "code-for-ibmi.environment.variable.declare",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Declare custom variable",
@@ -2161,9 +2197,31 @@
 			{
 				"id": "code-for-ibmi.searchResults.download",
 				"label": "Download"
+			},
+			{
+				"id": "code-for-ibmi.createSharedSnippet",
+				"label": "Create shared IBM i snippet"
 			}
 		],
 		"menus": {
+			"code-for-ibmi.createSharedSnippet": [
+				{
+					"command": "code-for-ibmi.createSharedSnippetFromSelection",
+					"when": "editorHasSelection",
+					"group": "1_create@1"
+				},
+				{
+					"command": "code-for-ibmi.createSharedSnippetFromDocument",
+					"group": "1_create@2"
+				}
+			],
+			"editor/context": [
+				{
+					"submenu": "code-for-ibmi.createSharedSnippet",
+					"when": "code-for-ibmi:connected && !isInDiffEditor",
+					"group": "1_codefori@1"
+				}
+			],
 			"code-for-ibmi.structuredDownload": [
 				{
 					"command": "code-for-ibmi.downloadMemberAsFile",
@@ -2219,7 +2277,8 @@
 					"command": "code-for-ibmi.browse"
 				},
 				{
-					"command": "code-for-ibmi.edit"
+					"command": "code-for-ibmi.edit",
+					"when": "viewItem == streamfile"
 				}
 			],
 			"code-for-ibmi.openMember": [
@@ -2552,6 +2611,10 @@
 				},
 				{
 					"command": "code-for-ibmi.setCurrentLibrary",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.removeCurrentLibrary",
 					"when": "never"
 				},
 				{
@@ -3035,13 +3098,23 @@
 				},
 				{
 					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem =~ /^currentLibrary/",
+					"group": "inline@01"
+				},
+				{
+					"command": "code-for-ibmi.removeCurrentLibrary",
 					"when": "view == libraryListView && viewItem == currentLibrary",
-					"group": "inline"
+					"group": "inline@02"
 				},
 				{
 					"command": "code-for-ibmi.changeCurrentLibrary",
-					"when": "view == libraryListView && viewItem == currentLibrary",
+					"when": "view == libraryListView && viewItem =~ /^currentLibrary/",
 					"group": "libraryChangeCurrent@1"
+				},
+				{
+					"command": "code-for-ibmi.removeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "libraryChangeCurrent@2"
 				},
 				{
 					"command": "code-for-ibmi.setCurrentLibrary",
@@ -3110,12 +3183,12 @@
 				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile) && !listMultiSelection",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem =~ /^streamfile.*$/) && !listMultiSelection",
 					"group": "7_sourceFileStuff@1"
 				},
 				{
 					"submenu": "code-for-ibmi.compareWith",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem =~ /^streamfile.*$/)",
 					"group": "7_sourceFileStuff@2"
 				},
 				{
@@ -3190,22 +3263,22 @@
 				},
 				{
 					"submenu": "code-for-ibmi.openIFSFile",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem =~ /^streamfile.*$/",
 					"group": "0_open@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem =~ /^streamfile.*$/",
 					"group": "1_workspace@1"
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@2"
 				},
 				{
@@ -3250,12 +3323,12 @@
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@2"
 				},
 				{
@@ -3295,12 +3368,12 @@
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*|streamfile$/",
+					"when": "view == ifsBrowser && viewItem =~ /^(directory|streamfile).*$/",
 					"group": "3_ifsTransfer@1"
 				},
 				{
 					"command": "code-for-ibmi.uploadStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "3_ifsTransfer@2"
 				},
 				{
@@ -3325,7 +3398,7 @@
 				},
 				{
 					"command": "code-for-ibmi.changeObjectDesc",
-					"when": "view == objectBrowser && !listMultiSelection && (viewItem =~ /^object/ || viewItem == SPF)",
+					"when": "view == objectBrowser && !listMultiSelection && (viewItem =~ /^object/ || viewItem == SPF) && !(viewItem =~ /_readonly/)",
 					"group": "1_objActions@1"
 				},
 				{
@@ -3335,12 +3408,12 @@
 				},
 				{
 					"command": "code-for-ibmi.objectBrowser.delete",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && viewItem =~ /^object/ && !(viewItem =~ /_readonly/)",
 					"group": "1_objActions@5"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object(?!.lib)/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object(?!.lib)/ && !(viewItem =~ /_readonly/)",
 					"group": "1_objActions@4"
 				},
 				{

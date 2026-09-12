@@ -32,9 +32,9 @@ export namespace Tools {
    * @param iasp Optional: an iASP name
    */
   export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean) {
-    [library, object] = Tools.sanitizeObjNamesForPase([library, object]);
-    member = member ? Tools.sanitizeObjNamesForPase([member])[0] : undefined;
-    iasp = iasp ? Tools.sanitizeObjNamesForPase([iasp])[0] : undefined;
+    [library, object] = Tools.sanitizeObjNamesForPase(library, object);
+    member = member ? Tools.sanitizeObjNamesForPase(member)[0] : undefined;
+    iasp = iasp ? Tools.sanitizeObjNamesForPase(iasp)[0] : undefined;
 
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${library}.LIB`;
     const filePath = object ? `${object}.FILE` : '';
@@ -91,7 +91,7 @@ export namespace Tools {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  export function sanitizeObjNamesForPase(libraries: string[]): string[] {
+  export function sanitizeObjNamesForPase(...libraries: string[]): string[] {
     return libraries
       .map(library => {
         // Quote libraries starting with #
@@ -294,5 +294,13 @@ export namespace Tools {
       permissions.push((field[i] === "r" ? 4 : 0) + (field[i + 1] === "w" ? 2 : 0) + (["x", "s", "t"].includes(field[i + 2]) ? 1 : 0));
     }
     return permissions.map(String).join("");
+  }
+
+  /**
+   * Helper function to deal with *CRTDFT special value 
+   * @returns `*CURLIB` if `value` is falsy or equal to *CRTDFT; returns `value` otherwise
+   */
+  export function getCurLib(value?:string){
+    return !value || /\*CRTDFT/i.test(value) ? "*CURLIB" : value;
   }
 }

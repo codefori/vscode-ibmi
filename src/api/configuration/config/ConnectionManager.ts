@@ -19,7 +19,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     /** Undefined means not created, so default to on */
     tempLibrary: parameters.tempLibrary || `ILEDITOR`,
     tempDir: parameters.tempDir || `~/.vscode/tmp`,
-    currentLibrary: parameters.currentLibrary || ``,
+    currentLibrary: parameters.currentLibrary,
     sourceFileCCSID: parameters.sourceFileCCSID || `*FILE`,
     autoConvertIFSccsid: (parameters.autoConvertIFSccsid === true),
     hideCompileErrors: parameters.hideCompileErrors || [],
