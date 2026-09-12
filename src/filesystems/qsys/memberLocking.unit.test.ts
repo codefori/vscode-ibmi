@@ -30,10 +30,20 @@ const uri = {
   toString: () => "member:/CBALLEST1/QRPGLESRC/COMPSTRG.RPGLE",
 } as any;
 
+const secondUri = {
+  scheme: "member",
+  path: "/CBALLEST1/QRPGLESRC/OTHER.RPGLE",
+  toString: () => "member:/CBALLEST1/QRPGLESRC/OTHER.RPGLE",
+} as any;
+
 function createConnection() {
   return {
     appendOutput: vi.fn(),
-    parserMemberPath: vi.fn(() => ({ library: "CBALLEST1", file: "QRPGLESRC", name: "COMPSTRG" })),
+    parserMemberPath: vi.fn((memberPath: string) => ({
+      library: "CBALLEST1",
+      file: "QRPGLESRC",
+      name: memberPath.includes("OTHER") ? "OTHER" : "COMPSTRG",
+    })),
     runSQL: vi.fn().mockResolvedValue([]),
   } as any;
 }
@@ -73,5 +83,17 @@ describe("MemberLockManager", () => {
 
     expect(connection.runSQL).toHaveBeenNthCalledWith(2, "@DLCOBJ OBJ((CBALLEST1/QRPGLESRC *FILE *EXCLRD COMPSTRG))");
     expect(locks.isLocked(uri, connection)).toBe(false);
+  });
+
+  it("releases a member even when another member of the same file remains locked", async () => {
+    const connection = createConnection();
+    const locks = new MemberLockManager(createContext());
+
+    await locks.acquire(uri, connection);
+    await locks.acquire(secondUri, connection);
+    await locks.release(uri);
+
+    expect(connection.runSQL).toHaveBeenNthCalledWith(3, "@DLCOBJ OBJ((CBALLEST1/QRPGLESRC *FILE *EXCLRD COMPSTRG))");
+    expect(locks.isLocked(secondUri, connection)).toBe(true);
   });
 });
