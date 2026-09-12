@@ -1460,7 +1460,24 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
+  private sqlQueue: Promise<void> = Promise.resolve();
+
   async runSQL(statements: string | string[], options: { bindings?: BindingValue[], rows?: number } = {}): Promise<Tools.DB2Row[]> {
+    const previous = this.sqlQueue;
+    let complete!: () => void;
+    this.sqlQueue = new Promise(resolve => {
+      complete = resolve;
+    });
+
+    await previous;
+    try {
+      return await this.runSQLInternal(statements, options);
+    } finally {
+      complete();
+    }
+  }
+
+  private async runSQLInternal(statements: string | string[], options: { bindings?: BindingValue[], rows?: number } = {}): Promise<Tools.DB2Row[]> {
     if (this.sqlJob) {
       let list = Array.isArray(statements) ? statements : statements.split(`;`).filter(x => x.trim().length > 0);
 
@@ -1480,7 +1497,7 @@ export default class IBMi {
             const error = new Tools.SqlError(e.message);
             this.appendOutput(`${log}-> Failed: ${error.message}`);
 
-            const jobLog = await this.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) order by ORDINAL_POSITION desc limit 5`);
+            const jobLog = await this.runSQLInternal(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) order by ORDINAL_POSITION desc limit 5`);
             let logs = `${log}Job log:\n`
             for (const row of jobLog) {
               logs += `\t\t${row.MESSAGE_ID}: ${row.MESSAGE_TEXT}\n`
