@@ -433,15 +433,6 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Request extended metadata from the JDBC driver."
-							},
-							"mapepireMetadataSource": {
-								"type": "string",
-								"default": "0",
-								"enum": [
-									"0",
-									"1"
-								],
-								"description": "Choose metadata source mode for the JDBC driver."
 							}
 						}
 					}

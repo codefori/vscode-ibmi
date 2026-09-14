@@ -45,7 +45,6 @@ export interface ConnectionConfig extends ConnectionProfile {
   mapepireAllowSelfCert: boolean
   sqlJobNaming: string
   mapepireExtendedMetadata: boolean
-  mapepireMetadataSource: "0" | "1"
   statusBarColor: string
   currentProfile?: string
   [name: string]: any;
