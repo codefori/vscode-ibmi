@@ -2091,51 +2091,51 @@
 					"id": "helpView",
 					"name": "Help and Support",
 					"when": "!code-for-ibmi:helpViewDisabled",
-					"icon": ""
+					"icon": "$(question)"
 				},
 				{
 					"id": "connectionBrowser",
 					"name": "Servers",
 					"when": "!code-for-ibmi:connecting && !code-for-ibmi:connected && !code-for-ibmi:connectionBrowserDisabled",
-					"icon": ""
+					"icon": "$(remote-explorer)"
 				},
 				{
 					"id": "environmentView",
 					"name": "Environment",
 					"when": "code-for-ibmi:connected && !code-for-ibmi:environmentViewDisabled",
-					"icon": "",
+					"icon": "$(circuit-board)",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "libraryListView",
 					"name": "User Library List",
 					"when": "code-for-ibmi:connected && !code-for-ibmi:libraryListDisabled",
-					"icon": ""
+					"icon": "$(folder-library)"
 				},
 				{
 					"id": "libraryListViewDisabled",
 					"name": "User Library List",
 					"when": "code-for-ibmi:connected && code-for-ibmi:libraryListDisabled",
-					"icon": "",
+					"icon": "$(folder-library)",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
 					"when": "code-for-ibmi:connected && !code-for-ibmi:objectBrowserDisabled",
-					"icon": ""
+					"icon": "$(symbol-class)"
 				},
 				{
 					"id": "ifsBrowser",
 					"name": "IFS Browser",
 					"when": "code-for-ibmi:connected && !code-for-ibmi:ifsBrowserDisabled",
-					"icon": ""
+					"icon": "$(file-submodule)"
 				},
 				{
 					"id": "testingView",
 					"name": "Test cases",
 					"when": "code-for-ibmi:connected && code-for-ibmi:testing",
-					"icon": ""
+					"icon": "$(beaker)"
 				}
 			],
 			"ibmi-search": [
@@ -2143,7 +2143,7 @@
 					"id": "searchView",
 					"name": "Results",
 					"when": "code-for-ibmi:searchViewVisible",
-					"icon": ""
+					"icon": "$(search)"
 				}
 			],
 			"debug": [
@@ -2152,7 +2152,7 @@
 					"name": "IBM i debugger",
 					"when": "code-for-ibmi:connected && code-for-ibmi:debug && !code-for-ibmi:debugManaged",
 					"visibility": "collapsed",
-					"icon": ""
+					"icon": "$(debug)"
 				}
 			]
 		},
