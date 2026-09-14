@@ -234,6 +234,12 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(typeof firstRow['CITY']).toBe('string');
   });
 
+  it('Test runSQL (large number)', async () => {
+    const bigNumber = "80000000000000000002";
+    const rows = await connection.runSQL(`values ${bigNumber.toString()}`);
+    expect(rows[0]["00001"]).toBe(bigNumber);
+  });
+
   it('Test runSQL (bad basic select)', async () => {
 
     try {
