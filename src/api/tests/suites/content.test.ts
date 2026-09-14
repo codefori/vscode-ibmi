@@ -236,7 +236,7 @@ describe('Content Tests', { concurrent: true }, () => {
 
   it('Test runSQL (large number)', async () => {
     const bigNumber = "80000000000000000002";
-    const rows = await connection.runSQL(`values ${bigNumber.toString()}`);
+    const rows = await connection.runSQL(`values ${bigNumber}`);
     expect(rows[0]["00001"]).toBe(bigNumber);
   });
 
