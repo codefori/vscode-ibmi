@@ -21,6 +21,10 @@ class ConnectionNode extends EnvironmentItem {
     this.contextValue = "connectionNode";
   }
 
+  get name() {
+    return instance.getConnection()?.currentConnectionName || "";
+  }
+
   updateFromConnection() {
     const connection = instance.getConnection();
     this.label = connection ? l10n.t("Connection: {0}", connection.currentConnectionName) : l10n.t("Connection");

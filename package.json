@@ -428,6 +428,20 @@
 									"sql"
 								],
 								"description": "The job naming convention to use when running SQL queries. 'system' will use the system naming convention, 'sql' will use the SQL naming convention."
+							},
+							"mapepireExtendedMetadata": {
+								"type": "boolean",
+								"default": false,
+								"description": "Request extended metadata from the JDBC driver."
+							},
+							"mapepireMetadataSource": {
+								"type": "string",
+								"default": "0",
+								"enum": [
+									"0",
+									"1"
+								],
+								"description": "Choose metadata source mode for the JDBC driver."
 							}
 						}
 					}
@@ -3475,6 +3489,11 @@
 					"command": "code-for-ibmi.environment.action.delete",
 					"when": "view === environmentView && viewItem =~ /^actionItem/",
 					"group": "20_actionItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.showAdditionalSettings",
+					"when": "view === environmentView && viewItem === connectionNode",
+					"group": "00_connectionNodeAction01"
 				},
 				{
 					"command": "code-for-ibmi.environment.variable.declare",
