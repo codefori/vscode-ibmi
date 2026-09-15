@@ -125,6 +125,8 @@ export default class IBMi {
   currentConnectionName: string = ``;
   private tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
+  defaultCurrentLibrary: string | undefined = undefined;
+  systemLibraries: string[] = [];
 
   private sqlJob: SQLJob | undefined;
   splfUserData: string | undefined;
@@ -783,8 +785,9 @@ export default class IBMi {
       });
 
 
-      let currentLibrary = undefined;
       this.defaultUserLibraries = [];
+      this.defaultCurrentLibrary = undefined;
+      this.systemLibraries = [];
 
       const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL())`);
       for (const row of liblRows) {
@@ -793,19 +796,21 @@ export default class IBMi {
             this.defaultUserLibraries.push(row.SYSTEM_SCHEMA_NAME as string);
             break;
           case `CURRENT`:
-            currentLibrary = (row.SYSTEM_SCHEMA_NAME as string);
+            this.defaultCurrentLibrary = (row.SYSTEM_SCHEMA_NAME as string);
             break;
+          case `SYSTEM`:
+            this.systemLibraries.push(row.SYSTEM_SCHEMA_NAME as string);
         }
       }
 
       //If this is the first time the config is made, then this array will be empty
       if (this.config.libraryList.length === 0) {
-        this.config.currentLibrary = currentLibrary;
+        this.config.currentLibrary = this.defaultCurrentLibrary;
         this.config.libraryList = this.defaultUserLibraries;
       }
 
       callbacks.progress({ message: `Checking temporary library.` });
-      const tempLibrarySet = await this.checkOrCreateTempLibrary(currentLibrary || "QGPL", callbacks.message);
+      const tempLibrarySet = await this.checkOrCreateTempLibrary(this.defaultCurrentLibrary || "QGPL", callbacks.message);
       if (tempLibrarySet && this.config.autoClearTempData) {
         callbacks.progress({
           message: `Clearing temporary data.`
