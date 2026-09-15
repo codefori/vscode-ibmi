@@ -52,7 +52,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     ccsidConvertFrom: parameters.ccsidConvertFrom || ``,
     ccsidConvertTo: parameters.ccsidConvertTo || ``,
     sqlJobNaming: parameters.sqlJobNaming || `sql`,
-    mapepireExtendedMetadata: (parameters.mapepireExtendedMetadata === true),
+    mapepireExtendedMetadata: (parameters.mapepireExtendedMetadata !== false),
     statusBarColor: parameters.statusBarColor || ``,
   }
 }

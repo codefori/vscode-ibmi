@@ -431,7 +431,7 @@
 							},
 							"mapepireExtendedMetadata": {
 								"type": "boolean",
-								"default": false,
+								"default": true,
 								"description": "Request extended metadata from the JDBC driver."
 							}
 						}
