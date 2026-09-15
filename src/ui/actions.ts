@@ -322,7 +322,6 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             task.report({ message: `${processedPath}${targets.length > 1 ? ` (${done++}/${targets.length})` : ''}`, increment })
 
             const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
-            let actionName = chosenAction.name;
 
             const exitCode = await new Promise<number>(resolve =>
               tasks.executeTask({
@@ -443,7 +442,6 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             }
                           }
 
-                          actionName = (isIleCommand && possibleObjects ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
                           successful = (commandResult.code === 0 || commandResult.code === null);
 
                           writeEmitter.fire(CompileTools.NEWLINE);
@@ -453,9 +451,13 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           }
                           else if (evfeventInfo.object && evfeventInfo.library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
-                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfos[0].library}/${evfeventInfos[0].object}.`) + CompileTools.NEWLINE);
-                              refreshDiagnosticsFromServer(connection, evfeventInfos);
-                              problemsFetched = true;
+                              if (evfeventInfos.length === 0) {
+                                writeEmitter.fire(`*EVFEVENT found in command string, but no objects specified to fetch errors for.` + CompileTools.NEWLINE);
+                              } else {
+                                writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfos[0].library}/${evfeventInfos[0].object}.`) + CompileTools.NEWLINE);
+                                refreshDiagnosticsFromServer(connection, evfeventInfos);
+                                problemsFetched = true;
+                              }
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
                               writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
                             }
