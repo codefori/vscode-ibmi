@@ -48,7 +48,6 @@ export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
   private dummyDSPF = false;
-  private systemLibraries?: string[];
 
   private get config() {
     return this.ibmi.getConfig();
@@ -56,7 +55,6 @@ export default class IBMiContent {
 
   reset() {
     this.dummyDSPF = false;
-    this.systemLibraries = undefined;
   }
 
   private getTempRemote(path: string) {
@@ -540,26 +538,6 @@ export default class IBMiContent {
         text: `*** NOT FOUND ***`
       };
     });
-  }
-
-  /**
-   * Returns the names of libraries currently in the system portion of the library list.
-   * We use cache because SYSLIBL cannot change (the only way is to run chgsyslibl)
-   * @returns Array of library names in the system portion
-   */
-  async getSystemLibraries(): Promise<string[]> {
-    if (!this.systemLibraries) {
-      try {
-        const result = await this.ibmi.runSQL(
-          `SELECT SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL()) WHERE TYPE = 'SYSTEM'`
-        );
-        this.systemLibraries = result.map(row => String(row.SYSTEM_SCHEMA_NAME));
-      } catch {
-        this.systemLibraries = [];
-      }
-    }
-
-    return this.systemLibraries;
   }
 
   /**
