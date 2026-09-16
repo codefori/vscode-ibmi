@@ -37,7 +37,12 @@ export class SSHSQLJob extends SQLJob {
 
               outString = ``;
               try {
-                const response: ServerResponse = JSON.parse(thisMsg);
+                const response: ServerResponse = JSON.parse(thisMsg, ((key: any, value: string, context: any) => {
+                  if (context && typeof value === 'number' && !Number.isSafeInteger(value)) {
+                    return context.source;
+                  }
+                  return value;
+                }) as any);
                 this.responseEmitter.emit(response.id, response);
               } catch (e: any) {
                 const error = `Mapepire output error: ${e}\nData: ${thisMsg}`;
