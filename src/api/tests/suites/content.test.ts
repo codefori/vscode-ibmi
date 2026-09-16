@@ -240,6 +240,11 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(rows[0]["00001"]).toBe(bigNumber);
   });
 
+  it('Test runSQL (decimal)', async () => {
+    const rows = await connection.runSQL(`values cast(123.45 as decimal(5,2))`);
+    expect(rows[0]["00001"]).toBe(123.45);
+  });
+
   it('Test runSQL (bad basic select)', async () => {
 
     try {
