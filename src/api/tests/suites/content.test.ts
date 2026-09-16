@@ -941,4 +941,26 @@ describe('Content Tests', { concurrent: true }, () => {
     const newLibl = await connection.getContent().getLibraryListFromCommand(`CHGLIBL CURLIB(SYSTOOLS)`);
     expect(newLibl?.currentLibrary).toBe(`SYSTOOLS`);
   });
+
+  it('uploadMemberContent on non-existent member', async () => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const sourceFile = Tools.makeid(8);
+    const member = Tools.makeid(8);
+
+    try {
+      const createSPF = await connection.runCommand({ command: `QSYS/CRTSRCPF FILE(${tempLib}/${sourceFile}) RCDLEN(112)`, noLibList: true });
+      expect(createSPF.code).toBe(0);
+
+      const uploaded = await content.uploadMemberContent(tempLib, sourceFile, member, `CONTENT`, `RPGLE`);
+      expect(uploaded).toBe(true);
+
+      const [memberInfo] = await content.getMemberList({ library: tempLib, sourceFile, members: member });
+      expect(memberInfo).toBeDefined();
+      expect(memberInfo.name).toBe(member.toUpperCase());
+      expect(memberInfo.extension).toBe(`RPGLE`);
+    } finally {
+      await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${sourceFile})`, noLibList: true });
+    }
+  });
 });
