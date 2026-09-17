@@ -1118,6 +1118,12 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.environment.connection.showJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Display SQL Job Log",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.refreshJobLog",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Refresh Job Log",
@@ -3485,6 +3491,16 @@
 					"command": "code-for-ibmi.showAdditionalSettings",
 					"when": "view === environmentView && viewItem === connectionNode",
 					"group": "00_connectionNodeAction01"
+				},
+				{
+					"command": "code-for-ibmi.environment.connection.showJobLog",
+					"when": "view === environmentView && viewItem === connectionNode",
+					"group": "01_connectionNodeAction01"
+				},
+				{
+					"command": "code-for-ibmi.environment.connection.showJobLog",
+					"when": "view === environmentView && viewItem === connectionSqlJobItem",
+					"group": "00_connectionSqlJobItemAction01"
 				},
 				{
 					"command": "code-for-ibmi.environment.variable.declare",
