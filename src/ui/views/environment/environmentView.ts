@@ -57,7 +57,7 @@ class ConnectionInfoItem extends EnvironmentItem {
 
 class SqlJobItem extends EnvironmentItem {
   constructor(parent: EnvironmentItem, sqlJobId: string) {
-    super(l10n.t("SQL Job"), { parent, icon: "database" });
+    super(l10n.t("SQL Job"), { parent, icon: "database", state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = "connectionSqlJobItem";
     this.description = sqlJobId;
     this.tooltip = l10n.t("SQL Job: {0}", sqlJobId);
@@ -66,6 +66,14 @@ class SqlJobItem extends EnvironmentItem {
       command: "code-for-ibmi.showJobLog",
       arguments: [sqlJobId]
     };
+  }
+
+  getChildren() {
+    const jdbcOptions = instance.getConnection()?.getSqlJobJDBCOptions() || {};
+    return Object.entries(jdbcOptions)
+      .map(([key, value]) => ({ key, value }))
+      .filter(option => option.value !== undefined && option.value !== null)
+      .map(option => new ConnectionInfoItem(this, option.key, String(option.value), "symbol-property"));
   }
 }
 
@@ -471,12 +479,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         await storage.clearDeprecatedLastProfile();
       }
       updateUIContext(config.currentProfile);
-      environmentView.refresh();
     }
-  });
-
-  instance.subscribe(context, 'disconnected', 'Refresh environment view on disconnect', () => {
-    environmentView.refresh();
   });
 }
 
