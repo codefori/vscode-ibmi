@@ -39,7 +39,7 @@ export namespace Deployment {
       vscode.commands.registerCommand(`code-for-ibmi.launchActionsSetup`, DeployTools.launchActionsSetup),
       vscode.commands.registerCommand(`code-for-ibmi.launchDeploy`, DeployTools.launchDeploy),
       vscode.commands.registerCommand(`code-for-ibmi.deploySelected`, async (item?: Uri, items?: Uri[]) => {
-        if(!(item instanceof Uri)) {
+        if (!(item instanceof Uri)) {
           vscode.window.showErrorMessage(`No files selected for deployment.`);
           return;
         }
@@ -64,7 +64,7 @@ export namespace Deployment {
 
     const workspaces = vscode.workspace.workspaceFolders;
     if (workspaces && workspaces.length > 0) {
-      workspaceWatcher().then(context.subscriptions.push);
+      workspaceWatcher().then(watcher => context.subscriptions.push(watcher));
     }
 
     instance.subscribe(
@@ -316,7 +316,7 @@ export namespace Deployment {
 
   /**
    * Check if default CCSID of created/deployed files is not 1208 (utf-8).
-   * 
+   *
    * @returns `true` if the default CCSID of IFS files is not 1208.
    */
   async function mustFixCCSID() {
