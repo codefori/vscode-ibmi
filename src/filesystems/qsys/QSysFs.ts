@@ -27,7 +27,13 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
 
 export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
     const fsOptions = parseFSOptions(uri);
-    if (instance.getConnection()?.getConfig().readOnlyMode || fsOptions.readonly) {
+    const connection = instance.getConnection();
+    const content = connection?.getContent();
+    // Re-checked on every stat(), instead of trusting only the readonly flag baked into the
+    // uri's query at open time, so that a protected path is enforced even on a document that
+    // was opened (or restored by VS Code) before it became protected.
+    const protectedPath = content?.isProtectedPath(uri.scheme === `member` ? uri.path.substring(1) : uri.path) || false;
+    if (connection?.getConfig().readOnlyMode || fsOptions.readonly || protectedPath) {
         return FilePermission.Readonly;
     }
 }
