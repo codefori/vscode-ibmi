@@ -16,7 +16,7 @@ const testConfig = new JsonConfig();
 export async function newConnection(reloadSettings?: boolean) {
   // Setup credentials
   const credentials: ConnectionData = {
-    name: `${envVars.VITE_DB_USER}@${envVars.VITE_SERVER}_test`,
+    name: `${envVars.VITE_DB_USER}@${envVars.VITE_SERVER}`,
     host: envVars.VITE_SERVER,
     username: envVars.VITE_DB_USER,
     port: envVars.VITE_DB_PORT,
