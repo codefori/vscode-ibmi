@@ -230,14 +230,30 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(rows?.length).not.toBe(0);
 
     const firstRow = rows![0];
-    expect(typeof firstRow['BALDUE']).toBe('number');
+    expect(typeof firstRow['BALDUE']).toBe('string');
     expect(typeof firstRow['CITY']).toBe('string');
   });
 
-  it('Test runSQL (large number)', async () => {
-    const bigNumber = "80000000000000000002";
-    const rows = await connection.runSQL(`values ${bigNumber}`);
-    expect(rows[0]["00001"]).toBe(bigNumber);
+  it('Test runSQL (with large and small integers/decimals avoids truncation)', async () => {
+    const largeInteger = "123456789012345678901";
+    const res1 = await connection.runSQL(`values(cast('${largeInteger}' as numeric(21,0)))`);
+    expect(res1[0]["00001"]).toBe(largeInteger);
+
+    const largeDecimal = "123456789012345678901.1";
+    const res2 = await connection.runSQL(`values(cast('${largeDecimal}' as decimal(22, 1)))`);
+    expect(res2[0]["00001"]).toBe(largeDecimal);
+
+    const smallInteger = 12345;
+    const res3 = await connection.runSQL(`values(cast('${smallInteger}' as numeric(5,0)))`);
+    expect(res3[0]["00001"]).toBe(smallInteger);
+
+    const smallDecimal = 123.45;
+    const res4 = await connection.runSQL(`values(cast('${smallDecimal}' as decimal(5, 2)))`);
+    expect(res4[0]["00001"]).toBe(smallDecimal);
+
+    const small2Decimal = "1.00";
+    const res5 = await connection.runSQL(`values(cast('${small2Decimal}' as decimal(3, 2)))`);
+    expect(res5[0]["00001"]).toBe(small2Decimal);
   });
 
   it('Test runSQL (decimal)', async () => {
@@ -289,7 +305,7 @@ describe('Content Tests', { concurrent: true }, () => {
 
     // Verify row structure is still correct
     const firstRow = limitedRows[0];
-    expect(typeof firstRow['BALDUE']).toBe('number');
+    expect(typeof firstRow['BALDUE']).toBe('string');
     expect(typeof firstRow['CITY']).toBe('string');
 
     // Test with rows parameter set to 1

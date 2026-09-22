@@ -20,7 +20,7 @@ export class SSHSQLJob extends SQLJob {
         if (err) {
           reject(err);
         }
-        
+
         let outString = ``;
 
         stream.stderr.on(`data`, (data: Buffer) => {
@@ -38,7 +38,8 @@ export class SSHSQLJob extends SQLJob {
               outString = ``;
               try {
                 const response: ServerResponse = JSON.parse(thisMsg, ((key: any, value: string, context: any) => {
-                  if (context && typeof value === 'number' && !Number.isSafeInteger(value)) {
+                  // 'context' on the reviver callback requires Node >= 22, so this silently fails on older versions
+                  if (context && typeof value === 'number' && String(value) !== context.source) {
                     return context.source;
                   }
                   return value;
