@@ -84,37 +84,6 @@ export namespace Deployment {
           } else {
             button.hide();
           }
-
-          const existingPaths = storage.getDeployment();
-
-          if (workspaces.length === 1) {
-            const workspace = workspaces[0];
-
-            if (existingPaths && !existingPaths[workspace.uri.fsPath]) {
-              const possibleDeployDir = DeployTools.buildPossibleDeploymentDirectory(workspace);
-              vscode.window.showInformationMessage(
-                `Deploy directory for Workspace not setup. Would you like to default to '${possibleDeployDir}'?`,
-                `Yes`,
-                `Ignore`
-              ).then(async result => {
-                if (result === `Yes`) {
-                  DeployTools.setDeployLocation({ path: possibleDeployDir }, workspace);
-                }
-              });
-            }
-
-            ActionTools.getActions(workspace).then(result => {
-              if (result.length === 0) {
-                vscode.window.showInformationMessage(
-                  `There are no local Actions defined for this project.`,
-                  `Run Setup`
-                ).then(result => {
-                  if (result === `Run Setup`)
-                    vscode.commands.executeCommand(`code-for-ibmi.launchActionsSetup`);
-                });
-              }
-            })
-          }
         }
       });
 
