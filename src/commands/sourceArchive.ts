@@ -106,21 +106,18 @@ async function pickSnapshot(instance: Instance, memberUri?: vscode.Uri): Promise
     }
 
     const activeSearchSnapshot = memberUri ? await listSourceMemberSnapshots(connection, memberUri) : [];
-    const defaultSearch = memberUri
-        ? (activeSearchSnapshot[0] ? `${activeSearchSnapshot[0].library}/${activeSearchSnapshot[0].file}/${activeSearchSnapshot[0].member}` : "")
-        : "";
 
     type ArchiveQuickPickItem = vscode.QuickPickItem & { snapshot: SourceArchiveSnapshotInfo };
 
     return await new Promise<SourceArchiveSnapshotInfo | undefined>(resolve => {
         const quickPick = window.createQuickPick<ArchiveQuickPickItem>();
         quickPick.title = l10n.t("Source Member Archive");
-        quickPick.placeholder = l10n.t("Type any part of the library, file, or member name.");
+        quickPick.placeholder = l10n.t("Type any part of the library, file, or member name. Examples: MYSTUFF, QRPGLESRC, COZZISRC/QRPGLESRC");
         quickPick.canSelectMany = false;
         quickPick.ignoreFocusOut = true;
         quickPick.matchOnDescription = false;
         quickPick.matchOnDetail = false;
-        quickPick.value = defaultSearch;
+        quickPick.value = ``;
 
         let requestId = 0;
 
@@ -128,17 +125,25 @@ async function pickSnapshot(instance: Instance, memberUri?: vscode.Uri): Promise
             const query = quickPick.value.trim();
             const currentRequest = ++requestId;
 
-            if (!query && !memberUri) {
-                quickPick.items = [];
+            if (!query) {
+                quickPick.busy = true;
+                const snapshots = memberUri ? activeSearchSnapshot : await listSourceMemberSnapshotsMatching(connection, query);
+                if (currentRequest !== requestId) {
+                    return;
+                }
+
+                quickPick.items = snapshots.map(snapshot => ({
+                    label: `${snapshot.library}/${snapshot.file}/${snapshot.memberLabel}`,
+                    description: getSnapshotLabel(snapshot),
+                    detail: `${snapshot.reason} · ${snapshot.memberPath}`,
+                    snapshot,
+                }));
                 quickPick.busy = false;
                 return;
             }
 
             quickPick.busy = true;
-
-            const snapshots = query && memberUri && query === defaultSearch
-                ? activeSearchSnapshot
-                : await listSourceMemberSnapshotsMatching(connection, query || defaultSearch);
+            const snapshots = await listSourceMemberSnapshotsMatching(connection, query);
 
             if (currentRequest !== requestId) {
                 return;

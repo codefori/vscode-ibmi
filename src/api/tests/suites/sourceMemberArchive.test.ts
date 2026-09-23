@@ -185,6 +185,22 @@ describe("sourceMemberArchive", () => {
         expect(snapshots[0].reason).toBe("manual-restore");
     });
 
+    it("matches partial member names without requiring the full 3-part path", async () => {
+        const rootPath = await newTempDir();
+        const connection = createMockConnection(rootPath);
+
+        await archiveSourceMemberSnapshot({
+            connection: connection as any,
+            uri: createMemberUri(),
+            body: "hello",
+            reason: "save-before-write",
+        });
+
+        const snapshots = await listSourceMemberSnapshotsMatching(connection as any, "HELLO");
+        expect(snapshots).toHaveLength(1);
+        expect(snapshots[0].member).toBe("HELLO");
+    });
+
     it("enforces retention limit per member", async () => {
         const rootPath = await newTempDir();
         const connection = createMockConnection(rootPath, { sourceMemberSaveArchiveMaxFiles: 2 });
