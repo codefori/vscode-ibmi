@@ -4,13 +4,13 @@ import IBMi from '../../IBMi';
 import { SearchTools } from '../../SearchTools';
 import { Tools } from '../../Tools';
 import { SearchResults } from '../../types';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
+import { disposeConnection, envVars, newConnection } from '../setup/connection';
 
 describe('Search Tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT)
+  }, envVars.VITE_CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     await disposeConnection(connection);

@@ -6,13 +6,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from '../../IBMi';
 import { Tools } from '../../Tools';
 import { ModuleExport, ProgramExportImportInfo } from '../../types';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
+import { disposeConnection, envVars, newConnection } from '../setup/connection';
 
 describe('Content Tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT)
+  }, envVars.VITE_CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     await disposeConnection(connection);

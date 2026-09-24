@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import IBMi from "../../IBMi";
 import { SearchTools } from "../../SearchTools";
 import { Tools } from "../../Tools";
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from "../connection";
+import { disposeConnection, envVars, newConnection } from "../setup/connection";
 
 const SPFNAME = `VSCODESPFT`;
 const MBRNAME = `VSCODEMBRT`;
@@ -54,7 +54,7 @@ describe(`iASP tests`, { concurrent: true }, () => {
       console.log(`Skipping iASP tests, no iASP set in configuration.`);
       skipAsp = true;
     }
-  }, CONNECTION_TIMEOUT)
+  }, envVars.VITE_CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     await connection.runCommand({ command: `QSYS/DLTLIB LIB(${tempLib})` });
