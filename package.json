@@ -236,6 +236,27 @@
 								"default": true,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
+							"useMapepireForSourceMemberSaves": {
+								"type": "boolean",
+								"default": false,
+								"description": "When enabled, source member saves with source dates use a Mapepire SQL staging flow with alias-based SQL INSERT instead of the legacy RUNSQLSTM temporary script flow."
+							},
+							"sourceMemberSaveArchiveEnabled": {
+								"type": "boolean",
+								"default": true,
+								"description": "When enabled, the previous source member content is archived locally before source-date writes."
+							},
+							"sourceMemberSaveArchivePath": {
+								"type": "string",
+								"default": "~/.code-for-ibmi/source-archive",
+								"description": "Directory used for local source save archive snapshots. Relative paths resolve from the first workspace folder."
+							},
+							"sourceMemberSaveArchiveMaxFiles": {
+								"type": "number",
+								"default": 25,
+								"minimum": 1,
+								"description": "Maximum number of local archive snapshots to keep per source member."
+							},
 							"sourceDateGutter": {
 								"type": "boolean",
 								"default": false,
@@ -1160,6 +1181,18 @@
 				"command": "code-for-ibmi.member.newDateSearch",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Apply Source Date Filter",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.sourceArchive.openSnapshot",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Open Source Archive Snapshot",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.sourceArchive.restoreToHost",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Restore Source Archive Snapshot to IBM i Server",
 				"category": "IBM i"
 			},
 			{
@@ -2228,6 +2261,11 @@
 			],
 			"editor/context": [
 				{
+					"command": "code-for-ibmi.sourceArchive.restoreToHost",
+					"when": "code-for-ibmi:connected && resourceScheme == code-for-ibmi-archive",
+					"group": "1_codefori@0"
+				},
+				{
 					"submenu": "code-for-ibmi.createSharedSnippet",
 					"when": "code-for-ibmi:connected && !isInDiffEditor",
 					"group": "1_codefori@1"
@@ -2454,6 +2492,14 @@
 				},
 				{
 					"command": "code-for-ibmi.goToFile",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.sourceArchive.openSnapshot",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.sourceArchive.restoreToHost",
 					"when": "code-for-ibmi:connected"
 				},
 				{
@@ -3014,6 +3060,11 @@
 					"command": "code-for-ibmi.refreshFile",
 					"when": "code-for-ibmi:connected && (resourceScheme == streamfile || resourceScheme == member)",
 					"group": "navigation@4"
+				},
+				{
+					"command": "code-for-ibmi.sourceArchive.restoreToHost",
+					"when": "code-for-ibmi:connected && resourceScheme == member",
+					"group": "navigation@5"
 				}
 			],
 			"view/item/context": [
@@ -3595,6 +3646,7 @@
 		"lint": "eslint src/**/*.js --no-error-on-unmatched-pattern",
 		"pretest": "npm run lint",
 		"test": "vitest run",
+		"test:unit": "vitest run --config vitest.unit.config.ts",
 		"package": "vsce package --allow-package-all-secrets",
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
