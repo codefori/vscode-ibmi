@@ -256,6 +256,14 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(res5[0]["00001"]).toBe(small2Decimal);
   });
 
+  it('Test runSQL (decimal column has consistent type across rows)', async () => {
+    const rows = await connection.runSQL(`values (cast(500.00 as decimal(7, 2))), (cast(58.75 as decimal(7, 2))), (cast(1.50 as decimal(7, 2))), (cast(0.00 as decimal(7, 2)))`);
+    expect(rows.length).toBe(4);
+
+    const types = new Set(rows.map(row => typeof row["00001"]));
+    expect(types.size).toBe(1);
+  });
+
   it('Test runSQL (decimal)', async () => {
     const rows = await connection.runSQL(`values cast(123.45 as decimal(5,2))`);
     expect(rows[0]["00001"]).toBe(123.45);
