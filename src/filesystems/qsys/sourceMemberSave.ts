@@ -5,12 +5,51 @@ import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
 import { archiveSourceMemberSnapshot } from "./sourceMemberArchive";
 
 const DEFAULT_SRCDTA_LENGTH = 100;
-const STAGING_TABLE_NAME = `C4I_SRCSAVE`;
-const STAGING_TABLE = `QTEMP.${STAGING_TABLE_NAME}`;
-const TARGET_ALIAS_NAME = `C4I_MBR_ALIAS`;
-const TARGET_ALIAS = `QTEMP.${TARGET_ALIAS_NAME}`;
-const BACKUP_TABLE_NAME = `C4I_BACKUP`;
-const BACKUP_TABLE = `QTEMP.${BACKUP_TABLE_NAME}`;
+const saveQueues = new Map<string, Promise<void>>();
+
+function getConnectionSaveKey(connection: IBMi): string {
+    return connection.currentConnectionName || connection.currentHost || `default`;
+}
+
+async function enqueueSourceMemberSave<T>(connection: IBMi, task: () => Promise<T>): Promise<T> {
+    const key = getConnectionSaveKey(connection);
+    const previous = saveQueues.get(key) ?? Promise.resolve();
+    let release: (() => void) | undefined;
+    const current = new Promise<void>((resolve) => {
+        release = resolve;
+    });
+
+    saveQueues.set(key, previous.then(() => current));
+
+    try {
+        await previous;
+        return await task();
+    } finally {
+        release?.();
+        if (saveQueues.get(key) === current) {
+            saveQueues.delete(key);
+        }
+    }
+}
+
+function sanitizeTempObjectSegment(value: string): string {
+    return value
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_]/g, `_`)
+        .replace(/_+/g, `_`)
+        .replace(/^_+|_+$/g, ``)
+        .slice(0, 10);
+}
+
+function buildTempObjectName(prefix: string, library: string, file: string, member: string): string {
+    const identity = [library, file, member]
+        .map(segment => sanitizeTempObjectSegment(segment))
+        .filter(Boolean)
+        .join(`_`);
+
+    return `QTEMP.${prefix}_${identity}`;
+}
 
 interface SaveSourceMbrOptions {
     connection: IBMi;
@@ -44,14 +83,17 @@ async function readRecordLength(connection: IBMi, uri: vscode.Uri, alias: string
 
 async function saveRowsToHost(connection: IBMi, uri: vscode.Uri, rows: [number, number, string][], recordLength: number) {
     const { library, file, name } = connection.parserMemberPath(uri.path);
+    const targetAlias = buildTempObjectName(`C4I_MBR_ALIAS`, library, file, name);
+    const stagingTable = buildTempObjectName(`C4I_SRCSAVE`, library, file, name);
+    const backupTable = buildTempObjectName(`C4I_BACKUP`, library, file, name);
     const startedAt = Date.now();
     let completed = false;
 
     try {
-        await connection.runSQL(`CREATE OR REPLACE ALIAS ${TARGET_ALIAS} FOR ${library}.${file}(${name})`);
+        await connection.runSQL(`CREATE OR REPLACE ALIAS ${targetAlias} FOR ${library}.${file}(${name})`);
 
         await connection.runSQL(
-            `CREATE OR REPLACE TABLE ${STAGING_TABLE} LIKE "${library}"."${file}" ON REPLACE DELETE ROWS;`
+            `CREATE OR REPLACE TABLE ${stagingTable} LIKE "${library}"."${file}" ON REPLACE DELETE ROWS;`
         );
 
         const rowsPerBatch = 500;
@@ -66,7 +108,7 @@ async function saveRowsToHost(connection: IBMi, uri: vscode.Uri, rows: [number, 
             const bindings = batch.map(row => row[2]);
             try {
                 await connection.runSQL(
-                    `insert into ${STAGING_TABLE} (SRCSEQ, SRCDAT, SRCDTA) values ${valuesSql}`,
+                    `insert into ${stagingTable} (SRCSEQ, SRCDAT, SRCDTA) values ${valuesSql}`,
                     { bindings }
                 );
             } catch (batchInsertError) {
@@ -80,12 +122,12 @@ async function saveRowsToHost(connection: IBMi, uri: vscode.Uri, rows: [number, 
         }
 
         await connection.runSQL([
-            `CREATE OR REPLACE TABLE ${BACKUP_TABLE} LIKE ${STAGING_TABLE} ON REPLACE DELETE ROWS`,
-            `Insert into ${BACKUP_TABLE} (SRCSEQ, SRCDAT, SRCDTA) Select SRCSEQ, case when locate('40', hex(SRCDAT)) > 0 then 0 else SRCDAT end, SRCDTA From ${TARGET_ALIAS}`
+            `CREATE OR REPLACE TABLE ${backupTable} LIKE ${stagingTable} ON REPLACE DELETE ROWS`,
+            `Insert into ${backupTable} (SRCSEQ, SRCDAT, SRCDTA) Select SRCSEQ, case when locate('40', hex(SRCDAT)) > 0 then 0 else SRCDAT end, SRCDTA From ${targetAlias}`
         ].join(`;\n`));
 
-        const [stagingCountRow] = await connection.runSQL(`Select count(*) as C from ${STAGING_TABLE}`);
-        const [backupCountRow] = await connection.runSQL(`Select count(*) as C from ${BACKUP_TABLE}`);
+        const [stagingCountRow] = await connection.runSQL(`Select count(*) as C from ${stagingTable}`);
+        const [backupCountRow] = await connection.runSQL(`Select count(*) as C from ${backupTable}`);
         const expectedCount = Number(stagingCountRow?.C ?? 0);
         const backupCount = Number(backupCountRow?.C ?? 0);
 
@@ -93,17 +135,17 @@ async function saveRowsToHost(connection: IBMi, uri: vscode.Uri, rows: [number, 
 
         try {
             await connection.runSQL([
-                `Delete from ${TARGET_ALIAS}`,
-                `Insert into ${TARGET_ALIAS} (SRCSEQ, SRCDAT, SRCDTA) Select SRCSEQ, SRCDAT, Substr(SRCDTA, 1, ${recordLength}) From ${STAGING_TABLE} Order by SRCSEQ`
+                `Delete from ${targetAlias}`,
+                `Insert into ${targetAlias} (SRCSEQ, SRCDAT, SRCDTA) Select SRCSEQ, SRCDAT, Substr(SRCDTA, 1, ${recordLength}) From ${stagingTable} Order by SRCSEQ`
             ].join(`;\n`));
 
-            const [targetCountRow] = await connection.runSQL(`Select count(*) as C from ${TARGET_ALIAS}`);
+            const [targetCountRow] = await connection.runSQL(`Select count(*) as C from ${targetAlias}`);
             const targetCount = Number(targetCountRow?.C ?? 0);
 
             if (targetCount !== expectedCount) {
                 await connection.runSQL([
-                    `Delete from ${TARGET_ALIAS}`,
-                    `Insert into ${TARGET_ALIAS} (SRCSEQ, SRCDAT, SRCDTA) Select SRCSEQ, SRCDAT, SRCDTA From ${BACKUP_TABLE} Order by SRCSEQ`
+                    `Delete from ${targetAlias}`,
+                    `Insert into ${targetAlias} (SRCSEQ, SRCDAT, SRCDTA) Select SRCSEQ, SRCDAT, SRCDTA From ${backupTable} Order by SRCSEQ`
                 ].join(`;\n`)).catch(() => { });
 
                 throw new Error(`Post-save verification failed (expected ${expectedCount} rows, found ${targetCount}). Restored backup content.`);
@@ -113,8 +155,8 @@ async function saveRowsToHost(connection: IBMi, uri: vscode.Uri, rows: [number, 
             completed = true;
         } catch (saveError) {
             await connection.runSQL([
-                `Delete from ${TARGET_ALIAS}`,
-                `Insert into ${TARGET_ALIAS} (SRCSEQ, SRCDAT, SRCDTA) Select SRCSEQ, SRCDAT, SRCDTA From ${BACKUP_TABLE} Order by SRCSEQ`
+                `Delete from ${targetAlias}`,
+                `Insert into ${targetAlias} (SRCSEQ, SRCDAT, SRCDTA) Select SRCSEQ, SRCDAT, SRCDTA From ${backupTable} Order by SRCSEQ`
             ].join(`;\n`)).catch(() => { });
 
             connection.appendOutput(`[Source save] Mapepire SQL save failed; attempted backup restore.\n`);
@@ -122,9 +164,9 @@ async function saveRowsToHost(connection: IBMi, uri: vscode.Uri, rows: [number, 
             throw saveError;
         }
     } finally {
-        await connection.runSQL(`Drop alias ${TARGET_ALIAS}`).catch(() => { });
-        await connection.runSQL(`Drop table ${BACKUP_TABLE}`).catch(() => { });
-        await connection.runSQL(`Drop table ${STAGING_TABLE}`).catch(() => { });
+        await connection.runSQL(`Drop alias ${targetAlias}`).catch(() => { });
+        await connection.runSQL(`Drop table ${backupTable}`).catch(() => { });
+        await connection.runSQL(`Drop table ${stagingTable}`).catch(() => { });
 
         const elapsedMs = Date.now() - startedAt;
         connection.appendOutput(`[Source save] Mapepire SQL ${completed ? `completed` : `finished with errors`} in ${elapsedMs}ms.\n`);
@@ -187,44 +229,47 @@ export async function restoreSourceMbrToHost(options: RestoreSourceMbrOptions) {
 
 export async function saveSourceMbrToHost(options: SaveSourceMbrOptions) {
     const { connection, uri, body, sourceDateHandler, ensureBaseSourceLoaded } = options;
-    const alias = getAliasName(uri);
-    const { library, file, name } = connection.parserMemberPath(uri.path);
 
-    connection.appendOutput(`[Source save] Using Mapepire SQL save for ${library}/${file}(${name})\n`);
+    await enqueueSourceMemberSave(connection, async () => {
+        const alias = getAliasName(uri);
+        const { library, file, name } = connection.parserMemberPath(uri.path);
 
-    if (!sourceDateHandler.baseSource.has(alias)) {
-        await ensureBaseSourceLoaded();
-    }
+        connection.appendOutput(`[Source save] Using Mapepire SQL save for ${library}/${file}(${name})\n`);
 
-    const previousBody = sourceDateHandler.baseSource.get(alias);
-    const previousSourceDates = sourceDateHandler.baseDates.get(alias);
-    const existingLanguageId = vscode.workspace.textDocuments.find(document => document.uri.toString() === uri.toString())?.languageId;
-    if (typeof previousBody === `string` && previousBody !== body) {
-        try {
-            const archivePath = await archiveSourceMemberSnapshot({
-                connection,
-                uri,
-                body: previousBody,
-                reason: `save-before-write`,
-                sourceDates: previousSourceDates,
-                languageId: existingLanguageId,
-            });
-
-            if (archivePath) {
-                connection.appendOutput(`[Source save] Archived ${library}/${file}(${name}) to snapshot ${path.basename(archivePath)}\n`);
-            }
-        } catch (archiveError) {
-            connection.appendOutput(`[Source save] Local archive write failed; continuing save: ${String(archiveError)}\n`);
+        if (!sourceDateHandler.baseSource.has(alias)) {
+            await ensureBaseSourceLoaded();
         }
-    }
 
-    const sourceDates = sourceDateHandler.calcNewSourceDates(alias, body);
-    const recordLength = await readRecordLength(connection, uri, alias, sourceDateHandler);
-    const rows = buildRows(body, recordLength, sourceDates);
+        const previousBody = sourceDateHandler.baseSource.get(alias);
+        const previousSourceDates = sourceDateHandler.baseDates.get(alias);
+        const existingLanguageId = vscode.workspace.textDocuments.find(document => document.uri.toString() === uri.toString())?.languageId;
+        if (typeof previousBody === `string` && previousBody !== body) {
+            try {
+                const archivePath = await archiveSourceMemberSnapshot({
+                    connection,
+                    uri,
+                    body: previousBody,
+                    reason: `save-before-write`,
+                    sourceDates: previousSourceDates,
+                    languageId: existingLanguageId,
+                });
 
-    await saveRowsToHost(connection, uri, rows, recordLength);
+                if (archivePath) {
+                    connection.appendOutput(`[Source save] Archived ${library}/${file}(${name}) to snapshot ${path.basename(archivePath)}\n`);
+                }
+            } catch (archiveError) {
+                connection.appendOutput(`[Source save] Local archive write failed; continuing save: ${String(archiveError)}\n`);
+            }
+        }
 
-    sourceDateHandler.baseSource.set(alias, body);
-    sourceDateHandler.baseDates.set(alias, sourceDates);
-    sourceDateHandler.baseSequences.delete(alias);
+        const sourceDates = sourceDateHandler.calcNewSourceDates(alias, body);
+        const recordLength = await readRecordLength(connection, uri, alias, sourceDateHandler);
+        const rows = buildRows(body, recordLength, sourceDates);
+
+        await saveRowsToHost(connection, uri, rows, recordLength);
+
+        sourceDateHandler.baseSource.set(alias, body);
+        sourceDateHandler.baseDates.set(alias, sourceDates);
+        sourceDateHandler.baseSequences.delete(alias);
+    });
 }
