@@ -733,23 +733,33 @@
 					},
 					"default": [
 						{
-							"type": "member",
-							"extensions": [
-								"CBLLE",
-								"CBL"
-							],
-							"name": "Create Bound COBOL Program (CRTBNDCBL)",
-							"command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
-						},
-						{
-							"type": "member",
-							"extensions": [
-								"CBLLE",
-								"CBL"
-							],
-							"name": "Create Module CBLLE (CRTCBLMOD)",
-							"command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
-						},
+								"type": "member",
+								"extensions": [
+									"CBLLE",
+									"CBL"
+								],
+								"name": "Create Bound COBOL Program (CRTBNDCBL)",
+								"command": "?CRTBNDCBL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*APOST) CVTOPT(*DATETIME) DBGVIEW(*SOURCE)"
+							},
+							{
+								"type": "member",
+								"extensions": [
+									"CBLLE",
+									"CBL"
+								],
+								"name": "Create Module CBLLE (CRTCBLMOD)",
+								"command": "?CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*APOST) CVTOPT(*DATETIME) DBGVIEW(*SOURCE)"
+							},
+							{
+								"type": "member",
+								"extensions": [
+									"SQLCBLLE",
+									"CBLLE",
+									"CBL"
+								],
+								"name": "Create SQL ILE COBOL Object (CRTSQLCBLI)",
+								"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) COMMIT(*NONE) CLOSQLCSR(*ENDMOD) OBJTYPE(*PGM) DBGVIEW(*SOURCE) OPTION(*APOST)"
+							},
 						{
 							"type": "member",
 							"extensions": [

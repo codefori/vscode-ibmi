@@ -33,15 +33,22 @@ export const LocalLanguageActions: Record<string, Action[]> = {
   ],
   COBOL: [
     {
+      name: `Create Bound COBOL Program (CRTBNDCBL)`,
+      command: `CRTBNDCBL PGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*APOST) CVTOPT(*DATETIME) DBGVIEW(*SOURCE)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`CBLLE`, `CBL`]
+    },
+    {
       name: `Create COBOL Program (SQL)`,
-      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB) TOSRCFILE(&CURLIB/QSQLTEMP)`,
+      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') COMMIT(*NONE) CLOSQLCSR(*ENDMOD) OBJTYPE(*PGM) OPTION(*APOST) DBGVIEW(*SOURCE) CVTCCSID(*JOB) TOSRCFILE(&CURLIB/QSQLTEMP)`,
       deployFirst: true,
       environment: `ile`,
       extensions: [`SQLCBL`, `SQLCBBLE`, `SQLCBLLE`, `COB`, `CBLLE`, `CBL`, `CBBLE`]
     },
     {
       name: `Create COBOL Module (SQL)`,
-      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OBJTYPE(*MODULE) OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB) TOSRCFILE(&CURLIB/QSQLTEMP)`,
+      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OBJTYPE(*MODULE) COMMIT(*NONE) CLOSQLCSR(*ENDMOD) OPTION(*APOST) DBGVIEW(*SOURCE) CVTCCSID(*JOB) TOSRCFILE(&CURLIB/QSQLTEMP)`,
       deployFirst: true,
       environment: `ile`,
       extensions: [`SQLCBL`, `SQLCBBLE`, `SQLCBLLE`, `COB`, `CBLLE`, `CBL`, `CBBLE`]
