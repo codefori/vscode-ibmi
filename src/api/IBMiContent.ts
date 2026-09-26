@@ -945,11 +945,11 @@ export default class IBMiContent {
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
     const inAmerican = (s: string) => { return this.ibmi.sysNameInAmerican(s) };
     const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
-
+    const paseSantize = (s: string) => {if (s.startsWith('$')) return `\\${s}`; return s}
     // Escape names for shell
     const pathList: string[] = [];
     for (const file of files) {
-      pathList.push(Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), await this.ibmi.getLibraryIAsp(file.library), true));
+      pathList.push(Tools.qualifyPath(inAmerican(paseSantize(file.library)), inAmerican(paseSantize(file.name)), inAmerican(paseSantize(member)), await this.ibmi.getLibraryIAsp(file.library), true));
     }
 
     const command = `for f in ${pathList.join(' ').toUpperCase()}; do if [ -f $f ]; then echo $f; break; fi; done`;
