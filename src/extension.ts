@@ -4,13 +4,11 @@ import { commands, ExtensionContext, l10n, languages, window, workspace } from "
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import path from "path";
 import IBMi from "./api/IBMi";
 import { SearchTools } from "./api/SearchTools";
 import { ActionTools } from "./api/actions";
 import { extensionComponentRegistry } from "./api/components/manager";
 import { Mapepire } from "./api/components/mapepire";
-import { SSHSQLJob } from "./api/components/mapepire/sshSqlJob";
 import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
 import { onCodeForIBMiConfigurationChange, ViewSettings } from "./config/Configuration";
@@ -53,11 +51,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
-
-  SSHSQLJob.application = `${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`;
-  commands.registerCommand(`code-for-ibmi.sshSqlJob.appendApplicationName`, (applicationName: string) => {
-    SSHSQLJob.application = `${applicationName} | ${SSHSQLJob.application}`;
-  });
 
   await loadAllofExtension(context);
 
@@ -146,7 +139,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     });
   }
 
-  const mapepire = new Mapepire(path.join(context.extensionPath, `dist`), async (connection) => {
+  const mapepire = new Mapepire(`${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`, async (connection) => {
     return await getPassword(connection, l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName));
   });
   extensionComponentRegistry.registerComponent(context, mapepire);
