@@ -461,5 +461,9 @@
   "You are not allowed to write into {0}: the file will open as read only.": "You are not allowed to write into {0}: the file will open as read only.",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "You are using this system at your own risk. Do not share any sensitive or private information.",
   "You don't have the rights to write into {0}.": "You don't have the rights to write into {0}.",
-  "Your changes will be discarded": "Your changes will be discarded"
+  "Your changes will be discarded": "Your changes will be discarded",
+  "Selected": "Selected",
+  "{0} file(s) this Action runs on, uploaded even if unchanged": "{0} file(s) this Action runs on, uploaded even if unchanged",
+  "Action files": "Action files",
+  "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.": "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method."
 }

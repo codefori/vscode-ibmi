@@ -426,5 +426,9 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Bon...c'est vraiment long là! Espérons que vous allez trouver ce que vous cherchez! 🤞🏻",
   "Yes": "Oui",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Vous êtes seul responsable de l'utilisation du bas à sable. Ne partagez pas d'informations à caractère sensible ou privé.",
-  "Your changes will be discarded": "Vos modifications vont être perdues"
+  "Your changes will be discarded": "Vos modifications vont être perdues",
+  "Selected": "Selected",
+  "{0} file(s) this Action runs on, uploaded even if unchanged": "{0} file(s) this Action runs on, uploaded even if unchanged",
+  "Action files": "Action files",
+  "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.": "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method."
 }
