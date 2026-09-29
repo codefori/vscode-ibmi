@@ -35,4 +35,4 @@ jobs:
           VITE_DB_PASS: ${{ secrets.VITE_DB_PASS }}
           VITE_DB_PORT: ${{ secrets.VITE_DB_PORT }}
           VITE_TEMP_LIB: ${{ secrets.VITE_TEMP_LIB }}
-          VITE_CONNECTION_TIMEOUT: ${{ secrets.VITE_CONNECTION_TIMEOUT }}
+          VITE_CONNECTION_TIMEOUT: 90000
