@@ -430,5 +430,9 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Wow. Ci sta mettendo un po'... speriamo che tu ottenga il risultato sperato",
   "Yes": "Sì",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Stai usando questo sistema a tuo rischio e pericolo. Non condividere dati personali o sensibili.",
-  "Your changes will be discarded": "Tutte le modifiche verranno scartate"
+  "Your changes will be discarded": "Tutte le modifiche verranno scartate",
+  "Deploy {0} files": "Deploy {0} files",
+  "Use Working Changes": "Use Working Changes",
+  "{0} files were detected as changed since the last upload. Do you really want to upload all of them?": "{0} files were detected as changed since the last upload. Do you really want to upload all of them?",
+  "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool).": "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool)."
 }

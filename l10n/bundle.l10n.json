@@ -461,5 +461,9 @@
   "You are not allowed to write into {0}: the file will open as read only.": "You are not allowed to write into {0}: the file will open as read only.",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "You are using this system at your own risk. Do not share any sensitive or private information.",
   "You don't have the rights to write into {0}.": "You don't have the rights to write into {0}.",
-  "Your changes will be discarded": "Your changes will be discarded"
+  "Your changes will be discarded": "Your changes will be discarded",
+  "Deploy {0} files": "Deploy {0} files",
+  "Use Working Changes": "Use Working Changes",
+  "{0} files were detected as changed since the last upload. Do you really want to upload all of them?": "{0} files were detected as changed since the last upload. Do you really want to upload all of them?",
+  "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool).": "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool)."
 }

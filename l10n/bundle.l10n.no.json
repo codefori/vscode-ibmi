@@ -424,5 +424,9 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Uha, dette tar virkelig lang tid. La oss håpe du får ønsket resultat.",
   "Yes": "Ja",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Du bruker dette systemet på egen risiko. Ikke del sensitiv eller privat informasjon.",
-  "Your changes will be discarded": "Dine endringer vil bli slettet"
+  "Your changes will be discarded": "Dine endringer vil bli slettet",
+  "Deploy {0} files": "Deploy {0} files",
+  "Use Working Changes": "Use Working Changes",
+  "{0} files were detected as changed since the last upload. Do you really want to upload all of them?": "{0} files were detected as changed since the last upload. Do you really want to upload all of them?",
+  "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool).": "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool)."
 }
