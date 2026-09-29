@@ -303,4 +303,8 @@ export namespace Tools {
   export function getCurLib(value?:string){
     return !value || /\*CRTDFT/i.test(value) ? "*CURLIB" : value;
   }
+
+  export function escapeForShell(command: string) {
+    return command.replace(/\$/g, `\\$`)
+  }
 }
