@@ -143,6 +143,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     return await getPassword(connection, l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName));
   });
   extensionComponentRegistry.registerComponent(context, mapepire);
+  
+  context.subscriptions.push(
+    commands.registerCommand(`code-for-ibmi.sshSqlJob.appendApplicationName`, (applicationName: string) => {
+      mapepire.application = applicationName;
+    })
+  );
 
   registerURIHandler(context,
     sandboxURIHandler,

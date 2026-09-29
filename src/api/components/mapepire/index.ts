@@ -9,7 +9,7 @@ export class Mapepire implements IBMiComponent {
   private readonly jobs: Map<string, SQLJob> = new Map;
   private readonly status: SecureComponentState = { status: "Installed", remoteSignature: MAPEPIRE_SIGNATURE };
 
-  constructor(private application: string, private readonly passwordProvider?: (connectionName: IBMi) => Promise<string | undefined>) {
+  constructor(public application: string, private readonly passwordProvider?: (connectionName: IBMi) => Promise<string | undefined>) {
 
   }
 
@@ -51,14 +51,14 @@ export class Mapepire implements IBMiComponent {
         port: config.mapepireServerPort
       },
         //uncomment if https://github.com/Mapepire-IBMi/mapepire-js/pull/103 gets merged and released
-        //application
+        //this.application
       );
     }
     else {
       //Single mode over SSH
       await sqlJob.connect(undefined,
         //uncomment if https://github.com/Mapepire-IBMi/mapepire-js/pull/103 gets merged and released
-        //application
+        //this.application
       );
     }
 
