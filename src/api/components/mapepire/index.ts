@@ -1,5 +1,6 @@
 
 import { createNodeSSHConnection, JDBCOptions, JAR_SHA256 as MAPEPIRE_SIGNATURE, VERSION as MAPEPIRE_VERSION, SQLJob } from "@ibm/mapepire-js";
+import path from "path";
 import IBMi from "../../IBMi";
 import { IBMiComponent, SecureComponentState } from "../component";
 
@@ -8,6 +9,7 @@ export class Mapepire implements IBMiComponent {
 
   private readonly jobs: Map<string, SQLJob> = new Map;
   private readonly status: SecureComponentState = { status: "Installed", remoteSignature: MAPEPIRE_SIGNATURE };
+  private installDirectory = "";
 
   constructor(public application: string, private readonly passwordProvider?: (connectionName: IBMi) => Promise<string | undefined>) {
 
@@ -15,6 +17,10 @@ export class Mapepire implements IBMiComponent {
 
   getIdentification() {
     return { name: Mapepire.ID, version: MAPEPIRE_VERSION, signature: MAPEPIRE_SIGNATURE };
+  }
+
+  async setInstallDirectory(installDirectory: string) {
+    this.installDirectory = installDirectory;
   }
 
   async getRemoteState(_connection: IBMi, _installDirectory: string): Promise<SecureComponentState> {
@@ -31,7 +37,18 @@ export class Mapepire implements IBMiComponent {
   public async newJob(connection: IBMi, options?: { javaPath?: string, jdbc?: JDBCOptions, application?: string }) {
     const config = connection.getConfig();
     const useServer = config.mapepireUseServer;
-    const sqlJob = useServer ? new SQLJob() : SQLJob.withConfig({ transport: "ssh-single", sshSingle: createNodeSSHConnection(connection.client!) });
+    const sqlJob = useServer ?
+      //websocket client
+      new SQLJob() :
+      //single mode
+      SQLJob.withConfig({
+        transport: "ssh-single",
+        sshSingle: {
+          ...createNodeSSHConnection(connection.client!),
+          javaPath: options?.javaPath ? path.posix.join(options.javaPath, 'bin', 'java') : 'java',
+          privateInstallDir: this.installDirectory
+        }
+      });
     sqlJob.options.secure = sqlJob.options.secure || config.secureSQL;
     sqlJob.options.naming = sqlJob.options.naming || config.sqlJobNaming as ("sql" | "system" | undefined);
     sqlJob.options["extended metadata"] = sqlJob.options["extended metadata"] ?? config.mapepireExtendedMetadata;
@@ -51,14 +68,14 @@ export class Mapepire implements IBMiComponent {
         port: config.mapepireServerPort
       },
         //uncomment if https://github.com/Mapepire-IBMi/mapepire-js/pull/103 gets merged and released
-        //this.application
+        //application
       );
     }
     else {
       //Single mode over SSH
       await sqlJob.connect(undefined,
         //uncomment if https://github.com/Mapepire-IBMi/mapepire-js/pull/103 gets merged and released
-        //this.application
+        //application
       );
     }
 
