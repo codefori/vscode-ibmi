@@ -52,7 +52,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
               throw new Error(`Password request denied for extension ${displayName}.`);
             }
 
-            const storedPassword = await getPassword(instance.getConnection()!, prompt || `IBM i password requeted by ${displayName}`);
+            const storedPassword = await getPassword(instance.getConnection()!, prompt || `IBM i password requested by ${displayName}`);
 
             if (storedPassword) {
               let isAuthed = storage.getExtensionAuthorisation(extension.id) !== undefined;
