@@ -499,7 +499,8 @@
 				"code-for-ibmi.debug.certificateDirectory": {
 					"type": "string",
 					"default": "",
-					"markdownDescription": "Local folder where the debug service client certificate is stored. Leave empty to use your home directory (default). Use the \"Move certificate to extension storage\" button in a connection's Debugger settings to switch to the recommended, hidden location."
+					"scope": "machine",
+					"markdownDescription": "Local folder where the debug service client certificate is stored. Leave empty to use your home directory (default). Use the \"Move certificate to extension storage\" button in a connection's Debugger settings to switch to the recommended, hidden location. This is a machine-specific setting and is not synced via Settings Sync, since it points at a local filesystem path."
 				},
 				"code-for-ibmi.defaultOpenMode": {
 					"type": "string",
