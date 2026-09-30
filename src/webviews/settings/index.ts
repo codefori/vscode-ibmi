@@ -288,7 +288,10 @@ export class SettingsUI {
               }
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
                 .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
-                .addButtons({ id: `import`, label: `Download client certificate` });
+                .addButtons(
+                  { id: `import`, label: `Download client certificate` },
+                  certificates.isUsingRecommendedCertDirectory(context) ? undefined : { id: `useRecommendedCertLocation`, label: `Move certificate to extension storage` }
+                );
             }
           }
         } else if (connection) {
@@ -365,6 +368,10 @@ export class SettingsUI {
               switch (button) {
                 case `import`:
                   vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+                  break;
+
+                case `useRecommendedCertLocation`:
+                  vscode.commands.executeCommand(`code-for-ibmi.debug.setup.useRecommendedCertLocation`);
                   break;
 
                 case `clearAllowedExts`:
