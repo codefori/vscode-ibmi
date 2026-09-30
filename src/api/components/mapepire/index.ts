@@ -1,6 +1,7 @@
 
 import { createNodeSSHConnection, JDBCOptions, JAR_SHA256 as MAPEPIRE_SIGNATURE, VERSION as MAPEPIRE_VERSION, SQLJob } from "@ibm/mapepire-js";
 import path from "path";
+import { getJavaHome } from "../../configuration/DebugConfiguration";
 import IBMi from "../../IBMi";
 import { IBMiComponent, SecureComponentState } from "../component";
 
@@ -19,11 +20,8 @@ export class Mapepire implements IBMiComponent {
     return { name: Mapepire.ID, version: MAPEPIRE_VERSION, signature: MAPEPIRE_SIGNATURE };
   }
 
-  async setInstallDirectory(installDirectory: string) {
+  async getRemoteState(_connection: IBMi, installDirectory: string): Promise<SecureComponentState> {
     this.installDirectory = installDirectory;
-  }
-
-  async getRemoteState(_connection: IBMi, _installDirectory: string): Promise<SecureComponentState> {
     //Remote check is managed by mapepire-js - we always assume it's OK at this stage
     return this.status;
   }
@@ -45,7 +43,7 @@ export class Mapepire implements IBMiComponent {
         transport: "ssh-single",
         sshSingle: {
           ...createNodeSSHConnection(connection.client!),
-          javaPath: options?.javaPath ? path.posix.join(options.javaPath, 'bin', 'java') : 'java',
+          javaPath: getJavaPath(connection, options?.javaPath),
           privateInstallDir: this.installDirectory
         }
       });
@@ -102,4 +100,18 @@ export class Mapepire implements IBMiComponent {
   private async getPassword(connection: IBMi) {
     return this.passwordProvider?.(connection);
   }
+}
+
+function getJavaPath(connection: IBMi, javaPath?: string) {
+  if (!javaPath) {
+    const javaVersion = connection.getConfig().mapepireJavaVersion;
+    if (!Number.isNaN(Number(javaVersion))) {
+      const javaHome = getJavaHome(connection, javaVersion) || undefined;
+      if(javaHome){
+        javaPath = path.posix.join(javaHome, 'bin', 'java');
+      }
+    }
+  }
+
+  return javaPath;
 }
