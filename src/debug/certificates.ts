@@ -52,7 +52,13 @@ export function getRecommendedCertDirectory(context: vscode.ExtensionContext) {
 }
 
 export function isUsingRecommendedCertDirectory(context: vscode.ExtensionContext) {
-  return path.resolve(getCertificateDirectory()) === path.resolve(getRecommendedCertDirectory(context));
+  const current = path.resolve(getCertificateDirectory());
+  const recommended = path.resolve(getRecommendedCertDirectory(context));
+  // Windows/macOS filesystems are typically case-insensitive, so a differently-cased
+  // drive letter or path segment shouldn't be treated as a different directory.
+  return process.platform === `win32` || process.platform === `darwin`
+    ? current.toLowerCase() === recommended.toLowerCase()
+    : current === recommended;
 }
 
 export async function useRecommendedCertDirectory(context: vscode.ExtensionContext, connection: IBMi) {
