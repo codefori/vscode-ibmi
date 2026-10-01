@@ -90,6 +90,114 @@ describe('Content Tests', { concurrent: true }, () => {
     }
   });
 
+  it('memberResolve with $', async () => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempSPF = `$ABCD`.concat(connection!.variantChars.local);
+    const tempMbr = `$ABCD`.concat(connection!.variantChars.local);
+
+    try {
+      const result = await connection!.runCommand({
+        command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+        environment: 'ile'
+      });
+
+      const member = await content?.memberResolve(tempMbr, [
+        { library: 'QSYSINC', name: 'MIH' }, // Doesn't exist here
+        { library: 'NOEXIST', name: 'SUP' }, // Doesn't exist here
+        { library: tempLib, name: tempSPF } // Does exist here
+      ]);
+
+      expect(member).toEqual({
+        asp: undefined,
+        library: tempLib,
+        file: tempSPF,
+        name: tempMbr,
+        extension: 'MBR',
+        basename: `${tempMbr}.MBR`
+      });
+    }
+    finally {
+      // Cleanup...
+      await connection!.runCommand({
+        command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
+        environment: 'ile'
+      });
+    }
+  });
+
+  it('memberResolve with # ', async () => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempSPF = `#ABCD`.concat(connection!.variantChars.local);
+    const tempMbr = `#ABCD`.concat(connection!.variantChars.local);
+
+    try {
+      const result = await connection!.runCommand({
+        command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+        environment: 'ile'
+      });
+
+      const member = await content?.memberResolve(tempMbr, [
+        { library: 'QSYSINC', name: 'MIH' }, // Doesn't exist here
+        { library: 'NOEXIST', name: 'SUP' }, // Doesn't exist here
+        { library: tempLib, name: tempSPF } // Does exist here
+      ]);
+
+      expect(member).toEqual({
+        asp: undefined,
+        library: tempLib,
+        file: tempSPF,
+        name: tempMbr,
+        extension: 'MBR',
+        basename: `${tempMbr}.MBR`
+      });
+    }
+    finally {
+      // Cleanup...
+      await connection!.runCommand({
+        command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
+        environment: 'ile'
+      });
+    }
+  });
+
+  it('memberResolve with #$', async () => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempSPF = `#$ABCD`.concat(connection!.variantChars.local);
+    const tempMbr = `#$ABCD`.concat(connection!.variantChars.local);
+
+    try {
+      const result = await connection!.runCommand({
+        command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+        environment: 'ile'
+      });
+
+      const member = await content?.memberResolve(tempMbr, [
+        { library: 'QSYSINC', name: 'MIH' }, // Doesn't exist here
+        { library: 'NOEXIST', name: 'SUP' }, // Doesn't exist here
+        { library: tempLib, name: tempSPF } // Does exist here
+      ]);
+
+      expect(member).toEqual({
+        asp: undefined,
+        library: tempLib,
+        file: tempSPF,
+        name: tempMbr,
+        extension: 'MBR',
+        basename: `${tempMbr}.MBR`
+      });
+    }
+    finally {
+      // Cleanup...
+      await connection!.runCommand({
+        command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
+        environment: 'ile'
+      });
+    }
+  });
+
   it('memberResolve with bad name', async () => {
     const content = connection.getContent();
 
@@ -128,6 +236,90 @@ describe('Content Tests', { concurrent: true }, () => {
     const content = connection.getContent();
     const tempLib = connection.getConfig().tempLibrary;
     const tempObj = `O_ABC`.concat(connection!.variantChars.local);
+
+    try {
+      await connection!.runCommand({
+        command: `QSYS/CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+        environment: 'ile'
+      });
+
+      const lib = await content?.objectResolve(tempObj, [
+        'QSYSINC', // Doesn't exist here
+        'QSYS2', // Doesn't exist here
+        tempLib // Does exist here
+      ]);
+
+      expect(lib).toBe(tempLib);
+    }
+    finally {
+      // Cleanup...
+      await connection!.runCommand({
+        command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
+        environment: 'ile'
+      });
+    }
+  });
+
+  it('objectResolve .DTAARA with $', async () => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempObj = `$ABCD`.concat(connection!.variantChars.local);
+
+    try {
+      await connection!.runCommand({
+        command: `QSYS/CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+        environment: 'ile'
+      });
+
+      const lib = await content?.objectResolve(tempObj, [
+        'QSYSINC', // Doesn't exist here
+        'QSYS2', // Doesn't exist here
+        tempLib // Does exist here
+      ]);
+
+      expect(lib).toBe(tempLib);
+    }
+    finally {
+      // Cleanup...
+      await connection!.runCommand({
+        command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
+        environment: 'ile'
+      });
+    }
+  });
+
+  it('objectResolve .DTAARA with #', async () => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempObj = `#ABC`.concat(connection!.variantChars.local);
+
+    try {
+      await connection!.runCommand({
+        command: `QSYS/CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+        environment: 'ile'
+      });
+
+      const lib = await content?.objectResolve(tempObj, [
+        'QSYSINC', // Doesn't exist here
+        'QSYS2', // Doesn't exist here
+        tempLib // Does exist here
+      ]);
+
+      expect(lib).toBe(tempLib);
+    }
+    finally {
+      // Cleanup...
+      await connection!.runCommand({
+        command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
+        environment: 'ile'
+      });
+    }
+  });
+
+  it('objectResolve .DTAARA with #$', async () => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempObj = `#$ABC`.concat(connection!.variantChars.local);
 
     try {
       await connection!.runCommand({

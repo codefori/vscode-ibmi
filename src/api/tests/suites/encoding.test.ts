@@ -130,7 +130,7 @@ describe('Encoding tests', { concurrent: true }, () => {
 
   it('Run variants through shells', async () => {
     const text = `Hello${connection?.variantChars.local}world`;
-    const basicCommandA = `echo "${IBMi.escapeForShell(text)}"`;
+    const basicCommandA = `echo "${Tools.escapeForShell(text)}"`;
     const basicCommandB = `echo '${text}'`;
     const basicCommandC = `echo 'abc'\\''123'`;
     const printEscapeChar = `echo "\\\\"`;

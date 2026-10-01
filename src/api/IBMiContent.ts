@@ -944,12 +944,12 @@ export default class IBMiContent {
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
     const inAmerican = (s: string) => { return this.ibmi.sysNameInAmerican(s) };
-    const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
-
+    const inLocal =(s: string) => { return this.ibmi.sysNameInLocal(s) };
+    
     // Escape names for shell
     const pathList: string[] = [];
     for (const file of files) {
-      pathList.push(Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), await this.ibmi.getLibraryIAsp(file.library), true));
+      pathList.push(Tools.escapeForShell(Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), await this.ibmi.getLibraryIAsp(file.library), true)));
     }
 
     const command = `for f in ${pathList.join(' ').toUpperCase()}; do if [ -f $f ]; then echo $f; break; fi; done`;
@@ -975,7 +975,7 @@ export default class IBMiContent {
   }
 
   async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
-    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.sysNameInAmerican(lib)}.LIB/${this.ibmi.sysNameInAmerican(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+    const command = `for f in ${Tools.escapeForShell(libraries.map(lib => `/QSYS.LIB/${this.ibmi.sysNameInAmerican(lib)}.LIB/${this.ibmi.sysNameInAmerican(object)}.*`).join(` `))}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -1109,7 +1109,7 @@ export default class IBMiContent {
     let result: CommandResult;
 
     if (assumeMember) {
-      target = IBMi.escapeForShell(target);
+      target = Tools.escapeForShell(target);
       result = await this.ibmi.sendQsh({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
     } else {
       target = Tools.escapePath(target, true);
