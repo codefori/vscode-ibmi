@@ -67,6 +67,7 @@ export interface GlobalConfiguration {
   persistOutputOnConnect: boolean;
   sortActionsBy: 'usage' | 'name' | 'config';
   'IfsBrowser.DragAndDropDefaultBehavior': 'ask' | 'copy' | 'move';
+  'debug.certificateDirectory': string;
   autoRefresh: boolean;
   safeDeleteMode: boolean;
   'ObjectBrowser.showNamesInLowercase': boolean;
