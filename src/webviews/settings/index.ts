@@ -218,6 +218,12 @@ export class SettingsUI {
               value: `all`,
               description: `All`,
               text: `Every file in the local workspace`,
+            },
+            {
+              selected: config.defaultDeploymentMethod === `selected`,
+              value: `selected`,
+              description: vscode.l10n.t(`Action files`),
+              text: vscode.l10n.t(`Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.`),
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()

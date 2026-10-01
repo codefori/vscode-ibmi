@@ -121,7 +121,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         // deploying the file. This is because we need to know the relative path of the file to the deploy directory.
         if (workspaceFolder && chosenAction.type === `file`) {
           if (chosenAction.deployFirst) {
-            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
+            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method, uris);
             if (deployResult !== undefined) {
               workspaceId = deployResult.workspaceId;
               remoteCwd = Tools.ensureFullPath(deployResult.remoteDirectory, config.homeDirectory);
