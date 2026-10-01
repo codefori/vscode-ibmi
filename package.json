@@ -3624,7 +3624,7 @@
 	},
 	"dependencies": {
 		"@ibm/ibmi-eventf-parser": "2.0.2",
-		"@ibm/mapepire-js": "1.0.0",
+		"@ibm/mapepire-js": "1.0.1",
 		"@vscode-elements/elements": "2.5.1",
 		"@vscode/codicons": "0.0.45",
 		"adm-zip": "0.6.1",
