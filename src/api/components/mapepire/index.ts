@@ -58,23 +58,20 @@ export class Mapepire implements IBMiComponent {
       if (!password) {
         throw new Error("No password provided; cannot connect to Mapepire Server");
       }
-      await sqlJob.connect({
-        host: connection.currentHost,
-        user: connection.currentUser,
-        password,
-        rejectUnauthorized: (config.mapepireAllowSelfCert !== true),
-        port: config.mapepireServerPort
-      },
-        //uncomment if https://github.com/Mapepire-IBMi/mapepire-js/pull/103 gets merged and released
-        //application
+      await sqlJob.connect(
+        {
+          host: connection.currentHost,
+          user: connection.currentUser,
+          password,
+          rejectUnauthorized: (config.mapepireAllowSelfCert !== true),
+          port: config.mapepireServerPort
+        },
+        application
       );
     }
     else {
       //Single mode over SSH
-      await sqlJob.connect(undefined,
-        //uncomment if https://github.com/Mapepire-IBMi/mapepire-js/pull/103 gets merged and released
-        //application
-      );
+      await sqlJob.connect(undefined, application);
     }
 
     this.jobs.set(sqlJob.getUniqueId(), sqlJob);
@@ -107,7 +104,7 @@ function getJavaPath(connection: IBMi, javaPath?: string) {
     const javaVersion = connection.getConfig().mapepireJavaVersion;
     if (!Number.isNaN(Number(javaVersion))) {
       const javaHome = getJavaHome(connection, javaVersion) || undefined;
-      if(javaHome){
+      if (javaHome) {
         javaPath = path.posix.join(javaHome, 'bin', 'java');
       }
     }
