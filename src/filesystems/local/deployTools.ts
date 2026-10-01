@@ -13,6 +13,9 @@ import { Deployment } from './deployment';
 type ServerFileChanges = { uploads: Uri[], relativeRemoteDeletes: string[] };
 
 export namespace DeployTools {
+  /** Number of changed files above which the user must confirm a "changed" deployment */
+  const CHANGED_FILES_WARNING_THRESHOLD = 500;
+
   export async function launchActionsSetup(workspaceFolder?: WorkspaceFolder | BrowserItem): Promise<boolean> {
     let isSetupComplete: boolean = false;
 
@@ -184,7 +187,7 @@ export namespace DeployTools {
               break;
 
             case "changed":
-              files.push(...await getDeployChangedFiles(parameters));
+              files.push(...await confirmChangedFiles(parameters, await getDeployChangedFiles(parameters)));
               break;
 
             case "compare":
@@ -237,21 +240,57 @@ export namespace DeployTools {
   export async function getDeployChangedFiles(parameters: DeploymentParameters): Promise<vscode.Uri[]> {
     const changes = Deployment.workspaceChanges.get(parameters.workspaceFolder);
     if (changes && changes.size) {
-      return Array.from(changes.values())
-        .filter(uri => {
-          // We don't want stuff in the gitignore
-          const relative = Deployment.toRelative(parameters.workspaceFolder.uri, uri);
-          if (relative && parameters.ignoreRules) {
-            return !parameters.ignoreRules.ignores(relative);
-          }
-          else {
-            return true;
-          }
-        });
+      const files: vscode.Uri[] = [];
+      for (const uri of changes.values()) {
+        const relative = Deployment.toRelative(parameters.workspaceFolder.uri, uri);
+        // Never upload the workspace folder itself, nor stuff in the gitignore
+        if (!relative || parameters.ignoreRules?.ignores(relative)) {
+          continue;
+        }
+        // Only files can be uploaded by this method: a folder would be sent recursively, with all its content
+        if (await Deployment.isFile(uri)) {
+          files.push(uri);
+        }
+      }
+      return files;
     } else {
       // Skip upload, but still run the Action
       return [];
     }
+  }
+
+  /**
+   * The "changed" method relies on a file watcher: bulk operations made outside of VS Code (git checkout/pull,
+   * build tools, IDE indexers...) can make it track a very large number of files.
+   * Above {@link CHANGED_FILES_WARNING_THRESHOLD} files, the user must confirm the upload (or switch to the git working changes).
+   *
+   * @returns the files to upload
+   * @throws an Error if the user cancels the deployment
+   */
+  async function confirmChangedFiles(parameters: DeploymentParameters, files: vscode.Uri[]): Promise<vscode.Uri[]> {
+    if (files.length > CHANGED_FILES_WARNING_THRESHOLD) {
+      const deployAnyway = l10n.t("Deploy {0} files", files.length);
+      const useWorkingChanges = l10n.t("Use Working Changes");
+      const options = [deployAnyway];
+      if (VscodeTools.getGitAPI()) {
+        options.push(useWorkingChanges);
+      }
+
+      const choice = await vscode.window.showWarningMessage(
+        l10n.t("{0} files were detected as changed since the last upload. Do you really want to upload all of them?", files.length),
+        { modal: true, detail: l10n.t("This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool).") },
+        ...options
+      );
+
+      if (choice === useWorkingChanges) {
+        Deployment.deploymentLog.appendLine(`${files.length} changed files detected; switching to git working changes`);
+        return getDeployGitFiles(parameters, 'working');
+      }
+      else if (choice !== deployAnyway) {
+        throw new Error(`Deployment cancelled: ${files.length} changed files detected`);
+      }
+    }
+    return files;
   }
 
   export async function getDeployGitFiles(parameters: DeploymentParameters, changeType: 'staged' | 'working'): Promise<vscode.Uri[]> {

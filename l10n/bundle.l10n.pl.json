@@ -424,5 +424,9 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Wow. To naprawdę zajmuje trochę czasu. Miejmy nadzieję, że uzyskasz pożądany rezultat.",
   "Yes": "Tak",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Używasz tego systemu na własne ryzyko. Nie udostępniaj żadnych wrażliwych ani prywatnych informacji.",
-  "Your changes will be discarded": "Twoje zmiany zostaną usunięte"
+  "Your changes will be discarded": "Twoje zmiany zostaną usunięte",
+  "Deploy {0} files": "Deploy {0} files",
+  "Use Working Changes": "Use Working Changes",
+  "{0} files were detected as changed since the last upload. Do you really want to upload all of them?": "{0} files were detected as changed since the last upload. Do you really want to upload all of them?",
+  "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool).": "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool)."
 }

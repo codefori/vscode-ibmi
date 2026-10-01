@@ -426,5 +426,9 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Bon...c'est vraiment long là! Espérons que vous allez trouver ce que vous cherchez! 🤞🏻",
   "Yes": "Oui",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Vous êtes seul responsable de l'utilisation du bas à sable. Ne partagez pas d'informations à caractère sensible ou privé.",
-  "Your changes will be discarded": "Vos modifications vont être perdues"
+  "Your changes will be discarded": "Vos modifications vont être perdues",
+  "Deploy {0} files": "Deploy {0} files",
+  "Use Working Changes": "Use Working Changes",
+  "{0} files were detected as changed since the last upload. Do you really want to upload all of them?": "{0} files were detected as changed since the last upload. Do you really want to upload all of them?",
+  "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool).": "This usually happens when files were changed outside of VS Code (e.g. git checkout/pull or a build tool)."
 }

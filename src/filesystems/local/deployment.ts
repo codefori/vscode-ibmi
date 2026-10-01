@@ -119,6 +119,21 @@ export namespace Deployment {
     });
   }
 
+  /**
+   * @returns `true` if `uri` points to an existing regular file (or a symbolic link to one).
+   * Folders, and entries that do not exist anymore, are not files.
+   */
+  export async function isFile(uri: vscode.Uri) {
+    try {
+      const fileStat = await vscode.workspace.fs.stat(uri);
+      return (fileStat.type & vscode.FileType.File) === vscode.FileType.File;
+    }
+    catch (error) {
+      //The entry may have been deleted or renamed since the event was raised
+      return false;
+    }
+  }
+
   async function workspaceWatcher() {
     const invalidFs = [`member`, `streamfile`];
     const watcher = vscode.workspace.createFileSystemWatcher(`**`);
@@ -154,15 +169,19 @@ export namespace Deployment {
       vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasLocalActions`, workspace ? (await ActionTools.getActions(workspace)).length > 0 : false);
     };
 
-    watcher.onDidChange(uri => {
-      getChangesMap(uri)?.set(uri.fsPath, uri);
-    });
-    watcher.onDidCreate(async uri => {
-      checkLocalActionsFiles(uri);
-      const fileStat = await vscode.workspace.fs.stat(uri);
-      if (fileStat.type === vscode.FileType.File) {
-        getChangesMap(uri)?.set(uri.fsPath, uri);
+    const trackChange = async (uri: vscode.Uri) => {
+      const changes = getChangesMap(uri);
+      //Folders raise change events too (e.g. when their content changes) and must not be tracked:
+      //the "changed" deployment method would otherwise upload them recursively, with all their content.
+      if (changes && await isFile(uri)) {
+        changes.set(uri.fsPath, uri);
       }
+    };
+
+    watcher.onDidChange(trackChange);
+    watcher.onDidCreate(uri => {
+      checkLocalActionsFiles(uri);
+      trackChange(uri);
     });
     watcher.onDidDelete(uri => {
       checkLocalActionsFiles(uri);
