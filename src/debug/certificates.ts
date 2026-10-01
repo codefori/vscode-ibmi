@@ -6,7 +6,6 @@ import IBMi from "../api/IBMi";
 import { DebugConfiguration, CLIENT_CERTIFICATE } from '../api/configuration/DebugConfiguration';
 import { instance } from "../instantiate";
 
-const CONFIG_SECTION = `code-for-ibmi`;
 const CERTIFICATE_DIRECTORY_SETTING = `debug.certificateDirectory`;
 
 
@@ -38,7 +37,7 @@ export async function downloadClientCert(connection: IBMi) {
 }
 
 export function getCertificateDirectory() {
-  const configured = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>(CERTIFICATE_DIRECTORY_SETTING);
+  const configured = IBMi.connectionManager.get(CERTIFICATE_DIRECTORY_SETTING);
   return configured?.trim() || os.homedir();
 }
 
@@ -65,7 +64,7 @@ export async function useRecommendedCertDirectory(context: vscode.ExtensionConte
   const oldCertPath = getLocalCertPath(connection);
   const recommendedDir = getRecommendedCertDirectory(context);
 
-  await vscode.workspace.getConfiguration(CONFIG_SECTION).update(CERTIFICATE_DIRECTORY_SETTING, recommendedDir, vscode.ConfigurationTarget.Global);
+  await IBMi.connectionManager.set(CERTIFICATE_DIRECTORY_SETTING, recommendedDir);
   await downloadClientCert(connection);
 
   const newCertPath = getLocalCertPath(connection);
