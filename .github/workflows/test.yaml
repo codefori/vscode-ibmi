@@ -25,6 +25,9 @@ jobs:
       - name: Type checker
         run: npm run types
 
+      - name: Unit test suite
+        run: npm run test:unit
+
       # This step won't run when coming from a fork
       - name: Test suite
         run: npm run test

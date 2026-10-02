@@ -470,6 +470,7 @@
   "Enter a name for the new library list": "Enter a name for the new library list",
   "A library list with this name already exists.": "A library list with this name already exists.",
   "The active library list cannot be deleted.": "The active library list cannot be deleted.",
+  "Default": "Default",
   "Select Library List": "Select Library List",
   "Rename Library List": "Rename Library List",
   "Delete library list {0}?": "Delete library list {0}?",

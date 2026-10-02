@@ -433,6 +433,7 @@
   "Enter a name for the new library list": "Skriv inn et navn på den nye biblioteklisten",
   "A library list with this name already exists.": "En bibliotekliste med dette navnet finnes allerede.",
   "The active library list cannot be deleted.": "Den aktive biblioteklisten kan ikke slettes.",
+  "Default": "Standard",
   "Select Library List": "Velg bibliotekliste",
   "Rename Library List": "Gi nytt navn til bibliotekliste",
   "Delete library list {0}?": "Slette biblioteklisten {0}?",

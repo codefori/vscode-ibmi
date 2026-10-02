@@ -439,6 +439,7 @@
   "Enter a name for the new library list": "Inserisci un nome per la nuova lista di librerie",
   "A library list with this name already exists.": "Esiste già una lista di librerie con questo nome.",
   "The active library list cannot be deleted.": "La lista di librerie attiva non può essere eliminata.",
+  "Default": "Predefinita",
   "Select Library List": "Seleziona lista di librerie",
   "Rename Library List": "Rinomina lista di librerie",
   "Delete library list {0}?": "Eliminare la lista di librerie {0}?",

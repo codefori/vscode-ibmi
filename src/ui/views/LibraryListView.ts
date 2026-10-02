@@ -549,8 +549,8 @@ class LibraryListView implements vscode.TreeDataProvider<LibraryListTreeNode> {
 
     if (element.preset.name !== config.activeLibraryListPreset) {
       return [
-        new InactiveLibraryListNode(element.preset, element.preset.currentLibrary, true),
-        ...element.preset.libraryList.map(library => new InactiveLibraryListNode(element.preset, library, false))
+        new InactiveLibraryListNode(element, element.preset.currentLibrary, true),
+        ...element.preset.libraryList.map(library => new InactiveLibraryListNode(element, library, false))
       ];
     }
 

@@ -2,7 +2,7 @@ import { l10n } from "vscode";
 import IBMi from "./IBMi";
 import { ConnectionConfig, ConnectionProfile, LibraryListPreset } from "./configuration/config/types";
 
-const DEFAULT_PRESET_NAME = `Default`;
+const DEFAULT_PRESET_NAME = l10n.t(`Default`);
 
 export interface LibraryListDefaults {
   currentLibrary?: string
