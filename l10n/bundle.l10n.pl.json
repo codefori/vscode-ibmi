@@ -424,5 +424,20 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Wow. To naprawdę zajmuje trochę czasu. Miejmy nadzieję, że uzyskasz pożądany rezultat.",
   "Yes": "Tak",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Używasz tego systemu na własne ryzyko. Nie udostępniaj żadnych wrażliwych ani prywatnych informacji.",
-  "Your changes will be discarded": "Twoje zmiany zostaną usunięte"
+  "Your changes will be discarded": "Twoje zmiany zostaną usunięte",
+  "At least one library list must remain.": "Musi pozostać co najmniej jedna lista bibliotek.",
+  "Library list {0} was not found.": "Nie znaleziono listy bibliotek {0}.",
+  "Library list name cannot be empty.": "Nazwa listy bibliotek nie może być pusta.",
+  "A library list named {0} already exists.": "Lista bibliotek o nazwie {0} już istnieje.",
+  "New Library List": "Nowa lista bibliotek",
+  "Enter a name for the new library list": "Wprowadź nazwę nowej listy bibliotek",
+  "A library list with this name already exists.": "Lista bibliotek o tej nazwie już istnieje.",
+  "The active library list cannot be deleted.": "Nie można usunąć aktywnej listy bibliotek.",
+  "Default": "Domyślna",
+  "Select Library List": "Wybierz listę bibliotek",
+  "Rename Library List": "Zmień nazwę listy bibliotek",
+  "Delete library list {0}?": "Usunąć listę bibliotek {0}?",
+  "{0} libraries": "{0} bibliotek",
+  "Use Library List": "Użyj listy bibliotek",
+  "No current library": "Brak bieżącej biblioteki"
 }

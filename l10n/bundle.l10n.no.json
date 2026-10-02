@@ -424,5 +424,20 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Uha, dette tar virkelig lang tid. La oss håpe du får ønsket resultat.",
   "Yes": "Ja",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Du bruker dette systemet på egen risiko. Ikke del sensitiv eller privat informasjon.",
-  "Your changes will be discarded": "Dine endringer vil bli slettet"
+  "Your changes will be discarded": "Dine endringer vil bli slettet",
+  "At least one library list must remain.": "Minst én bibliotekliste må være igjen.",
+  "Library list {0} was not found.": "Biblioteklisten {0} ble ikke funnet.",
+  "Library list name cannot be empty.": "Navnet på biblioteklisten kan ikke være tomt.",
+  "A library list named {0} already exists.": "En bibliotekliste med navnet {0} finnes allerede.",
+  "New Library List": "Ny bibliotekliste",
+  "Enter a name for the new library list": "Skriv inn et navn på den nye biblioteklisten",
+  "A library list with this name already exists.": "En bibliotekliste med dette navnet finnes allerede.",
+  "The active library list cannot be deleted.": "Den aktive biblioteklisten kan ikke slettes.",
+  "Default": "Standard",
+  "Select Library List": "Velg bibliotekliste",
+  "Rename Library List": "Gi nytt navn til bibliotekliste",
+  "Delete library list {0}?": "Slette biblioteklisten {0}?",
+  "{0} libraries": "{0} biblioteker",
+  "Use Library List": "Bruk bibliotekliste",
+  "No current library": "Ingen gjeldende bibliotek"
 }

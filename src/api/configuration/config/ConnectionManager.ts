@@ -9,6 +9,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     host: parameters.host || '',
     objectFilters: parameters.objectFilters || [],
     libraryList: parameters.libraryList || [],
+    libraryListPresets: parameters.libraryListPresets || [],
     autoClearTempData: parameters.autoClearTempData || false,
     customVariables: parameters.customVariables || [],
     connectionProfiles: parameters.connectionProfiles || [],

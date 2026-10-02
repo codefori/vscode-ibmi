@@ -1,5 +1,6 @@
 import vscode, { l10n } from "vscode";
 import { isActiveProfile, updateConnectionProfile } from "../api/connectionProfiles";
+import { ensureLibraryListPresets, saveActiveLibraryListPreset } from "../api/libraryListPresets";
 import { instance } from "../instantiate";
 import { ConnectionProfile } from "../typings";
 import { VscodeTools } from "../ui/Tools";
@@ -89,6 +90,8 @@ async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
         throw new Error(l10n.t("Save aborted"));
       }
       profile.libraryList = libraryList;
+      ensureLibraryListPresets(profile, { currentLibrary: profile.currentLibrary, libraryList });
+      saveActiveLibraryListPreset(profile);
 
       await updateConnectionProfile(profile);
     }

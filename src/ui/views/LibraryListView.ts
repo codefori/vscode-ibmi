@@ -1,8 +1,9 @@
 import path from "path";
 import vscode, { CancellationToken, commands, Event, FileDecoration, FileDecorationProvider, l10n, ProviderResult, ThemeColor, ThemeIcon, Uri, window } from "vscode";
 import IBMi from "../../api/IBMi";
+import { activateLibraryListPreset, createLibraryListPreset, deleteLibraryListPreset, ensureLibraryListPresets, LibraryListDefaults, persistLibraryListPresets, renameLibraryListPreset, saveActiveLibraryListPreset } from "../../api/libraryListPresets";
 import { instance } from "../../instantiate";
-import { ConnectionConfig, IBMiObject, LIBRARY_LIST_MIMETYPE, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithLibrary } from "../../typings";
+import { ConnectionConfig, IBMiObject, LibraryListPreset, LIBRARY_LIST_MIMETYPE, URI_LIST_MIMETYPE, URI_LIST_SEPARATOR, WithLibrary } from "../../typings";
 import { VscodeTools } from "../Tools";
 
 export function initializeLibraryListView(context: vscode.ExtensionContext) {
@@ -10,18 +11,34 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
   const libraryListViewViewer = vscode.window.createTreeView(
     `libraryListView`, {
     treeDataProvider: libraryListView,
-    showCollapseAll: false,
+    showCollapseAll: true,
     canSelectMany: true,
     dragAndDropController: new LibraryListDragAndDrop()
   });
   const liblDecorationProvider = new LiblDecorationProvider();
 
   const updateConfig = async (config: ConnectionConfig) => {
-    await IBMi.connectionManager.update(config);
+    saveActiveLibraryListPreset(config);
+    await persistLibraryListPresets(config);
     if (IBMi.connectionManager.get(`autoRefresh`)) {
       libraryListView.refresh();
     }
   }
+
+  const refreshActivePreset = async () => {
+    const activePreset = libraryListView.setActivePreset(instance.getConnection()?.getConfig().activeLibraryListPreset);
+    await commands.executeCommand(`libraryListView.focus`);
+    await commands.executeCommand(`workbench.actions.treeView.libraryListView.collapseAll`);
+    libraryListView.refresh();
+    if (activePreset) {
+      await libraryListViewViewer.reveal(activePreset, { expand: true, focus: false, select: false });
+    }
+  }
+
+  const getDefaults = (connection: IBMi): LibraryListDefaults => ({
+    currentLibrary: connection.defaultCurrentLibrary,
+    libraryList: connection.defaultUserLibraries
+  });
 
   context.subscriptions.push(
     libraryListViewViewer,
@@ -31,6 +48,81 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.refreshLibraryListView`, () => libraryListView.refresh()),
+
+    vscode.commands.registerCommand(`code-for-ibmi.libraryListPreset.create`, async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
+        ensureLibraryListPresets(config, getDefaults(connection));
+        const name = await vscode.window.showInputBox({
+          title: l10n.t(`New Library List`),
+          prompt: l10n.t(`Enter a name for the new library list`),
+          validateInput: value => value.trim() && config.libraryListPresets.some(preset => preset.name.localeCompare(value.trim(), undefined, { sensitivity: `accent` }) === 0) ? l10n.t(`A library list with this name already exists.`) : undefined
+        });
+
+        if (name?.trim()) {
+          createLibraryListPreset(config, name, getDefaults(connection));
+          await updateConfig(config);
+          await refreshActivePreset();
+        }
+      }
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.libraryListPreset.select`, async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
+        const presets = ensureLibraryListPresets(config, getDefaults(connection));
+        const selection = await vscode.window.showQuickPick(presets.map(preset => ({
+          label: preset.name,
+          description: preset.name === config.activeLibraryListPreset ? l10n.t(`Active`) : undefined,
+          preset
+        })), { title: l10n.t(`Select Library List`) });
+
+        if (selection) {
+          activateLibraryListPreset(config, selection.preset.name);
+          await updateConfig(config);
+          await refreshActivePreset();
+        }
+      }
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.libraryListPreset.activate`, async (node: LibraryListPresetNode) => {
+      const connection = instance.getConnection();
+      if (connection && node) {
+        const config = connection.getConfig();
+        activateLibraryListPreset(config, node.preset.name);
+        await updateConfig(config);
+        await refreshActivePreset();
+      }
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.libraryListPreset.rename`, async (node: LibraryListPresetNode) => {
+      const connection = instance.getConnection();
+      if (connection && node) {
+        const config = connection.getConfig();
+        const name = await vscode.window.showInputBox({
+          title: l10n.t(`Rename Library List`),
+          value: node.preset.name,
+          validateInput: value => value.trim() && config.libraryListPresets.some(preset => preset !== node.preset && preset.name.localeCompare(value.trim(), undefined, { sensitivity: `accent` }) === 0) ? l10n.t(`A library list with this name already exists.`) : undefined
+        });
+        if (name?.trim()) {
+          renameLibraryListPreset(config, node.preset, name);
+          await updateConfig(config);
+          libraryListView.refresh();
+        }
+      }
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.libraryListPreset.delete`, async (node: LibraryListPresetNode) => {
+      const connection = instance.getConnection();
+      if (connection && node && await vscode.window.showWarningMessage(l10n.t(`Delete library list {0}?`, node.preset.name), { modal: true }, l10n.t(`Delete`))) {
+        const config = connection.getConfig();
+        deleteLibraryListPreset(config, node.preset);
+        await updateConfig(config);
+        await refreshActivePreset();
+      }
+    }),
 
     vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, () => {
       const connection = instance.getConnection();
@@ -314,19 +406,24 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
   );
 }
 
-class LibraryListDragAndDrop implements vscode.TreeDragAndDropController<LibraryListNode> {
+type LibraryListTreeNode = LibraryListPresetNode | LibraryListNode | InactiveLibraryListNode;
+
+class LibraryListDragAndDrop implements vscode.TreeDragAndDropController<LibraryListTreeNode> {
   readonly dragMimeTypes = [];
   readonly dropMimeTypes = [URI_LIST_MIMETYPE];
 
-  handleDrag(source: readonly LibraryListNode[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
-    dataTransfer.set(LIBRARY_LIST_MIMETYPE, new vscode.DataTransferItem(source));
+  handleDrag(source: readonly LibraryListTreeNode[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+    const libraries = source.filter((node): node is LibraryListNode => node instanceof LibraryListNode);
+    if (libraries.length) {
+      dataTransfer.set(LIBRARY_LIST_MIMETYPE, new vscode.DataTransferItem(libraries));
+    }
   }
 
-  handleDrop(target: LibraryListNode | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+  handleDrop(target: LibraryListTreeNode | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     const libraries = this.getLibraries(dataTransfer)?.map(library => library.toUpperCase()).filter(library => library !== "*CRTDFT");
     const config = instance.getConnection()?.getConfig();
     if (config && libraries?.length) {
-      if (target?.contextValue?.startsWith('currentLibrary')) {
+      if (target instanceof LibraryListNode && target.contextValue?.startsWith('currentLibrary')) {
         //Dropped on current library: change current library
         vscode.commands.executeCommand(`code-for-ibmi.setCurrentLibrary`, { library: libraries[0] } as WithLibrary);
       }
@@ -340,7 +437,7 @@ class LibraryListDragAndDrop implements vscode.TreeDragAndDropController<Library
           }
         });
 
-        if (target) {
+        if (target instanceof LibraryListNode) {
           //Dropped on a library: push it down and move to its position
           const index = libraryList.findIndex(lib => lib === target.library);
           const moved = libraryList.splice(index, libraryList.length - index, ...libraries);
@@ -372,40 +469,133 @@ class LibraryListDragAndDrop implements vscode.TreeDragAndDropController<Library
   }
 }
 
-class LibraryListView implements vscode.TreeDataProvider<LibraryListNode> {
-  private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
-  readonly onDidChangeTreeData: vscode.Event<LibraryListNode | undefined | null | void> = this._emitter.event;;
+class LibraryListView implements vscode.TreeDataProvider<LibraryListTreeNode> {
+  private readonly _emitter: vscode.EventEmitter<LibraryListTreeNode | undefined | null | void> = new vscode.EventEmitter();
+  private readonly presetNodes = new Map<string, LibraryListPresetNode>();
+  readonly onDidChangeTreeData: vscode.Event<LibraryListTreeNode | undefined | null | void> = this._emitter.event;;
 
-  refresh(element?: LibraryListNode) {
+  refresh(element?: LibraryListTreeNode) {
     this._emitter.fire(element);
   }
 
-  getTreeItem(element: LibraryListNode): vscode.TreeItem {
+  getTreeItem(element: LibraryListTreeNode): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(): Promise<LibraryListNode[]> {
-    const items = [];
-    const connection = instance.getConnection();
-    if (connection) {
-      const content = connection.getContent();
-      const config = connection.getConfig();
-      const currentLibrary = config.currentLibrary ? connection.upperCaseName(config.currentLibrary) : undefined;
-
-      const curAndUsrLibs = await content.getLibraryList(currentLibrary ? [currentLibrary, ...config.libraryList] : config.libraryList);
-
-      //Push manually if curlib is *CRTDFT
-      if (!currentLibrary) {
-        curAndUsrLibs.unshift({ library: `QSYS`, type: `*LIB`, name: '', attribute: ``, text: `` });
-      }
-
-      items.push(...curAndUsrLibs.map((lib, index) => {
-        const upperCaseLibName = connection.upperCaseName(lib.name);
-        const isSystemLib = connection.systemLibraries.includes(upperCaseLibName);
-        return new LibraryListNode(upperCaseLibName, lib, (index === 0 ? `currentLibrary` : `library`), config.showDescInLibList, isSystemLib);
-      }));
+  getParent(element: LibraryListTreeNode): vscode.ProviderResult<LibraryListTreeNode> {
+    if (element instanceof LibraryListPresetNode) {
+      return undefined;
     }
-    return items;
+
+    if (element instanceof InactiveLibraryListNode) {
+      return element.preset;
+    }
+
+    const activePreset = instance.getConnection()?.getConfig().activeLibraryListPreset;
+    return activePreset ? this.presetNodes.get(activePreset) : undefined;
+  }
+
+  setActivePreset(activePresetName?: string) {
+    let activePreset: LibraryListPresetNode | undefined;
+    this.presetNodes.forEach(node => {
+      const active = node.preset.name === activePresetName;
+      node.update(active);
+      if (active) {
+        activePreset = node;
+      }
+    });
+    return activePreset;
+  }
+
+  async getChildren(element?: LibraryListTreeNode): Promise<LibraryListTreeNode[]> {
+    const connection = instance.getConnection();
+    if (!connection) {
+      return [];
+    }
+
+    const config = connection.getConfig();
+    const defaults = { currentLibrary: connection.defaultCurrentLibrary, libraryList: connection.defaultUserLibraries };
+    const needsMigration = config.libraryListPresets.length === 0;
+    const presets = ensureLibraryListPresets(config, defaults);
+
+    if (needsMigration) {
+      await persistLibraryListPresets(config);
+    }
+
+    if (!element) {
+      const presetNames = new Set(presets.map(preset => preset.name));
+      this.presetNodes.forEach((node, name) => {
+        if (!presetNames.has(name)) {
+          this.presetNodes.delete(name);
+        }
+      });
+
+      return presets.map(preset => {
+        let node = this.presetNodes.get(preset.name);
+        if (!node) {
+          node = new LibraryListPresetNode(preset, preset.name === config.activeLibraryListPreset);
+          this.presetNodes.set(preset.name, node);
+        }
+        else {
+          node.update(preset.name === config.activeLibraryListPreset);
+        }
+        return node;
+      });
+    }
+
+    if (!(element instanceof LibraryListPresetNode)) {
+      return [];
+    }
+
+    if (element.preset.name !== config.activeLibraryListPreset) {
+      return [
+        new InactiveLibraryListNode(element, element.preset.currentLibrary, true),
+        ...element.preset.libraryList.map(library => new InactiveLibraryListNode(element, library, false))
+      ];
+    }
+
+    const content = connection.getContent();
+    const currentLibrary = config.currentLibrary ? connection.upperCaseName(config.currentLibrary) : undefined;
+    const curAndUsrLibs = await content.getLibraryList(currentLibrary ? [currentLibrary, ...config.libraryList] : config.libraryList);
+
+    //Push manually if curlib is *CRTDFT
+    if (!currentLibrary) {
+      curAndUsrLibs.unshift({ library: `QSYS`, type: `*LIB`, name: '', attribute: ``, text: `` });
+    }
+
+    return curAndUsrLibs.map((lib, index) => {
+      const upperCaseLibName = connection.upperCaseName(lib.name);
+      const isSystemLib = connection.systemLibraries.includes(upperCaseLibName);
+      return new LibraryListNode(upperCaseLibName, lib, (index === 0 ? `currentLibrary` : `library`), config.showDescInLibList, isSystemLib);
+    });
+  }
+}
+
+class LibraryListPresetNode extends vscode.TreeItem {
+  constructor(readonly preset: LibraryListPreset, active: boolean) {
+    super(preset.name, vscode.TreeItemCollapsibleState.Collapsed);
+    this.update(active);
+  }
+
+  update(active: boolean) {
+    this.collapsibleState = active ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.Collapsed;
+    this.contextValue = active ? `libraryListPreset_active` : `libraryListPreset`;
+    this.description = active ? l10n.t(`Active`) : l10n.t(`{0} libraries`, this.preset.libraryList.length);
+    this.iconPath = new ThemeIcon(active ? `check` : `library`);
+    this.command = active ? undefined : {
+      title: l10n.t(`Use Library List`),
+      command: `code-for-ibmi.libraryListPreset.activate`,
+      arguments: [this]
+    };
+  }
+}
+
+class InactiveLibraryListNode extends vscode.TreeItem {
+  constructor(readonly preset: LibraryListPresetNode, library: string | undefined, isCurrentLibrary: boolean) {
+    super(library || l10n.t(`No current library`), vscode.TreeItemCollapsibleState.None);
+    this.contextValue = `inactiveLibrary`;
+    this.iconPath = new ThemeIcon(library ? `library` : `skip`);
+    this.description = isCurrentLibrary ? l10n.t(`(current library)`) : undefined;
   }
 }
 
@@ -454,7 +644,8 @@ async function changeCurrentLibrary(library?: string) {
       }
       await storage.setPreviousCurLibs(previousCurLibs);
 
-      await IBMi.connectionManager.update(config);
+      saveActiveLibraryListPreset(config);
+      await persistLibraryListPresets(config);
       return true;
     } else {
       if (library) {

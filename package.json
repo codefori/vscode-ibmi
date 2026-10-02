@@ -157,6 +157,39 @@
 								"default": [],
 								"description": "Library list. Used in actions. Highest first."
 							},
+							"activeLibraryListPreset": {
+								"type": "string",
+								"description": "Name of the active library list preset."
+							},
+							"libraryListPresets": {
+								"type": "array",
+								"description": "Named library list presets.",
+								"items": {
+									"type": "object",
+									"required": [
+										"name",
+										"libraryList"
+									],
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "Preset name"
+										},
+										"currentLibrary": {
+											"type": "string",
+											"description": "Current library used by this preset"
+										},
+										"libraryList": {
+											"type": "array",
+											"description": "User library list used by this preset",
+											"items": {
+												"type": "string",
+												"title": "Library and source physical file"
+											}
+										}
+									}
+								}
+							},
 							"connectionProfiles": {
 								"type": "array",
 								"items": {
@@ -166,6 +199,39 @@
 										"name": {
 											"type": "string",
 											"description": "Profile name"
+										},
+										"activeLibraryListPreset": {
+											"type": "string",
+											"description": "Name of the active library list preset."
+										},
+										"libraryListPresets": {
+											"type": "array",
+											"description": "Named library list presets.",
+											"items": {
+												"type": "object",
+												"required": [
+													"name",
+													"libraryList"
+												],
+												"properties": {
+													"name": {
+														"type": "string",
+														"description": "Preset name"
+													},
+													"currentLibrary": {
+														"type": "string",
+														"description": "Current library used by this preset"
+													},
+													"libraryList": {
+														"type": "array",
+														"description": "User library list used by this preset",
+														"items": {
+															"type": "string",
+															"title": "Library and source physical file"
+														}
+													}
+												}
+											}
 										}
 									},
 									"additionalProperties": true
@@ -1262,6 +1328,41 @@
 				"title": "Change Library List...",
 				"category": "IBM i",
 				"icon": "$(explorer-view-icon)"
+			},
+			{
+				"command": "code-for-ibmi.libraryListPreset.create",
+				"enablement": "code-for-ibmi:connected",
+				"title": "New Library List...",
+				"category": "IBM i",
+				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.libraryListPreset.select",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Select Library List...",
+				"category": "IBM i",
+				"icon": "$(list-selection)"
+			},
+			{
+				"command": "code-for-ibmi.libraryListPreset.activate",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Use This Library List",
+				"category": "IBM i",
+				"icon": "$(check)"
+			},
+			{
+				"command": "code-for-ibmi.libraryListPreset.rename",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Rename Library List...",
+				"category": "IBM i",
+				"icon": "$(edit)"
+			},
+			{
+				"command": "code-for-ibmi.libraryListPreset.delete",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Delete Library List...",
+				"category": "IBM i",
+				"icon": "$(trash)"
 			},
 			{
 				"command": "code-for-ibmi.clearDiagnostics",
@@ -2885,8 +2986,18 @@
 					"when": "view == connectionBrowser && code-for-ibmi:hasPreviousConnection"
 				},
 				{
+					"command": "code-for-ibmi.libraryListPreset.create",
+					"group": "navigation@1",
+					"when": "view == libraryListView"
+				},
+				{
+					"command": "code-for-ibmi.libraryListPreset.select",
+					"group": "navigation@2",
+					"when": "view == libraryListView"
+				},
+				{
 					"command": "code-for-ibmi.changeUserLibraryList",
-					"group": "navigation",
+					"group": "navigation@3",
 					"when": "view == libraryListView"
 				},
 				{
@@ -3072,6 +3183,21 @@
 					"command": "code-for-ibmi.connectToAndReload",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "3_connect@1"
+				},
+				{
+					"command": "code-for-ibmi.libraryListPreset.activate",
+					"when": "view == libraryListView && viewItem == libraryListPreset",
+					"group": "inline@01"
+				},
+				{
+					"command": "code-for-ibmi.libraryListPreset.rename",
+					"when": "view == libraryListView && viewItem =~ /^libraryListPreset/",
+					"group": "inline@02"
+				},
+				{
+					"command": "code-for-ibmi.libraryListPreset.delete",
+					"when": "view == libraryListView && viewItem == libraryListPreset",
+					"group": "inline@03"
 				},
 				{
 					"command": "code-for-ibmi.moveLibraryUp",
@@ -3601,6 +3727,7 @@
 		"lint": "eslint src/**/*.js --no-error-on-unmatched-pattern",
 		"pretest": "npm run lint",
 		"test": "vitest run",
+		"test:unit": "vitest run --config vitest.unit.config.ts",
 		"package": "vsce package --allow-package-all-secrets",
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",

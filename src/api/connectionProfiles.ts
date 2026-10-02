@@ -76,6 +76,11 @@ export function assignProfile(fromProfile: ConnectionProfile, toProfile: Connect
   toProfile.currentLibrary = fromProfile.currentLibrary;
   toProfile.iasp = fromProfile.iasp;
   toProfile.libraryList = fromProfile.libraryList;
+  toProfile.libraryListPresets = fromProfile.libraryListPresets?.map(preset => ({
+    ...preset,
+    libraryList: [...preset.libraryList]
+  }));
+  toProfile.activeLibraryListPreset = fromProfile.activeLibraryListPreset;
   toProfile.objectFilters = fromProfile.objectFilters;
   toProfile.ifsShortcuts = fromProfile.ifsShortcuts;
   toProfile.customVariables = fromProfile.customVariables;

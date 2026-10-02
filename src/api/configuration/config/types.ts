@@ -102,11 +102,19 @@ export interface CustomVariable {
   value: string
 }
 
+export interface LibraryListPreset {
+  name: string
+  currentLibrary?: string
+  libraryList: string[]
+}
+
 export interface ConnectionProfile {
   name: string
   homeDirectory: string
   currentLibrary?: string
   libraryList: string[]
+  libraryListPresets?: LibraryListPreset[]
+  activeLibraryListPreset?: string
   objectFilters: ObjectFilters[]
   ifsShortcuts: string[]
   customVariables: CustomVariable[]

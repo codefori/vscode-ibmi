@@ -4,6 +4,7 @@ import vscode, { l10n, QuickPickItem } from 'vscode';
 import { ActionTools } from '../../../api/actions';
 import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
+import { activateLibraryListPreset, ensureLibraryListPresets, saveActiveLibraryListPreset } from '../../../api/libraryListPresets';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
 import { editConnectionProfile, isProfileEdited } from '../../../editors/connectionProfileEditor';
@@ -340,6 +341,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           name,
           homeDirectory,
           libraryList: ["QGPL", "QTEMP"],
+          libraryListPresets: [],
           customVariables: [],
           ifsShortcuts: [homeDirectory],
           objectFilters: [],
@@ -427,7 +429,12 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         if (profileToBackup) {
           assignProfile(config, profileToBackup);
         }
+        ensureLibraryListPresets(profile, {
+          currentLibrary: connection.defaultCurrentLibrary,
+          libraryList: connection.defaultUserLibraries
+        });
         assignProfile(profile, config);
+        activateLibraryListPreset(config, config.activeLibraryListPreset!);
         config.currentProfile = profile.name || undefined;
         await IBMi.connectionManager.update(config);
 
@@ -470,6 +477,9 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
                 if (newSettings) {
                   config.libraryList = profile.libraryList = newSettings.libraryList;
                   config.currentLibrary = profile.currentLibrary = newSettings.currentLibrary;
+                  ensureLibraryListPresets(profile, newSettings);
+                  saveActiveLibraryListPreset(profile);
+                  assignProfile(profile, config);
 
                   await IBMi.connectionManager.update(config);
                   vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);

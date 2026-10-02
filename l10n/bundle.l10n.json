@@ -461,5 +461,20 @@
   "You are not allowed to write into {0}: the file will open as read only.": "You are not allowed to write into {0}: the file will open as read only.",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "You are using this system at your own risk. Do not share any sensitive or private information.",
   "You don't have the rights to write into {0}.": "You don't have the rights to write into {0}.",
-  "Your changes will be discarded": "Your changes will be discarded"
+  "Your changes will be discarded": "Your changes will be discarded",
+  "At least one library list must remain.": "At least one library list must remain.",
+  "Library list {0} was not found.": "Library list {0} was not found.",
+  "Library list name cannot be empty.": "Library list name cannot be empty.",
+  "A library list named {0} already exists.": "A library list named {0} already exists.",
+  "New Library List": "New Library List",
+  "Enter a name for the new library list": "Enter a name for the new library list",
+  "A library list with this name already exists.": "A library list with this name already exists.",
+  "The active library list cannot be deleted.": "The active library list cannot be deleted.",
+  "Default": "Default",
+  "Select Library List": "Select Library List",
+  "Rename Library List": "Rename Library List",
+  "Delete library list {0}?": "Delete library list {0}?",
+  "{0} libraries": "{0} libraries",
+  "Use Library List": "Use Library List",
+  "No current library": "No current library"
 }
