@@ -73,6 +73,45 @@ export namespace FrontendTables {
   }
 
   /**
+   * An action offered on a table row, through VS Code's own context menu (right click,
+   * Shift+F10 or the context menu key); the primary one also runs on a double click or Enter.
+   *
+   * The menu entries are contributed by the host extension, the same way as for any
+   * webview: a `webview/context` menu item whose `when` is
+   * `webviewSection == fastTableRow && ftAction_<action>`, bound to a command that posts
+   * {@link generateFastTableRowAction} back to the webview. Label, order and grouping of
+   * the entries therefore live in the host's package.json.
+   *
+   * Either way, the action ends in a click on an element carrying
+   * `href="action:<action>?<args>"`, the same markup a `<vscode-button href="action:...">`
+   * has, so the page's own `action:` click handler receives it exactly as it would a button.
+   */
+  export interface FastTableRowAction<T> {
+    /** Action identifier: the part after `action:` in the emitted href, and the `ftAction_<action>` context key */
+    action: string;
+    /** Run on double click / Enter. When several are visible on a row, the first one wins. */
+    primary?: boolean;
+    /**
+     * Ends, deletes or removes something. Never run by a double click or Enter, even when
+     * marked primary. Its menu entry belongs in the `9_destructive` group, which VS Code
+     * sets apart from the other actions with a separator.
+     */
+    destructive?: boolean;
+    /** Whether the action applies to the row (default: always) */
+    visible?: (row: T) => boolean;
+  }
+
+  /**
+   * Row actions of a FastTable. Must be passed both to generateFastTable and to
+   * generateFastTableUpdate, since the updated rows carry their own actions.
+   */
+  export interface FastTableRowActions<T> {
+    /** Query string appended to every action of the row, e.g. `entry=${encodeURIComponent(JSON.stringify(row))}` */
+    getArgs: (row: T) => string;
+    actions: FastTableRowAction<T>[];
+  }
+
+  /**
    * Options for generating a FastTable
    */
   export interface FastTableOptions<T> {
@@ -108,6 +147,28 @@ export namespace FrontendTables {
     searchTerm?: string;
     /** Table identifier for multi-table documents (e.g., SaveFile with objects/members/spools) */
     tableId?: string;
+    /** Actions offered on each row through its context menu and double click (optional) */
+    rowActions?: FastTableRowActions<T>;
+  }
+
+  /**
+   * Context VS Code passes to a `webview/context` command opened on a fast table row:
+   * the row's `data-vscode-context`, as stamped by the page.
+   */
+  export interface FastTableRowContext {
+    webviewSection: 'fastTableRow';
+    /** Table instance the menu was opened on */
+    ftTable: string;
+    /** Query string of the row's actions */
+    ftArgs: string;
+  }
+
+  /** Message that runs a row action picked from the context menu, in the page it was picked in */
+  export interface FastTableRowActionMessage {
+    command: 'fastTableRowAction';
+    tableToken: string;
+    action: string;
+    args: string;
   }
 
   /**
@@ -369,6 +430,8 @@ export namespace FrontendTables {
      * have to be given an explicit id in generateFastTable rather than an auto-generated one.
      */
     tableId: string;
+    /** Same row actions the table was rendered with */
+    rowActions?: FastTableRowActions<T>;
   }
 
   // Format value with icons and styling for FastTable.
@@ -441,7 +504,7 @@ export namespace FrontendTables {
    * Shared by the initial page render and by incremental updates, so both produce
    * identical markup.
    */
-  function buildRows<T>(columns: FastTableColumn<T>[], data: T[], columnsArray: string[]) {
+  function buildRows<T>(columns: FastTableColumn<T>[], data: T[], columnsArray: string[], rowActions?: FastTableRowActions<T>) {
     const collapsibleIndices = columns.map((col, idx) => col.collapsible ? idx : -1).filter(idx => idx !== -1);
 
     const collapsibleData = collapsibleIndices.length > 0 ? data.map(row => {
@@ -481,12 +544,56 @@ export namespace FrontendTables {
         return `<vscode-table-cell${cellClass}${widthStyle}>${formatFastValue(value)}</vscode-table-cell>`;
       }).join('\n        ');
 
-      return `<vscode-table-row class="main-row" data-row="${rowIndex}">
+      return `<vscode-table-row class="main-row" data-row="${rowIndex}"${rowActionAttributes(rowActions, row)}>
           ${visibleCells}
         </vscode-table-row>`;
     }).join('\n      ');
 
     return { rowsHtml, collapsibleData };
+  }
+
+  /**
+   * Row attributes for its actions: the `data-vscode-context` VS Code matches the host's
+   * `webview/context` contributions against (one `ftAction_<action>` key per action that
+   * applies to the row), and the primary action run on double click. A row with no
+   * applicable action gets none, and keeps the default context menu.
+   */
+  function rowActionAttributes<T>(rowActions: FastTableRowActions<T> | undefined, row: T): string {
+    if (!rowActions) return '';
+
+    const visible = rowActions.actions.filter(action => !action.visible || action.visible(row));
+    if (!visible.length) return '';
+
+    // ftTable is added by the page when the menu opens (see the contextmenu listener)
+    const context: Record<string, string | boolean> = {
+      webviewSection: 'fastTableRow',
+      preventDefaultContextMenuItems: true,
+      ftArgs: rowActions.getArgs(row)
+    };
+    visible.forEach(action => context[`ftAction_${action.action}`] = true);
+
+    // A double click is too easy to do by accident for an action that cannot be undone
+    const primary = visible.find(action => action.primary && !action.destructive);
+    return ` tabindex="0" aria-haspopup="menu" data-vscode-context="${VscodeTools.escapeHtml(JSON.stringify(context))}"${primary ? ` data-primary="${VscodeTools.escapeHtml(primary.action)}"` : ''}`;
+  }
+
+  /**
+   * Build the message a `webview/context` command posts to the webview it was invoked on,
+   * to run the picked row action there.
+   * @param action - Row action the command stands for
+   * @param context - Argument VS Code passed to the command
+   * @returns Message to pass to `webview.postMessage`, or undefined when the command was
+   * not invoked from a fast table row
+   */
+  export function generateFastTableRowAction(action: string, context: unknown): FastTableRowActionMessage | undefined {
+    const rowContext = context as Partial<FastTableRowContext> | undefined;
+    if (rowContext?.webviewSection !== 'fastTableRow' || typeof rowContext.ftTable !== 'string') return undefined;
+    return {
+      command: 'fastTableRowAction',
+      tableToken: rowContext.ftTable,
+      action,
+      args: rowContext.ftArgs ?? ''
+    };
   }
 
   /**
@@ -498,9 +605,9 @@ export namespace FrontendTables {
    * @returns Message to pass to `webview.postMessage`
    */
   export function generateFastTableUpdate<T>(options: FastTableUpdateOptions<T>): FastTableUpdate {
-    const { columns, data, totalItems, currentPage, subtitle, tableId } = options;
+    const { columns, data, totalItems, currentPage, subtitle, tableId, rowActions } = options;
     const { columnsArray } = computeColumnWidths(columns);
-    const { rowsHtml, collapsibleData } = buildRows(columns, data, columnsArray);
+    const { rowsHtml, collapsibleData } = buildRows(columns, data, columnsArray, rowActions);
 
     return {
       command: 'updateTable',
@@ -537,7 +644,8 @@ export namespace FrontendTables {
       totalItems = data.length,
       currentPage = 1,
       searchTerm = '',
-      tableId = undefined
+      tableId = undefined,
+      rowActions = undefined
     } = options;
 
     // Every table gets an identifier, even when the caller didn't ask for one: it suffixes
@@ -551,7 +659,11 @@ export namespace FrontendTables {
     const suffix = `-${id}`;
 
     const { columnsArray, tableMinWidth } = computeColumnWidths(columns);
-    const { rowsHtml: rows, collapsibleData } = buildRows(columns, data, columnsArray);
+    const { rowsHtml: rows, collapsibleData } = buildRows(columns, data, columnsArray, rowActions);
+
+    // Which actions apply to a row, and with which arguments, travels on the row itself
+    // (see rowActionAttributes); the page only needs the full list to validate against.
+    const rowActionIds = (rowActions?.actions ?? []).map(action => action.action);
 
     // Check if there are any collapsible columns
     const hasCollapsibleColumns = columns.some(col => col.collapsible);
@@ -833,6 +945,23 @@ export namespace FrontendTables {
       #fast-table${suffix} .show-modal-btn:focus-visible {
         outline: 1px solid var(--vscode-focusBorder);
         outline-offset: 2px;
+      }
+
+      /* Rows with actions are focusable: Enter runs the primary action, Shift+F10 or
+         the context menu key open VS Code's context menu. */
+      #fast-table${suffix} vscode-table-row[data-vscode-context] {
+        outline: none;
+      }
+
+      #fast-table${suffix} vscode-table-row[data-vscode-context]:focus-visible {
+        outline: 1px solid var(--vscode-focusBorder);
+        outline-offset: -1px;
+      }
+
+      /* The row the context menu was opened on, so it is clear what the menu acts on. */
+      #fast-table${suffix} vscode-table-row.context-active,
+      #fast-table${suffix} vscode-table-row.context-active:hover {
+        background-color: var(--vscode-list-inactiveSelectionBackground);
       }
 
       /* Modal styles */
@@ -1363,6 +1492,114 @@ export namespace FrontendTables {
         }
       });
 
+      // Row actions. The context menu is VS Code's own: rows carry a data-vscode-context
+      // that the host's webview/context contributions match on. The host relays the
+      // picked item back as a 'fastTableRowAction' message (see generateFastTableRowAction),
+      // and the primary action runs on double click / Enter; both end in a click on an
+      // href="action:..." element, which reaches the page's own delegated action handler —
+      // the one serving <vscode-button href="action:..."> — unchanged.
+      const rowActionIds = ${JSON.stringify(rowActionIds)};
+      // Identifies this table instance, among every page open on the same view type, in
+      // the context VS Code hands to the menu command.
+      const tableToken = '${id}-' + Math.random().toString(36).slice(2);
+      const INTERACTIVE_SELECTOR = 'button, vscode-button, a, vscode-link, input, textarea, select';
+      let contextRow = null;
+
+      function actionRowOf(target) {
+        const row = target instanceof Element ? target.closest('vscode-table-row[data-vscode-context]') : null;
+        return row && tableBody && tableBody.contains(row) ? row : null;
+      }
+
+      function rowContext(row) {
+        try {
+          return JSON.parse(row.dataset.vscodeContext);
+        } catch {
+          return {};
+        }
+      }
+
+      function runRowAction(action, args) {
+        if (!rowActionIds.includes(action)) return;
+        const container = document.getElementById('fast-table${suffix}');
+        if (!container) return;
+        // Clicked in place: the handler is delegated on the document, so the element
+        // has to be attached for the click to reach it.
+        const link = document.createElement('span');
+        link.hidden = true;
+        link.setAttribute('href', 'action:' + action + (args ? '?' + args : ''));
+        container.appendChild(link);
+        link.click();
+        link.remove();
+      }
+
+      function runPrimaryAction(row) {
+        const action = row.dataset.primary;
+        if (action) runRowAction(action, rowContext(row).ftArgs);
+      }
+
+      function clearContextRow() {
+        if (contextRow) contextRow.classList.remove('context-active');
+        contextRow = null;
+      }
+
+      if (tableBody && rowActionIds.length) {
+        // Runs before the host's own listener on the window, which then reads the
+        // stamped context off the row. Must not preventDefault, or no menu opens.
+        tableBody.addEventListener('contextmenu', (e) => {
+          clearContextRow();
+          const row = actionRowOf(e.target);
+          if (!row) return;
+          row.dataset.vscodeContext = JSON.stringify({ ...rowContext(row), ftTable: tableToken });
+          contextRow = row;
+          row.classList.add('context-active');
+        });
+
+        tableBody.addEventListener('dblclick', (e) => {
+          const row = actionRowOf(e.target);
+          if (!row || e.target.closest(INTERACTIVE_SELECTOR)) return;
+          window.getSelection()?.removeAllRanges();
+          runPrimaryAction(row);
+        });
+
+        // A double click would otherwise select the word under the pointer.
+        tableBody.addEventListener('mousedown', (e) => {
+          if (e.detail > 1 && actionRowOf(e.target) && !e.target.closest(INTERACTIVE_SELECTOR)) {
+            e.preventDefault();
+          }
+        });
+
+        tableBody.addEventListener('keydown', (e) => {
+          const row = actionRowOf(e.target);
+          // Keys typed into a control inside a cell stay with that control.
+          if (!row || e.target !== row) return;
+
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            runPrimaryAction(row);
+          } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            const rows = Array.from(tableBody.querySelectorAll('vscode-table-row[data-vscode-context]'));
+            const next = rows[rows.indexOf(row) + (e.key === 'ArrowDown' ? 1 : -1)];
+            if (next) {
+              e.preventDefault();
+              next.focus();
+            }
+          }
+        });
+
+        // The native menu takes focus away from the page while it is open; whatever
+        // happens once it is gone ends the highlight.
+        window.addEventListener('focus', clearContextRow);
+        document.addEventListener('mousedown', clearContextRow, true);
+        document.addEventListener('keydown', clearContextRow, true);
+
+        window.addEventListener('message', (event) => {
+          const msg = event.data;
+          if (!msg || msg.command !== 'fastTableRowAction' || msg.tableToken !== tableToken) return;
+          clearContextRow();
+          runRowAction(msg.action, msg.args);
+        });
+      }
+
       // Incremental refresh: the extension answers search/pagination/auto-refresh
       // with new rows instead of a new page, so the search box is never recreated
       // and keeps both focus and whatever has been typed since the request went out.
@@ -1380,6 +1617,9 @@ export namespace FrontendTables {
         }
 
         if (msg.command !== 'updateTable') return;
+
+        // The row the menu was opened on is about to be replaced.
+        clearContextRow();
 
         if (tableBody) {
           tableBody.innerHTML = msg.rowsHtml;
