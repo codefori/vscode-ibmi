@@ -200,7 +200,7 @@ describe('Content Tests', { concurrent: true }, () => {
       });
       expect(result.code).toBe(0);
 
-      const lib = await content?.objectResolve(tempObj, [
+      const lib = await content.objectResolve(tempObj, [
         'QSYSINC', // Doesn't exist here
         'QSYS2', // Doesn't exist here
         tempLib // Does exist here
