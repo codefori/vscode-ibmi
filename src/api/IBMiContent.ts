@@ -944,8 +944,8 @@ export default class IBMiContent {
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
     const inAmerican = (s: string) => { return this.ibmi.sysNameInAmerican(s) };
-    const inLocal =(s: string) => { return this.ibmi.sysNameInLocal(s) };
-    
+    const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
+
     // Escape names for shell
     const pathList: string[] = [];
     for (const file of files) {
