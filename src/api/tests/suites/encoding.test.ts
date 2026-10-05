@@ -487,6 +487,52 @@ describe('BiDi encoding tests', () => {
   });
 });
 
+// Separate synchronous suite because autoConvertIFSccsid is modified on the shared config
+describe('IFS streamfile encoding tests', () => {
+  let connection: IBMi
+  beforeAll(async () => {
+    connection = await newConnection();
+  }, CONNECTION_TIMEOUT);
+
+  afterAll(async () => {
+    await disposeConnection(connection);
+  });
+
+  it('EBCDIC streamfile round-trips with autoConvertIFSccsid enabled', async () => {
+    const content = connection.getContent();
+    const config = connection.getConfig();
+    const ccsid = `273`;
+    const baseContent = [`Hello world`, `Umlaute ä ö ü ß`, `dcl-s straße char(10);`].join(`\n`);
+
+    await connection.withTempDirectory(async tempDir => {
+      const tempFile = path.posix.join(tempDir, `ebcdic_roundtrip.rpgle`);
+      const create = await connection.sendCommand({ command: `touch ${Tools.escapePath(tempFile)} && attr ${Tools.escapePath(tempFile)} CCSID=${ccsid}` });
+      expect(create.code).toBe(0);
+
+      const previousSetting = config.autoConvertIFSccsid;
+      config.autoConvertIFSccsid = true;
+      try {
+        await content.writeStreamfileRaw(tempFile, Buffer.from(baseContent, `utf8`));
+
+        // the file must keep its CCSID and its content must really be EBCDIC on the host
+        const attributes = await content.getAttributes(tempFile, `CCSID`);
+        expect(attributes?.CCSID).toBe(ccsid);
+
+        config.autoConvertIFSccsid = false;
+        const raw = await content.downloadStreamfileRaw(tempFile);
+        expect(raw.toString(`utf8`)).not.toBe(baseContent);
+
+        // downloading with conversion must return the original content
+        config.autoConvertIFSccsid = true;
+        const roundTripped = await content.downloadStreamfileRaw(tempFile);
+        expect(roundTripped.toString(`utf8`)).toBe(baseContent);
+      } finally {
+        config.autoConvertIFSccsid = previousSetting;
+      }
+    });
+  });
+});
+
 // Separate suite for non-BiDi tests to avoid connection issues when filtering
 describe('Non-BiDi encoding tests', () => {
   let connection: IBMi

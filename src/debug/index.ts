@@ -4,13 +4,14 @@ import Instance from "../Instance";
 import path from "path";
 import * as vscode from 'vscode';
 
-import { ILELibrarySettings } from "../api/CompileTools";
 import { getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
 import IBMi from "../api/IBMi";
+import { Tools } from "../api/Tools";
+import { onCodeForIBMiConfigurationChange } from "../config/Configuration";
 import { clearPassword, getPassword } from "../extension";
 import { Env, getEnvConfig } from "../filesystems/local/env";
 import { instance } from "../instantiate";
-import { ObjectItem } from "../typings";
+import { ILELibrarySettings, ObjectItem } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 import * as certificates from "./certificates";
 import * as server from "./server";
@@ -55,8 +56,8 @@ export async function initialize(context: ExtensionContext) {
           const password = await getPassword(connection, `Password for user profile ${connection.currentUser} is required to debug. Password is not stored on device, but is stored temporarily for this connection.`);
 
           const libraries: ILELibrarySettings = {
-            currentLibrary: config?.currentLibrary,
-            libraryList: config?.libraryList
+            currentLibrary: config.currentLibrary,
+            libraryList: config.libraryList
           };
 
           // If we are debugging from a workspace, perhaps
@@ -169,6 +170,8 @@ export async function initialize(context: ExtensionContext) {
         if (qualifiedPath.object.endsWith(`.PGM`))
           qualifiedPath.object = qualifiedPath.object.substring(0, qualifiedPath.object.length - 4);
       }
+
+      qualifiedPath.library = Tools.getCurLib(qualifiedPath.library);
     }
 
     return qualifiedPath;
@@ -180,7 +183,32 @@ export async function initialize(context: ExtensionContext) {
     }
   }
 
+  let handlingCertDirectoryChange = false;
+  const revalidateCertificateForCurrentConnection = async () => {
+    const connection = instance.getConnection();
+    if (connection && !isManaged()) {
+      setCertEnv(true, connection);
+      try {
+        await certificates.checkClientCertificate(connection);
+      }
+      catch (error) {
+        vscode.window.showWarningMessage(`Debug Service Certificate issue.`, { detail: String(error), modal: true }, "Setup")
+          .then(setup => {
+            if (setup) {
+              vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+            }
+          })
+      }
+    }
+  }
+
   context.subscriptions.push(
+    onCodeForIBMiConfigurationChange(`debug.certificateDirectory`, () => {
+      if (!handlingCertDirectoryChange) {
+        revalidateCertificateForCurrentConnection();
+      }
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.debug.extension`, () => {
       vscode.commands.executeCommand('extension.open', debugExtensionId);
     }),
@@ -263,7 +291,31 @@ export async function initialize(context: ExtensionContext) {
         })
       )
     ),
-    vscode.commands.registerCommand("code-for-ibmi.debug.open.service.config", () => vscode.commands.executeCommand("code-for-ibmi.openEditable", ORIGINAL_DEBUG_CONFIG_FILE))
+    vscode.commands.registerCommand("code-for-ibmi.debug.open.service.config", () => vscode.commands.executeCommand("code-for-ibmi.openEditable", ORIGINAL_DEBUG_CONFIG_FILE)),
+
+    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.useRecommendedCertLocation`, () =>
+      vscode.window.withProgress({ title: "Moving Debug Service Certificate", location: vscode.ProgressLocation.Window }, async () =>
+        await VscodeTools.withContext("code-for-ibmi:debugWorking", async () => {
+          const connection = instance.getConnection();
+          if (connection) {
+            handlingCertDirectoryChange = true;
+            try {
+              await certificates.useRecommendedCertDirectory(context, connection);
+              setCertEnv(true, connection);
+              vscode.window.showInformationMessage(`Debug client certificate moved to the extension's storage folder.`);
+            } catch (e) {
+              vscode.window.showErrorMessage(`Failed to move debug client certificate. See Code for IBM i logs. (${e})`);
+            } finally {
+              handlingCertDirectoryChange = false;
+            }
+
+            server.refreshDebugSensitiveItems();
+          } else {
+            vscode.window.showErrorMessage(`Debug PTF not installed.`);
+          }
+        })
+      )
+    )
   );
 
   // Run during startup:
@@ -416,7 +468,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
         "subType": "batch",
         "library": options.library.toUpperCase(),
         "program": options.object.toUpperCase(),
-        "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF) CPYENVVAR(*YES)`,
+        "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary || "*CRTDFT"}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF) CPYENVVAR(*YES)`,
         "updateProductionFiles": updateProductionFiles,
         "trace": enableDebugTracing,
       } as vscode.DebugConfiguration;

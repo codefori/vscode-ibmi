@@ -2,13 +2,8 @@
 import IBMi from './IBMi';
 import { SimpleQueue } from './queue';
 import { Tools } from './Tools';
-import { CommandResult, RemoteCommand, StandardIO } from './types';
+import { CommandResult, ILELibrarySettings, RemoteCommand, StandardIO } from './types';
 import { Variables } from './variables';
-
-export interface ILELibrarySettings {
-  currentLibrary: string;
-  libraryList: string[];
-}
 
 export namespace CompileTools {
   export const NEWLINE = `\r\n`;
@@ -39,12 +34,12 @@ export namespace CompileTools {
       const cwd = options.cwd;
       const variables = new Variables(connection, options.env);
 
+      const currentLibrary = variables.get(`&CURLIB`) || config.currentLibrary || "";
+
       const ileSetup: ILELibrarySettings = {
-        currentLibrary: variables.get(`&CURLIB`) || config.currentLibrary,
-        libraryList: variables.get(`&LIBL`)?.split(` `) || config.libraryList,
+        currentLibrary: (/\*CURLIB/i.test(currentLibrary) ? "" : currentLibrary),
+        libraryList: (variables.get(`&LIBL`)?.split(` `) || config.libraryList).filter(Tools.distinct),
       };
-      // Remove any duplicates from the library list
-      ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
 
       const libraryList = buildLibraryList(ileSetup);
       variables.set(`&LIBLS`, libraryList.join(` `));
@@ -62,7 +57,7 @@ export namespace CompileTools {
 
         if (events.writeEvent) {
           if (options.environment === `ile` && !options.noLibList) {
-            events.writeEvent(`Current library: ` + ileSetup.currentLibrary + NEWLINE);
+            events.writeEvent(`Current library: ` + (ileSetup.currentLibrary || "no current library") + NEWLINE);
             events.writeEvent(`Library list: ` + ileSetup.libraryList.join(` `) + NEWLINE);
           }
           if (options.cwd) {
@@ -116,7 +111,7 @@ export namespace CompileTools {
               try {
                 await connection.runSQL([
                   ...(cwd ? [`@QSYS/CHGCURDIR DIR('${cwd}')`] : []),
-                  ...(options.noLibList ? [] : [`@QSYS/CHGLIBL CURLIB(${ileSetup.currentLibrary}) LIBL(${ileSetup.libraryList.join(` `)})`]),
+                  ...(options.noLibList ? [] : [`@QSYS/CHGLIBL CURLIB(${ileSetup.currentLibrary || "*CRTDFT"}) LIBL(${ileSetup.libraryList.join(` `)})`]),
                   ...commands.map(c => `@${c}`)
                 ]);
               } catch (e: any) {
@@ -192,9 +187,9 @@ export namespace CompileTools {
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
-      `liblist -d ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(connection.defaultUserLibraries).join(` `))}`,
-      `liblist -c ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase([config.currentLibrary])[0])}`,
-      `liblist -a ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(buildLibraryList(config)).join(` `))}`
+      `liblist -d ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(...connection.defaultUserLibraries).join(` `))}`,
+      `liblist -c ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(config.currentLibrary || "*CRTDFT")[0])}`,
+      `liblist -a ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(...buildLibraryList(config)).join(` `))}`
     ];
   }
 }

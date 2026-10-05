@@ -45,6 +45,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   mapepireServerPort: number
   mapepireAllowSelfCert: boolean
   sqlJobNaming: string
+  mapepireExtendedMetadata: boolean
   statusBarColor: string
   currentProfile?: string
   [name: string]: any;
@@ -67,6 +68,7 @@ export interface GlobalConfiguration {
   persistOutputOnConnect: boolean;
   sortActionsBy: 'usage' | 'name' | 'config';
   'IfsBrowser.DragAndDropDefaultBehavior': 'ask' | 'copy' | 'move';
+  'debug.certificateDirectory': string;
   autoRefresh: boolean;
   safeDeleteMode: boolean;
   'ObjectBrowser.showNamesInLowercase': boolean;
@@ -104,13 +106,14 @@ export interface CustomVariable {
 export interface ConnectionProfile {
   name: string
   homeDirectory: string
-  currentLibrary: string
+  currentLibrary?: string
   libraryList: string[]
   objectFilters: ObjectFilters[]
   ifsShortcuts: string[]
   customVariables: CustomVariable[]
   setLibraryListCommand?: string
   iasp?: string
+  statusBarColor?: string
 }
 
 export interface StoredConnection {

@@ -130,6 +130,19 @@ export interface IFSFile {
   symlink?: string
 }
 
+/**
+ * A shared snippet, stored in the `/etc/vscode/snippets` IFS folder. Follows the VS Code user
+ * defined snippets schemas
+ */
+export interface SharedSnippet {
+  isFileTemplate?: boolean
+  prefix?: string | string[]
+  body: string | string[]
+  description?: string | string[]
+  include?: string | string[]
+  exclude?: string | string[]
+}
+
 export interface IBMiError {
   code: string
   text: string
@@ -244,5 +257,9 @@ export interface CacheItem<T> {
   createdAt?: number; // milliseconds elapsed since the epoch
 }
 
-export * from "./configuration/config/types";
+export interface ILELibrarySettings {
+  currentLibrary?: string;
+  libraryList: string[];
+}
 
+export * from "./configuration/config/types";

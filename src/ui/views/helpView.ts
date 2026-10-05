@@ -230,15 +230,11 @@ async function downloadLogs() {
               zip.addFile(log.fileName, log.fileContent);
             }
 
-            const result = await zip.writeZipPromise(downloadLocation, { overwrite: false });
+            await zip.writeZipPromise(downloadLocation, { overwrite: false });
 
-            if (result) {
-              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile), vscode.l10n.t(`Open`));
-              if (result && result === vscode.l10n.t(`Open`)) {
-                vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(downloadLocation))
-              }
-            } else {
-              await vscode.window.showErrorMessage(vscode.l10n.t(`Failed to downloaded logs to {0}`, zipFile));
+            const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile), vscode.l10n.t(`Open`));
+            if (result && result === vscode.l10n.t(`Open`)) {
+              vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(downloadLocation))
             }
           } catch (error: any) {
             await vscode.window.showErrorMessage(vscode.l10n.t(`Failed to download logs to {0}. {1}`, zipFile, error));

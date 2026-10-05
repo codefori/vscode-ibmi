@@ -60,7 +60,7 @@ export class IBMiComponentRuntime {
   }
 
   async getCurrentState(){
-    return this.handleState(await this.component.getRemoteState(this.connection, await this.getInstallDirectory()));
+    return this.handleState(await this.component.getRemoteState(this.connection, this.getInstallDirectory()));
   }
 
   /**

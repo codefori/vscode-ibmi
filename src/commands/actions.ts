@@ -113,20 +113,6 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
     }),
 
     commands.registerCommand(`code-for-ibmi.openErrors`, async (options: { qualifiedObject?: string, workspace?: WorkspaceFolder, keepDiagnostics?: boolean }) => {
-      interface ObjectDetail {
-        asp?: string;
-        lib: string;
-        object: string;
-        ext?: string;
-      }
-
-      const detail: ObjectDetail = {
-        asp: undefined,
-        lib: ``,
-        object: ``,
-        ext: undefined
-      };
-
       let inputPath: string | undefined
       const connection = instance.getConnection()!; //safe as action requires to be connected
 
@@ -144,28 +130,18 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
           const uri = editor.document.uri;
 
           if ([`member`, `streamfile`].includes(uri.scheme)) {
-
-            switch (uri.scheme) {
-              case `member`:
-                const memberPath = uri.path.split(`/`);
-                if (memberPath.length === 4) {
-                  detail.lib = memberPath[1];
-                } else if (memberPath.length === 5) {
-                  detail.asp = memberPath[1];
-                  detail.lib = memberPath[2];
-                }
-                break;
-              case `streamfile`:
-                detail.asp = await connection.getLibraryIAsp(config.currentLibrary);
-                detail.lib = config.currentLibrary;
-                break;
+            let library = Tools.getCurLib(config.currentLibrary);
+            if (uri.scheme === "member") {
+              const memberPath = uri.path.split(`/`);
+              if (memberPath.length === 4) {
+                library = memberPath[1];
+              } else if (memberPath.length === 5) {
+                library = memberPath[2];
+              }
             }
 
             const pathDetail = path.parse(editor.document.uri.path);
-            detail.object = pathDetail.name;
-            detail.ext = pathDetail.ext.substring(1);
-
-            initialPath = `${detail.lib}/${pathDetail.base}`;
+            initialPath = `${library}/${pathDetail.base}`;
           }
         }
 

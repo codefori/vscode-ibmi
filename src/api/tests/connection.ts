@@ -1,4 +1,3 @@
-import path from "path";
 import IBMi from "../IBMi";
 import { extensionComponentRegistry } from "../components/manager";
 import { Mapepire } from "../components/mapepire";
@@ -69,7 +68,8 @@ export async function newConnection(reloadSettings?: boolean) {
 
   const conn = new IBMi();
 
-  const mapepire = new Mapepire(path.join(__dirname, `..`, `..`, `..`, `dist`));
+  //The password is required when connecting to a Mapepire Server (mapepireUseServer)
+  const mapepire = new Mapepire("Code for IBM i - Unit tests", async () => ENV_CREDS.password);
 
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);
@@ -89,7 +89,7 @@ export async function newConnection(reloadSettings?: boolean) {
     config.tempLibrary = ENV_CREDS.tempLibrary;
     updateConfig = true;
   }
-  
+
   if (config.iasp !== ENV_CREDS.iasp) {
     config.iasp = ENV_CREDS.iasp;
     updateConfig = true;

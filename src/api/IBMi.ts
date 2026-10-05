@@ -74,6 +74,21 @@ interface ConnectionConfigFiles {
   [key: string]: ConfigFile<any>;
 }
 
+/**
+ * Settings that are always owned by the client and must never be overridden
+ * by the remote `codefori` configuration.
+ */
+export const CLIENT_ONLY_SETTINGS = new Set([
+  `statusBarColor`,
+  `showDescInLibList`,
+  `showHiddenFiles`,
+  `autoSortIFSShortcuts`,
+  `autoSaveBeforeAction`,
+  `sourceDateGutter`,
+  `encodingFor5250`,
+  `terminalFor5250`,
+]);
+
 export default class IBMi {
   public static GlobalStorage: CodeForIStorage;
   public static connectionManager: ConnectionManager = new ConnectionManager();
@@ -110,6 +125,8 @@ export default class IBMi {
   currentConnectionName: string = ``;
   private tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
+  defaultCurrentLibrary: string | undefined = undefined;
+  systemLibraries: string[] = [];
 
   private sqlJob: SQLJob | undefined;
   splfUserData: string | undefined;
@@ -170,6 +187,27 @@ export default class IBMi {
       } catch (e) { }
 
       this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+    }
+  }
+
+  /**
+   * loads the remote configuration files /etc/vscode/settings.json and applies
+   * runs on every connection
+   */
+  private async loadAndApplyRemoteConfigs() {
+    await this.loadRemoteConfigs();
+
+    const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
+    if (this.config && remoteConnectionConfig.getState() === `ok`) {
+      const remoteConfig = await remoteConnectionConfig.get();
+
+      if (remoteConfig.codefori) {
+        for (const [key, value] of Object.entries(remoteConfig.codefori)) {
+          if (!CLIENT_ONLY_SETTINGS.has(key) && this.config[key] !== undefined) {
+            this.config[key] = value;
+          }
+        }
+      }
     }
   }
 
@@ -583,13 +621,17 @@ export default class IBMi {
         callbacks.message(`warning`, `IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
       }
 
-      callbacks.progress({ message: `Checking Mapepire status.` });
+      callbacks.progress({ message: `Loading remote configuration files.` });
+      await this.loadAndApplyRemoteConfigs();
+
+      callbacks.progress({ message: `Checking temporary directory.` });
       const tempDirSet = await this.checkOrCreateTempDirectory();
       if (!tempDirSet) {
         this.config.tempDir = `~/.vscode/tmp`;
       }
 
       // We always start up Mapepire first
+      callbacks.progress({ message: `Checking Mapepire status.` });
       let mapepireState;
       try {
         mapepireState = await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
@@ -605,26 +647,29 @@ export default class IBMi {
 
       callbacks.progress({ message: `Starting Mapepire.` });
       const mapepire = await this.getComponent<Mapepire>(Mapepire.ID);
-      if (mapepire) {
-        const hasJavaInstalled = (this.remoteFeatures.jdk21 || this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
-        if (hasJavaInstalled) {
-          try {
-            this.sqlJob = await mapepire.newJob(this);
-            if (this.sqlJob.id) {
-              this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
-              await this.sqlJob.execute(`CALL QSYS2.QCMDEXC('OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)')`);
-            }
-          } catch (e: any) {
-            callbacks.message(`error`, `Failed to start Mapepire SQL job: ${e.message || e}`);
-            this.appendOutput(`Mapepire error: ${e.message || e}\n`);
+
+      try {
+        if (mapepire) {
+          const hasJavaInstalled = (this.remoteFeatures.jdk21 || this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
+          if (!this.getConfig().mapepireUseServer && !hasJavaInstalled) {
+            throw new Error(`No Java installation found. SQL operations will not be available. Please install Java 8, 11, 17 or 21.`);
           }
-        } else {
-          callbacks.message(`warning`, `No Java installation found. SQL operations will not be available. Please install Java 8, 11, or 17.`);
-          this.appendOutput(`Warning: No Java found for Mapepire\n`);
+
+          this.sqlJob = await mapepire.newJob(this);
+          if (this.sqlJob.id) {
+            this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
+            await this.sqlJob.execute(`CALL QSYS2.QCMDEXC('OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)')`);
+          }
         }
-      } else {
-        callbacks.message(`warning`, `Mapepire component failed to start. SQL operations will not be available.`);
-        this.appendOutput(`Warning: Mapepire component not available\n`);
+        else {
+          throw new Error(`Mapepire component failed to start.`);
+        }
+      }
+      catch (e: any) {
+        const error = e.message || e;
+        callbacks.message(`error`, `Failed to start Mapepire SQL job: ${error}`);
+        this.appendOutput(`Mapepire error: ${error}\n`);
+        throw e;
       }
 
       try {
@@ -743,10 +788,10 @@ export default class IBMi {
         message: `Checking library list configuration.`
       });
 
-      //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
-      //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
-      let currentLibrary = `QGPL`;
+
       this.defaultUserLibraries = [];
+      this.defaultCurrentLibrary = undefined;
+      this.systemLibraries = [];
 
       const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL())`);
       for (const row of liblRows) {
@@ -755,21 +800,21 @@ export default class IBMi {
             this.defaultUserLibraries.push(row.SYSTEM_SCHEMA_NAME as string);
             break;
           case `CURRENT`:
-            currentLibrary = (row.SYSTEM_SCHEMA_NAME as string);
+            this.defaultCurrentLibrary = (row.SYSTEM_SCHEMA_NAME as string);
             break;
+          case `SYSTEM`:
+            this.systemLibraries.push(row.SYSTEM_SCHEMA_NAME as string);
         }
       }
 
-      //If this is the first time the config is made, then these arrays will be empty
-      if (this.config.currentLibrary.length === 0) {
-        this.config.currentLibrary = currentLibrary;
-      }
+      //If this is the first time the config is made, then this array will be empty
       if (this.config.libraryList.length === 0) {
+        this.config.currentLibrary = this.defaultCurrentLibrary;
         this.config.libraryList = this.defaultUserLibraries;
       }
 
       callbacks.progress({ message: `Checking temporary library.` });
-      const tempLibrarySet = await this.checkOrCreateTempLibrary(currentLibrary, callbacks.message);
+      const tempLibrarySet = await this.checkOrCreateTempLibrary(this.defaultCurrentLibrary || "QGPL", callbacks.message);
       if (tempLibrarySet && this.config.autoClearTempData) {
         callbacks.progress({
           message: `Clearing temporary data.`
@@ -821,24 +866,6 @@ export default class IBMi {
       }
 
       this.appendOutput(`\n`);
-
-      // Load the remote connection configuration and apply it to the connection
-
-      callbacks.progress({ message: `Loading remote configuration files.` });
-      await this.loadRemoteConfigs();
-
-      const remoteConnectionConfig = this.getConfigFile<RemoteConfigFile>(`settings`);
-      if (remoteConnectionConfig.getState() === `ok`) {
-        const remoteConfig = await remoteConnectionConfig.get();
-
-        if (remoteConfig.codefori) {
-          for (const [key, value] of Object.entries(remoteConfig.codefori)) {
-            if (this.config[key] !== undefined) {
-              this.config[key] = value;
-            }
-          }
-        }
-      }
 
       callbacks.progress({
         message: `Checking temporary directory and temporary library configuration.`
@@ -1223,6 +1250,8 @@ export default class IBMi {
   }
 
   async disconnect() {
+    await this.sqlJob?.close();
+
     if (this.client?.connection) {
       await (await this.getComponent<Mapepire>(Mapepire.ID))?.endJobs();
       //Close the connection and triggers its 'end' event
@@ -1492,9 +1521,16 @@ export default class IBMi {
             error = new Tools.SqlError(e.message);
             error.cause = statement
 
-            const parts: string[] = e.message.split(`,`);
-            if (parts.length > 3) {
-              error.sqlstate = parts[parts.length - 2].trim();
+            // First attempt to extract sqlstate using a regex
+            const sqlstateMatch = /,\s*([0-9A-Z]{5}),\s*-?\d+\s*$/.exec(e.message);
+            if (sqlstateMatch) {
+              error.sqlstate = sqlstateMatch[1];
+            } else {
+              // Fallback to splitting the message by commas and taking the second to last part
+              const parts: string[] = e.message.split(`,`);
+              if (parts.length >= 3) {
+                error.sqlstate = parts[parts.length - 2].trim();
+              }
             }
 
             this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}`);
