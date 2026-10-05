@@ -38,5 +38,3 @@ export async function setup(project: TestProject) {
   console.log(`Connection config: ${jsonConfigPath}`);
   console.log(`------------------------------\n`);
 }
-
-export async function teardown() { }

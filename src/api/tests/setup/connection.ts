@@ -5,8 +5,6 @@ import { Mapepire } from "../../components/mapepire";
 import { CodeForIStorage } from "../../configuration/storage/CodeForIStorage";
 import { JsonConfig, JsonStorage } from "./json";
 import { TestEnv } from "./env";
-import path from "path";
-import { readdirSync } from "fs";
 import { CustomCLI } from "../components/customCli";
 
 export const envVars = TestEnv.getEnvironmentVariables();
@@ -48,12 +46,7 @@ export async function newConnection(reloadSettings?: boolean) {
   }
 
   // Setup components
-  const mapepireDistDir = path.join(__dirname, `..`, `..`, `..`, `..`, `dist`);
-  const mapepireJarFileName = readdirSync(mapepireDistDir).find(file => /^mapepire-server-.+\.jar$/.test(file));
-  if (!mapepireJarFileName) {
-    throw new Error(`Failed to locate Mapepire Server JAR file in ${mapepireDistDir}`);
-  }
-  const mapepire = new Mapepire(mapepireDistDir, async () => envVars.VITE_DB_PASS);
+  const mapepire = new Mapepire("Code for IBM i - Unit tests", async () => envVars.VITE_DB_PASS);
   const testingId = `testing`;
   extensionComponentRegistry.registerComponent(testingId, mapepire);
   extensionComponentRegistry.registerComponent(testingId, new CustomCLI());

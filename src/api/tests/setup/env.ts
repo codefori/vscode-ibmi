@@ -38,7 +38,6 @@ export namespace TestEnv {
                 `Missing credentials - You must set the following environment variables to specify the IBM i connection:`,
                 `\t${EnvironmentVariableKeys.VITE_SERVER}`,
                 `\t${EnvironmentVariableKeys.VITE_DB_USER}`,
-                `\t${EnvironmentVariableKeys.VITE_DB_PORT}`,
                 ``,
                 `If you're a developer, make a copy of .env.sample, rename it to .env, and set the values.`,
                 ``,
@@ -65,13 +64,13 @@ export namespace TestEnv {
             process.exit(1);
         }
 
-        const sshPort = process.env.VITE_DB_PORT
+        const sshPort = process.env.VITE_DB_PORT && !Number.isNaN(Number(process.env.VITE_DB_PORT))
             ? parseInt(process.env.VITE_DB_PORT) : DEFAULT_IBMI_SSH_PORT;
         const passphrase = process.env.VITE_PASSPHRASE;
         const tempLib = process.env.VITE_TEMP_LIB || DEFAULT_IBMI_TEMP_LIB;
         const iasp = process.env.VITE_IASP;
-        const connectionTimeout = process.env.VITE_CONNECTION_TIMEOUT ?
-            parseInt(process.env.VITE_CONNECTION_TIMEOUT) : DEFAULT_CONNECTION_TIMEOUT;
+        const connectionTimeout = process.env.VITE_CONNECTION_TIMEOUT && !Number.isNaN(Number(process.env.VITE_CONNECTION_TIMEOUT))
+            ? parseInt(process.env.VITE_CONNECTION_TIMEOUT) : DEFAULT_CONNECTION_TIMEOUT;
 
         return {
             VITE_SERVER: host,
@@ -100,11 +99,11 @@ export namespace TestEnv {
         console.log(` ◦ Private Key: ${envVars.VITE_PRIVATE_KEY_PATH ? `Configured` : `-`}`);
         console.log(` ◦ Passphrase: ${envVars.VITE_PASSPHRASE ? `Configured` : `-`}`);
         console.log(` ◦ SSH Agent: ${envVars.VITE_USE_SSH_AGENT ? `Enabled` : `-`}`);
-        
+
         console.log(`Connection Settings:`);
         console.log(` ◦ Temporary Library: ${envVars.VITE_TEMP_LIB}`);
         console.log(` ◦ IASP: ${envVars.VITE_IASP ?? `-`}`);
-        
+
         console.log(`Test Settings:`);
         console.log(` ◦ Connection Timeout: ${envVars.VITE_CONNECTION_TIMEOUT} ms`);
     }
