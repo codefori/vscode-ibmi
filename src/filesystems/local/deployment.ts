@@ -39,7 +39,7 @@ export namespace Deployment {
       vscode.commands.registerCommand(`code-for-ibmi.launchActionsSetup`, DeployTools.launchActionsSetup),
       vscode.commands.registerCommand(`code-for-ibmi.launchDeploy`, DeployTools.launchDeploy),
       vscode.commands.registerCommand(`code-for-ibmi.deploySelected`, async (item?: Uri, items?: Uri[]) => {
-        if(!(item instanceof Uri)) {
+        if (!(item instanceof Uri)) {
           vscode.window.showErrorMessage(`No files selected for deployment.`);
           return;
         }
@@ -64,7 +64,7 @@ export namespace Deployment {
 
     const workspaces = vscode.workspace.workspaceFolders;
     if (workspaces && workspaces.length > 0) {
-      workspaceWatcher().then(context.subscriptions.push);
+      workspaceWatcher().then(watcher => context.subscriptions.push(watcher));
     }
 
     instance.subscribe(
@@ -83,37 +83,6 @@ export namespace Deployment {
             button.show();
           } else {
             button.hide();
-          }
-
-          const existingPaths = storage.getDeployment();
-
-          if (workspaces.length === 1) {
-            const workspace = workspaces[0];
-
-            if (existingPaths && !existingPaths[workspace.uri.fsPath]) {
-              const possibleDeployDir = DeployTools.buildPossibleDeploymentDirectory(workspace);
-              vscode.window.showInformationMessage(
-                `Deploy directory for Workspace not setup. Would you like to default to '${possibleDeployDir}'?`,
-                `Yes`,
-                `Ignore`
-              ).then(async result => {
-                if (result === `Yes`) {
-                  DeployTools.setDeployLocation({ path: possibleDeployDir }, workspace);
-                }
-              });
-            }
-
-            ActionTools.getActions(workspace).then(result => {
-              if (result.length === 0) {
-                vscode.window.showInformationMessage(
-                  `There are no local Actions defined for this project.`,
-                  `Run Setup`
-                ).then(result => {
-                  if (result === `Run Setup`)
-                    vscode.commands.executeCommand(`code-for-ibmi.launchActionsSetup`);
-                });
-              }
-            })
           }
         }
       });
@@ -316,7 +285,7 @@ export namespace Deployment {
 
   /**
    * Check if default CCSID of created/deployed files is not 1208 (utf-8).
-   * 
+   *
    * @returns `true` if the default CCSID of IFS files is not 1208.
    */
   async function mustFixCCSID() {

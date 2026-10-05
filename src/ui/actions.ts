@@ -662,7 +662,16 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
     }
     else {
       actionMessage = l10n.t(`No suitable actions found for {0} - {1}`, scheme, targets.map(t => t.extension).filter(Tools.distinct).join(", "));
-      vscode.window.showErrorMessage(actionMessage);
+      const launchActionSetupLabel = l10n.t("Setup Workspace Actions");
+      const manageActionsLabel = l10n.t("Manage All Actions");
+      const buttons = scheme === "file" ? [launchActionSetupLabel, manageActionsLabel] : [manageActionsLabel];
+      vscode.window.showErrorMessage(actionMessage, ...buttons).then(selected => {
+        if (selected === launchActionSetupLabel) {
+          vscode.commands.executeCommand("code-for-ibmi.launchActionsSetup");
+        } else if (selected === manageActionsLabel) {
+          vscode.commands.executeCommand("code-for-ibmi.environment.actions.focus");
+        }
+      });
       return { success: false, output: [], message: actionMessage };
     }
   }

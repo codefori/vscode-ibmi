@@ -428,6 +428,11 @@
 									"sql"
 								],
 								"description": "The job naming convention to use when running SQL queries. 'system' will use the system naming convention, 'sql' will use the SQL naming convention."
+							},
+							"mapepireExtendedMetadata": {
+								"type": "boolean",
+								"default": true,
+								"description": "Request extended metadata from the JDBC driver."
 							}
 						}
 					}
@@ -490,6 +495,12 @@
 					"type": "boolean",
 					"default": false,
 					"description": "If enabled, will not clear the IBM i Output when connecting to a system. Useful for tracking connection history and timing."
+				},
+				"code-for-ibmi.debug.certificateDirectory": {
+					"type": "string",
+					"default": "",
+					"scope": "machine",
+					"markdownDescription": "Local folder where the debug service client certificate is stored. Leave empty to use your home directory (default). Use the \"Move certificate to extension storage\" button in a connection's Debugger settings to switch to the recommended, hidden location. This is a machine-specific setting and is not synced via Settings Sync, since it points at a local filesystem path."
 				},
 				"code-for-ibmi.defaultOpenMode": {
 					"type": "string",
@@ -1110,6 +1121,12 @@
 				"command": "code-for-ibmi.showJobLog",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Display Job Log",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.environment.connection.showJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Display SQL Job Log",
 				"category": "IBM i"
 			},
 			{
@@ -3477,6 +3494,21 @@
 					"group": "20_actionItemAction01"
 				},
 				{
+					"command": "code-for-ibmi.showAdditionalSettings",
+					"when": "view === environmentView && viewItem === connectionNode",
+					"group": "00_connectionNodeAction01"
+				},
+				{
+					"command": "code-for-ibmi.environment.connection.showJobLog",
+					"when": "view === environmentView && viewItem === connectionNode",
+					"group": "01_connectionNodeAction01"
+				},
+				{
+					"command": "code-for-ibmi.environment.connection.showJobLog",
+					"when": "view === environmentView && viewItem === connectionSqlJobItem",
+					"group": "00_connectionSqlJobItemAction01"
+				},
+				{
 					"command": "code-for-ibmi.environment.variable.declare",
 					"when": "view === environmentView && viewItem =~ /^customVariablesNode/",
 					"group": "inline@01"
@@ -3574,20 +3606,19 @@
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
 		"types": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node --resolveJsonModule",
-		"postinstall": "npx tsx tools/downloadMapepire",
 		"sqlsignature": "npx tsx tools/sqlSignature"
 	},
 	"devDependencies": {
-		"@octokit/rest": "22.0.1",
 		"@types/adm-zip": "0.5.7",
 		"@types/node": "22.19.7",
 		"@types/ssh2": "^1.15.5",
 		"@types/tar": "6.1.13",
 		"@types/tmp": "0.2.5",
 		"@types/vscode": "^1.90.0",
+		"@types/ws": "^8.18.2",
 		"@vscode/vsce": "^3.9.1",
-		"esbuild": "^0.27.0",
-		"esbuild-loader": "^4.4.2",
+		"esbuild": "0.28.2",
+		"esbuild-loader": "4.5.0",
 		"eslint": "^8.57.1",
 		"ssh2-streams": "^0.4.10",
 		"ts-loader": "^9.3.1",
@@ -3599,17 +3630,16 @@
 	},
 	"dependencies": {
 		"@ibm/ibmi-eventf-parser": "2.0.2",
-		"@ibm/mapepire-js": "0.6.1",
+		"@ibm/mapepire-js": "1.0.1",
 		"@vscode-elements/elements": "2.5.1",
 		"@vscode/codicons": "0.0.45",
-		"adm-zip": "0.5.16",
+		"adm-zip": "0.6.1",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
-		"csv": "6.4.1",
 		"escape-string-regexp": "5.0.0",
 		"ignore": "7.0.5",
 		"node-ssh": "13.2.1",
-		"tar": "^7.5.13",
-		"tmp": "0.2.6",
+		"tar": "7.5.22",
+		"tmp": "0.2.7",
 		"vscode-diff": "3.0.1"
 	},
 	"extensionDependencies": [

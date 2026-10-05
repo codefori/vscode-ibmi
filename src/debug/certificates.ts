@@ -1,10 +1,12 @@
-import { existsSync, readFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync } from "fs";
 import * as os from "os";
 import path, {  } from "path";
 import vscode from "vscode";
 import IBMi from "../api/IBMi";
 import { DebugConfiguration, CLIENT_CERTIFICATE } from '../api/configuration/DebugConfiguration';
 import { instance } from "../instantiate";
+
+const CERTIFICATE_DIRECTORY_SETTING = `debug.certificateDirectory`;
 
 
 export type ImportedCertificate = {
@@ -28,13 +30,47 @@ export async function remoteCertificatesExists(debugConfig?: DebugConfiguration)
 export async function downloadClientCert(connection: IBMi) {
   const content = connection.getContent();
   const debugConfig = await new DebugConfiguration(connection).load();
+  const localCertPath = getLocalCertPath(connection);
 
-  await content.downloadStreamfileRaw(debugConfig.getRemoteClientCertificatePath(), getLocalCertPath(connection));
+  mkdirSync(path.dirname(localCertPath), { recursive: true });
+  await content.downloadStreamfileRaw(debugConfig.getRemoteClientCertificatePath(), localCertPath);
+}
+
+export function getCertificateDirectory() {
+  const configured = IBMi.connectionManager.get(CERTIFICATE_DIRECTORY_SETTING);
+  return configured?.trim() || os.homedir();
 }
 
 export function getLocalCertPath(connection: IBMi) {
   const host = connection.currentHost;
-  return path.join(os.homedir(), `${host}_${CLIENT_CERTIFICATE}`);
+  return path.join(getCertificateDirectory(), `${host}_${CLIENT_CERTIFICATE}`);
+}
+
+export function getRecommendedCertDirectory(context: vscode.ExtensionContext) {
+  return context.globalStorageUri.fsPath;
+}
+
+export function isUsingRecommendedCertDirectory(context: vscode.ExtensionContext) {
+  const current = path.resolve(getCertificateDirectory());
+  const recommended = path.resolve(getRecommendedCertDirectory(context));
+  // Windows/macOS filesystems are typically case-insensitive, so a differently-cased
+  // drive letter or path segment shouldn't be treated as a different directory.
+  return process.platform === `win32` || process.platform === `darwin`
+    ? current.toLowerCase() === recommended.toLowerCase()
+    : current === recommended;
+}
+
+export async function useRecommendedCertDirectory(context: vscode.ExtensionContext, connection: IBMi) {
+  const oldCertPath = getLocalCertPath(connection);
+  const recommendedDir = getRecommendedCertDirectory(context);
+
+  await IBMi.connectionManager.set(CERTIFICATE_DIRECTORY_SETTING, recommendedDir);
+  await downloadClientCert(connection);
+
+  const newCertPath = getLocalCertPath(connection);
+  if (newCertPath !== oldCertPath && existsSync(oldCertPath)) {
+    unlinkSync(oldCertPath);
+  }
 }
 
 export async function checkClientCertificate(connection: IBMi, debugConfig?: DebugConfiguration) {

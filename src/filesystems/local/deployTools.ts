@@ -344,25 +344,33 @@ export namespace DeployTools {
   }
 
   export async function setDeployLocation(node: any, workspaceFolder?: WorkspaceFolder, value?: string, method?: DeploymentMethod, selectedFiles?: Uri[]) {
-    const path = node?.path || await vscode.window.showInputBox({
-      prompt: `Enter IFS directory to deploy to`,
-      value
-    });
+    const storage = instance.getStorage();
+    const chosenWorkspaceFolder = workspaceFolder || await Deployment.getWorkspaceFolder();
 
-    if (path) {
-      const storage = instance.getStorage();
-      const chosenWorkspaceFolder = workspaceFolder || await Deployment.getWorkspaceFolder();
+    if (storage && chosenWorkspaceFolder) {
+      let deployDirectoryToSet = node?.path;
+      if (!deployDirectoryToSet) {
+        const existingPaths = storage.getDeployment();
+        const suggestedDeployDir = (existingPaths && existingPaths[chosenWorkspaceFolder.uri.fsPath]) ?
+          existingPaths[chosenWorkspaceFolder.uri.fsPath] :
+          DeployTools.buildPossibleDeploymentDirectory(chosenWorkspaceFolder);
+        deployDirectoryToSet = await vscode.window.showInputBox({
+          prompt: `Enter IFS directory to deploy to`,
+          value: suggestedDeployDir,
+          placeHolder: `Deploy directory`
+        });
+      }
 
-      if (storage && chosenWorkspaceFolder) {
-        await Deployment.createRemoteDirectory(path);
+      if (deployDirectoryToSet) {
+        await Deployment.createRemoteDirectory(deployDirectoryToSet);
 
         const existingPaths = storage.getDeployment();
-        existingPaths[chosenWorkspaceFolder.uri.fsPath] = path;
+        existingPaths[chosenWorkspaceFolder.uri.fsPath] = deployDirectoryToSet;
         await storage.setDeployment(existingPaths);
 
         instance.fire(`deployLocation`);
 
-        if (await vscode.window.showInformationMessage(`Deployment location set to ${path}`, `Deploy now`)) {
+        if (await vscode.window.showInformationMessage(`Deployment location set to ${deployDirectoryToSet}`, `Deploy now`)) {
           vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, chosenWorkspaceFolder.index, method, selectedFiles);
         }
       }

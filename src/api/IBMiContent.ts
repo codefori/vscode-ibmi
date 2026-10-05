@@ -1,11 +1,10 @@
 import crypto from 'crypto';
-import { parse } from 'csv-parse/sync';
+import escapeStringRegexp from 'escape-string-regexp';
 import fs from 'fs';
 import * as node_ssh from "node-ssh";
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import escapeStringRegexp from 'escape-string-regexp';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -299,7 +298,7 @@ export default class IBMiContent {
    * @param member
    * @param content
    */
-  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array): Promise<boolean> {
+  async uploadMemberContent(library: string, sourceFile: string, member: string, content: string | Uint8Array, extension?: string): Promise<boolean> {
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
@@ -381,6 +380,14 @@ export default class IBMiContent {
           if (messages.findId("CPIA083")) {
             // TODO: what do we do about this, really?
             // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
+          } else if (messages.findId("CPC7305")) {
+            // Member was newly created so we need to set the source type
+            if (extension) {
+              await this.ibmi.runCommand({
+                command: `QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(${extension})`,
+                noLibList: true
+              });
+            }
           }
           return true;
         } else {
@@ -417,62 +424,6 @@ export default class IBMiContent {
     console.warn(`[Code for IBM i] runSQL is deprecated and will be removed by 4.0.0. Use IBMi.runSQL instead.`);
 
     return this.ibmi.runSQL(statements);
-  }
-
-  /**
-   * Download the contents of a member from a table.
-   * @param library
-   * @param file
-   * @param member Will default to file provided
-   * @param deleteTable Will delete the table after download
-   */
-  async getTable(library: string, file: string, member?: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
-    if (!member) member = file; //Incase mbr is the same file
-
-    const tempRmt = Tools.ensureFullPath(this.getTempRemote(Tools.qualifyPath(library, file, member)), this.config.homeDirectory);
-    const copyResult = await this.ibmi.runCommand({
-      command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
-        `TOSTMF('${tempRmt}') ` +
-        `MBROPT(*REPLACE) STMFCCSID(1208) STMFCODPAG(*STMF) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
-      noLibList: true
-    });
-
-    if (copyResult.code === 0) {
-      let result = await this.downloadStreamfileRaw(tempRmt);
-
-      if (this.config.autoClearTempData) {
-        Promise.allSettled([
-          this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` }),
-          deleteTable ? this.ibmi.runCommand({ command: `QSYS/DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
-        ]);
-      }
-
-      return parse(result, {
-        columns: true,
-        skip_empty_lines: true,
-        cast: true,
-        onRecord(record) {
-          for (const key of Object.keys(record)) {
-            record[key] = record[key] === ` ` ? `` : record[key];
-          }
-          return record;
-        }
-      });
-
-    } else {
-      throw new Error(`Failed fetching table: ${copyResult.stderr}`);
-    }
-
-  }
-
-  /**
-   * Prepare a table in QTEMP using any number of preparation queries and return its content.
-   * @param prepareQueries : SQL statements that should create a table in QTEMP
-   * @param table : the name of the table expected to be found in QTEMP
-   * @returns : the table's content
-   */
-  getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
-    return this.runStatements(...prepareQueries, `select * from QTEMP.${table}`);
   }
 
   /**
