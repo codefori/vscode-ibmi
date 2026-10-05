@@ -22,7 +22,8 @@ export async function newConnection(reloadSettings?: boolean) {
     port: envVars.VITE_DB_PORT,
     password: envVars.VITE_DB_PASS,
     privateKeyPath: envVars.VITE_PRIVATE_KEY_PATH,
-    passphrase: envVars.VITE_PASSPHRASE
+    passphrase: envVars.VITE_PASSPHRASE,
+    useSshAgent: envVars.VITE_USE_SSH_AGENT
   };
 
   // Setup Code4i virtual storage and config
