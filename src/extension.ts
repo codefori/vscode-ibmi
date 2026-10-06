@@ -9,6 +9,7 @@ import { SearchTools } from "./api/SearchTools";
 import { ActionTools } from "./api/actions";
 import { extensionComponentRegistry } from "./api/components/manager";
 import { Mapepire } from "./api/components/mapepire";
+import { MbrAttr } from "./api/components/mbrAttr";
 import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
 import { onCodeForIBMiConfigurationChange, ViewSettings } from "./config/Configuration";
@@ -142,8 +143,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   const mapepire = new Mapepire(`${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`, async (connection) => {
     return await getPassword(connection, l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName));
   });
+  extensionComponentRegistry.registerComponent(context, new MbrAttr());
   extensionComponentRegistry.registerComponent(context, mapepire);
-  
+
   context.subscriptions.push(
     commands.registerCommand(`code-for-ibmi.sshSqlJob.appendApplicationName`, (applicationName: string) => {
       mapepire.application = applicationName;
