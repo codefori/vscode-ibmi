@@ -399,8 +399,8 @@ CREATE or REPLACE FUNCTION sqltools.mbr_attr(
             SRCTYPE   varchar(10),
             FILEATTR  varchar(10),   -- PF, LF, DDMF
             TEXT      varchar(50),   -- Mbr Text description
-            create_timestamp timeStamp(0),  -- Date/Time member was added
-            Last_Source_change_timestamp timestamp(0), -- Last Changed
+            MBR_CREATE_DATE timestamp(0),  -- Date/Time member was added
+            MBR_CHG_DATE timestamp(0), -- Last source changed
 
           -- Begin detailed_info=>'FULL' | 'YES' columns
             Record_count BIGINT,         -- Current record count
@@ -409,7 +409,7 @@ CREATE or REPLACE FUNCTION sqltools.mbr_attr(
             Last_used_Days int,      -- Days since last used
             Last_used_Date date,     -- Last Used Date/Time
             Last_used_Reset_date date, -- Last used: Reset Date
-            Object_Change_TimeStamp timestamp(0)   -- Object Changed timestamp
+            OBJ_CHG_DATE timestamp(0)   -- Object changed date/time
            )
        LANGUAGE RPGLE
        NO SQL
@@ -460,7 +460,7 @@ comment on parameter SPECIFIC FUNCTION sqltools.mbr_attr
 `;
 
 export function buildMbrAttrSqlSource(targetLibrary: string, version: number): string {
-    return MBR_ATTR_SQL_TEMPLATE
-        .replace(/\$\{version\}/g, String(version))
-        .replace(/\bsqltools\b/gi, targetLibrary.trim());
+     return MBR_ATTR_SQL_TEMPLATE
+          .replace(/\$\{version\}/g, String(version))
+          .replace(/\bsqltools\b/gi, targetLibrary.trim());
 }
