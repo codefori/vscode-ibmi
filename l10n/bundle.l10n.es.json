@@ -426,5 +426,9 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Vaya, esto sí que está tardando. Confiemos en que el resultado sea el esperado.",
   "Yes": "Sí",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "El uso de este sistema se realiza bajo su propia responsabilidad. No se debe compartir información confidencial ni privada.",
-  "Your changes will be discarded": "Los cambios se descartarán"
+  "Your changes will be discarded": "Los cambios se descartarán",
+  "Selected": "Selected",
+  "{0} file(s) this Action runs on, uploaded even if unchanged": "{0} file(s) this Action runs on, uploaded even if unchanged",
+  "Action files": "Action files",
+  "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.": "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method."
 }

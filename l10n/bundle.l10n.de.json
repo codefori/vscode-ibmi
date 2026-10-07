@@ -424,5 +424,9 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Wow. Das dauert wirklich eine Weile. Hoffen wir, dass Sie das gewünschte Ergebnis erhalten.",
   "Yes": "Ja",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Sie nutzen dieses System auf eigenes Risiko. Geben Sie keine sensiblen oder privaten Informationen weiter.",
-  "Your changes will be discarded": "Ihre Änderungen werden verworfen"
+  "Your changes will be discarded": "Ihre Änderungen werden verworfen",
+  "Selected": "Ausgewählt",
+  "{0} file(s) this Action runs on, uploaded even if unchanged": "{0} Datei(en), auf die diese Aktion ausgeführt wird, werden auch ohne Änderung übertragen",
+  "Action files": "Aktionsdateien",
+  "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.": "Nur die Datei(en), auf die eine Aktion ausgeführt wird, auch ohne Änderung. Andere Deployments fragen nach der Methode."
 }
