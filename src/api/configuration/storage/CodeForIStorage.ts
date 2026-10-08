@@ -6,7 +6,7 @@ import { ConnectionData } from "../../types";
 import { BaseStorage } from "./BaseStorage";
 
 const SERVER_SETTINGS_CACHE_PREFIX = `serverSettingsCache_`;
-const SERVER_SETTINGS_CACHE_KEY = (name: string) => SERVER_SETTINGS_CACHE_PREFIX + name;
+export const SERVER_SETTINGS_CACHE_KEY = (name: string) => SERVER_SETTINGS_CACHE_PREFIX + name;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
 const PREVIOUS_FIND_TERMS_KEY = `prevFindTerms`;
 const PREVIOUS_DOWNLOAD_LOCATION = `previousDownloadLocation`;
