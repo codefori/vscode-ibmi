@@ -30,19 +30,14 @@ export class ObjAttr implements IBMiComponent {
     `);
 
         if (!row) {
-            return { status: "NotInstalled", remoteSignature: "" };
+            return { status: "NotInstalled", remoteSignature: ObjAttr.SIGNATURE };
         }
 
         const longComment = String(row.LONG_COMMENT || "").trim();
         const remoteVersion = Number(longComment.match(/^(\d+)/)?.[1] || -1);
         const status = remoteVersion >= ObjAttr.VERSION ? "Installed" : "NeedsUpdate";
-        const remoteSignature = await connection.getContent().getSQLRoutineSignature(
-            library,
-            ObjAttr.SPECIFIC_NAME,
-            "FUNCTION"
-        ) || ObjAttr.SIGNATURE;
 
-        return { status, remoteSignature };
+        return { status, remoteSignature: ObjAttr.SIGNATURE };
     }
 
     async update(connection: IBMi, installDirectory: string): Promise<SecureComponentState> {
