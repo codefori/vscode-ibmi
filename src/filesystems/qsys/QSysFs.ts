@@ -186,6 +186,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
         );
 
+        // Uncomment the following appendOutput to log the new PATH_NAME to the code for i Output Console
         // connection.appendOutput(`[OBJ_ATTR stat] ${path.library}/${path.name}${path.member ? `/${path.member}` : ``} PATH_NAME='${pathName}' -> ${attributes ? `hit` : `miss`}\n`);
 
         return attributes;
