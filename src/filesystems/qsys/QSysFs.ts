@@ -179,7 +179,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             `select created_date as CREATE_TIME,
                     coalesce(data_changed_date, changed_date, created_date) as MODIFY_TIME,
                     data_size as DATA_SIZE
-             from table(${udfLibrary}.${ObjAttr.SPECIFIC_NAME}(?, null, null, '*FILE', null, 'NO'))`,
+             from table(${udfLibrary}.${ObjAttr.SPECIFIC_NAME}(PATH_NAME => ?))`,
             {
                 bindings: [pathName],
                 rows: 1
