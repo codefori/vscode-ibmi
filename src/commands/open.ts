@@ -252,18 +252,17 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                 },
               ]
 
-              resultSet = await connection.runSQL([
-                `@QSYS/DSPFD FILE(${selectionSplit[0]}/${filterText ? `${filterText}*` : `*ALL`}) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)`,
-                /* sql */
-                `select trim(PHFILE) NAME,
-                        trim(ifnull(PHTXT, '')) TEXT
-                from QTEMP.PFS
-                where PHDTAT = 'S'
-                order by 1`
-              ]);
+              resultSet = await connection.runSQL(/* sql */`
+                select SYSTEM_TABLE_NAME NAME, ifNull(TEXT_DESCRIPTION, '') TEXT
+                from QSYS2.SYSFILES
+                where SYSTEM_TABLE_SCHEMA = '${selectionSplit[0]}' and
+                      ${filterText ? ` SYSTEM_TABLE_NAME like '${filterText}%' and` : ''}
+                      FILE_TYPE = 'SOURCE'
+                order by 1
+              `);
 
               const listFile: QuickPickItem[] = resultSet.map(row => ({
-                label: selectionSplit[0] + '/' + connection.sysNameInLocal(String(row.NAME)),
+                label: selectionSplit[0] + '/' + String(row.NAME),
                 description: String(row.TEXT)
               }))
 
