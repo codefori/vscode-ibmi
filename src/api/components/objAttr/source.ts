@@ -295,12 +295,14 @@ dcl-Proc main ;
     dcl-pi main EXTPGM('OBJ_ATTR');
 
              // Input parameters
+        inPATH_NAME VARCHAR(4096) CCSID(UTF8) OPTIONS(*VARSIZE);
+
         inLibname VARCHAR(10) const;
         inOBJNAME VARCHAR(10) const;
         inOBJTYPE VARCHAR(10) const;
         inMBRNAME  VARCHAR(10) const;
-        inPATH_NAME VARCHAR(4096) CCSID(UTF8) OPTIONS(*VARSIZE);
-        cvtOption VARCHAR(10) const;
+
+        cvtOption VARCHAR(10) const;  // convert path_name to upper/lower?
 
         outCreated  TIMESTAMP(0);
         outAccessed TIMESTAMP(0);
@@ -330,12 +332,13 @@ dcl-Proc main ;
                //    message, scratch, SQL opcode.
 
              // Input indicators
+        indy_PATH_NAME int(5);
+
         indy_LIBNAME int(5);
         indy_OBJNAME int(5);
         indy_OBJTYPE int(5);
         indy_MBRNAME int(5);
 
-        indy_PATH_NAME int(5);
         indy_cvtOption int(5);
 
         indy_outCREATED INT(5);
@@ -384,6 +387,8 @@ dcl-Proc main ;
     if (sqlOpCode = SQL_OPEN);
         Scratch_Len = scratch.length;
         clear scratch;
+        Scratch.length = scratch_len;
+
         clear Attr_Type;
         clear rtnBuffer;
         outSQLSTATE = '00000';
@@ -404,7 +409,6 @@ dcl-Proc main ;
         indy_outOBJTYPE = 0;
         indy_outMBRNAME = 0;
         indy_outASPNAME = 0;
-        Scratch.length = scratch_len;
         return;
     endif;
 
@@ -766,7 +770,7 @@ export const OBJ_ATTR_SQL_TEMPLATE = `
  -- Get Object Attributes
  -- @author BobCozzi
 
-CREATE or REPLACE FUNCTION SQLTOOLS.OBJ_ATTR(
+CREATE or REPLACE FUNCTION \${functionLibrary}.OBJ_ATTR(
                     LIBRARY_NAME varchar(10) DEFAULT '*LIBL',
                     OBJECT_NAME varchar(10) DEFAULT NULL,
                     OBJTYPE  varchar(10) DEFAULT '*FILE',
@@ -800,19 +804,19 @@ CREATE or REPLACE FUNCTION SQLTOOLS.OBJ_ATTR(
   NOT DETERMINISTIC
   DISALLOW PARALLEL
   SCRATCHPAD 16
-  SPECIFIC sqlTools.OBJ_ATTR
-  EXTERNAL NAME 'SQLTOOLS/OBJ_ATTR'
+    SPECIFIC \${functionLibrary}.OBJ_ATTR
+    EXTERNAL NAME '\${functionLibrary}/OBJ_ATTR'
   CARDINALITY 1
   PARAMETER STYLE DB2SQL;
 
-LABEL on specific routine sqltools.OBJ_ATTR IS
+LABEL on specific routine \${functionLibrary}.OBJ_ATTR IS
 '\${version} - Retrieve Object Attributes';
 
-COMMENT ON Specific FUNCTION sqltools.OBJ_ATTR  IS
+COMMENT ON Specific FUNCTION \${functionLibrary}.OBJ_ATTR  IS
  '\${version} - Retrieve Object Attributes for a given object
  or member in a database file. @author BobCozzi';
 
-comment on parameter SPECIFIC FUNCTION sqltools.OBJ_ATTR
+comment on parameter SPECIFIC FUNCTION \${functionLibrary}.OBJ_ATTR
  ( library_NAME IS 'The library name containing the object whose
   attributes are to be received. If the OBJECT_NAME parameter is
   null or empty, then this parameter is ignored.',
@@ -839,7 +843,7 @@ comment on parameter SPECIFIC FUNCTION sqltools.OBJ_ATTR
    name or an IFS file name. When the /QSYS.LIB path name is a .FILE name,
    then a valid member name may be optionally specified. For example, a
    full, valid member name would look something like this:
-   /QSYS.LIB/SQLTOOLS.lib/QRPGLESRC.File,JOB_ATTR.mbr
+    /QSYS.LIB/SQLTOOLSSRC.lib/QRPGLESRC.File,JOB_ATTR.mbr
    When this parameter is specified, then the LIBRARY_NAME, FILE_NAME,
    and MBR_NAME parameters are ignored.',
 
@@ -853,8 +857,10 @@ comment on parameter SPECIFIC FUNCTION sqltools.OBJ_ATTR
  );
 `;
 
+const FUNCTION_LIBRARY_TOKEN = "${functionLibrary}";
+
 export function getSource_objattr(targetLibrary: string, version: number): string {
     return OBJ_ATTR_SQL_TEMPLATE
         .replace(/\$\{version\}/g, String(version))
-        .replace(/\bsqltools\b/gi, targetLibrary.trim());
+        .split(FUNCTION_LIBRARY_TOKEN).join(targetLibrary.trim());
 }

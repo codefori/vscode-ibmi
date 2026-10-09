@@ -42,14 +42,19 @@ export class ObjAttr implements IBMiComponent {
 
     async update(connection: IBMi, installDirectory: string): Promise<SecureComponentState> {
         const library = connection.getConfig().tempLibrary.toUpperCase();
+        const currentState = await this.getRemoteState(connection);
+        const action = currentState.status === "NotInstalled" ? "Installing" : "Updating";
+        connection.appendOutput(`${action} component ${ObjAttr.ID} (${ObjAttr.VERSION}) in ${library}\n`);
 
         return connection.withTempDirectory(async componentDir => {
             const rpglePath = path.posix.join(componentDir, `${ObjAttr.PGM_NAME}.RPGLE`);
             const sqlPath = path.posix.join(componentDir, `${ObjAttr.PGM_NAME}.SQL`);
 
+            connection.appendOutput(`\t${action} ${ObjAttr.PGM_NAME} sources in ${componentDir}\n`);
             await connection.getContent().writeStreamfileRaw(rpglePath, OBJ_ATTR_RPGLE_SOURCE);
             await connection.getContent().writeStreamfileRaw(sqlPath, getSource_objattr(library, ObjAttr.VERSION));
 
+            connection.appendOutput(`\tCompiling program ${library}/${ObjAttr.PGM_NAME} (CRTBNDRPG)\n`);
             const compileResult = await connection.runCommand({
                 command: `QSYS/CRTBNDRPG PGM(${library}/${ObjAttr.PGM_NAME}) SRCSTMF('${rpglePath}') OPTION(*EVENTF) DBGVIEW(*NONE) TGTCCSID(*JOB)`
             });
@@ -57,12 +62,16 @@ export class ObjAttr implements IBMiComponent {
                 throw new Error(`Failed to compile ${ObjAttr.PGM_NAME}: ${compileResult.stderr || compileResult.stdout}`);
             }
 
+            connection.appendOutput(`\t${action} routine ${library}.${ObjAttr.SPECIFIC_NAME} (RUNSQLSTM)\n`);
             const sqlResult = await connection.runCommand({
-                command: `QSYS/RUNSQLSTM SRCSTMF('${sqlPath}') COMMIT(*NONE) NAMING(*SQL)`
+                command: `QSYS/RUNSQLSTM SRCSTMF('${sqlPath}') COMMIT(*NONE) NAMING(*SYS)`
             });
             if (sqlResult.code !== 0) {
                 throw new Error(`Failed to install SQL routine ${library}.${ObjAttr.SPECIFIC_NAME}: ${sqlResult.stderr || sqlResult.stdout}`);
             }
+
+            const completedAction = action === "Installing" ? "Installed" : "Updated";
+            connection.appendOutput(`\t${completedAction} component ${ObjAttr.ID} (${ObjAttr.SIGNATURE})\n`);
 
             return this.getRemoteState(connection);
         });
