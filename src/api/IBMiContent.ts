@@ -569,7 +569,7 @@ export default class IBMiContent {
           OBJNAME               as NAME,
           OBJTYPE               as TYPE,
           OBJATTRIBUTE          as ATTRIBUTE,
-          ifNull(o.OBJTEXT, '') as TEXT,
+          ifNull(OBJTEXT, '') as TEXT,
           0                     as IS_SOURCE,
           OBJSIZE               as SIZE,
           extract(epoch from (OBJCREATED))*1000       as CREATED,
