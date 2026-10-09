@@ -40,9 +40,22 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       if (existingUri) {
         const existingOptions = parseFSOptions(existingUri);
         if (existingOptions.readonly !== options.readonly) {
-          window.showWarningMessage(l10n.t(`The file is already opened in another mode.`));
-          window.showTextDocument(existingUri);
-          return false;
+          if (options.readonly) {
+            // The resource must now be enforced as read-only (e.g. a protected library);
+            // an editable copy is already open and must be closed first so protection can't be bypassed.
+            const existingDocument = VscodeTools.findExistingDocument(existingUri);
+            if (existingDocument?.isDirty) {
+              window.showWarningMessage(l10n.t(`{0} is protected and cannot be edited; save or discard your changes in the currently open editor first.`, path));
+              window.showTextDocument(existingUri);
+              return false;
+            }
+
+            await window.tabGroups.close(VscodeTools.findUriTabs(existingUri));
+          } else {
+            window.showWarningMessage(l10n.t(`The file is already opened in another mode.`));
+            window.showTextDocument(existingUri);
+            return false;
+          }
         }
       }
 
@@ -146,12 +159,16 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
         });
       });
 
+      const protectedIcon = new ThemeIcon(`lock-small`);
+
       const recentItems: QuickPickItem[] = recent.map(item => ({
         label: item,
+        iconPath: content.isProtectedPath(item) ? protectedIcon : undefined,
         buttons: [compareButton]
       }));
       const listItems: QuickPickItem[] = list.map(item => ({
         label: item,
+        iconPath: content.isProtectedPath(item) ? protectedIcon : undefined,
         buttons: [compareButton]
       }));
 
@@ -178,7 +195,8 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       ).then(resultSetLibrary => {
         schemaItems = resultSetLibrary.map(row => ({
           label: String(row.NAME),
-          description: String(row.TEXT)
+          description: String(row.TEXT),
+          iconPath: content!.isProtectedPath(String(row.NAME)) ? protectedIcon : undefined
         }))
       });
 
@@ -262,9 +280,11 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                 order by 1`
               ]);
 
+              const libraryProtected = content!.isProtectedPath(selectionSplit[0]);
               const listFile: QuickPickItem[] = resultSet.map(row => ({
                 label: selectionSplit[0] + '/' + connection.sysNameInLocal(String(row.NAME)),
-                description: String(row.TEXT)
+                description: String(row.TEXT),
+                iconPath: libraryProtected ? protectedIcon : undefined
               }))
 
               filteredItems = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
@@ -303,9 +323,11 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                  order by 1
               `);
 
+              const memberLibraryProtected = content!.isProtectedPath(selectionSplit[0]);
               const listMember = resultSet.map(row => ({
                 label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.SYSTEM_TABLE_MEMBER) + '.' + String(row.SOURCE_TYPE),
-                description: String(row.PARTITION_TEXT)
+                description: String(row.PARTITION_TEXT),
+                iconPath: memberLibraryProtected ? protectedIcon : undefined
               }))
 
               filteredItems = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
