@@ -46,14 +46,8 @@ export type SortOptions = {
 export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
-  private dummyDSPF = false;
-
   private get config() {
     return this.ibmi.getConfig();
-  }
-
-  reset() {
-    this.dummyDSPF = false;
   }
 
   private getTempRemote(path: string) {
@@ -550,47 +544,34 @@ export default class IBMiContent {
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
-    const sourceFileNameLike = () => objectFilter ? ` and PHFILE ${(objectFilter.includes('*') ? `like` : `=`)} '${objectFilter.replace('*', '%')}'` : '';
+    const sourceFileNameLike = () => objectFilter ? ` and SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? `like` : `=`)} '${objectFilter.replace('*', '%')}'` : '';
 
     let createOBJLIST: string[];
-
-    if (sourceFilesOnly || withSourceFiles) {
-      if (!this.dummyDSPF) {
-        //Drop if already exists
-        await this.ibmi.runSQL('drop table if exists SESSION.PFS');
-        //Create an empty PFS table
-        await this.ibmi.runSQL('declare global temporary table SESSION.PFS like QSYS.QAFDPHY rcdfmt QWHFDPHY');
-        this.dummyDSPF = true;
-      }
-      //Clear and fill the PFs list - if the command crashes it won't break the queries below
-      await this.ibmi.runSQL(`delete from SESSION.PFS`);
-      await this.ibmi.runCommand({ command: `QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)` });
-    }
 
     if (sourceFilesOnly) {
       createOBJLIST = [
         /* sql */
-        `select
-            trim(PHFILE) NAME,
-            PHFATR ATTRIBUTE,
-            trim(PHTXT) TEXT,
-            PHMXRL SOURCE_LENGTH,
-            1 as IS_SOURCE,
-            '*FILE' as TYPE
-            from SESSION.PFS
-            where PHDTAT = 'S'
-            ${sourceFileNameLike()}`
+        `select  SYSTEM_TABLE_NAME NAME,
+                'PF' ATTRIBUTE,
+                ifNull(TEXT_DESCRIPTION, '') TEXT,
+                RECORD_LENGTH SOURCE_LENGTH,
+                1 as IS_SOURCE,
+                '*FILE' as TYPE
+        from QSYS2.SYSFILES
+        where FILE_TYPE = 'SOURCE' and 
+              SYSTEM_TABLE_SCHEMA = '${localLibrary}'
+              ${sourceFileNameLike()}`
       ];
     } else if (!withSourceFiles) {
       createOBJLIST = [
         /* sql */
         `select
-          OBJNAME          as NAME,
-          OBJTYPE          as TYPE,
-          OBJATTRIBUTE     as ATTRIBUTE,
-          OBJTEXT          as TEXT,
-          0                as IS_SOURCE,
-          OBJSIZE          as SIZE,
+          OBJNAME               as NAME,
+          OBJTYPE               as TYPE,
+          OBJATTRIBUTE          as ATTRIBUTE,
+          ifNull(o.OBJTEXT, '') as TEXT,
+          0                     as IS_SOURCE,
+          OBJSIZE               as SIZE,
           extract(epoch from (OBJCREATED))*1000       as CREATED,
           extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,
           OBJOWNER         as OWNER,
@@ -601,42 +582,20 @@ export default class IBMiContent {
     else {
       createOBJLIST = [
         /* sql */
-        `with SRCFILES as (
-          select
-            trim(PHFILE) NAME,
-            1 as IS_SOURCE,
-            PHMXRL as SOURCE_LENGTH
-          from SESSION.PFS
-          where PHDTAT = 'S'
-        ),
-         OBJD as (
-          select
-            OBJNAME           as NAME,
-            OBJTYPE           as TYPE,
-            OBJATTRIBUTE      as ATTRIBUTE,
-            OBJTEXT           as TEXT,
-            0                 as IS_SOURCE,
-            OBJSIZE           as SIZE,
-            extract(epoch from (OBJCREATED))*1000       as CREATED,
-            extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,
-            OBJOWNER          as OWNER,
-            OBJDEFINER        as CREATED_BY
-          from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))
-          )
-        select
-          o.NAME,
-          o.TYPE,
-          o.ATTRIBUTE,
-          o.TEXT,
-          ifNull(s.IS_SOURCE, o.IS_SOURCE) IS_SOURCE,
-          s.SOURCE_LENGTH,
-          o.SIZE,
-          o.CREATED,
-          o.CHANGED,
-          o.OWNER,
-          o.CREATED_BY
-        from OBJD o
-        left join SRCFILES s on o.NAME = s.NAME`
+        `select
+            o.OBJNAME             as NAME,
+            o.OBJTYPE             as TYPE,
+            o.OBJATTRIBUTE        as ATTRIBUTE,
+            ifNull(o.OBJTEXT, '') as TEXT,
+            case when s.SYSTEM_TABLE_NAME is null then 0 else 1 end as IS_SOURCE,
+            s.RECORD_LENGTH SOURCE_LENGTH,
+            o.OBJSIZE           as SIZE,
+            extract(epoch from (o.OBJCREATED))*1000       as CREATED,
+            extract(epoch from (o.CHANGE_TIMESTAMP))*1000 as CHANGED,
+            o.OBJOWNER          as OWNER,
+            o.OBJDEFINER        as CREATED_BY
+          from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()})) o
+          left join QSYS2.SYSFILES s on s.SYSTEM_TABLE_SCHEMA = o.OBJLIB and s.SYSTEM_TABLE_NAME = o.OBJNAME`
       ];
     }
 
@@ -650,9 +609,9 @@ export default class IBMiContent {
         name,
         type: String(object.TYPE),
         attribute: String(object.ATTRIBUTE),
-        text: String(object.TEXT || ""),
+        text: String(object.TEXT),
         sourceFile: Boolean(object.IS_SOURCE),
-        sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
+        sourceLength: object.SOURCE_LENGTH !== undefined && object.SOURCE_LENGTH !== null ? Number(object.SOURCE_LENGTH) : undefined,
         size: Number(object.SIZE),
         created: new Date(Number(object.CREATED)),
         changed: new Date(Number(object.CHANGED)),
