@@ -90,6 +90,42 @@ describe('Content Tests', { concurrent: true }, () => {
     }
   });
 
+  it.each(['$', '#', '#$'])('memberResolve with %s', async (prefix) => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempSPF = `${prefix}ABCD`.concat(connection.variantChars.local);
+    const tempMbr = tempSPF;
+
+    try {
+      const result = await connection.runCommand({
+        command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+        environment: 'ile'
+      });
+      expect(result.code).toBe(0);
+
+      const member = await content.memberResolve(tempMbr, [
+        { library: 'QSYSINC', name: 'MIH' }, // Doesn't exist here
+        { library: 'NOEXIST', name: 'SUP' }, // Doesn't exist here
+        { library: tempLib, name: tempSPF } // Does exist here
+      ]);
+
+      expect(member).toEqual({
+        asp: undefined,
+        library: tempLib,
+        file: tempSPF,
+        name: tempMbr,
+        extension: 'MBR',
+        basename: `${tempMbr}.MBR`
+      });
+    }
+    finally {
+      await connection.runCommand({
+        command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
+        environment: 'ile'
+      })
+    }
+  });
+  
   it('memberResolve with bad name', async () => {
     const content = connection.getContent();
 
@@ -151,6 +187,35 @@ describe('Content Tests', { concurrent: true }, () => {
       });
     }
   });
+
+  it.each(['$', '#', '#$'])('objectResolve with %s', async (prefix) => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempObj = `${prefix}ABCD`.concat(connection.variantChars.local);
+
+    try {
+      const result = await connection.runCommand({
+        command: `QSYS/CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+        environment: 'ile'
+      });
+      expect(result.code).toBe(0);
+
+      const lib = await content.objectResolve(tempObj, [
+        'QSYSINC', // Doesn't exist here
+        'QSYS2', // Doesn't exist here
+        tempLib // Does exist here
+      ]);
+
+      expect(lib).toBe(tempLib);
+    }
+    finally{
+      // Cleanup...
+      await connection.runCommand({
+        command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
+        environment: 'ile'
+      })
+    }
+  })
 
   it('objectResolve with bad name', async () => {
     const content = connection.getContent();
