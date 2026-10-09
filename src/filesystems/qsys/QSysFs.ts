@@ -166,7 +166,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         return Number.isNaN(sqlTimestamp) ? 0 : sqlTimestamp;
     }
 
-    private toObjAttrPathName(path: QsysPath & { member?: string }) {
+    private toQSysPathName(path: QsysPath & { member?: string }) {
         const aspPrefix = path.asp ? `/${path.asp}` : ``;
         const memberSuffix = path.member ? `/${path.member}.MBR` : ``;
         return `${aspPrefix}/QSYS.LIB/${path.library}.LIB/${path.name}.FILE${memberSuffix}`;
@@ -174,7 +174,7 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
         const udfLibrary = connection.getConfig().tempLibrary.toUpperCase();
-        const pathName = this.toObjAttrPathName(path);
+        const pathName = this.toQSysPathName(path);
         const [attributes] = await connection.runSQL(
             `select created_date as CREATE_TIME,
                     coalesce(data_changed_date, changed_date, created_date) as MODIFY_TIME,
