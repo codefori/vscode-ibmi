@@ -179,6 +179,8 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
         );
 
+        connection.appendOutput(`[OBJ_ATTR stat] ${path.library}/${path.name}${path.member ? `/${path.member}` : ``} -> ${attributes ? `hit` : `miss`}\n`);
+
         return attributes;
     }
 
