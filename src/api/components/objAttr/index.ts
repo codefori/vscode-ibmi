@@ -64,7 +64,7 @@ export class ObjAttr implements IBMiComponent {
 
             connection.appendOutput(`\t${action} routine ${library}.${ObjAttr.SPECIFIC_NAME} (RUNSQLSTM)\n`);
             const sqlResult = await connection.runCommand({
-                command: `QSYS/RUNSQLSTM SRCSTMF('${sqlPath}') COMMIT(*NONE) NAMING(*SYS)`
+                command: `QSYS/RUNSQLSTM SRCSTMF('${sqlPath}') COMMIT(*NONE) NAMING(*SYS) OPTIONS(*ERRLIST)`
             });
             if (sqlResult.code !== 0) {
                 throw new Error(`Failed to install SQL routine ${library}.${ObjAttr.SPECIFIC_NAME}: ${sqlResult.stderr || sqlResult.stdout}`);

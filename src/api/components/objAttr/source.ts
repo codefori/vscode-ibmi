@@ -1,15 +1,14 @@
 export const OBJ_ATTR_RPGLE_SOURCE = `**FREE
 
     ////////////////////////////////////////////////////////////////////////
-    // IBM i Retrieve Object Attributes UDTF
+    // IBM i Retrieve Object Attributes
     // This is an SQL UDTF External Program
-    // It uses the Qp0lGetAttr API to retreive a Files attributes
-    // This information is currently not available via QSYS2 SQL functions
+    // It uses the Qp0lGetAttr and other APIs to retreive an object attributes
     ////////////////////////////////////////////////////////////////////////
     // This is part of the collection of open source SQL UDTFs that are
-    // primarily built for the VS CODE with CODE for IBM i by @author BobCozzi
-    // The my be freely used and are available on github
-    //  at: https://github.com/bobcozzi/open-UDTF
+    // primarily built for the VS CODE and CODE for IBM i IDE, however
+    // they can be feely used in production environments on IBM i.
+    // Available from @BobCozzi at: https://github.com/bobcozzi/open-UDTF
     ////////////////////////////////////////////////////////////////////////
 
 ctl-opt   main(main) OPTION(*SRCSTMT);
@@ -29,8 +28,8 @@ dcl-C SQL_OPEN -1;
 dcl-C SQL_CLOSE 1;
 
             // Path case conversion option
-dcl-c  TOLOWER 2;
 dcl-c  TOUPPER 1;
+dcl-c  TOLOWER 2;
 dcl-c  NOCONVERT 0;
 
 
@@ -207,20 +206,20 @@ dcl-ds Qp0l_QSYS_Info_t Qualified Template Inz;
 end-ds;
 
   // QUSRMBRD API Interfaces
-dcl-ds Qdb_Mbrd0100_T  Qualified Inz TEMPLATE;
-    Bytes_Returned INT(10);
-    Bytes_Available INT(10);
-    Db_File_Name CHAR(10);
-    Db_File_Lib CHAR(10);
-    Member_Name CHAR(10);
-    File_Attr CHAR(10);
-    Src_Type CHAR(10);
-    Crt_Date CHAR(13);
-    Src_Change_Date CHAR(13);
-    Text_Desc CHAR(50);
-    Src_File CHAR(1);
+    dcl-ds Qdb_Mbrd0100_T  Qualified Inz TEMPLATE;
+     Bytes_Returned INT(10);
+     Bytes_Available INT(10);
+     Db_File_Name CHAR(10);
+     Db_File_Lib CHAR(10);
+     Member_Name CHAR(10);
+     File_Attr CHAR(10);
+     Src_Type CHAR(10);
+     Crt_Date CHAR(13);
+     Src_Change_Date CHAR(13);
+     Text_Desc CHAR(50);
+     Src_File CHAR(1);
                // END of MBRD0100
-end-ds;
+    end-ds;
 
 
 dcl-pr Qp0lCvtPathToQSYSObjName extProc('Qp0lCvtPathToQSYSObjName');
@@ -244,14 +243,14 @@ dcl-Pr Qp0lGetAttr int(10) extproc('Qp0lGetAttr');
 end-Pr;
 
 dcl-pr QUSRMBRD EXTPGM('QUSRMBRD');
-    rtnMBRINFO char(1024) OPTIONS(*VARSIZE);
-    rtnMbrInfoSize int(10) Const;
-    APIFORMAT  char(8) Const;
-    FileLib    char(20) Const;
-    MbrName    char(10) Const;
-    OVR        char(1)  Const;
-    apiError   LikeDS(QUSEC_T) OPTIONS(*VARSIZE:*NOPASS);
-    FindMbr    char(1)  Const OPTIONS(*NOPASS);
+     rtnMBRINFO char(1024) OPTIONS(*VARSIZE);
+     rtnMbrInfoSize int(10) Const;
+     APIFORMAT  char(8) Const;
+     FileLib    char(20) Const;
+     MbrName    char(10) Const;
+     OVR        char(1)  Const;
+     apiError   LikeDS(QUSEC_T) OPTIONS(*VARSIZE:*NOPASS);
+     FindMbr    char(1)  Const OPTIONS(*NOPASS);
 end-pr;
 
 
@@ -296,13 +295,15 @@ dcl-Proc main ;
 
              // Input parameters
         inPATH_NAME VARCHAR(4096) CCSID(UTF8) OPTIONS(*VARSIZE);
-
+        // If above inPATH_NAME is empty or NULL, then the legacy
+        // parmaeters are used to build the path name
         inLibname VARCHAR(10) const;
         inOBJNAME VARCHAR(10) const;
         inOBJTYPE VARCHAR(10) const;
-        inMBRNAME  VARCHAR(10) const;
+        inMBRNAME VARCHAR(10) const;
 
-        cvtOption VARCHAR(10) const;  // convert path_name to upper/lower?
+            // Convert PATH_NAME to upper/lower case before using it?
+        cvtOption VARCHAR(10) const;
 
         outCreated  TIMESTAMP(0);
         outAccessed TIMESTAMP(0);
@@ -387,8 +388,6 @@ dcl-Proc main ;
     if (sqlOpCode = SQL_OPEN);
         Scratch_Len = scratch.length;
         clear scratch;
-        Scratch.length = scratch_len;
-
         clear Attr_Type;
         clear rtnBuffer;
         outSQLSTATE = '00000';
@@ -409,6 +408,7 @@ dcl-Proc main ;
         indy_outOBJTYPE = 0;
         indy_outMBRNAME = 0;
         indy_outASPNAME = 0;
+        Scratch.length = scratch_len;
         return;
     endif;
 
@@ -541,6 +541,8 @@ dcl-Proc main ;
                         %str(strerror( nErrNo ));
             snd-msg outSQLMsg;
             snd-msg 'Nothing received from Qp0lGetAttr()) in ' + %TRIMR(psds.Pgmname);
+            snd-msg 'Path_name=>''' + %trim(inPATH_NAME) + '''';
+
             outSQLState = '02000';
             scratch.eof = 1;
             return;
@@ -755,7 +757,7 @@ dcl-proc getDts;
                   '*UTC' : '*JOB' : timeZoneInfo : timeZoneLen : micro);
     if (ec.bytes_Returned = 0);
         monitor;
-            localTM = %TimeStamp( outTime : *ISO0 : 3);
+        localTM = %TimeStamp( outTime : *ISO0 : 3);
         on-error;
             snd-msg 'Time Failed: ' + outTime;
             return 0;
@@ -766,16 +768,18 @@ dcl-proc getDts;
 end-proc;
 `;
 
+
 export const OBJ_ATTR_SQL_TEMPLATE = `
  -- Get Object Attributes
  -- @author BobCozzi
 
 CREATE or REPLACE FUNCTION \${functionLibrary}.OBJ_ATTR(
+                    PATH_NAME VARCHAR(4096) CCSID 1208 DEFAULT NULL,
                     LIBRARY_NAME varchar(10) DEFAULT '*LIBL',
                     OBJECT_NAME varchar(10) DEFAULT NULL,
                     OBJTYPE  varchar(10) DEFAULT '*FILE',
                     MBR_NAME varchar(10)  DEFAULT NULL,
-                    PATH_NAME VARCHAR(4096) CCSID 1208 DEFAULT NULL,
+                    -- Convert path_name to upper/lower case?
                     cvtOption VARCHAR(10) DEFAULT 'NO'
                                            )
        RETURNS table (
@@ -804,8 +808,8 @@ CREATE or REPLACE FUNCTION \${functionLibrary}.OBJ_ATTR(
   NOT DETERMINISTIC
   DISALLOW PARALLEL
   SCRATCHPAD 16
-    SPECIFIC \${functionLibrary}.OBJ_ATTR
-    EXTERNAL NAME '\${functionLibrary}/OBJ_ATTR'
+  SPECIFIC \${functionLibrary}.OBJ_ATTR
+  EXTERNAL NAME '\${functionLibrary}/OBJ_ATTR'
   CARDINALITY 1
   PARAMETER STYLE DB2SQL;
 
@@ -843,7 +847,7 @@ comment on parameter SPECIFIC FUNCTION \${functionLibrary}.OBJ_ATTR
    name or an IFS file name. When the /QSYS.LIB path name is a .FILE name,
    then a valid member name may be optionally specified. For example, a
    full, valid member name would look something like this:
-    /QSYS.LIB/SQLTOOLSSRC.lib/QRPGLESRC.File,JOB_ATTR.mbr
+   /QSYS.LIB/SQLTOOLSRC.lib/QRPGLESRC.File,JOB_ATTR.mbr
    When this parameter is specified, then the LIBRARY_NAME, FILE_NAME,
    and MBR_NAME parameters are ignored.',
 
