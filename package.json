@@ -310,7 +310,7 @@
 							"connectringStringFor5250": {
 								"type": "string",
 								"default": "+uninhibited localhost",
-								"description": "The connectring string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+								"description": "The connection string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
 							},
 							"autoSaveBeforeAction": {
 								"type": "boolean",
@@ -519,7 +519,7 @@
 				"code-for-ibmi.autoRefresh": {
 					"type": "boolean",
 					"default": true,
-					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delele, etc). Turn this off if you find performance is bad."
+					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delete, etc). Turn this off if you find performance is bad."
 				},
 				"code-for-ibmi.ObjectBrowser.showNamesInLowercase": {
 					"type": "boolean",
@@ -569,7 +569,7 @@
 				"code-for-ibmi.createLibraryOnBranchChange": {
 					"type": "boolean",
 					"default": false,
-					"description": "Used in conjuction with git. When the branch changes, prompt the user if they would like a new branch library for this branch. The branch name, which is deterministic, always starts with 'VS', followed by 8 characters."
+					"description": "Used in conjunction with git. When the branch changes, prompt the user if they would like a new branch library for this branch. The branch name, which is deterministic, always starts with 'VS', followed by 8 characters."
 				},
 				"code-for-ibmi.recentlyOpenedFilesLimit": {
 					"type": "integer",
