@@ -9,6 +9,7 @@ import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { waitOnReconnect } from "./FSUtils";
 import { SourceDateHandler } from "./sourceDateHandler";
+import { ObjAttr } from "../../api/components/objAttr";
 
 export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
     return getUriFromPath(`${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`, options);
@@ -126,9 +127,11 @@ export class QSysFS implements vscode.FileSystemProvider {
                 const qsysPath = { ...Tools.parseQSysPath(path), member };
                 const attributes = await this.getMemberAttributes(connection, qsysPath);
                 if (attributes) {
+                    const created = this.parseStatTimestamp(attributes.CREATE_TIME);
+                    const changed = this.parseStatTimestamp(attributes.MODIFY_TIME);
                     return {
-                        ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
-                        mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
+                        ctime: created,
+                        mtime: changed,
                         size: Number(attributes.DATA_SIZE),
                         type,
                         permissions: member && !this.savedAsMembers.has(uri.path) ? getFilePermission(uri) : undefined
@@ -148,9 +151,35 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
     }
 
+    private parseStatTimestamp(value: unknown): number {
+        if (value === undefined || value === null) {
+            return 0;
+        }
+
+        const textValue = String(value);
+        const attrTimestamp = Tools.parseAttrDate(textValue);
+        if (attrTimestamp > 0) {
+            return attrTimestamp;
+        }
+
+        const sqlTimestamp = Date.parse(textValue);
+        return Number.isNaN(sqlTimestamp) ? 0 : sqlTimestamp;
+    }
+
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
-        path.asp = path.asp || await connection.getLibraryIAsp(path.library);
-        return await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+        const udfLibrary = connection.getConfig().tempLibrary.toUpperCase();
+        const [attributes] = await connection.runSQL(
+            `select created_date as CREATE_TIME,
+                    coalesce(data_changed_date, changed_date, created_date) as MODIFY_TIME,
+                    data_size as DATA_SIZE
+             from table(${udfLibrary}.${ObjAttr.SPECIFIC_NAME}(null, ?, ?, '*FILE', ?, 'NO'))`,
+            {
+                bindings: [path.library, path.name, path.member || null],
+                rows: 1
+            }
+        );
+
+        return attributes;
     }
 
     private async createMember(connection: IBMi, uri: vscode.Uri, library: string, file: string, member: string, extension: string | undefined): Promise<boolean> {
