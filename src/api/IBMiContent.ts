@@ -544,13 +544,12 @@ export default class IBMiContent {
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
-    const sourceFileNameLike = () => objectFilter ? ` and SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? `like` : `=`)} '${objectFilter.replace('*', '%')}'` : '';
 
-    let createOBJLIST: string[];
+    let createOBJLIST: string;
 
     if (sourceFilesOnly) {
-      createOBJLIST = [
-        /* sql */
+      const sourceFileNameLike = () => objectFilter ? ` and SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? `like` : `=`)} '${this.ibmi.sysNameInAmerican(objectFilter).replaceAll('*', '%')}'` : '';
+      createOBJLIST = /* sql */
         `select  SYSTEM_TABLE_NAME NAME,
                 'PF' ATTRIBUTE,
                 ifNull(TEXT_DESCRIPTION, '') TEXT,
@@ -559,29 +558,25 @@ export default class IBMiContent {
                 '*FILE' as TYPE
         from QSYS2.SYSFILES
         where FILE_TYPE = 'SOURCE' and 
-              SYSTEM_TABLE_SCHEMA = '${localLibrary}'
-              ${sourceFileNameLike()}`
-      ];
+              SYSTEM_TABLE_SCHEMA = '${this.ibmi.sysNameInAmerican(localLibrary)}'
+              ${sourceFileNameLike()}`;
     } else if (!withSourceFiles) {
-      createOBJLIST = [
-        /* sql */
+      createOBJLIST = /* sql */
         `select
           OBJNAME               as NAME,
           OBJTYPE               as TYPE,
           OBJATTRIBUTE          as ATTRIBUTE,
-          ifNull(OBJTEXT, '') as TEXT,
+          ifNull(OBJTEXT, '')   as TEXT,
           0                     as IS_SOURCE,
           OBJSIZE               as SIZE,
           extract(epoch from (OBJCREATED))*1000       as CREATED,
           extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,
           OBJOWNER         as OWNER,
           OBJDEFINER       as CREATED_BY
-        from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary !== 'QSYS' ? localLibrary : localLibrary.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`
-      ];
+        from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary !== 'QSYS' ? localLibrary : localLibrary.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`;
     }
     else {
-      createOBJLIST = [
-        /* sql */
+      createOBJLIST = /* sql */
         `select
             o.OBJNAME             as NAME,
             o.OBJTYPE             as TYPE,
@@ -595,15 +590,16 @@ export default class IBMiContent {
             o.OBJOWNER          as OWNER,
             o.OBJDEFINER        as CREATED_BY
           from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()})) o
-          left join QSYS2.SYSFILES s on s.SYSTEM_TABLE_SCHEMA = o.OBJLIB and s.SYSTEM_TABLE_NAME = o.OBJNAME`
-      ];
+          left join QSYS2.SYSFILES s on cast(s.SYSTEM_TABLE_SCHEMA as varchar(10) for bit data) = o.OBJLIB and
+                                        cast(s.SYSTEM_TABLE_NAME as varchar(10) for bit data) = o.OBJNAME`;
     }
 
     const localLibASP = await this.ibmi.getLibraryIAsp(localLibrary);
     const objects = (await this.ibmi.runSQL(createOBJLIST));
     const result: IBMiObject[] = [];
+    const getName = sourceFilesOnly ? (row: Tools.DB2Row) => this.ibmi.sysNameInLocal(row.NAME as string) : (row: Tools.DB2Row) => row.NAME as string;
     for (const object of objects) {
-      const name = String(object.NAME);
+      const name = getName(object);
       result.push({
         library: localLibrary,
         name,
