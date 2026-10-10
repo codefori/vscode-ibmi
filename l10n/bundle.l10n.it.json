@@ -36,7 +36,7 @@
   "Are you sure you want to disconnect from {0}?": "Are you sure you want to disconnect from {0}?",
   "Attribute": "Attributo",
   "Authentication methods removed for \"{0}\".": "Metodo di autenticazione rimosso per \"{0}\".",
-  "Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.": "Qui le variabili disponibili basate sul tipo che hai selezioato. Puoi specificare comandi diversi per ogni linea. Ogni comando è a se stante e gira in un job differente.",
+  "Below are available variables based on the type you have selected below. You can specify different commands on each line. Each command is stateless and runs in its own job.": "Qui le variabili disponibili basate sul tipo che hai selezioato. Puoi specificare comandi diversi per ogni linea. Ogni comando è a se stante e gira in un job differente.",
   "Branch library, based on the current branch": "Libreria del branch, basata sul branch corrente",
   "Browser": "Browser",
   "Cancel": "Annulla",

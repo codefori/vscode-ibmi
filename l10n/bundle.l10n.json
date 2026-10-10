@@ -39,7 +39,7 @@
   "Are you sure you want to disconnect from {0}?": "Are you sure you want to disconnect from {0}?",
   "Attribute": "Attribute",
   "Authentication methods removed for \"{0}\".": "Authentication methods removed for \"{0}\".",
-  "Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.": "Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.",
+  "Below are available variables based on the type you have selected below. You can specify different commands on each line. Each command is stateless and runs in its own job.": "Below are available variables based on the type you have selected below. You can specify different commands on each line. Each command is stateless and runs in its own job.",
   "Branch library, based on the current branch": "Branch library, based on the current branch",
   "Browser": "Browser",
   "Cancel": "Cancel",
