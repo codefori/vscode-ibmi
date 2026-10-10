@@ -731,7 +731,7 @@ export default class IBMiContent {
 
   /**
    *
-   * @param filter: the criterias used to list the members
+   * @param filter: the criteria used to list the members
    * @returns
    */
   async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, memberText?: string, memberCreated?: string, memberChanged?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
@@ -1158,7 +1158,7 @@ export default class IBMiContent {
   }
 
   /**
-   * Move one or more folders or files into a directory. Uses QSH's `mv` to ensures attributes are not altered during the opration.
+   * Move one or more folders or files into a directory. Uses QSH's `mv` to ensure attributes are not altered during the operation.
    * @param paths one or more files/folders to copy
    * @param toDirectory the directory where the files/folders will be copied into
    * @returns the {@link CommandResult} of the `mv` command execution

@@ -109,7 +109,7 @@ export namespace SharedSnippets {
   }
 
   /**
-   * Check permissions befor creating or changing a snippet...
+   * Check permissions before creating or changing a snippet...
    */
   export async function checkWriteAccess(connection: IBMi, languageId?: string): Promise<string | undefined> {
     const content = connection.getContent();

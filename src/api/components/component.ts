@@ -72,7 +72,7 @@ export type IBMiComponent = {
   update(connection: IBMi, installDirectory: string): ComponentState | SecureComponentState | Promise<ComponentState | SecureComponentState>
 
   /**
-   * Called when connecting to clear every persitent information related to the previous connection
+   * Called when connecting to clear all persistent information related to the previous connection
    */
   reset?(): void | Promise<void>
 
