@@ -5,7 +5,7 @@ import { getSource_objattr, OBJ_ATTR_RPGLE_SOURCE } from "./source";
 
 export class ObjAttr implements IBMiComponent {
     static readonly ID = "obj_attr";
-    static readonly VERSION = 1;
+    static readonly VERSION = 2;
     static readonly SIGNATURE = `OBJ_ATTR:${ObjAttr.VERSION}`;
     static readonly PGM_NAME = "OBJ_ATTR";
     static readonly SPECIFIC_NAME = "OBJ_ATTR";

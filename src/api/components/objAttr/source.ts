@@ -1,9 +1,13 @@
 export const OBJ_ATTR_RPGLE_SOURCE = `**FREE
 
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 by R. Cozzi, Jr.
+
+
     ////////////////////////////////////////////////////////////////////////
     // IBM i Retrieve Object Attributes
     // This is an SQL UDTF External Program
-    // It uses the Qp0lGetAttr and other APIs to retreive an object attributes
+    // It uses the Qp0lGetAttr and other APIs to retreive a object attributes
     ////////////////////////////////////////////////////////////////////////
     // This is part of the collection of open source SQL UDTFs that are
     // primarily built for the VS CODE and CODE for IBM i IDE, however
@@ -206,7 +210,7 @@ dcl-ds Qp0l_QSYS_Info_t Qualified Template Inz;
 end-ds;
 
   // QUSRMBRD API Interfaces
-    dcl-ds Qdb_Mbrd0100_T  Qualified Inz TEMPLATE;
+dcl-ds Qdb_Mbrd0200_T  Qualified Inz TEMPLATE;
      Bytes_Returned INT(10);
      Bytes_Available INT(10);
      Db_File_Name CHAR(10);
@@ -219,7 +223,35 @@ end-ds;
      Text_Desc CHAR(50);
      Src_File CHAR(1);
                // END of MBRD0100
-    end-ds;
+               // MBRD0200 continues
+     Ext_File CHAR(1);
+     Log_File CHAR(1);
+     Odp_Share CHAR(1);
+     Reserved CHAR(2);
+     Num_Cur_Rec INT(10);
+     Num_Dlt_Rec INT(10);
+     Dat_Spc_Size INT(10);
+     Acc_Pth_Size INT(10);
+     Num_Dat_Mbr INT(10);
+     Change_Date CHAR(13);
+     Save_Date CHAR(13);
+     Rest_Date CHAR(13);
+     Exp_Date CHAR(7);
+     Reserved6 CHAR(4);
+     Media_preference INT(5);
+     Nbr_Days_Used INT(10);
+     Date_Lst_Used CHAR(7);
+     Use_Reset_Date CHAR(7);
+     Reserved1 CHAR(2);
+     Data_Spc_Sz_Mlt INT(10);
+     Acc_Pth_Sz_Mlt INT(10);
+     Member_Text_Ccsid INT(10);
+     Offset_Add_Info INT(10);
+     Length_Add_Info INT(10);
+     Num_Cur_Rec_U UNS(10);
+     Num_Dlt_Rec_U UNS(10);
+     Reserved2 CHAR(6);
+end-ds;  // Qdb_Mbrd0200_T
 
 
 dcl-pr Qp0lCvtPathToQSYSObjName extProc('Qp0lCvtPathToQSYSObjName');
@@ -289,6 +321,10 @@ dcl-Ds scratch_t Qualified Template;
 end-Ds;
 dcl-S scratch_len int(10);
 
+dcl-s smallint int(5);
+dcl-s int  int(10);
+dcl-s bigint   int(20);
+
   // NOTE: Need to use the SQL preprocessor just to support the LOB parmaeter
 dcl-Proc main ;
     dcl-pi main EXTPGM('OBJ_ATTR');
@@ -300,30 +336,36 @@ dcl-Proc main ;
         inLibname VARCHAR(10) const;
         inOBJNAME VARCHAR(10) const;
         inOBJTYPE VARCHAR(10) const;
-        inMBRNAME VARCHAR(10) const;
+        inMBRNAME  VARCHAR(10) const;
 
             // Convert PATH_NAME to upper/lower case before using it?
         cvtOption VARCHAR(10) const;
 
         outCreated  TIMESTAMP(0);
-        outAccessed TIMESTAMP(0);
+        outAccessed DATE(*ISO);
         outCHANGED  TIMESTAMP(0);
         outData_CHANGED TIMESTAMP(0);
-        outLast_USED    TIMESTAMP(0);
+        outLast_USED    DATE(*ISO);
         outLast_USED_DAYS  INT(10);
-        outLast_USED_RESET TIMESTAMP(0);
-        outAlloc_SIZE  INT(20);  // BIGINT are signed, so <= UNS(20)
-        outData_SIZE   INT(20);
-        outccsid  INT(10);
-        outASPNbr int(5);
+        outLast_USED_RESET DATE(*ISO);
+        outAlloc_SIZE  LIKE(BIGINT);  // BIGINT are signed, so <= UNS(20)
+        outData_SIZE   LIKE(BIGINT);
+        outCCSID  INT(10);
         outText   VARCHAR(50) CCSID(UTF8);
+
+        outASPNbr int(5);
+        outASPNAME VARCHAR(10);
 
         outLIBNAME VARCHAR(10);
         outOBJNAME VARCHAR(10);
         outOBJTYPE VARCHAR(10);
+
         outMBRNAME VARCHAR(10);
         outSRCTYPE VARCHAR(10);
-        outASPNAME VARCHAR(10);
+        outROWCOUNT   LIKE(BIGINT);
+        outSRCCHGDATE TIMESTAMP(0);
+        outMBRCHGDATE TIMESTAMP(0);
+        outEXPDATE DATE(*ISO);
 
                // UDTF interface checklist (DB2SQL parameter style):
                // 1) Null indicators must be 2-byte (SMALLINT) -> RPG INT(5).
@@ -333,34 +375,40 @@ dcl-Proc main ;
                //    message, scratch, SQL opcode.
 
              // Input indicators
-        indy_PATH_NAME int(5);
+        indy_PATH_NAME LIKE(SMALLINT);
 
-        indy_LIBNAME int(5);
-        indy_OBJNAME int(5);
-        indy_OBJTYPE int(5);
-        indy_MBRNAME int(5);
+        indy_LIBNAME LIKE(SMALLINT);
+        indy_OBJNAME LIKE(SMALLINT);
+        indy_OBJTYPE LIKE(SMALLINT);
+        indy_MBRNAME LIKE(SMALLINT);
 
-        indy_cvtOption int(5);
+        indy_cvtOption LIKE(SMALLINT);
 
-        indy_outCREATED INT(5);
-        indy_outACCESSED INT(5);
-        indy_outCHANGED INT(5);
-        indy_outDATA_CHANGED INT(5);
-        indy_outLAST_USED INT(5);
-        indy_outLAST_USED_DAYS INT(5);
-        indy_outLAST_USED_RESET INT(5);
-        indy_outALLOC_SIZE INT(5);
-        indy_outDATA_SIZE INT(5);
-        indy_outCCSID  INT(5);
-        indy_outASPNbr INT(5);
-        indy_outTEXT   INT(5);
+        indy_outCREATED LIKE(SMALLINT);
+        indy_outACCESSED LIKE(SMALLINT);
+        indy_outCHANGED LIKE(SMALLINT);
+        indy_outDATA_CHANGED LIKE(SMALLINT);
+        indy_outLAST_USED LIKE(SMALLINT);
+        indy_outLAST_USED_DAYS LIKE(SMALLINT);
+        indy_outLAST_USED_RESET LIKE(SMALLINT);
+        indy_outALLOC_SIZE LIKE(SMALLINT);
+        indy_outDATA_SIZE  LIKE(SMALLINT);
+        indy_outCCSID      LIKE(SMALLINT);
+        indy_outTEXT       LIKE(SMALLINT);
 
-        indy_outLIBNAME INT(5);
-        indy_outOBJNAME INT(5);
-        indy_outOBJTYPE INT(5);
-        indy_outMBRNAME INT(5);
-        indy_outSRCTYPE INT(5);
-        indy_outASPNAME INT(5);
+        indy_outASPNbr     LIKE(SMALLINT);
+        indy_outASPNAME    LIKE(SMALLINT);
+
+        indy_outLIBNAME    LIKE(SMALLINT);
+        indy_outOBJNAME    LIKE(SMALLINT);
+        indy_outOBJTYPE    LIKE(SMALLINT);
+
+        indy_outMBRNAME    LIKE(SMALLINT);
+        indy_outSRCTYPE    LIKE(SMALLINT);
+        indy_outROWCOUNT   LIKE(SMALLINT);
+        indy_outSRCCHGDATE LIKE(SMALLINT);
+        indy_outMBRCHGDATE LIKE(SMALLINT);
+        indy_outEXPDATE    LIKE(SMALLINT);
 
              // Standard DB2SQL scratchpad/diagnostic fields
         outSQLSTATE CHAR(5);
@@ -381,7 +429,7 @@ dcl-Proc main ;
     dcl-s bytesReturned uns(10);
     dcl-s bytesAvail    uns(10);
     dcl-s rtnBuffer CHAR(4096);
-    dcl-ds mbrDesc likeDS(Qdb_Mbrd0100_T) Inz;
+    dcl-ds mbrDesc likeDS(Qdb_Mbrd0200_T) Inz;
     dcl-s fileName char(20);
     dcl-s mbrName  char(10);
 
@@ -402,12 +450,13 @@ dcl-Proc main ;
         indy_outDATA_SIZE = 0;
         indy_outCCSID = 0;
         indy_outASPNbr = 0;
+        indy_outASPName = 0;
         indy_outTEXT = 0;
         indy_outLIBNAME = 0;
         indy_outOBJNAME = 0;
         indy_outOBJTYPE = 0;
         indy_outMBRNAME = 0;
-        indy_outASPNAME = 0;
+        indy_outROWCOUNT = 0;
         Scratch.length = scratch_len;
         return;
     endif;
@@ -579,7 +628,7 @@ dcl-Proc main ;
                     WHEN rtnAttr.AttrID = QP0L_ATTR_ACCESS_TIME;
 
                         monitor;
-                            getDts(outACCESSED : rtnAttr.Attrtime);
+                            getDate(outACCESSED : rtnAttr.Attrtime);
                         on-error;
                             indy_outACCESSED = -1;
                         endmon;
@@ -590,7 +639,7 @@ dcl-Proc main ;
                             indy_outLAST_USED = -1;
                         else;
                             monitor;
-                                getDts(outLAST_USED :
+                                getDate(outLAST_USED :
                                         rtnAttr.last_used.usedDate);
                             on-error;
                                 indy_outLAST_USED = -1;
@@ -600,7 +649,7 @@ dcl-Proc main ;
                             indy_outLAST_USED_RESET = -1;
                         else;
                             monitor;
-                                getDts(outLAST_USED_RESET :
+                                getDate(outLAST_USED_RESET :
                                         rtnAttr.last_used.resetDate);
                             on-error;
                                 indy_outLAST_USED_RESET = -1;
@@ -669,6 +718,8 @@ dcl-Proc main ;
                 clear outMBRNAME;
                 indy_outSRCTYPE = -1;
                 clear outSRCTYPE;
+                indy_outROWCOUNT = -1;
+                clear outROWCOUNT;
             else;
                 outMBRNAME = %trimR(QSYS_Name.Mbr_Name : X'00');
                 indy_outMBRNAME = 0;
@@ -678,10 +729,32 @@ dcl-Proc main ;
                 %SUBST(fileName : 11 : 10) = %TrimR(outLIBNAME);
                 mbrName  = %trimR(outMBRNAME);
                 // Retrieve member source type
-                QUSRMBRD( MBRDESC : %size(MBRDESC) : 'MBRD0100' :
+                QUSRMBRD( MBRDESC : %size(MBRDESC) : 'MBRD0200' :
                         fileName : mbrName : '1' : ec : '1');
                 if (mbrDesc.Bytes_returned > 8);
                     outSRCTYPE = mbrDesc.Src_Type;
+                    indy_outSRCTYPE = 0;
+                    outROWCOUNT = mbrDesc.Num_Cur_Rec_U;  // BIGINT
+                    indy_outROWCOUNT = 0;
+                    monitor;
+                     outMBRCHGDATE = %TimeStamp(
+                        %DATE(%SUBST(mbrDesc.Change_Date : 1 : 7) : *CYMD0) +
+                        %TIME(%SUBST(mbrDesc.Change_Date : 8 : 6) : *HMS0));
+                    on-error;
+                     indy_outMBRCHGDATE = -1;
+                    endmon;
+                    monitor;
+                     outSRCCHGDATE = %TimeStamp(
+                        %DATE(%SUBST(mbrDesc.Src_Change_Date : 1 : 7) : *CYMD0) +
+                        %TIME(%SUBST(mbrDesc.Src_Change_Date : 8 : 6) : *HMS0));
+                    on-error;
+                     indy_outSRCCHGDATE = -1;
+                    endmon;
+                    monitor;
+                     outEXPDATE = %date( mbrDesc.Exp_Date : *CYMD0 );
+                    on-error;
+                     indy_outEXPDATE = -1;
+                    endmon;
                 endif;
 
             endif;
@@ -699,6 +772,19 @@ dcl-Proc main ;
         return;
     endif;
 end-proc;
+
+    dcl-proc getDATE;
+        dcl-pi getDate  int(10);
+            localDate date(*ISO);
+            seconds uns(10) const;
+        end-pi;
+        dcl-s tm timestamp(0);
+        dcl-s rc int(10);
+        rc = getDts(tm : seconds);
+        localDate = %date(tm);
+        return rc;
+    end-proc;
+
 
 dcl-proc getDts;
     dcl-pi getDts  int(10);
@@ -769,6 +855,7 @@ end-proc;
 `;
 
 
+
 export const OBJ_ATTR_SQL_TEMPLATE = `
  -- Get Object Attributes
  -- @author BobCozzi
@@ -783,24 +870,31 @@ CREATE or REPLACE FUNCTION \${functionLibrary}.OBJ_ATTR(
                     cvtOption VARCHAR(10) DEFAULT 'NO'
                                            )
        RETURNS table (
-            created_Date timeStamp(0),  -- Creation Date
-            access_Date timestamp(0), -- Last accessed
+            created_Date timeStamp(0),  -- Creation timestamp
+            access_Date date, -- Last accessed Date
             changed_Date timestamp(0), -- Last Changed
             data_changed_date timestamp(0), -- Last DataChanged
-            last_used timestamp(0),
+            last_used date,
             last_used_days int,
-            last_used_reset timestamp(0),
+            last_used_reset date,
             Allocate_size bigint,
             data_size bigint,
             object_CCSID int,
-            ASP_Nbr SMALLINT,
             OBJTEXT VARCHAR(50) CCSID 1208,
+
+            ASP_Nbr SMALLINT,
+            ASP_Name VARCHAR(10),
+
             LIBNAME VARCHAR(10),
             OBJNAME VARCHAR(10),
             OBJTYPE VARCHAR(10),
+
             MBRNAME VARCHAR(10),
             SRCTYPE VARCHAR(10),
-            ASPNAME VARCHAR(10)
+            RCDCOUNT BIGINT,
+            SRCCHGDATE TIMESTAMP(0),
+            MBRCHGDATE TIMESTAMP(0),
+            MBREXPDATE DATE
            )
   LANGUAGE RPGLE
   NO SQL
@@ -847,7 +941,7 @@ comment on parameter SPECIFIC FUNCTION \${functionLibrary}.OBJ_ATTR
    name or an IFS file name. When the /QSYS.LIB path name is a .FILE name,
    then a valid member name may be optionally specified. For example, a
    full, valid member name would look something like this:
-   /QSYS.LIB/SQLTOOLSRC.lib/QRPGLESRC.File,JOB_ATTR.mbr
+   /QSYS.LIB/SQLTOOLS.lib/QRPGLESRC.File,JOB_ATTR.mbr
    When this parameter is specified, then the LIBRARY_NAME, FILE_NAME,
    and MBR_NAME parameters are ignored.',
 
@@ -857,14 +951,17 @@ comment on parameter SPECIFIC FUNCTION \${functionLibrary}.OBJ_ATTR
    When ''YES'' or ''UPPER'' is specified, the path is converted to upper case.
    When ''LOWER'' is specified, the path is converted to lower case.
    When ''NO'' or ''NONE'' is specified (the default) the path_name parameter
-   value is uses as specified.'
+   value is used as specified.'
  );
 `;
 
-const FUNCTION_LIBRARY_TOKEN = "${functionLibrary}";
+export const FUNCTION_LIBRARY_TOKEN = "${functionLibrary}";
 
 export function getSource_objattr(targetLibrary: string, version: number): string {
+    const library = targetLibrary.trim().toUpperCase();
+
     return OBJ_ATTR_SQL_TEMPLATE
-        .replace(/\$\{version\}/g, String(version))
-        .split(FUNCTION_LIBRARY_TOKEN).join(targetLibrary.trim());
+        .replace(/\$\{version\}/gi, String(version))
+        .replace(/\\\$\{version\}/gi, String(version))
+        .split(FUNCTION_LIBRARY_TOKEN).join(library);
 }
