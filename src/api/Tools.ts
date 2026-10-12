@@ -138,7 +138,7 @@ export namespace Tools {
 
   export function fixWindowsPath(path: string) {
     if (process.platform === `win32` && path[0] === `/`) {
-      //Issue with getFile not working propertly on Windows
+      //Issue with getFile not working properly on Windows
       //when there was a / at the start.
       return path.substring(1);
     } else {
