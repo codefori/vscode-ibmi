@@ -149,6 +149,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       }));
 
       const quickPick = window.createQuickPick();
+      quickPick.title = readonly ? l10n.t("Go To (read only)...") : l10n.t("Go To...");
       quickPick.items = await createQuickPickItemsList(
         ``,
         [],
