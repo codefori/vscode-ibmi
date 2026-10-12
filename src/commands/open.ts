@@ -3,8 +3,8 @@ import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickI
 import Instance from "../Instance";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
-import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
-import { DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
+import { getUriFromPath } from "../filesystems/qsys/QSysFs";
+import { BrowserItem, DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 
 const CLEAR_RECENT = `$(trash) ${l10n.t('Clear recently opened')}`;
@@ -34,30 +34,6 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       }
 
       const uri = getUriFromPath(path, options);
-
-      const existingUri = VscodeTools.findExistingDocumentUri(uri);
-
-      if (existingUri) {
-        const existingOptions = parseFSOptions(existingUri);
-        if (existingOptions.readonly !== options.readonly) {
-          if (options.readonly) {
-            // The resource must now be enforced as read-only (e.g. a protected library);
-            // an editable copy is already open and must be closed first so protection can't be bypassed.
-            const existingDocument = VscodeTools.findExistingDocument(existingUri);
-            if (existingDocument?.isDirty) {
-              window.showWarningMessage(l10n.t(`{0} is protected and cannot be edited; save or discard your changes in the currently open editor first.`, path));
-              window.showTextDocument(existingUri);
-              return false;
-            }
-
-            await window.tabGroups.close(VscodeTools.findUriTabs(existingUri));
-          } else {
-            window.showWarningMessage(l10n.t(`The file is already opened in another mode.`));
-            window.showTextDocument(existingUri);
-            return false;
-          }
-        }
-      }
 
       try {
         if (options.position) {
@@ -123,8 +99,8 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       }
     }),
 
-    commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => commands.executeCommand(`code-for-ibmi.goToFile`, true)),
-    commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
+    commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => commands.executeCommand(`code-for-ibmi.goToFile`, undefined, true)),
+    commands.registerCommand(`code-for-ibmi.goToFile`, async (_item: BrowserItem, readonly?: boolean) => {
       const compareIcon = new ThemeIcon('split-horizontal');
       const compareButton: QuickInputButton = {
         iconPath: compareIcon,
