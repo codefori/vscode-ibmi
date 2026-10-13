@@ -1,8 +1,8 @@
 import { parse as parsePath } from "path";
 import { parse, ParsedUrlQueryInput, stringify } from "querystring";
-import vscode, { FilePermission, FileSystemError, l10n } from "vscode";
+import vscode, { FilePermission, FileSystemError, l10n, window } from "vscode";
 import IBMi from "../../api/IBMi";
-import { MemberLocks } from "../../api/memberLocks";
+import { MemberLocks } from "./memberLocks";
 import { Tools } from "../../api/Tools";
 import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { instance } from "../../instantiate";
@@ -49,7 +49,6 @@ export class QSysFS implements vscode.FileSystemProvider {
     private readonly savedAsMembers: Set<string> = new Set;
     private readonly sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
-    private readonly memberLocks = new MemberLocks();
     private extendedMemberSupport = false;
     private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
     onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
@@ -57,49 +56,26 @@ export class QSysFS implements vscode.FileSystemProvider {
     constructor(context: vscode.ExtensionContext) {
         this.sourceDateHandler = new SourceDateHandler(context);
         this.extendedContent = new ExtendedIBMiContent(this.sourceDateHandler);
+        const memberLocks = new MemberLocks();
+        memberLocks.initialize(context);
 
         instance.subscribe(
             context,
             'connected',
-            `Update member support & lock open members`,
+            `Update member support`,
             () => {
                 this.updateMemberSupport();
-                this.lockOpenMembers();
             });
 
         instance.subscribe(
             context,
             'disconnected',
-            `Update member support & release all locks`,
+            `Update member support`,
             () => {
                 this.updateMemberSupport();
-                this.memberLocks.deallocateAll(undefined);
             });
 
         context.subscriptions.push(
-            vscode.workspace.onDidCloseTextDocument(async doc => {
-                if (doc.uri.scheme !== `member`) {
-                    return;
-                }
-
-                const connection = instance.getConnection();
-                if (!connection) {
-                    return;
-                }
-
-                const config = connection.getConfig();
-                if (!config.lockMembers) {
-                    return;
-                }
-
-                try {
-                    const memberParts = connection.parserMemberPath(doc.uri.path);
-                    if (this.memberLocks.isLocked(memberParts)) {
-                        await this.memberLocks.deallocate(connection, memberParts);
-                    }
-                } catch { }
-
-            }),
             onCodeForIBMiConfigurationChange("connectionSettings", () => {
                 const connection = instance.getConnection();
                 const config = connection?.getConfig();
@@ -117,38 +93,8 @@ export class QSysFS implements vscode.FileSystemProvider {
                             { modal: true, detail: openedMembers.map(e => `- ${e.path.substring(1)}`).join("\n") });
                     }
                 }
-
-                if (config?.lockMembers) {
-                    this.lockOpenMembers();
-                } else {
-                    this.memberLocks.deallocateAll(connection);
-                }
             })
         );
-    }
-
-    private async lockOpenMembers(): Promise<void> {
-        const connection = instance.getConnection();
-        if (!connection) {
-            return;
-        }
-
-        const config = connection.getConfig();
-        if (!config.lockMembers) {
-            return;
-        }
-
-        const openMemberTextDocuments = vscode.workspace.textDocuments
-            .filter(doc => doc.uri.scheme === `member` && !doc.isClosed);
-
-        for (const doc of openMemberTextDocuments) {
-            try {
-                const memberParts = connection.parserMemberPath(doc.uri.path);
-                if (!this.memberLocks.isLocked(memberParts)) {
-                    await this.memberLocks.allocate(connection, memberParts);
-                }
-            } catch { }
-        }
     }
 
     private updateMemberSupport() {
@@ -248,13 +194,6 @@ export class QSysFS implements vscode.FileSystemProvider {
             const memberParts = await this.parseMemberPath(connection, uri.path);
             let { asp, library, file, name: member } = memberParts;
             asp = asp || await connection.getLibraryIAsp(library);
-
-            const config = connection.getConfig();
-            if (config.lockMembers) {
-                if (!this.memberLocks.isLocked(memberParts)) {
-                    await this.memberLocks.allocate(connection, memberParts);
-                }
-            }
 
             let memberContent;
             try {

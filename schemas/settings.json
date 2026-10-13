@@ -9,6 +9,11 @@
           "default": false,
           "description": "Always open source members and IFS files in read-only mode. Content on the server can not be changed."
         },
+        "lockMembers": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, a lock will be allocated on a source member when it is opened (`*EXCLRD` for editing and `*SHRRD` for browsing) and deallocated when it is closed."
+        },
         "tempLibrary": {
           "type": "string",
           "default": "ILEDITOR",

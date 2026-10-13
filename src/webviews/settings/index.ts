@@ -12,6 +12,7 @@ import { ConnectionConfig, ConnectionData, RemoteConfigFile, Server } from '../.
 import { VscodeTools } from "../../ui/Tools";
 import { ComplexTab, CustomUI, Section, SelectItem } from "../CustomUI";
 import { checkLoginForm } from "../login";
+import { LockState } from "../../filesystems/qsys/memberLocks";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
 
@@ -221,7 +222,7 @@ export class SettingsUI {
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()
-          .addCheckbox(`lockMembers`, `Lock Members`, `When enabled, a shared-update lock (<code>*SHRUPD</code>) will be allocated on a source member when it is opened and deallocated when it is closed.`, config.lockMembers)
+          .addCheckbox(`lockMembers`, `Lock Members`, `When enabled, a lock will be allocated on a source member when it is opened (<code>${LockState.EXCLUSIVE_ALLOW_READ}</code> for editing and <code>${LockState.SHARED_READ}</code> for browsing) and deallocated when it is closed.`, config.lockMembers)
           .addHorizontalRule()
           .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
 
