@@ -408,7 +408,7 @@ describe('Encoding tests', { concurrent: true }, () => {
   });
 });
 
-// seperate suite for tests that require synchronous execution
+// separate suite for tests that require synchronous execution
 // as global variables are modified in each test
 describe('BiDi encoding tests', () => {
   let connection: IBMi

@@ -137,7 +137,7 @@ export class ComponentManager {
     if (component) {
       component.component.reset?.();
 
-      const state = component.handleState(await component.component.getRemoteState(this.connection, await component.getInstallDirectory()));
+      const state = component.handleState(await component.component.getRemoteState(this.connection, component.getInstallDirectory()));
       component.overrideState(state);
       return state;
     }

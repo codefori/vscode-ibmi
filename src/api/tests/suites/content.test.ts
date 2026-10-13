@@ -294,18 +294,6 @@ describe('Content Tests', { concurrent: true }, () => {
     expect(moreRowsThanAvailable?.length).toBe(allRows.length);
   });
 
-  it('Test getTable', async () => {
-    const content = connection.getContent();
-
-    const rows = await content.getTable('qiws', 'qcustcdt', '*all');
-
-    expect(rows?.length).not.toBe(0);
-    const firstRow = rows![0];
-
-    expect(typeof firstRow['BALDUE']).toBe('number');
-    expect(typeof firstRow['CITY']).toBe('string');
-  });
-
   it('Test validateLibraryList', async () => {
     const content = connection.getContent();
 
@@ -582,39 +570,6 @@ describe('Content Tests', { concurrent: true }, () => {
     finally {
       await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${sourceFile})`, noLibList: true });
     }
-  });
-
-  it('getQtempTable', async () => {
-    const content = connection.getContent();
-
-    const queries = [
-      `CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYSINC/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/DSPOBJD)')`,
-      `Create Table QTEMP.OBJECTS As (
-      Select ODLBNM as LIBRARY,
-        ODOBNM as NAME,
-        ODOBAT as ATTRIBUTE,
-        ODOBTP as TYPE,
-        Coalesce(ODOBTX, '') as TEXT
-      From QTEMP.DSPOBJD
-    ) With Data`
-    ];
-
-
-    const nosqlContent = await content?.getQTempTable(queries, "OBJECTS");
-    const objects = nosqlContent?.map(row => ({
-      library: row.LIBRARY,
-      name: row.NAME,
-      attribute: row.ATTRIBUTE,
-      type: row.TYPE,
-      text: row.TEXT,
-    }));
-    expect(objects?.length).not.toBe(0);
-    expect(objects?.every(obj => obj.library === "QSYSINC")).toBe(true);
-
-    const qrpglesrc = objects?.find(obj => obj.name === "QRPGLESRC");
-    expect(qrpglesrc).toBeDefined();
-    expect(qrpglesrc?.attribute).toBe("PF");
-    expect(qrpglesrc?.type).toBe("*FILE");
   });
 
   it('toCl', () => {

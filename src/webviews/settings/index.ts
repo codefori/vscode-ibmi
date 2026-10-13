@@ -218,6 +218,12 @@ export class SettingsUI {
               value: `all`,
               description: `All`,
               text: `Every file in the local workspace`,
+            },
+            {
+              selected: config.defaultDeploymentMethod === `selected`,
+              value: `selected`,
+              description: vscode.l10n.t(`Action files`),
+              text: vscode.l10n.t(`Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.`),
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()
@@ -288,7 +294,10 @@ export class SettingsUI {
               }
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
                 .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
-                .addButtons({ id: `import`, label: `Download client certificate` });
+                .addButtons(
+                  { id: `import`, label: `Download client certificate` },
+                  certificates.isUsingRecommendedCertDirectory(context) ? undefined : { id: `useRecommendedCertLocation`, label: `Move certificate to extension storage` }
+                );
             }
           }
         } else if (connection) {
@@ -365,6 +374,10 @@ export class SettingsUI {
               switch (button) {
                 case `import`:
                   vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+                  break;
+
+                case `useRecommendedCertLocation`:
+                  vscode.commands.executeCommand(`code-for-ibmi.debug.setup.useRecommendedCertLocation`);
                   break;
 
                 case `clearAllowedExts`:

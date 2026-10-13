@@ -624,13 +624,14 @@ export default class IBMi {
       callbacks.progress({ message: `Loading remote configuration files.` });
       await this.loadAndApplyRemoteConfigs();
 
-      callbacks.progress({ message: `Checking Mapepire status.` });
+      callbacks.progress({ message: `Checking temporary directory.` });
       const tempDirSet = await this.checkOrCreateTempDirectory();
       if (!tempDirSet) {
         this.config.tempDir = `~/.vscode/tmp`;
       }
 
       // We always start up Mapepire first
+      callbacks.progress({ message: `Checking Mapepire status.` });
       let mapepireState;
       try {
         mapepireState = await this.componentManager.startupComponent(Mapepire.ID, quickConnect() ? cachedServerSettings?.installedComponents : []);
@@ -646,26 +647,29 @@ export default class IBMi {
 
       callbacks.progress({ message: `Starting Mapepire.` });
       const mapepire = await this.getComponent<Mapepire>(Mapepire.ID);
-      if (mapepire) {
-        const hasJavaInstalled = (this.remoteFeatures.jdk21 || this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
-        if (hasJavaInstalled) {
-          try {
-            this.sqlJob = await mapepire.newJob(this);
-            if (this.sqlJob.id) {
-              this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
-              await this.sqlJob.execute(`CALL QSYS2.QCMDEXC('OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)')`);
-            }
-          } catch (e: any) {
-            callbacks.message(`error`, `Failed to start Mapepire SQL job: ${e.message || e}`);
-            this.appendOutput(`Mapepire error: ${e.message || e}\n`);
+
+      try {
+        if (mapepire) {
+          const hasJavaInstalled = (this.remoteFeatures.jdk21 || this.remoteFeatures.jdk17 || this.remoteFeatures.jdk11 || this.remoteFeatures.jdk80);
+          if (!this.getConfig().mapepireUseServer && !hasJavaInstalled) {
+            throw new Error(`No Java installation found. SQL operations will not be available. Please install Java 8, 11, 17 or 21.`);
           }
-        } else {
-          callbacks.message(`warning`, `No Java installation found. SQL operations will not be available. Please install Java 8, 11, or 17.`);
-          this.appendOutput(`Warning: No Java found for Mapepire\n`);
+
+          this.sqlJob = await mapepire.newJob(this);
+          if (this.sqlJob.id) {
+            this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
+            await this.sqlJob.execute(`CALL QSYS2.QCMDEXC('OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)')`);
+          }
         }
-      } else {
-        callbacks.message(`warning`, `Mapepire component failed to start. SQL operations will not be available.`);
-        this.appendOutput(`Warning: Mapepire component not available\n`);
+        else {
+          throw new Error(`Mapepire component failed to start.`);
+        }
+      }
+      catch (e: any) {
+        const error = e.message || e;
+        callbacks.message(`error`, `Failed to start Mapepire SQL job: ${error}`);
+        this.appendOutput(`Mapepire error: ${error}\n`);
+        throw e;
       }
 
       try {
