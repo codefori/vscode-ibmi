@@ -590,7 +590,8 @@ export default class IBMiContent {
             o.OBJOWNER          as OWNER,
             o.OBJDEFINER        as CREATED_BY
           from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()})) o
-          left join QSYS2.SYSFILES s on cast(s.SYSTEM_TABLE_SCHEMA as varchar(10) for bit data) = o.OBJLIB and
+          left join QSYS2.SYSFILES s on FILE_TYPE = 'SOURCE' and
+                                        cast(s.SYSTEM_TABLE_SCHEMA as varchar(10) for bit data) = o.OBJLIB and
                                         cast(s.SYSTEM_TABLE_NAME as varchar(10) for bit data) = o.OBJNAME`;
     }
 
