@@ -714,6 +714,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string) => {
+      if (checkProtected(node)) {
+        return;
+      }
       const connection = getConnection();
       const toPath = (value: string) => connection.upperCaseName(`${node.path}/${value}`);
       fullName = await vscode.window.showInputBox({
@@ -758,6 +761,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: ObjectBrowserMemberItem, fullPath?: string) => {
+      if (checkProtected(node)) {
+        return;
+      }
       const connection = getConnection();
 
       const oldUri = node.resourceUri as Uri;
@@ -854,6 +860,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node: ObjectBrowserMemberItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       const connection = getConnection();
       const { library, file, name, basename } = connection.parserMemberPath(node.path);
       const oldText = node.member.text;
@@ -883,6 +892,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: (ObjectBrowserMemberItem)) => {
+      if (checkProtected(node)) {
+        return;
+      }
       const connection = getConnection();
       const oldMember = connection.parserMemberPath(node.path);
       const oldUri = node.resourceUri as vscode.Uri;

@@ -3,8 +3,8 @@ import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickI
 import Instance from "../Instance";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
-import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
-import { DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
+import { getUriFromPath } from "../filesystems/qsys/QSysFs";
+import { BrowserItem, DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 
 const CLEAR_RECENT = `$(trash) ${l10n.t('Clear recently opened')}`;
@@ -34,17 +34,6 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       }
 
       const uri = getUriFromPath(path, options);
-
-      const existingUri = VscodeTools.findExistingDocumentUri(uri);
-
-      if (existingUri) {
-        const existingOptions = parseFSOptions(existingUri);
-        if (existingOptions.readonly !== options.readonly) {
-          window.showWarningMessage(l10n.t(`The file is already opened in another mode.`));
-          window.showTextDocument(existingUri);
-          return false;
-        }
-      }
 
       try {
         if (options.position) {
@@ -110,8 +99,8 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       }
     }),
 
-    commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => commands.executeCommand(`code-for-ibmi.goToFile`, true)),
-    commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
+    commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => commands.executeCommand(`code-for-ibmi.goToFile`, undefined, true)),
+    commands.registerCommand(`code-for-ibmi.goToFile`, async (_item: BrowserItem, readonly?: boolean) => {
       const compareIcon = new ThemeIcon('split-horizontal');
       const compareButton: QuickInputButton = {
         iconPath: compareIcon,
@@ -146,16 +135,21 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
         });
       });
 
+      const protectedIcon = new ThemeIcon(`lock-small`);
+
       const recentItems: QuickPickItem[] = recent.map(item => ({
         label: item,
+        iconPath: content.isProtectedPath(item) ? protectedIcon : undefined,
         buttons: [compareButton]
       }));
       const listItems: QuickPickItem[] = list.map(item => ({
         label: item,
+        iconPath: content.isProtectedPath(item) ? protectedIcon : undefined,
         buttons: [compareButton]
       }));
 
       const quickPick = window.createQuickPick();
+      quickPick.title = readonly ? l10n.t("Go To (read only)...") : l10n.t("Go To...");
       quickPick.items = await createQuickPickItemsList(
         ``,
         [],
@@ -178,7 +172,8 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       ).then(resultSetLibrary => {
         schemaItems = resultSetLibrary.map(row => ({
           label: String(row.NAME),
-          description: String(row.TEXT)
+          description: String(row.TEXT),
+          iconPath: content!.isProtectedPath(String(row.NAME)) ? protectedIcon : undefined
         }))
       });
 
@@ -262,9 +257,11 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                 order by 1`
               ]);
 
+              const libraryProtected = content!.isProtectedPath(selectionSplit[0]);
               const listFile: QuickPickItem[] = resultSet.map(row => ({
                 label: selectionSplit[0] + '/' + connection.sysNameInLocal(String(row.NAME)),
-                description: String(row.TEXT)
+                description: String(row.TEXT),
+                iconPath: libraryProtected ? protectedIcon : undefined
               }))
 
               filteredItems = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
@@ -303,9 +300,11 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
                  order by 1
               `);
 
+              const memberLibraryProtected = content!.isProtectedPath(selectionSplit[0]);
               const listMember = resultSet.map(row => ({
                 label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.SYSTEM_TABLE_MEMBER) + '.' + String(row.SOURCE_TYPE),
-                description: String(row.PARTITION_TEXT)
+                description: String(row.PARTITION_TEXT),
+                iconPath: memberLibraryProtected ? protectedIcon : undefined
               }))
 
               filteredItems = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
