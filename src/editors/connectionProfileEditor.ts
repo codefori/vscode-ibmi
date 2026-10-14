@@ -26,8 +26,17 @@ export function isProfileEdited(profile: AnyConnectionProfile) {
   return editedProfiles.has(getEditedKey(profile));
 }
 
+/** What each opened editor last loaded or saved: reverting goes back to it, without asking the server */
+const savedProfiles: WeakMap<CustomEditor<ConnectionProfileData>, AnyConnectionProfile> = new WeakMap;
+
 export function editConnectionProfile(profile: AnyConnectionProfile, doAfterSave?: () => Thenable<void>) {
-  const profileEditor: CustomEditor<ConnectionProfileData> = new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profileEditor, profile, data).then(doAfterSave), () => editedProfiles.delete(getEditedKey(profile)));
+  const profileEditor: CustomEditor<ConnectionProfileData> = new CustomEditor<ConnectionProfileData>(
+    `${profile.name}.profile`,
+    data => save(profileEditor, profile, data).then(() => { savedProfiles.set(profileEditor, structuredClone(profile)); }).then(doAfterSave),
+    () => editedProfiles.delete(getEditedKey(profile)),
+    async () => revert(profileEditor, profile)
+  );
+  savedProfiles.set(profileEditor, structuredClone(profile));
   buildForm(profileEditor, profile);
   profileEditor.open();
 
@@ -75,29 +84,49 @@ function buildForm(profileEditor: CustomEditor<ConnectionProfileData>, profile: 
     .addParagraph(customVariables.length ? `<ul>${customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join('')}</ul>` : l10n.t("None"));
 }
 
+/** Replaces the content of `profile` with the one of `from`; the unsaved values may already be set on `profile`, those `from` doesn't have must go too */
+function replaceProfile(profile: AnyConnectionProfile, from: AnyConnectionProfile) {
+  for (const key of Object.keys(profile)) {
+    if (!(key in from)) {
+      delete (profile as any)[key];
+    }
+  }
+  Object.assign(profile, structuredClone(from));
+}
+
+/** Goes back to what was last loaded or saved in this editor */
+function revert(profileEditor: CustomEditor<ConnectionProfileData>, profile: AnyConnectionProfile) {
+  const saved = savedProfiles.get(profileEditor);
+  if (saved) {
+    replaceProfile(profile, saved);
+    profileEditor.rebuild(editor => buildForm(editor, profile), getFormData(profile), false);
+  }
+}
+
 /**
- * Replaces the profile and the form with what is on the server now; the editor stays open so the profile can be saved again.
+ * Replaces the profile and the form with what is on the server now; the editor stays dirty so the profile can be saved again right away.
  * @throws an Error if the profile no longer exists on the server
  */
 async function reloadFromServer(profileEditor: CustomEditor<ConnectionProfileData>, profile: AnyConnectionProfile) {
   await vscode.commands.executeCommand("code-for-ibmi.environment.refresh");
 
   const latest = await getConnectionProfile(profile.name, `server`);
-  if (latest?.type !== `server` || !latest.loadedHash) {
+  if (!latest) {
     throw new Error(l10n.t("Server profile {0} no longer exists on the server. Save again and choose to overwrite to create it again, or close this editor.", profile.name));
   }
 
-  // The unsaved values were already set on the profile: those the server version doesn't have must go too
-  for (const key of Object.keys(profile)) {
-    if (!(key in latest)) {
-      delete (profile as any)[key];
-    }
-  }
-  Object.assign(profile, latest);
-  profileEditor.rebuild(editor => buildForm(editor, profile), getFormData(profile));
+  replaceProfile(profile, latest);
+  savedProfiles.set(profileEditor, structuredClone(latest));
+  profileEditor.rebuild(editor => buildForm(editor, profile), getFormData(profile), true);
 }
 
 async function save(profileEditor: CustomEditor<ConnectionProfileData>, profile: AnyConnectionProfile, data: ConnectionProfileData) {
+  // Validating and writing a profile takes several round trips to the server: show what is going on
+  await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: l10n.t("Saving profile {0}", profile.name) },
+    progress => saveProfile(profileEditor, profile, data, progress));
+}
+
+async function saveProfile(profileEditor: CustomEditor<ConnectionProfileData>, profile: AnyConnectionProfile, data: ConnectionProfileData, progress: vscode.Progress<{ message?: string }>) {
   const connection = instance.getConnection();
 
   if (connection) {
@@ -118,6 +147,7 @@ async function save(profileEditor: CustomEditor<ConnectionProfileData>, profile:
 
       const currentASP = connection.getCurrentASP();
       try {
+        progress.report({ message: l10n.t("Validating the libraries...") });
         await connection.setCurrentASP(profile.iasp);
 
         data.currentLibrary = connection.upperCaseName(data.currentLibrary.trim());
@@ -149,10 +179,16 @@ async function save(profileEditor: CustomEditor<ConnectionProfileData>, profile:
         profile.libraryList = libraryList;
 
         let reloaded = false;
+        if (profile.type === `server`) {
+          progress.report({ message: l10n.t("Checking the server profile state...") });
+        }
         const canProceed = await verifyLatestServerProfileState(profile);
-        const saved = canProceed && await saveConnectionProfile(profile, undefined, async () => {
-          await reloadFromServer(profileEditor, profile);
-          reloaded = true;
+        const saved = canProceed && await saveConnectionProfile(profile, {}, {
+          progress,
+          onReload: async () => {
+            await reloadFromServer(profileEditor, profile);
+            reloaded = true;
+          }
         });
 
         // Throwing keeps the editor open and dirty, so it can be saved again

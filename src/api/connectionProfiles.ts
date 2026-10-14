@@ -3,6 +3,7 @@ import { l10n } from "vscode";
 import { instance } from "../instantiate";
 import IBMi from "./IBMi";
 import { AnyConnectionProfile, LocalConnectionProfile, ServerConnectionProfile, ConnectionConfig, ConnectionProfile, ProfileType } from "./configuration/config/types";
+import { ConfigFileUpdateStep } from "./configuration/configFile";
 
 /**
  * Thrown when a server profile was changed (or deleted, or created) by someone else since it was last loaded
@@ -13,7 +14,7 @@ export class ProfileConflictError extends Error {
   }
 }
 
-export async function updateConnectionProfile(profile: AnyConnectionProfile, options?: { newName?: string, delete?: boolean, modifiedConfig?: ConnectionConfig, force?: boolean }) {
+export async function updateConnectionProfile(profile: AnyConnectionProfile, options?: { newName?: string, delete?: boolean, modifiedConfig?: ConnectionConfig, force?: boolean, onProgress?: (step: ConfigFileUpdateStep) => void }) {
   const connection = instance.getConnection();
   if (connection) {
     const config = options?.modifiedConfig || connection.getConfig();
@@ -47,7 +48,7 @@ export async function updateConnectionProfile(profile: AnyConnectionProfile, opt
         }
 
         return serverProfiles;
-      });
+      }, options?.onProgress);
 
       // The profile object may be saved again (e.g. from the same editor): it now matches what is on the server
       profile.loadedHash = options?.delete ? undefined : hashProfile(serverProfile);

@@ -5,6 +5,13 @@ import { Tools } from "../Tools";
 
 const SERVER_ROOT = path.posix.join(`/`, `etc`, `vscode`);
 
+function hashContent(content: string | Buffer) {
+  return crypto.createHash(`sha256`).update(content).digest(`hex`);
+}
+
+/** The steps of {@link ConfigFile.update}, in order */
+export type ConfigFileUpdateStep = `access` | `read` | `upload` | `verify` | `write` | `check`;
+
 type ConfigResult = `not_loaded` | `no_exist` | `failed_to_parse` | `invalid` | `ok`;
 
 export class ConfigFile<T> {
@@ -38,9 +45,11 @@ export class ConfigFile<T> {
     const isAvailable = await content.testStreamFile(this.serverFile, `r`);
     if (isAvailable) {
       const fileContent = await content.downloadStreamfileRaw(this.serverFile);
-      this.serverHash = crypto.createHash(`sha256`).update(fileContent).digest(`hex`);
+      this.serverHash = hashContent(fileContent);
       try {
-        const serverConfig: T = JSON.parse(fileContent.toString());
+        // An empty file holds nothing that could be lost: it is just like a file with no configuration in it
+        const rawContent = fileContent.toString();
+        const serverConfig: T = rawContent.trim() ? JSON.parse(rawContent) : structuredClone(this.fallback);
         this.state = `ok`;
 
         if (this.validateData) {
@@ -65,15 +74,18 @@ export class ConfigFile<T> {
    * The file is read again right before being written, so changes made by others since it was last loaded are never lost:
    * `modify` is told when this happened, so it can decide whether its own change still applies.
    *
+   * @param onProgress called when each step starts, so it can be reported (it can take a while)
    * @throws an Error if the file cannot be written, or if it cannot be parsed (it is then left untouched)
    */
-  async update(modify: (current: T, changedOnServer: boolean) => T) {
+  async update(modify: (current: T, changedOnServer: boolean) => T, onProgress?: (step: ConfigFileUpdateStep) => void) {
+    onProgress?.(`access`);
     const accessError = await this.checkWriteAccess();
     if (accessError) {
       throw new Error(accessError);
     }
 
     const loadedHash = this.serverHash;
+    onProgress?.(`read`);
     await this.loadFromServer();
 
     if (this.state === `failed_to_parse` || this.state === `invalid`) {
@@ -83,7 +95,10 @@ export class ConfigFile<T> {
     const changedOnServer = this.serverHash !== loadedHash;
     const newData = modify(structuredClone(this.serverData ?? this.fallback), changedOnServer);
 
+    onProgress?.(`upload`);
     const content = this.connection.getContent();
+    const attr = this.connection.remoteFeatures.attr;
+    const file = Tools.escapePath(this.serverFile, true);
     if (this.state === `no_exist`) {
       if (await content.testStreamFile(this.serverFile, `e`)) {
         throw new Error(`${this.serverFile} exists but cannot be read; it won't be overwritten.`);
@@ -91,15 +106,54 @@ export class ConfigFile<T> {
 
       // Everyone reads, the owner writes; same as the shared snippets. Sys admins can fine tune afterwards.
       const directory = Tools.escapePath(SERVER_ROOT, true);
-      const file = Tools.escapePath(this.serverFile, true);
-      const result = await this.connection.sendCommand({ command: `(test -d "${directory}" || (mkdir -p "${directory}" && chmod 755 "${directory}")) && touch "${file}" && chmod 644 "${file}"` });
+      const result = await this.connection.sendCommand({ command: `test -d "${directory}" || (mkdir -p "${directory}" && chmod 755 "${directory}")` });
       if (result.code !== 0) {
-        throw new Error(`Could not create ${this.serverFile}: ${result.stderr.trim()}`);
+        throw new Error(`Could not create ${SERVER_ROOT}: ${result.stderr.trim()}`);
       }
+
+      // Created as UTF-8 like the shared snippets files, so its content is never converted when written
+      await content.createStreamFile(this.serverFile);
+      await this.connection.sendCommand({ command: `chmod 644 "${file}"` });
     }
 
-    await content.writeStreamfileRaw(this.serverFile, JSON.stringify(newData, null, 4));
+    // Uploaded to a temporary file and checked first, so the server file only ever gets replaced by complete content
+    const newContent = JSON.stringify(newData, null, 4);
+    const tempFile = path.posix.join(this.connection.getTempDirectory(), `vscodetemp-${Tools.makeid()}`);
+    const temp = Tools.escapePath(tempFile, true);
+    try {
+      await content.createStreamFile(tempFile);
+      await content.writeStreamfileRaw(tempFile, newContent);
+      onProgress?.(`verify`);
+      if ((await content.downloadStreamfileRaw(tempFile)).toString() !== newContent) {
+        throw new Error(`Could not write ${this.serverFile}: the new content could not be uploaded completely.`);
+      }
+
+      onProgress?.(`write`);
+      // The content is copied as UTF-8: the file must be tagged accordingly (only done now, when it is about to be replaced)
+      if (attr) {
+        const ccsid = await this.connection.sendCommand({ command: `${attr} "${file}" CCSID` });
+        if (ccsid.code === 0 && ccsid.stdout.trim() !== `1208`) {
+          const retag = await this.connection.sendCommand({ command: `${attr} "${file}" CCSID=1208` });
+          if (retag.code !== 0) {
+            throw new Error(`Could not set ${this.serverFile} CCSID to 1208: ${retag.stderr.trim()}`);
+          }
+        }
+      }
+
+      const copy = await this.connection.sendCommand({ command: `cat "${temp}" > "${file}"` });
+      if (copy.code !== 0) {
+        throw new Error(`Could not write ${this.serverFile}: ${copy.stderr.trim()}`);
+      }
+    }
+    finally {
+      await this.connection.sendCommand({ command: `rm -f "${temp}"` });
+    }
+
+    onProgress?.(`check`);
     await this.loadFromServer();
+    if (this.serverHash !== hashContent(newContent)) {
+      throw new Error(`${this.serverFile} doesn't hold the expected content after being written; check it before saving again.`);
+    }
   }
 
   /**

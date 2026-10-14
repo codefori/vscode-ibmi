@@ -3,6 +3,7 @@ import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem, ThemeIcon, window } from 'vscode';
 import { ActionTools } from '../../../api/actions';
 import { assignProfile, cloneProfile, getAllConnectionProfiles, getConnectionProfile, getDefaultProfile, isActiveProfile, ProfileConflictError, updateConnectionProfile } from '../../../api/connectionProfiles';
+import { ConfigFileUpdateStep } from '../../../api/configuration/configFile';
 import IBMi from '../../../api/IBMi';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
@@ -677,17 +678,41 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   );
 }
 
-type SaveProfileOptions = Parameters<typeof updateConnectionProfile>[1];
+type SaveProfileOptions = Omit<NonNullable<Parameters<typeof updateConnectionProfile>[1]>, `onProgress`>;
+
+type SaveProfileUI = {
+  /** What to do if the user rather gets the latest changes; refreshes the server profiles by default */
+  onReload?: () => Promise<void>
+  /** Where to report the progress; a notification is shown for server profiles if not set */
+  progress?: vscode.Progress<{ message?: string }>
+};
+
+function describeSaveStep(step: ConfigFileUpdateStep, filePath: string) {
+  switch (step) {
+    case `access`: return l10n.t("Checking access to {0}...", filePath);
+    case `read`: return l10n.t("Reading the latest server profiles...");
+    case `upload`: return l10n.t("Uploading the new content...");
+    case `verify`: return l10n.t("Verifying the uploaded content...");
+    case `write`: return l10n.t("Writing {0}...", filePath);
+    case `check`: return l10n.t("Checking {0}...", filePath);
+  }
+}
 
 /**
  * Saves a profile; if it was changed on the server by someone else in the meantime, the user decides whether to overwrite those changes.
- * @param onReload what to do if the user rather gets the latest changes; refreshes the server profiles by default
  * @returns `true` if the profile was saved
  * @throws any error other than a {@link ProfileConflictError}
  */
-export async function saveConnectionProfile(profile: AnyConnectionProfile, options?: SaveProfileOptions, onReload?: () => Promise<void>): Promise<boolean> {
+export async function saveConnectionProfile(profile: AnyConnectionProfile, options: SaveProfileOptions = {}, ui: SaveProfileUI = {}): Promise<boolean> {
+  const progress = ui.progress;
+  if (!progress && profile.type === `server`) {
+    // Saving a server profile takes several round trips to the server: show what is going on
+    return vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: l10n.t("Saving server profile {0}", profile.name) }, progress => saveConnectionProfile(profile, options, { ...ui, progress }));
+  }
+
   try {
-    await updateConnectionProfile(profile, options);
+    const filePath = instance.getConnection()?.getConfigFile(`profiles`).getPaths().server || ``;
+    await updateConnectionProfile(profile, { ...options, onProgress: step => progress?.report({ message: describeSaveStep(step, filePath) }) });
     return true;
   } catch (error: any) {
     if (!(error instanceof ProfileConflictError)) {
@@ -698,10 +723,11 @@ export async function saveConnectionProfile(profile: AnyConnectionProfile, optio
     const reload = l10n.t("Reload");
     const choice = await window.showWarningMessage(error.message, { modal: true, detail: l10n.t("Reload the server profiles to get the latest changes, or overwrite them with yours.") }, overwrite, reload);
     if (choice === overwrite) {
-      return saveConnectionProfile(profile, { ...options, force: true }, onReload);
+      return saveConnectionProfile(profile, { ...options, force: true }, ui);
     } else if (choice === reload) {
-      if (onReload) {
-        await onReload();
+      progress?.report({ message: l10n.t("Reloading the server profiles...") });
+      if (ui.onReload) {
+        await ui.onReload();
       } else {
         await vscode.commands.executeCommand("code-for-ibmi.environment.refresh");
       }
