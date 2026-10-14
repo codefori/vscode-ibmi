@@ -36,7 +36,7 @@
   "Are you sure you want to disconnect from {0}?": "Are you sure you want to disconnect from {0}?",
   "Attribute": "Attributt",
   "Authentication methods removed for \"{0}\".": "Passord og privat nøkkel er fjernet for \"{0}\".",
-  "Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.": "Nedenfor er de tilgjengelige variabler, baseret på objekt typen. Du kan angi forskjellige kommandoer på hver linje. Hver kommando er \"stateless\" og kjører i sin egen jobb.",
+  "Below are available variables based on the type you have selected below. You can specify different commands on each line. Each command is stateless and runs in its own job.": "Nedenfor er de tilgjengelige variabler, baseret på objekt typen. Du kan angi forskjellige kommandoer på hver linje. Hver kommando er \"stateless\" og kjører i sin egen jobb.",
   "Branch library, based on the current branch": "Bibliotek for nåværende Git-gren",
   "Browser": "Vindu",
   "Cancel": "Avbryt",
