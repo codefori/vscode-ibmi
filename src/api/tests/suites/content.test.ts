@@ -215,7 +215,7 @@ describe('Content Tests', { concurrent: true }, () => {
         environment: 'ile'
       })
     }
-  })
+  });
 
   it('objectResolve with bad name', async () => {
     const content = connection.getContent();
