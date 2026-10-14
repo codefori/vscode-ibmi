@@ -1,23 +1,22 @@
 {
   "type": "array",
   "title": "Actions",
-  "description": "List of Actions that apply to this Workspace. Actions may be used to run commands on the remote system.",
+  "description": "List of Code for IBM i Actions which may be used to run commands on the remote system.",
   "items": {
     "$ref": "#/$defs/code4iAction"
   },
   "$defs": {
     "code4iAction": {
       "type": "object",
+      "title": "Action",
+      "description": "A single Action.",
+      "required": [
+        "name",
+        "command",
+        "environment",
+        "extensions"
+      ],
       "properties": {
-        "type": "object",
-        "title": "Action",
-        "description": "A single Action.",
-        "required": [
-          "name",
-          "command",
-          "environment",
-          "extensions"
-        ],
         "name": {
           "type": "string",
           "title": "Name",
@@ -28,6 +27,17 @@
           "title": "Command",
           "description": "The command that will be run when executing this Action.",
           "default": ""
+        },
+        "type": {
+          "type": "string",
+          "title": "File system type",
+          "description": "File system which supports this Action.",
+          "default": "ile",
+          "enum": [
+            "file",
+            "member",
+            "streamfile"
+          ]
         },
         "environment": {
           "type": "string",

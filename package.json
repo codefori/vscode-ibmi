@@ -53,9 +53,16 @@
 		"jsonValidation": [
 			{
 				"fileMatch": [
-					".vscode/actions.json"
+					".vscode/actions.json",
+					"/etc/vscode/actions.json"
 				],
 				"url": "./schemas/actions.json"
+			},
+			{
+				"fileMatch": [
+					"/etc/vscode/profiles.json"
+				],
+				"url": "./schemas/profiles.json"
 			},
 			{
 				"fileMatch": [
@@ -103,7 +110,7 @@
 									"properties": {
 										"name": {
 											"type": "string",
-											"description": "Connection name"
+											"description": "Filter name"
 										},
 										"library": {
 											"type": "string",
@@ -146,7 +153,7 @@
 									}
 								},
 								"default": [],
-								"description": "List of filters for Object List"
+								"description": "List of filters shown in the Object Browser"
 							},
 							"libraryList": {
 								"type": "array",
@@ -171,7 +178,7 @@
 									"additionalProperties": true
 								},
 								"default": [],
-								"description": "A collection of connection settings to easily switch between them on this system."
+								"description": "A collection of library lists, filters, and custom variables to easily switch between on this system."
 							},
 							"ifsShortcuts": {
 								"type": "array",
@@ -180,7 +187,7 @@
 									"title": "Path to directory"
 								},
 								"default": [],
-								"description": "List of directories shown in IFS Browser"
+								"description": "List of directories shown in the IFS Browser"
 							},
 							"autoSortIFSShortcuts": {
 								"type": "boolean",
@@ -1996,6 +2003,24 @@
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change password...",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.resolveProfile.saveChangeToServer",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i",
+				"title": "Save Changes To Server"
+			},
+			{
+				"command": "code-for-ibmi.resolveProfile.discardChangesAndSyncWithServer",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i",
+				"title": "Discard Changes and Sync with Server"
+			},
+			{
+				"command": "code-for-ibmi.resolveProfile.overwriteChangesToServer",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i",
+				"title": "Overwrite Changes to Server"
 			}
 		],
 		"customEditors": [
@@ -2218,6 +2243,11 @@
 			{
 				"id": "code-for-ibmi.createSharedSnippet",
 				"label": "Create shared IBM i snippet"
+			},
+			{
+				"id": "code-for-ibmi.resolveProfile",
+				"label": "Resolve...",
+				"icon": "$(edit-sparkle)"
 			}
 		],
 		"menus": {
@@ -2359,6 +2389,23 @@
 				{
 					"command": "code-for-ibmi.compareWithActiveFile.short",
 					"when": "!explorerResourceIsFolder"
+				}
+			],
+			"code-for-ibmi.resolveProfile": [
+				{
+					"command": "code-for-ibmi.resolveProfile.saveChangeToServer",
+					"when": "viewItem =~ /^profileItem_active.*_Modified/",
+					"group": "00_resolve@01"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.discardChangesAndSyncWithServer",
+					"when": "viewItem =~ /^profileItem_active.*_(Modified|Out of Sync)/",
+					"group": "00_resolve@02"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.overwriteChangesToServer",
+					"when": "viewItem =~ /^profileItem_active.*_Out of Sync/",
+					"group": "00_resolve@01"
 				}
 			],
 			"commandPalette": [
@@ -2856,6 +2903,18 @@
 				},
 				{
 					"command": "code-for-ibmi.environment.profile.unload",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.saveChangeToServer",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.discardChangesAndSyncWithServer",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.resolveProfile.overwriteChangesToServer",
 					"when": "never"
 				},
 				{
@@ -3540,7 +3599,7 @@
 				},
 				{
 					"command": "code-for-ibmi.environment.profile.unload",
-					"when": "view === environmentView && viewItem =~ /^profilesNode/ && code-for-ibmi:activeProfile",
+					"when": "view === environmentView && viewItem =~ /^profileItem_active/",
 					"group": "inline@03"
 				},
 				{
@@ -3552,6 +3611,11 @@
 					"command": "code-for-ibmi.environment.profile.runLiblistCommand",
 					"when": "view === environmentView && viewItem =~ /^profileItem_active_command/",
 					"group": "inline@01"
+				},
+				{
+					"submenu": "code-for-ibmi.resolveProfile",
+					"when": "view === environmentView && viewItem =~ /^profileItem_active.*_(Modified|Out of Sync)/",
+					"group": "inline@02"
 				},
 				{
 					"command": "code-for-ibmi.environment.profile.rename",

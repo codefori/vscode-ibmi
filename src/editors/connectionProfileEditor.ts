@@ -1,9 +1,11 @@
 import vscode, { l10n } from "vscode";
 import { isActiveProfile, updateConnectionProfile } from "../api/connectionProfiles";
 import { instance } from "../instantiate";
-import { ConnectionProfile } from "../typings";
+import { AnyConnectionProfile } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 import { CustomEditor } from "./customEditorProvider";
+import { verifyLatestServerProfileState } from "../ui/views/environment/environmentView";
+import IBMi from "../api/IBMi";
 
 type ConnectionProfileData = {
   homeDirectory: string
@@ -14,21 +16,25 @@ type ConnectionProfileData = {
   statusBarColor: string
 }
 
-const editedProfiles: Set<string> = new Set;
+const editedProfiles: Set<{ name: string, type: string }> = new Set;
 
-export function isProfileEdited(profile: ConnectionProfile) {
-  return editedProfiles.has(profile.name);
+export function isProfileEdited(profile: AnyConnectionProfile) {
+  return editedProfiles.has({ name: profile.name, type: profile.type });
 }
 
-export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: () => Thenable<void>) {
+export function editConnectionProfile(profile: AnyConnectionProfile, doAfterSave?: () => Thenable<void>) {
   const activeProfile = isActiveProfile(profile);
   const config = instance.getConnection()?.getConfig();
   const objectFilters = (activeProfile && config ? config : profile).objectFilters;
   const ifsShortcuts = (activeProfile && config ? config : profile).ifsShortcuts;
   const customVariables = (activeProfile && config ? config : profile).customVariables;
 
-  new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave), () => editedProfiles.delete(profile.name))
-    .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory, readonly: activeProfile })
+  const profileEditor = new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave), () => editedProfiles.delete({ name: profile.name, type: profile.type }));
+  if (profile.type === `local`) {
+    profileEditor
+      .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory, readonly: activeProfile })
+  }
+  profileEditor
     .addInput("currentLibrary", l10n.t("Current Library"), l10n.t("Leave blank or use <code>*CRTDFT</code> to set no current library.<br/>Overwritten if <code>Library List Command</code> is set and run."), { minlength: 0, maxlength: 10, default: profile.currentLibrary, readonly: activeProfile })
     .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries.<br/>Overwritten if <code>Library List Command</code> is set and run."), { default: profile.libraryList.join(","), readonly: activeProfile })
     .addInput("iasp", l10n.t("Current IASP"), l10n.t("The independent ASP to enable when using this profile. If the database name of this ASP is different from its name, make sure to use the database name here. Leave blank to use the system ASP."), { default: profile.iasp, readonly: activeProfile })
@@ -36,7 +42,7 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
     .addInput("statusBarColor", l10n.t("Status bar color"), l10n.t("The color of the status bar items while this profile is active. Useful to tell your environments apart at a glance. Pick black to keep the color of the current theme."), { default: (profile.statusBarColor ?? config?.statusBarColor) || `#000000`, inputType: "color" })
     .addHorizontalRule()
     .addHeading(l10n.t("Object filters"), 3)
-    .addParagraph(objectFilters.length ? `<ul>${objectFilters.map(filter => `<li>${filter.name}</li>`).join('')}</ul>` : l10n.t("None"))
+    .addParagraph(objectFilters.length ? `<ul>${objectFilters.map(filter => `<li>${filter.name}: <code>${`${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`}</code></li>`).join('')}</ul>` : l10n.t("None"))
     .addHorizontalRule()
     .addHeading(l10n.t("IFS shortcuts"), 3)
     .addParagraph(ifsShortcuts.length ? `<ul>${ifsShortcuts.map(shortcut => `<li>${shortcut}</li>`).join('')}</ul>` : l10n.t("None"))
@@ -45,55 +51,68 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
     .addParagraph(customVariables.length ? `<ul>${customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join('')}</ul>` : l10n.t("None"))
     .open();
 
-  editedProfiles.add(profile.name);
+  editedProfiles.add({ name: profile.name, type: profile.type });
 }
 
-async function save(profile: ConnectionProfile, data: ConnectionProfileData) {
+async function save(profile: AnyConnectionProfile, data: ConnectionProfileData) {
   const connection = instance.getConnection();
 
   if (connection) {
     const content = connection.getContent();
-    profile.homeDirectory = data.homeDirectory.trim();
-    profile.iasp = data.iasp.trim() ? data.iasp.trim() : undefined;
-    profile.setLibraryListCommand = data.setLibraryListCommand.trim();
-    profile.statusBarColor = VscodeTools.parseStatusBarColor(data.statusBarColor) || ``;
-
-    const currentASP = connection.getCurrentASP();
-    try {
-      await connection.setCurrentASP(profile.iasp);
-
-      data.currentLibrary = connection.upperCaseName(data.currentLibrary.trim());
-      if (!data.currentLibrary || data.currentLibrary === '*CRTDFT') {
-        profile.currentLibrary = undefined;
+    const config = connection.getConfig();
+    const isActive = isActiveProfile(profile);
+    if (isActive && profile.type === `server`) {
+      config.setLibraryListCommand = data.setLibraryListCommand.trim();
+      config.statusBarColor = VscodeTools.parseStatusBarColor(data.statusBarColor) || ``;
+      await IBMi.connectionManager.update(config);
+    } else {
+      if (profile.type === `local`) {
+        profile.homeDirectory = data.homeDirectory.trim();
       }
-      else if (await content.checkObject({ library: "QSYS", name: data.currentLibrary, type: "*LIB" })) {
-        profile.currentLibrary = data.currentLibrary;
-      }
-      else {
-        throw new Error(l10n.t("Current library {0} is invalid", data.currentLibrary));
-      }
+      profile.iasp = data.iasp.trim() ? data.iasp.trim() : undefined;
+      profile.setLibraryListCommand = data.setLibraryListCommand.trim();
+      profile.statusBarColor = VscodeTools.parseStatusBarColor(data.statusBarColor) || ``;
 
-      let libraryList = data.libraryList.split(',').map(library => connection.upperCaseName(library.trim())).filter(Boolean);
+      const currentASP = connection.getCurrentASP();
+      try {
+        await connection.setCurrentASP(profile.iasp);
 
-      const librariesInSystemPortion = libraryList.filter(library => connection.systemLibraries.includes(library));
-      if (librariesInSystemPortion.length) {
-        libraryList = libraryList.filter(library => !librariesInSystemPortion.includes(library));
-        vscode.window.showWarningMessage(l10n.t("The following libraries are already in the system portion of the library list and were removed: {0}", librariesInSystemPortion.sort().join(', ')));
+        data.currentLibrary = connection.upperCaseName(data.currentLibrary.trim());
+        if (!data.currentLibrary || data.currentLibrary === '*CRTDFT') {
+          profile.currentLibrary = undefined;
+        }
+        else if (await content.checkObject({ library: "QSYS", name: data.currentLibrary, type: "*LIB" })) {
+          profile.currentLibrary = data.currentLibrary;
+        }
+        else {
+          throw new Error(l10n.t("Current library {0} is invalid", data.currentLibrary));
+        }
+
+        let libraryList = data.libraryList.split(',').map(library => connection.upperCaseName(library.trim())).filter(Boolean);
+
+        const librariesInSystemPortion = libraryList.filter(library => connection.systemLibraries.includes(library));
+        if (librariesInSystemPortion.length) {
+          libraryList = libraryList.filter(library => !librariesInSystemPortion.includes(library));
+          vscode.window.showWarningMessage(l10n.t("The following libraries are already in the system portion of the library list and were removed: {0}", librariesInSystemPortion.sort().join(', ')));
+        }
+
+        const badLibraries = await content.validateLibraryList(libraryList);
+        if (badLibraries.length && !await vscode.window.showWarningMessage(l10n.t("The following libraries are invalid. Do you still want to save that profile?"), {
+          modal: true,
+          detail: badLibraries.sort().map(library => `- ${library}`).join("\n")
+        }, l10n.t("Yes"))) {
+          throw new Error(l10n.t("Save aborted"));
+        }
+        profile.libraryList = libraryList;
+
+        const canProceed = await verifyLatestServerProfileState(profile);
+        if (canProceed) {
+          await updateConnectionProfile(profile);
+        }
       }
-
-      const badLibraries = await content.validateLibraryList(libraryList);
-      if (badLibraries.length && !await vscode.window.showWarningMessage(l10n.t("The following libraries are invalid. Do you still want to save that profile?"), {
-        modal: true,
-        detail: badLibraries.sort().map(library => `- ${library}`).join("\n")
-      }, l10n.t("Yes"))) {
-        throw new Error(l10n.t("Save aborted"));
+      finally {
+        await connection.setCurrentASP(currentASP);
       }
-      profile.libraryList = libraryList;
-
-      await updateConnectionProfile(profile);
-    }
-    finally {
-      await connection.setCurrentASP(currentASP);
     }
   }
 }

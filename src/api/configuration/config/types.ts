@@ -6,6 +6,7 @@ export type ReconnectMode = "always" | "never" | "ask";
 export type FilterDetails = "tooltip" | "description" | "both";
 
 export interface ConnectionConfig extends ConnectionProfile {
+  homeDirectory: string;
   host: string;
   autoClearTempData: boolean;
   connectionProfiles: ConnectionProfile[];
@@ -47,6 +48,8 @@ export interface ConnectionConfig extends ConnectionProfile {
   mapepireExtendedMetadata: boolean
   statusBarColor: string
   currentProfile?: string
+  currentProfileType?: ProfileType
+  currentProfileLastKnownUpdate?: number
   [name: string]: any;
 }
 
@@ -102,9 +105,24 @@ export interface CustomVariable {
   value: string
 }
 
+export type AnyConnectionProfile = | LocalConnectionProfile | ServerConnectionProfile
+
+export type ProfileType = 'local' | 'server';
+
+export type ProfileState = 'In Sync' | 'Modified' | 'Out of Sync';
+
+export interface LocalConnectionProfile extends ConnectionProfile {
+  type: 'local';
+}
+
+export interface ServerConnectionProfile extends ConnectionProfile {
+  type: 'server';
+  state: ProfileState;
+}
+
 export interface ConnectionProfile {
   name: string
-  homeDirectory: string
+  homeDirectory?: string
   currentLibrary?: string
   libraryList: string[]
   objectFilters: ObjectFilters[]
@@ -113,6 +131,7 @@ export interface ConnectionProfile {
   setLibraryListCommand?: string
   iasp?: string
   statusBarColor?: string
+  lastUpdated?: number
 }
 
 export interface StoredConnection {
