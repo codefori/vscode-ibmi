@@ -2,7 +2,7 @@ import os from "os";
 import path, { dirname, extname } from "path";
 import vscode, { CancellationToken, FileDecorationProvider, FileType, l10n, ThemeColor, Uri, window } from "vscode";
 
-import { existsSync, mkdirSync, rmdirSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, rmdirSync, statSync } from "fs";
 import IBMi from "../../api/IBMi";
 import { SortOptions } from "../../api/IBMiContent";
 import { SearchTools } from "../../api/SearchTools";
@@ -596,15 +596,88 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           }, async (progress) => {
             try {
               if (filesToUpload.length) {
-                progress.report({ message: l10n.t(`sending {0} file(s)...`, filesToUpload.length) });
-                await connection.getContent().uploadFiles(filesToUpload, { concurrency: 5 });
+                progress.report({ message: l10n.t(`Calculating file upload size...`) });
+                const totalBytes = filesToUpload.reduce((sum, f) => sum + statSync(f.local).size, 0);
+
+                const formatBytes = (bytes: number): string => {
+                  const KB = 1024;
+                  const MB = 1024 * KB;
+                  const GB = 1024 * MB;
+                  if (totalBytes >= GB) {
+                    return `${(bytes / GB).toFixed(1)} GB`;
+                  } else if (totalBytes >= MB) {
+                    return `${(bytes / MB).toFixed(1)} MB`;
+                  } else {
+                    return `${(bytes / KB).toFixed(1)} KB`;
+                  }
+                };
+
+                let bytesTransferred = 0;
+                let filesCompleted = 0;
+                await connection.getContent().uploadFiles(filesToUpload, {
+                  concurrency: 5,
+                  transferOptions: {
+                    step: (total: number, nb: number, fsize: number) => {
+
+                      bytesTransferred += nb;
+
+                      // A file is complete when its transferred bytes equal its size
+                      if (total === fsize) {
+                        filesCompleted++;
+                      }
+
+                      const filePercentage = Math.round((filesCompleted / filesToUpload.length) * 100);
+                      const bytePercentage = totalBytes > 0 ? Math.round((bytesTransferred / totalBytes) * 100) : 0;
+                      progress.report({
+                        increment: totalBytes > 0 ? (nb / totalBytes) * 100 : 0,
+                        message: l10n.t(`Total Files: {0}/{1} ({2}%). Total Bytes: {3}/{4} ({5}%).`,
+                          filesCompleted, filesToUpload.length, filePercentage,
+                          formatBytes(bytesTransferred), formatBytes(totalBytes), bytePercentage)
+                      });
+                    }
+                  }
+                });
               }
 
               if (directoriesToUpload.length) {
-                for (const directory of directoriesToUpload) {
+                progress.report({ message: l10n.t(`Calculating file count...`) });
+                const dirFileCounts = await Promise.all(
+                  directoriesToUpload.map(directory =>
+                    Promise.resolve(
+                      readdirSync(directory.fsPath, { recursive: true, withFileTypes: true })
+                        .filter(f => f.isFile()).length
+                    )
+                  )
+                );
+                const totalFilesAcrossDirs = dirFileCounts.reduce((sum, n) => sum + n, 0);
+
+                let directoriesCompleted = 0;
+                let totalFilesCompleted = 0;
+                for (let i = 0; i < directoriesToUpload.length; i++) {
+                  const directory = directoriesToUpload[i];
                   const name = path.basename(directory.fsPath);
-                  progress.report({ message: l10n.t(`sending {0} directory...`, name) })
-                  await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
+
+                  await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), {
+                    concurrency: 5,
+                    transferOptions: {
+                      step: (total: number, _nb: number, fsize: number) => {
+                        // A file is complete when its transferred bytes equal its size
+                        if (total === fsize) {
+                          totalFilesCompleted++;
+                        }
+
+                        const folderPercentage = Math.round((directoriesCompleted / directoriesToUpload.length) * 100);
+                        const filePercentage = totalFilesAcrossDirs > 0 ? Math.round((totalFilesCompleted / totalFilesAcrossDirs) * 100) : 0;
+                        progress.report({
+                          message: l10n.t(`Total Folders: {0}/{1} ({2}%). Total Files: {3}/{4} ({5}%).`,
+                            directoriesCompleted, directoriesToUpload.length, folderPercentage,
+                            totalFilesCompleted, totalFilesAcrossDirs, filePercentage)
+                        });
+                      }
+                    }
+                  });
+
+                  directoriesCompleted++;
                 }
               }
 
@@ -754,7 +827,7 @@ Please type "{0}" to confirm deletion.`, dirName);
             }
 
             try {
-              const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
+              const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh", noLibList: true });
               if (moveResult.code !== 0) {
                 throw moveResult.stderr;
               }
