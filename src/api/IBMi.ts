@@ -1647,7 +1647,6 @@ export default class IBMi {
         this.runSQL('connect reset').then(() => asp ? this.runSQL(`connect to ${asp}`) : undefined),
       ]);
       this.currentASP = asp;
-      this.getContent().reset();
       this.appendOutput(`Switched to ${asp || 'default'} ASP\n`);
     }
   }
