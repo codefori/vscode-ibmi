@@ -7,6 +7,7 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
   private data: T = {} as T;
   valid?: boolean;
   dirty = false;
+  private panel?: vscode.WebviewPanel;
 
   constructor(target: string, private readonly onSave: (data: T) => Promise<void>, private readonly onClosed?: () => void) {
     super();
@@ -43,6 +44,7 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
   }
 
   load(webviewPanel: vscode.WebviewPanel) {
+    this.panel = webviewPanel;
     const webview = webviewPanel.webview;
     webview.options = {
       enableScripts: true,
@@ -61,6 +63,21 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
 
   async save() {
     await this.onSave(this.data);
+  }
+
+  /**
+   * Replaces the editor's content: `build` adds the fields again and `data` is what they now hold.
+   * The document stays dirty, so the new content can be saved right away.
+   */
+  rebuild(build: (editor: this) => void, data: T) {
+    this.fields.length = 0;
+    build(this);
+    this.data = data;
+    this.valid = true;
+    this.dirty = true;
+    if (this.panel) {
+      this.panel.webview.html = this.getHTML(this.panel, this.uri.path);
+    }
   }
 
   dispose() {

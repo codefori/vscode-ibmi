@@ -2,7 +2,7 @@
 import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem, ThemeIcon, window } from 'vscode';
 import { ActionTools } from '../../../api/actions';
-import { assignProfile, cloneProfile, getAllConnectionProfiles, getConnectionProfile, getDefaultProfile, isActiveProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
+import { assignProfile, cloneProfile, getAllConnectionProfiles, getConnectionProfile, getDefaultProfile, isActiveProfile, ProfileConflictError, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
@@ -106,6 +106,15 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   const updateUIContext = async (profileName?: string) => {
     environmentTreeViewer.description = profileName ? l10n.t("Current profile: {0}", profileName) : l10n.t("No active profile");
     vscode.commands.executeCommand("code-for-ibmi.updateConnectedBar");
+  };
+
+  const saveProfile = async (profile: AnyConnectionProfile, options?: SaveProfileOptions) => {
+    try {
+      return await saveConnectionProfile(profile, options);
+    } catch (error: any) {
+      vscode.window.showErrorMessage(l10n.t("Could not save profile {0}: {1}", profile.name, String(error.message || error)));
+      return false;
+    }
   };
 
   const localActionsWatcher = vscode.workspace.createFileSystemWatcher(`**/.vscode/actions.json`);
@@ -407,7 +416,9 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           };
         }
 
-        await updateConnectionProfile(profile);
+        if (!await saveProfile(profile)) {
+          return;
+        }
 
         // Do an explicit refresh as creation / copy of a profile doesn't impact the active profile so onCodeForIBMiConfigurationChange is not called
         environmentView.refresh(environmentView.profilesNode);
@@ -453,7 +464,9 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           if (newName) {
             const canProceed = await verifyLatestServerProfileState(item.profile);
             if (canProceed) {
-              await updateConnectionProfile(item.profile, { newName });
+              if (!await saveProfile(item.profile, { newName })) {
+                return;
+              }
               const config = instance.getConnection()?.getConfig();
               if (config?.currentProfile === newName && config?.currentProfileType === currentType) {
                 updateUIContext(newName);
@@ -475,7 +488,9 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         else if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete {0} profile '{1}' ?", item.profile.type === `server` ? l10n.t("server") : l10n.t("local"), item.profile.name), { modal: true }, l10n.t("Yes"))) {
           const canProceed = await verifyLatestServerProfileState(item.profile);
           if (canProceed) {
-            await updateConnectionProfile(item.profile, { delete: true });
+            if (!await saveProfile(item.profile, { delete: true })) {
+              return;
+            }
 
             // Do an explicit refresh as creation / copy of a profile doesn't impact the active profile so onCodeForIBMiConfigurationChange is not called
             environmentView.refresh(environmentView.profilesNode);
@@ -515,9 +530,10 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           assignProfile(profile, config);
           config.currentProfile = profile.name || undefined;
           config.currentProfileType = profile.type;
-          config.currentProfileLastKnownUpdate = profile.type === 'server' ? profile.lastUpdated : undefined;
+          config.currentProfileLastKnownHash = profile.type === 'server' ? profile.loadedHash : undefined;
 
-          if (profileToBackup) {
+          // A server profile is in sync when it gets unloaded: there is nothing to write back to the server
+          if (profileToBackup?.type === 'local') {
             await updateConnectionProfile(profileToBackup, { modifiedConfig: config });
           } else {
             await IBMi.connectionManager.update(config);
@@ -606,11 +622,13 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
             const config = connection.getConfig();
             const profile = item.profile;
             assignProfile(config, profile);
-            await updateConnectionProfile(profile);
-            if (overwrite) {
-              vscode.window.showInformationMessage(l10n.t("Saved changes to server profile '{0}'.", item.profile.name));
-            } else {
-              vscode.window.showInformationMessage(l10n.t("Overwrote server profile '{0}' with local changes.", item.profile.name));
+            if (await saveProfile(profile)) {
+              if (overwrite) {
+                vscode.window.showInformationMessage(l10n.t("Overwrote server profile '{0}' with local changes.", item.profile.name));
+              } else {
+                vscode.window.showInformationMessage(l10n.t("Saved changes to server profile '{0}'.", item.profile.name));
+              }
+              environmentView.refresh(environmentView.profilesNode);
             }
           }
         }
@@ -622,10 +640,16 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         if (connection) {
           const canProceed = await verifyLatestServerProfileState(item.profile);
           if (canProceed) {
+            // The server profiles were just reloaded: sync with what is on the server now, not with what the tree showed
+            const profile = await getConnectionProfile(item.profile.name, 'server');
+            if (profile?.type !== 'server' || !profile.loadedHash) {
+              vscode.window.showErrorMessage(l10n.t("Server profile {0} no longer exists on the server.", item.profile.name));
+              return;
+            }
+
             const config = connection.getConfig();
-            const profile = item.profile;
             assignProfile(profile, config);
-            config.currentProfileLastKnownUpdate = profile.type === 'server' ? profile.lastUpdated : undefined;
+            config.currentProfileLastKnownHash = profile.loadedHash;
 
             await IBMi.connectionManager.update(config);
 
@@ -651,6 +675,40 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       }
     })
   );
+}
+
+type SaveProfileOptions = Parameters<typeof updateConnectionProfile>[1];
+
+/**
+ * Saves a profile; if it was changed on the server by someone else in the meantime, the user decides whether to overwrite those changes.
+ * @param onReload what to do if the user rather gets the latest changes; refreshes the server profiles by default
+ * @returns `true` if the profile was saved
+ * @throws any error other than a {@link ProfileConflictError}
+ */
+export async function saveConnectionProfile(profile: AnyConnectionProfile, options?: SaveProfileOptions, onReload?: () => Promise<void>): Promise<boolean> {
+  try {
+    await updateConnectionProfile(profile, options);
+    return true;
+  } catch (error: any) {
+    if (!(error instanceof ProfileConflictError)) {
+      throw error;
+    }
+
+    const overwrite = l10n.t("Overwrite");
+    const reload = l10n.t("Reload");
+    const choice = await window.showWarningMessage(error.message, { modal: true, detail: l10n.t("Reload the server profiles to get the latest changes, or overwrite them with yours.") }, overwrite, reload);
+    if (choice === overwrite) {
+      return saveConnectionProfile(profile, { ...options, force: true }, onReload);
+    } else if (choice === reload) {
+      if (onReload) {
+        await onReload();
+      } else {
+        await vscode.commands.executeCommand("code-for-ibmi.environment.refresh");
+      }
+    }
+
+    return false;
+  }
 }
 
 export async function verifyLatestServerProfileState(profile: AnyConnectionProfile, options: { ensureInSync: boolean } = { ensureInSync: false }): Promise<boolean> {

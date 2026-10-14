@@ -49,7 +49,8 @@ export interface ConnectionConfig extends ConnectionProfile {
   statusBarColor: string
   currentProfile?: string
   currentProfileType?: ProfileType
-  currentProfileLastKnownUpdate?: number
+  /** Hash of the active server profile's content, as it was on the server when last activated or saved */
+  currentProfileLastKnownHash?: string
   [name: string]: any;
 }
 
@@ -118,6 +119,8 @@ export interface LocalConnectionProfile extends ConnectionProfile {
 export interface ServerConnectionProfile extends ConnectionProfile {
   type: 'server';
   state: ProfileState;
+  /** Hash of the profile's content when it was read from the server; undefined if it is not on the server */
+  loadedHash?: string;
 }
 
 export interface ConnectionProfile {
@@ -131,7 +134,6 @@ export interface ConnectionProfile {
   setLibraryListCommand?: string
   iasp?: string
   statusBarColor?: string
-  lastUpdated?: number
 }
 
 export interface StoredConnection {

@@ -1,65 +1,87 @@
+import crypto from "crypto";
 import { l10n } from "vscode";
 import { instance } from "../instantiate";
 import IBMi from "./IBMi";
 import { AnyConnectionProfile, LocalConnectionProfile, ServerConnectionProfile, ConnectionConfig, ConnectionProfile, ProfileType } from "./configuration/config/types";
 
-export async function updateConnectionProfile(profile: AnyConnectionProfile, options?: { newName?: string, delete?: boolean, modifiedConfig?: ConnectionConfig, }) {
+/**
+ * Thrown when a server profile was changed (or deleted, or created) by someone else since it was last loaded
+ */
+export class ProfileConflictError extends Error {
+  constructor(readonly profileName: string) {
+    super(l10n.t("Server profile {0} has been changed on the server since it was last loaded.", profileName));
+  }
+}
+
+export async function updateConnectionProfile(profile: AnyConnectionProfile, options?: { newName?: string, delete?: boolean, modifiedConfig?: ConnectionConfig, force?: boolean }) {
   const connection = instance.getConnection();
   if (connection) {
     const config = options?.modifiedConfig || connection.getConfig();
-    const isServerProfile = profile.type === 'server';
+    const currentName = profile.name;
+    const newName = options?.newName || currentName;
+    const isActive = isActiveProfile(profile);
 
-    const { localProfiles, serverProfiles } = await getConnectionProfilesInGroups();
-    const profiles = isServerProfile ? serverProfiles : localProfiles;
+    if (profile.type === 'server') {
+      // Map internal server profile type to connection profile
+      const { type, state, loadedHash, homeDirectory, ...serverProfile } = profile;
+      serverProfile.name = newName;
 
-    let now: number | undefined;
-    let oldName: string | undefined
-    const index = profiles.findIndex(p => p.name === profile.name);
-    if (options?.delete) {
-      if (index < 0) {
-        throw new Error(l10n.t("Profile {0} not found for deletion.", profile.name));
-      }
-      profiles.splice(index, 1);
+      // Only this profile is changed, on top of the latest content of the file: changes made by others to other profiles are kept
+      const profilesConfigFile = connection.getConfigFile<ConnectionProfile[]>(`profiles`);
+      await profilesConfigFile.update(serverProfiles => {
+        const index = serverProfiles.findIndex(p => p.name === currentName);
+        const currentHash = index < 0 ? undefined : hashProfile(serverProfiles[index]);
+        if (!options?.force && currentHash !== profile.loadedHash) {
+          throw new ProfileConflictError(currentName);
+        }
+
+        if (options?.delete) {
+          if (index >= 0) {
+            serverProfiles.splice(index, 1);
+          }
+        } else {
+          if (newName !== currentName && serverProfiles.some(p => p.name === newName)) {
+            throw new Error(l10n.t("Profile {0} already exists", newName));
+          }
+          serverProfiles[index < 0 ? serverProfiles.length : index] = serverProfile;
+        }
+
+        return serverProfiles;
+      });
+
+      // The profile object may be saved again (e.g. from the same editor): it now matches what is on the server
+      profile.loadedHash = options?.delete ? undefined : hashProfile(serverProfile);
+      profile.state = `In Sync`;
     } else {
-      if (options?.newName) {
-        oldName = profile.name;
-        profile.name = options?.newName
+      const profiles = config.connectionProfiles;
+      const index = profiles.findIndex(p => p.name === currentName);
+      if (options?.delete) {
+        if (index < 0) {
+          throw new Error(l10n.t("Profile {0} not found for deletion.", currentName));
+        }
+        profiles.splice(index, 1);
       } else {
-        profile.name = profile.name;
+        // Map internal local profile type to connection profile
+        const { type, ...localProfile } = profile;
+        localProfile.name = newName;
+        profiles[index < 0 ? profiles.length : index] = localProfile;
       }
-      if (isServerProfile) {
-        now = Date.now();
-        profile.lastUpdated = now;
-      }
-      profiles[index < 0 ? profiles.length : index] = profile;
     }
 
-    if (isActiveProfile(profile, oldName)) {
+    profile.name = newName;
+
+    if (isActive) {
       //Only update the setLibraryListCommand and statusBarColor in the current config since the editor is the only place they can be changed
       config.setLibraryListCommand = profile.setLibraryListCommand;
       config.statusBarColor = profile.statusBarColor || ``;
+      config.currentProfile = profile.name;
 
-      if (options?.newName) {
-        config.currentProfile = profile.name;
-      }
-
-      if (now) {
-        config.currentProfileLastKnownUpdate = now;
+      if (profile.type === 'server') {
+        config.currentProfileLastKnownHash = profile.loadedHash;
       }
     }
 
-    if (isServerProfile) {
-      // Map internal server profile type to connection profile
-      const serverProfiles: ConnectionProfile[] = (profiles as ServerConnectionProfile[]).map(({ type, state, homeDirectory, ...profile }) => profile);
-      const profilesConfigFile = connection.getConfigFile<ConnectionProfile[]>(`profiles`);
-      await profilesConfigFile.writeToServer(serverProfiles);
-      await IBMi.connectionManager.update(config);
-    } else {
-      // Map internal local profile type to connection profile
-      const localProfiles: ConnectionProfile[] = (profiles as LocalConnectionProfile[]).map(({ type, ...profile }) => profile);
-      config.connectionProfiles = localProfiles;
-      await IBMi.connectionManager.update(config);
-    }
+    await IBMi.connectionManager.update(config);
   }
 }
 
@@ -94,43 +116,21 @@ export async function getConnectionProfilesInGroups() {
 
     // Map connection profiles to internal server profile type
     const serverProfiles: ServerConnectionProfile[] = rawServerProfiles.map(rawServerProfile => {
-      const profileLastUpdated = rawServerProfile.lastUpdated || 0;
+      const loadedHash = hashProfile(rawServerProfile);
 
-      let state: ServerConnectionProfile['state'];
+      let state: ServerConnectionProfile['state'] = 'In Sync';
       if (currentProfileType === 'server' && currentProfileName === rawServerProfile.name) {
-        // Current server profile, so compare the local version against the server version
-        const localVersionOfServerProfile: ConnectionProfile = {
-          name: currentProfileName,
-          currentLibrary: config.currentLibrary,
-          libraryList: config.libraryList,
-          objectFilters: config.objectFilters,
-          ifsShortcuts: config.ifsShortcuts,
-          customVariables: config.customVariables,
-          setLibraryListCommand: config.setLibraryListCommand,
-          iasp: config.iasp,
-          statusBarColor: config.statusBarColor
-        };
-        const isInSync = isProfileInSync(rawServerProfile, localVersionOfServerProfile);
-        const lastKnownUpdate = config.currentProfileLastKnownUpdate || 0;
-        const isOutdated = profileLastUpdated > lastKnownUpdate;
-
-        if (isOutdated && !isInSync) {
-          state = 'Out of Sync';
-        } else if (!isOutdated && !isInSync) {
-          state = 'Modified';
-        } else {
-          state = 'In Sync';
+        // Current server profile: compare the local version against the server version, then the server version against the one last activated or saved
+        if (hashProfile(config) !== loadedHash) {
+          state = loadedHash === config.currentProfileLastKnownHash ? 'Modified' : 'Out of Sync';
         }
-      } else {
-        // Not current server profile, so it's in sync
-        state = 'In Sync';
       }
 
       return {
         ...rawServerProfile,
         type: 'server' as const,
         state,
-        lastUpdated: profileLastUpdated
+        loadedHash
       };
     });
 
@@ -150,8 +150,7 @@ export async function getConnectionProfilesInGroups() {
           setLibraryListCommand: config.setLibraryListCommand,
           iasp: config.iasp,
           statusBarColor: config.statusBarColor,
-          state: 'Out of Sync',
-          lastUpdated: 0
+          state: 'Out of Sync'
         };
 
         serverProfiles.push(localVersionOfServerProfile);
@@ -167,17 +166,35 @@ export async function getConnectionProfilesInGroups() {
   }
 }
 
-export function isProfileInSync(profile1: ConnectionProfile, profile2: ConnectionProfile): boolean {
-  return (
-    profile1.currentLibrary === profile2.currentLibrary &&
-    JSON.stringify(profile1.libraryList) === JSON.stringify(profile2.libraryList) &&
-    JSON.stringify(profile1.objectFilters) === JSON.stringify(profile2.objectFilters) &&
-    JSON.stringify(profile1.ifsShortcuts) === JSON.stringify(profile2.ifsShortcuts) &&
-    JSON.stringify(profile1.customVariables) === JSON.stringify(profile2.customVariables) &&
-    profile1.setLibraryListCommand === profile2.setLibraryListCommand &&
-    (profile1.iasp || undefined) === (profile2.iasp || undefined) &&
-    (profile1.statusBarColor || undefined) === (profile2.statusBarColor || undefined)
-  );
+/**
+ * @returns a hash of the content a server profile shares, which only changes when that content does
+ * (key order, blank optional values and the profile name are ignored)
+ */
+export function hashProfile(profile: ConnectionProfile) {
+  const sharedContent = {
+    currentLibrary: profile.currentLibrary || undefined,
+    libraryList: profile.libraryList || [],
+    objectFilters: profile.objectFilters || [],
+    ifsShortcuts: profile.ifsShortcuts || [],
+    customVariables: profile.customVariables || [],
+    setLibraryListCommand: profile.setLibraryListCommand || undefined,
+    iasp: profile.iasp || undefined,
+    statusBarColor: profile.statusBarColor || undefined
+  };
+
+  return crypto.createHash(`sha256`).update(stableStringify(sharedContent)).digest(`hex`);
+}
+
+function stableStringify(value: any): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(`,`)}]`;
+  }
+  else if (value && typeof value === `object`) {
+    return `{${Object.keys(value).filter(key => value[key] !== undefined).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(`,`)}}`;
+  }
+  else {
+    return JSON.stringify(value) ?? `null`;
+  }
 }
 
 export async function getConnectionProfile(profileName: string, type: ProfileType) {
@@ -232,8 +249,8 @@ export function cloneProfile(fromProfile: ConnectionProfile, newName: string): C
   return assignProfile(fromProfile, { name: newName } as ConnectionProfile);
 }
 
-export function isActiveProfile(profile: AnyConnectionProfile, oldName?: string) {
+export function isActiveProfile(profile: AnyConnectionProfile) {
   const connection = instance.getConnection();
   const config = connection?.getConfig();
-  return config?.currentProfile === (oldName || profile.name) && config?.currentProfileType === profile.type;
+  return config?.currentProfile === profile.name && config?.currentProfileType === profile.type;
 }

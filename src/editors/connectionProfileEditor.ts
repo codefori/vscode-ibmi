@@ -1,10 +1,10 @@
 import vscode, { l10n } from "vscode";
-import { isActiveProfile, updateConnectionProfile } from "../api/connectionProfiles";
+import { getConnectionProfile, isActiveProfile } from "../api/connectionProfiles";
 import { instance } from "../instantiate";
 import { AnyConnectionProfile } from "../typings";
 import { VscodeTools } from "../ui/Tools";
 import { CustomEditor } from "./customEditorProvider";
-import { verifyLatestServerProfileState } from "../ui/views/environment/environmentView";
+import { saveConnectionProfile, verifyLatestServerProfileState } from "../ui/views/environment/environmentView";
 import IBMi from "../api/IBMi";
 
 type ConnectionProfileData = {
@@ -16,30 +16,54 @@ type ConnectionProfileData = {
   statusBarColor: string
 }
 
-const editedProfiles: Set<{ name: string, type: string }> = new Set;
+const editedProfiles: Set<string> = new Set;
+
+function getEditedKey(profile: AnyConnectionProfile) {
+  return `${profile.type}:${profile.name}`;
+}
 
 export function isProfileEdited(profile: AnyConnectionProfile) {
-  return editedProfiles.has({ name: profile.name, type: profile.type });
+  return editedProfiles.has(getEditedKey(profile));
 }
 
 export function editConnectionProfile(profile: AnyConnectionProfile, doAfterSave?: () => Thenable<void>) {
+  const profileEditor: CustomEditor<ConnectionProfileData> = new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profileEditor, profile, data).then(doAfterSave), () => editedProfiles.delete(getEditedKey(profile)));
+  buildForm(profileEditor, profile);
+  profileEditor.open();
+
+  editedProfiles.add(getEditedKey(profile));
+}
+
+function getFormData(profile: AnyConnectionProfile): ConnectionProfileData {
+  const config = instance.getConnection()?.getConfig();
+  return {
+    homeDirectory: profile.homeDirectory || ``,
+    currentLibrary: profile.currentLibrary || ``,
+    libraryList: profile.libraryList.join(","),
+    setLibraryListCommand: profile.setLibraryListCommand || ``,
+    iasp: profile.iasp || ``,
+    statusBarColor: (profile.statusBarColor ?? config?.statusBarColor) || `#000000`
+  };
+}
+
+function buildForm(profileEditor: CustomEditor<ConnectionProfileData>, profile: AnyConnectionProfile) {
   const activeProfile = isActiveProfile(profile);
   const config = instance.getConnection()?.getConfig();
   const objectFilters = (activeProfile && config ? config : profile).objectFilters;
   const ifsShortcuts = (activeProfile && config ? config : profile).ifsShortcuts;
   const customVariables = (activeProfile && config ? config : profile).customVariables;
+  const data = getFormData(profile);
 
-  const profileEditor = new CustomEditor<ConnectionProfileData>(`${profile.name}.profile`, data => save(profile, data).then(doAfterSave), () => editedProfiles.delete({ name: profile.name, type: profile.type }));
   if (profile.type === `local`) {
     profileEditor
-      .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: profile.homeDirectory, readonly: activeProfile })
+      .addInput("homeDirectory", l10n.t("Home Directory"), '', { minlength: 1, default: data.homeDirectory, readonly: activeProfile })
   }
   profileEditor
-    .addInput("currentLibrary", l10n.t("Current Library"), l10n.t("Leave blank or use <code>*CRTDFT</code> to set no current library.<br/>Overwritten if <code>Library List Command</code> is set and run."), { minlength: 0, maxlength: 10, default: profile.currentLibrary, readonly: activeProfile })
-    .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries.<br/>Overwritten if <code>Library List Command</code> is set and run."), { default: profile.libraryList.join(","), readonly: activeProfile })
-    .addInput("iasp", l10n.t("Current IASP"), l10n.t("The independent ASP to enable when using this profile. If the database name of this ASP is different from its name, make sure to use the database name here. Leave blank to use the system ASP."), { default: profile.iasp, readonly: activeProfile })
-    .addInput("setLibraryListCommand", l10n.t("Library List Command"), l10n.t("Library List Command can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.<br/>Commands should be as explicit as possible.<br/>When refering to commands and objects, both should be qualified with a library.<br/>Put <code>?</code> in front of the command to prompt it before execution."), { default: profile.setLibraryListCommand })
-    .addInput("statusBarColor", l10n.t("Status bar color"), l10n.t("The color of the status bar items while this profile is active. Useful to tell your environments apart at a glance. Pick black to keep the color of the current theme."), { default: (profile.statusBarColor ?? config?.statusBarColor) || `#000000`, inputType: "color" })
+    .addInput("currentLibrary", l10n.t("Current Library"), l10n.t("Leave blank or use <code>*CRTDFT</code> to set no current library.<br/>Overwritten if <code>Library List Command</code> is set and run."), { minlength: 0, maxlength: 10, default: data.currentLibrary, readonly: activeProfile })
+    .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries.<br/>Overwritten if <code>Library List Command</code> is set and run."), { default: data.libraryList, readonly: activeProfile })
+    .addInput("iasp", l10n.t("Current IASP"), l10n.t("The independent ASP to enable when using this profile. If the database name of this ASP is different from its name, make sure to use the database name here. Leave blank to use the system ASP."), { default: data.iasp, readonly: activeProfile })
+    .addInput("setLibraryListCommand", l10n.t("Library List Command"), l10n.t("Library List Command can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.<br/>Commands should be as explicit as possible.<br/>When refering to commands and objects, both should be qualified with a library.<br/>Put <code>?</code> in front of the command to prompt it before execution."), { default: data.setLibraryListCommand })
+    .addInput("statusBarColor", l10n.t("Status bar color"), l10n.t("The color of the status bar items while this profile is active. Useful to tell your environments apart at a glance. Pick black to keep the color of the current theme."), { default: data.statusBarColor, inputType: "color" })
     .addHorizontalRule()
     .addHeading(l10n.t("Object filters"), 3)
     .addParagraph(objectFilters.length ? `<ul>${objectFilters.map(filter => `<li>${filter.name}: <code>${`${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`}</code></li>`).join('')}</ul>` : l10n.t("None"))
@@ -48,13 +72,32 @@ export function editConnectionProfile(profile: AnyConnectionProfile, doAfterSave
     .addParagraph(ifsShortcuts.length ? `<ul>${ifsShortcuts.map(shortcut => `<li>${shortcut}</li>`).join('')}</ul>` : l10n.t("None"))
     .addHorizontalRule()
     .addHeading(l10n.t("Custom variables"), 3)
-    .addParagraph(customVariables.length ? `<ul>${customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join('')}</ul>` : l10n.t("None"))
-    .open();
-
-  editedProfiles.add({ name: profile.name, type: profile.type });
+    .addParagraph(customVariables.length ? `<ul>${customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join('')}</ul>` : l10n.t("None"));
 }
 
-async function save(profile: AnyConnectionProfile, data: ConnectionProfileData) {
+/**
+ * Replaces the profile and the form with what is on the server now; the editor stays open so the profile can be saved again.
+ * @throws an Error if the profile no longer exists on the server
+ */
+async function reloadFromServer(profileEditor: CustomEditor<ConnectionProfileData>, profile: AnyConnectionProfile) {
+  await vscode.commands.executeCommand("code-for-ibmi.environment.refresh");
+
+  const latest = await getConnectionProfile(profile.name, `server`);
+  if (latest?.type !== `server` || !latest.loadedHash) {
+    throw new Error(l10n.t("Server profile {0} no longer exists on the server. Save again and choose to overwrite to create it again, or close this editor.", profile.name));
+  }
+
+  // The unsaved values were already set on the profile: those the server version doesn't have must go too
+  for (const key of Object.keys(profile)) {
+    if (!(key in latest)) {
+      delete (profile as any)[key];
+    }
+  }
+  Object.assign(profile, latest);
+  profileEditor.rebuild(editor => buildForm(editor, profile), getFormData(profile));
+}
+
+async function save(profileEditor: CustomEditor<ConnectionProfileData>, profile: AnyConnectionProfile, data: ConnectionProfileData) {
   const connection = instance.getConnection();
 
   if (connection) {
@@ -105,9 +148,19 @@ async function save(profile: AnyConnectionProfile, data: ConnectionProfileData) 
         }
         profile.libraryList = libraryList;
 
+        let reloaded = false;
         const canProceed = await verifyLatestServerProfileState(profile);
-        if (canProceed) {
-          await updateConnectionProfile(profile);
+        const saved = canProceed && await saveConnectionProfile(profile, undefined, async () => {
+          await reloadFromServer(profileEditor, profile);
+          reloaded = true;
+        });
+
+        // Throwing keeps the editor open and dirty, so it can be saved again
+        if (reloaded) {
+          throw new Error(l10n.t("Profile {0} was reloaded from the server: review it and save it again.", profile.name));
+        }
+        else if (!saved) {
+          throw new Error(l10n.t("Profile {0} was not saved.", profile.name));
         }
       }
       finally {
