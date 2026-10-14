@@ -612,6 +612,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                   }
                 };
 
+                progress.report({ message: l10n.t(`Total Files: {0}. Total Bytes: {1}. Starting upload...`, filesToUpload.length, formatBytes(totalBytes)) });
                 let bytesTransferred = 0;
                 let filesCompleted = 0;
                 await connection.getContent().uploadFiles(filesToUpload, {
@@ -644,13 +645,24 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                 const dirFileCounts = await Promise.all(
                   directoriesToUpload.map(directory =>
                     Promise.resolve(
+                      // node-ssh by default ignores hidden files: https://github.com/steelbrain/node-ssh/blob/fca27faedee85736403cb6b46f15e5677302f8a8/src/index.ts#L97
                       readdirSync(directory.fsPath, { recursive: true, withFileTypes: true })
-                        .filter(f => f.isFile()).length
+                        .filter(f => {
+                          // Exclude sub-directories and hidden files
+                          if (!f.isFile() || f.name.startsWith('.')) {
+                             return false;
+                          }
+
+                          // Exclude files in hidden sub-directories
+                          const relativeParent = path.relative(directory.fsPath, f.parentPath);
+                          return !relativeParent.split(path.sep).some(segment => segment.startsWith('.'));
+                        }).length
                     )
                   )
                 );
                 const totalFilesAcrossDirs = dirFileCounts.reduce((sum, n) => sum + n, 0);
 
+                progress.report({ message: l10n.t(`Total Folders: {0}. Total Files: {1}. Starting upload...`, directoriesToUpload.length, totalFilesAcrossDirs) });
                 let directoriesCompleted = 0;
                 let totalFilesCompleted = 0;
                 for (let i = 0; i < directoriesToUpload.length; i++) {
@@ -660,7 +672,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                   await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), {
                     concurrency: 5,
                     transferOptions: {
-                      step: (total: number, _nb: number, fsize: number) => {
+                      step: (total: number, nb: number, fsize: number) => {
                         // A file is complete when its transferred bytes equal its size
                         if (total === fsize) {
                           totalFilesCompleted++;
@@ -669,6 +681,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                         const folderPercentage = Math.round((directoriesCompleted / directoriesToUpload.length) * 100);
                         const filePercentage = totalFilesAcrossDirs > 0 ? Math.round((totalFilesCompleted / totalFilesAcrossDirs) * 100) : 0;
                         progress.report({
+                          increment: totalFilesAcrossDirs > 0 ? (nb / fsize) * (1 / totalFilesAcrossDirs) * 100 : 0,
                           message: l10n.t(`Total Folders: {0}/{1} ({2}%). Total Files: {3}/{4} ({5}%).`,
                             directoriesCompleted, directoriesToUpload.length, folderPercentage,
                             totalFilesCompleted, totalFilesAcrossDirs, filePercentage)
