@@ -36,7 +36,7 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
     .addInput("statusBarColor", l10n.t("Status bar color"), l10n.t("The color of the status bar items while this profile is active. Useful to tell your environments apart at a glance. Pick black to keep the color of the current theme."), { default: (profile.statusBarColor ?? config?.statusBarColor) || `#000000`, inputType: "color" })
     .addHorizontalRule()
     .addHeading(l10n.t("Object filters"), 3)
-    .addParagraph(objectFilters.length ? `<ul>${objectFilters.map(filter => `<li>${filter.name}</li>`).join('')}</ul>` : l10n.t("None"))
+    .addParagraph(objectFilters.length ? `<ul>${objectFilters.map(filter => `<li>${filter.name}: <code>${VscodeTools.filterToDescription(filter)}</code></li>`).join('')}</ul>` : l10n.t("None"))
     .addHorizontalRule()
     .addHeading(l10n.t("IFS shortcuts"), 3)
     .addParagraph(ifsShortcuts.length ? `<ul>${ifsShortcuts.map(shortcut => `<li>${shortcut}</li>`).join('')}</ul>` : l10n.t("None"))
