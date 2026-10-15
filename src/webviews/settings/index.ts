@@ -10,7 +10,7 @@ import * as certificates from "../../debug/certificates";
 import { instance } from "../../instantiate";
 import { ConnectionConfig, ConnectionData, RemoteConfigFile, Server } from '../../typings';
 import { VscodeTools } from "../../ui/Tools";
-import { ComplexTab, CustomUI, Section, SelectItem } from "../CustomUI";
+import { ComplexTab, CustomUI, Section, SelectItem, TableColumn, TableRow } from "../CustomUI";
 import { checkLoginForm } from "../login";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
@@ -53,6 +53,15 @@ const getCCSIDItems = (selected: string): SelectItem[] => {
 type LoginSettings = ConnectionData & {
   buttons?: 'submitButton'
 }
+
+const componentStatus: Record<string, { emoji: string; readableStatus: string }> = {
+  NotChecked:      { emoji: `❓`, readableStatus: `Not Checked` },
+  NotInstalled:    { emoji: `❌`, readableStatus: `Not Installed` },
+  NeedsUpdate:     { emoji: `🔄`, readableStatus: `Needs Update` },
+  UpdateAvailable: { emoji: `🆕`, readableStatus: `Update Available` },
+  Installed:       { emoji: `✅`, readableStatus: `Installed` },
+  Error:           { emoji: `🚨`, readableStatus: `Error` },
+};
 
 export class SettingsUI {
   static init(context: vscode.ExtensionContext) {
@@ -311,21 +320,42 @@ export class SettingsUI {
         const componentsTab = new Section();
         if (connection) {
           const states = connection.getComponentManager().getComponentStates();
-          componentsTab.addParagraph(`The following extensions contribute these components:`);
+          const tableColumns: TableColumn[] = [
+            { label: `Component` },
+            { label: `Type` },
+            { label: `Status` },
+            { label: `Minimum` },
+            { label: `Installed` },
+            { label: `Available` },
+          ];
           extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
             const extension = vscode.extensions.getExtension(extensionId);
-            componentsTab.addParagraph(`<p>
-              <h3 style="padding-bottom: 1em;">${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
-              <ul>
-              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.id.name === component.getIdentification().name)?.state.status} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
-              </ul>
-              </p>`);
+            const extensionName = extension?.packageJSON.displayName || extension?.id || `Unnamed extension`;
+            const tableRows: TableRow[] = components.map(component => {
+              const id = component.getIdentification();
+              const state = states.find(c => c.id.name === id.name)?.state;
+              const rawStatus = state?.status ?? `Unknown`;
+              const { emoji, readableStatus } = componentStatus[rawStatus] ?? { emoji: ``, readableStatus: rawStatus };
+              const minVersion = String(id.version);
+              return {
+                cells: [
+                  emoji ? `${emoji} ${id.name}` : id.name,
+                  id.userManaged ? `Optional` : `Required`,
+                  readableStatus,
+                  minVersion,
+                  state?.installedVersion !== undefined ? String(state.installedVersion) : minVersion,
+                  state?.availableVersion !== undefined ? String(state.availableVersion) : minVersion,
+                ]
+              };
+            });
+            componentsTab
+              .addHeading(extensionName, 3)
+              .addTable(`components-${extensionId}`, ``, tableColumns, tableRows);
           });
-
-          const userInstallableComponents = states.filter(c => c.id.userManaged && c.state.status !== `Installed`);
-          if (userInstallableComponents.length) {
-            componentsTab.addButtons({ id: `installComponent`, label: `Install component` })
-          }
+          componentsTab.addButtons(
+            { id: `installComponent`, label: `Install or update components` },
+            { id: `rescanComponents`, label: `Re-scan components` }
+          );
         } else {
           componentsTab.addParagraph('Connect to the server to see these settings.');
         }
@@ -388,6 +418,18 @@ export class SettingsUI {
                   if (connection) {
                     installComponentsQuickPick(connection);
                   }
+                  break;
+
+                case `rescanComponents`:
+                  if (connection) {
+                    await vscode.window.withProgress({ title: `Component Re-scan`, location: vscode.ProgressLocation.Notification }, async (progress) => {
+                      connection.getComponentManager().clearRegistered();
+                      await connection.getComponentManager().startup([], (name, current, total) => {
+                        progress.report({ message: `${current}/${total} - ${name}`, increment: 100 / total });
+                      });
+                    });
+                  }
+                  vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, server, `Components`);
                   break;
 
                 default:
@@ -568,26 +610,30 @@ export class SettingsUI {
 
 function installComponentsQuickPick(connection: IBMi) {
   const components = connection.getComponentManager().getComponentStates();
-  const installable = components.filter(c => c.id.userManaged && c.state.status !== `Installed`);
+  const actionable = components.filter(c => c.id.userManaged && c.state.status !== `Installed`);
 
-  if (installable.length === 0) {
+  if (actionable.length === 0) {
     return;
   }
 
-  const withS = installable.length > 1 ? `s` : ``;
-  window.showQuickPick(installable.map(c => ({
-    label: c.id.name,
-    description: c.state.status,
-    id: c.id.name
-  })), {
-    title: `Install component${withS}`,
+  const withS = actionable.length > 1 ? `s` : ``;
+  window.showQuickPick(actionable.map(c => {
+    const { readableStatus } = componentStatus[c.state.status] ?? { readableStatus: c.state.status };
+    return {
+      label: c.id.name,
+      description: readableStatus,
+      id: c.id.name,
+      isUpdate: c.state.status === `UpdateAvailable` || c.state.status === `NeedsUpdate`,
+    };
+  }), {
+    title: `Install or update component${withS}`,
     canPickMany: true,
-    placeHolder: `Select component${withS} to install`
+    placeHolder: `Select component${withS} to install or update`
   }).then(async result => {
     if (result) {
       window.withProgress({ title: `Component${withS}`, location: vscode.ProgressLocation.Notification }, async (progress) => {
         for (const item of result) {
-          progress.report({ message: `Installing ${item.label}...` });
+          progress.report({ message: `${item.isUpdate ? `Updating` : `Installing`} ${item.label}...` });
           try {
             await connection.getComponentManager().installComponent(item.id);
           } catch (e) {
@@ -596,6 +642,5 @@ function installComponentsQuickPick(connection: IBMi) {
         }
       });
     }
-  })
-
+  });
 }

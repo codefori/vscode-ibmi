@@ -1,5 +1,5 @@
 
-import { createNodeSSHConnection, JDBCOptions, JAR_SHA256 as MAPEPIRE_SIGNATURE, VERSION as MAPEPIRE_VERSION, SQLJob } from "@ibm/mapepire-js";
+import { createNodeSSHConnection, JDBCOptions, JAR_SHA256 as MAPEPIRE_SIGNATURE, VERSION as MAPEPIRE_VERSION, SQLJob, VERSION } from "@ibm/mapepire-js";
 import path from "path";
 import { getJavaHome } from "../../configuration/DebugConfiguration";
 import IBMi from "../../IBMi";
@@ -9,7 +9,12 @@ export class Mapepire implements IBMiComponent {
   static readonly ID = "mapepire";
 
   private readonly jobs: Map<string, SQLJob> = new Map;
-  private readonly status: SecureComponentState = { status: "Installed", remoteSignature: MAPEPIRE_SIGNATURE };
+  private readonly status: SecureComponentState = {
+    status: "Installed",
+    installedVersion: VERSION,
+    availableVersion: VERSION,
+    remoteSignature: MAPEPIRE_SIGNATURE
+  };
   private installDirectory = "";
 
   constructor(public application: string, private readonly passwordProvider?: (connectionName: IBMi) => Promise<string | undefined>) {
