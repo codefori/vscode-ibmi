@@ -588,8 +588,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       if (connection) {
         const existingNames = connection.getConfig().objectFilters.map(f => f.name) || [];
         const name = await vscode.window.showInputBox({
-          title: l10n.t("Enter new filter name"),
-          placeHolder: l10n.t("Filter name..."),
+          title: l10n.t("Enter new Object Filter name"),
+          placeHolder: l10n.t("Object Filter name..."),
           value: from?.name,
           validateInput: name => ObjectFilter.validateFilterName(name, existingNames)
         });
@@ -690,7 +690,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const existingNames = ObjectFilter.getObjectFilters().map(filter => filter.name).filter(name => name !== currentName);
         const newName = await vscode.window.showInputBox({
           title: l10n.t('Enter Object Filter {0} new name', currentName),
-          placeHolder: l10n.t("Profile name..."),
+          placeHolder: l10n.t("Object Filter name..."),
+          value: currentName,
           validateInput: name => ObjectFilter.validateFilterName(name, existingNames)
         });
 
