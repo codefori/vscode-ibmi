@@ -80,8 +80,8 @@ export class SourceDateHandler {
       vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => this.clearDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => this.newDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.toggleSequenceNumbers`, () => this.toggleSequenceNumbers()),
-      vscode.commands.registerCommand(`code-for-ibmi.member.nextDateSearchBlock`, () => this.goToDateSearchBlock(true)),
-      vscode.commands.registerCommand(`code-for-ibmi.member.previousDateSearchBlock`, () => this.goToDateSearchBlock(false)),
+      vscode.commands.registerCommand(`code-for-ibmi.member.nextDateSearchBlock`, (uri?: vscode.Uri) => this.goToDateSearchBlock(true, uri)),
+      vscode.commands.registerCommand(`code-for-ibmi.member.previousDateSearchBlock`, (uri?: vscode.Uri) => this.goToDateSearchBlock(false, uri)),
       onCodeForIBMiConfigurationChange(`connectionSettings`, () => this.updateStatusBarColor()),
       this.sourceDateSearchBarItem
     );
@@ -450,9 +450,15 @@ export class SourceDateHandler {
   /**
    * Moves the cursor to the next (or previous) block of lines highlighted by the date search,
    * wrapping around at the end (or start) of the member.
+   * @param uri the member whose editor title button was clicked; the active editor is used when not given
    */
-  private goToDateSearchBlock(forward: boolean) {
-    const editor = vscode.window.activeTextEditor;
+  private async goToDateSearchBlock(forward: boolean, uri?: vscode.Uri) {
+    let editor = vscode.window.activeTextEditor;
+    if (uri instanceof vscode.Uri && editor?.document.uri.toString() !== uri.toString()) {
+      const clicked = vscode.window.visibleTextEditors.find(visible => visible.document.uri.toString() === uri.toString());
+      editor = clicked ? await vscode.window.showTextDocument(clicked.document, clicked.viewColumn) : undefined;
+    }
+
     if (!editor || editor.document.uri.scheme !== `member`) {
       return;
     }
@@ -476,7 +482,7 @@ export class SourceDateHandler {
 
     const position = new vscode.Position(target.start, 0);
     editor.selection = new vscode.Selection(position, position);
-    editor.revealRange(new vscode.Range(position, new vscode.Position(target.end, 0)), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+    editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
 
     vscode.window.setStatusBarMessage(`Source date block ${blocks.indexOf(target) + 1} of ${blocks.length}`, 3000);
   }
