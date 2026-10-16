@@ -1479,9 +1479,13 @@ export default class IBMi {
         if (statement.startsWith(`@`)) {
           const command = statement.substring(1);
           const log = `Running CL through SQL: ${command}\n\t`;
+          // Mapepire's CL request runs the same QCMDEXC call, but reads the whole job log
+          // twice to return the command's messages. The job log of the SQL job keeps growing,
+          // so every CL command got slower over time. Errors still come back as an exception.
+          const query = this.sqlJob.query(`CALL QSYS2.QCMDEXC(?)`, { parameters: [command] });
           try {
-            const result = await this.sqlJob.execute<{ MESSAGE_ID: string, MESSAGE_TEXT: string }>(command, { isClCommand: true });
-            this.appendOutput(`${log}-> OK${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}`);
+            await query.execute();
+            this.appendOutput(`${log}-> OK`);
           }
           catch (e: any) {
             // If the CL command errors in the job, then let's run another
@@ -1502,6 +1506,8 @@ export default class IBMi {
             }
 
             throw error;
+          } finally {
+            query.close();
           }
         } else {
           let query;
