@@ -1566,9 +1566,15 @@
 			{
 				"command": "code-for-ibmi.maintainFilter",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Change...",
+				"title": "Edit...",
 				"category": "IBM i",
 				"icon": "$(filter)"
+			},
+			{
+				"command": "code-for-ibmi.renameFilter",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Rename...",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.objectBrowser.delete",
@@ -2695,6 +2701,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.renameFilter",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.sortFilters",
 					"when": "never"
 				},
@@ -3149,14 +3159,19 @@
 					"group": "4_filters@1"
 				},
 				{
-					"command": "code-for-ibmi.copyFilter",
+					"command": "code-for-ibmi.renameFilter",
 					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
 					"group": "4_filters@2"
 				},
 				{
+					"command": "code-for-ibmi.copyFilter",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
+					"group": "4_filters@3"
+				},
+				{
 					"command": "code-for-ibmi.objectBrowser.delete",
 					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
-					"group": "4_filters@3"
+					"group": "4_filters@4"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",
