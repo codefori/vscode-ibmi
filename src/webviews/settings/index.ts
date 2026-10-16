@@ -55,12 +55,12 @@ type LoginSettings = ConnectionData & {
 }
 
 const componentStatus: Record<string, { emoji: string; readableStatus: string }> = {
-  NotChecked:      { emoji: `❓`, readableStatus: `Not Checked` },
-  NotInstalled:    { emoji: `❌`, readableStatus: `Not Installed` },
-  NeedsUpdate:     { emoji: `🔄`, readableStatus: `Needs Update` },
+  NotChecked: { emoji: `❓`, readableStatus: `Not Checked` },
+  NotInstalled: { emoji: `❌`, readableStatus: `Not Installed` },
+  NeedsUpdate: { emoji: `🔄`, readableStatus: `Needs Update` },
   UpdateAvailable: { emoji: `🆕`, readableStatus: `Update Available` },
-  Installed:       { emoji: `✅`, readableStatus: `Installed` },
-  Error:           { emoji: `🚨`, readableStatus: `Error` },
+  Installed: { emoji: `✅`, readableStatus: `Installed` },
+  Error: { emoji: `🚨`, readableStatus: `Error` },
 };
 
 export class SettingsUI {
@@ -343,8 +343,8 @@ export class SettingsUI {
                   id.userManaged ? `Optional` : `Required`,
                   readableStatus,
                   minVersion,
-                  state?.installedVersion !== undefined ? String(state.installedVersion) : minVersion,
-                  state?.availableVersion !== undefined ? String(state.availableVersion) : minVersion,
+                  state?.installedVersion !== undefined ? String(state.installedVersion) : ([`Installed`, `NeedsUpdate`, `UpdateAvailable`].includes(rawStatus) ? minVersion : `-`),
+                  state?.availableVersion !== undefined ? String(state.availableVersion) : `-`,
                 ]
               };
             });

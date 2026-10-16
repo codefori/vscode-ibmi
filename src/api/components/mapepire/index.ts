@@ -12,7 +12,6 @@ export class Mapepire implements IBMiComponent {
   private readonly status: SecureComponentState = {
     status: "Installed",
     installedVersion: VERSION,
-    availableVersion: VERSION,
     remoteSignature: MAPEPIRE_SIGNATURE
   };
   private installDirectory = "";
