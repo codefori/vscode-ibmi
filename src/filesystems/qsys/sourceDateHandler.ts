@@ -80,8 +80,8 @@ export class SourceDateHandler {
       vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => this.clearDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => this.newDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.toggleSequenceNumbers`, () => this.toggleSequenceNumbers()),
-      vscode.commands.registerCommand(`code-for-ibmi.member.nextDateSearchBlock`, (uri?: vscode.Uri) => this.goToDateSearchBlock(true, uri)),
-      vscode.commands.registerCommand(`code-for-ibmi.member.previousDateSearchBlock`, (uri?: vscode.Uri) => this.goToDateSearchBlock(false, uri)),
+      vscode.commands.registerCommand(`code-for-ibmi.member.nextDateSearchBlock`, (uri?: vscode.Uri | string) => this.goToDateSearchBlock(true, uri)),
+      vscode.commands.registerCommand(`code-for-ibmi.member.previousDateSearchBlock`, (uri?: vscode.Uri | string) => this.goToDateSearchBlock(false, uri)),
       onCodeForIBMiConfigurationChange(`connectionSettings`, () => this.updateStatusBarColor()),
       this.sourceDateSearchBarItem
     );
@@ -278,10 +278,12 @@ export class SourceDateHandler {
           const currentDate = currentStamp();
           const currentDateNumber = Number(currentDate);
 
+          // Pass the hovered member so the block links navigate its editor rather than the active one
+          const blockArgs = encodeURIComponent(JSON.stringify([document.uri.toString()]));
           const markdownString = [
             `[Show changes since last local save](command:workbench.files.action.compareWithSaved)`,
             `${this.highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`,
-            this.highlightSince ? `[Previous block](command:code-for-ibmi.member.previousDateSearchBlock) | [Next block](command:code-for-ibmi.member.nextDateSearchBlock)` : undefined,
+            this.highlightSince ? `[Previous block](command:code-for-ibmi.member.previousDateSearchBlock?${blockArgs}) | [Next block](command:code-for-ibmi.member.nextDateSearchBlock?${blockArgs})` : undefined,
             sequenceNumbersAvailable ? `[Show sequence numbers](command:code-for-ibmi.toggleSequenceNumbers)` : undefined
           ].filter(i => i !== undefined) as string[];
 
@@ -450,9 +452,11 @@ export class SourceDateHandler {
   /**
    * Moves the cursor to the next (or previous) block of lines highlighted by the date search,
    * wrapping around at the end (or start) of the member.
-   * @param uri the member whose editor title button was clicked; the active editor is used when not given
+   * @param member the member whose editor title button or hover link was clicked (a URI string from hover links);
+   * the active editor is used when not given
    */
-  private async goToDateSearchBlock(forward: boolean, uri?: vscode.Uri) {
+  private async goToDateSearchBlock(forward: boolean, member?: vscode.Uri | string) {
+    const uri = typeof member === `string` ? vscode.Uri.parse(member) : member;
     let editor = vscode.window.activeTextEditor;
     if (uri instanceof vscode.Uri && editor?.document.uri.toString() !== uri.toString()) {
       const clicked = vscode.window.visibleTextEditors.find(visible => visible.document.uri.toString() === uri.toString());
