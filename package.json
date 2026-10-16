@@ -2027,12 +2027,12 @@
 			{
 				"command": "code-for-ibmi.member.nextDateSearchBlock",
 				"key": "alt+f5",
-				"when": "editorTextFocus && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
+				"when": "editorTextFocus && !isInDiffEditor && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
 			},
 			{
 				"command": "code-for-ibmi.member.previousDateSearchBlock",
 				"key": "shift+alt+f5",
-				"when": "editorTextFocus && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
+				"when": "editorTextFocus && !isInDiffEditor && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
 			},
 			{
 				"command": "code-for-ibmi.runAction",
