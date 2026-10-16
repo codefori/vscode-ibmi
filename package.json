@@ -3017,12 +3017,12 @@
 			"editor/title": [
 				{
 					"command": "code-for-ibmi.member.previousDateSearchBlock",
-					"when": "resourceScheme == member && code-for-ibmi:sourceDateSearchActive",
+					"when": "resourceScheme == member && !isInDiffEditor && code-for-ibmi:sourceDateSearchActive",
 					"group": "navigation@0"
 				},
 				{
 					"command": "code-for-ibmi.member.nextDateSearchBlock",
-					"when": "resourceScheme == member && code-for-ibmi:sourceDateSearchActive",
+					"when": "resourceScheme == member && !isInDiffEditor && code-for-ibmi:sourceDateSearchActive",
 					"group": "navigation@0"
 				},
 				{
