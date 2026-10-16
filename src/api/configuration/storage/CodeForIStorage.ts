@@ -10,6 +10,7 @@ const SERVER_SETTINGS_CACHE_KEY = (name: string) => SERVER_SETTINGS_CACHE_PREFIX
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
 const PREVIOUS_FIND_TERMS_KEY = `prevFindTerms`;
 const PREVIOUS_DOWNLOAD_LOCATION = `previousDownloadLocation`;
+const ARCHIVE_RESTORE_TOAST_HIDDEN_KEY = `archiveRestoreToastHidden`;
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
@@ -147,5 +148,13 @@ export class CodeForIStorage {
     if (location && location !== lastLocation) {
       await this.internalStorage.set(PREVIOUS_DOWNLOAD_LOCATION, location);
     }
+  }
+
+  getArchiveRestoreToastHidden() {
+    return this.internalStorage.get<boolean>(ARCHIVE_RESTORE_TOAST_HIDDEN_KEY) || false;
+  }
+
+  async setArchiveRestoreToastHidden(hidden: boolean) {
+    await this.internalStorage.set(ARCHIVE_RESTORE_TOAST_HIDDEN_KEY, hidden);
   }
 }
