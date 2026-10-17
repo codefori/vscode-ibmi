@@ -30,12 +30,16 @@ const diffOptions = {
 
 const lineDecor = vscode.window.createTextEditorDecorationType({
   backgroundColor: new vscode.ThemeColor(`diffEditor.insertedTextBackground`),
+  overviewRulerColor: seachGutterColor,
+  overviewRulerLane: vscode.OverviewRulerLane.Left,
   rangeBehavior: vscode.DecorationRangeBehavior.OpenOpen,
 });
 
 const SD_BASE = `$(history) Date Search`;
 const SD_ACTIVE = `$(history) From `;
 const SD_EXACT = `$(history) On `;
+
+const DATE_SEARCH_CONTEXT = `code-for-ibmi:sourceDateSearchActive`;
 
 const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
 
@@ -44,6 +48,8 @@ export class SourceDateHandler {
   readonly baseSource: Map<string, string> = new Map;
   readonly recordLengths: Map<string, number> = new Map;
   readonly baseSequences: Map<string, number[]> = new Map;
+  /** Blocks of consecutive lines highlighted by the date search (0-based, inclusive) */
+  private readonly highlightedBlocks: Map<string, { start: number, end: number }[]> = new Map;
 
   private enabled: boolean = false;
 
@@ -74,6 +80,8 @@ export class SourceDateHandler {
       vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => this.clearDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => this.newDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.toggleSequenceNumbers`, () => this.toggleSequenceNumbers()),
+      vscode.commands.registerCommand(`code-for-ibmi.member.nextDateSearchBlock`, (uri?: vscode.Uri | string) => this.goToDateSearchBlock(true, uri)),
+      vscode.commands.registerCommand(`code-for-ibmi.member.previousDateSearchBlock`, (uri?: vscode.Uri | string) => this.goToDateSearchBlock(false, uri)),
       onCodeForIBMiConfigurationChange(`connectionSettings`, () => this.updateStatusBarColor()),
       this.sourceDateSearchBarItem
     );
@@ -106,6 +114,8 @@ export class SourceDateHandler {
         this.baseSource.clear();
         this.recordLengths.clear();
         this.baseSequences.clear();
+        this.highlightedBlocks.clear();
+        this.updateDateSearchContext();
       }
     }
   }
@@ -119,6 +129,7 @@ export class SourceDateHandler {
         this.baseDates.delete(alias);
         this.baseSource.delete(alias);
         this.recordLengths.delete(alias);
+        this.highlightedBlocks.delete(alias);
       }
     }
   }
@@ -221,6 +232,7 @@ export class SourceDateHandler {
       const alias = getAliasName(document.uri);
 
       let lineGutters: vscode.DecorationOptions[] = [];
+      this.highlightedBlocks.delete(alias);
 
       if (config && config.sourceDateGutter) {
         const sourceDates = this.baseDates.get(alias);
@@ -266,9 +278,12 @@ export class SourceDateHandler {
           const currentDate = currentStamp();
           const currentDateNumber = Number(currentDate);
 
+          // Pass the hovered member so the block links navigate its editor rather than the active one
+          const blockArgs = encodeURIComponent(JSON.stringify([document.uri.toString()]));
           const markdownString = [
             `[Show changes since last local save](command:workbench.files.action.compareWithSaved)`,
             `${this.highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`,
+            this.highlightSince ? `[Previous block](command:code-for-ibmi.member.previousDateSearchBlock?${blockArgs}) | [Next block](command:code-for-ibmi.member.nextDateSearchBlock?${blockArgs})` : undefined,
             sequenceNumbersAvailable ? `[Show sequence numbers](command:code-for-ibmi.toggleSequenceNumbers)` : undefined
           ].filter(i => i !== undefined) as string[];
 
@@ -334,6 +349,18 @@ export class SourceDateHandler {
               })
             }
           }
+
+          const blocks: { start: number, end: number }[] = [];
+          for (const decoration of changedLined) {
+            const line = decoration.range.start.line;
+            const last = blocks[blocks.length - 1];
+            if (last && last.end === line - 1) {
+              last.end = line;
+            } else {
+              blocks.push({ start: line, end: line });
+            }
+          }
+          this.highlightedBlocks.set(alias, blocks);
 
           const activeEditor = vscode.window.activeTextEditor;
           if (activeEditor && activeEditor.document.uri.fsPath === document.uri.fsPath) {
@@ -418,10 +445,57 @@ export class SourceDateHandler {
     }
   }
 
+  private updateDateSearchContext() {
+    vscode.commands.executeCommand(`setContext`, DATE_SEARCH_CONTEXT, this.highlightSince !== undefined || this.highlightBefore !== undefined);
+  }
+
+  /**
+   * Moves the cursor to the next (or previous) block of lines highlighted by the date search,
+   * wrapping around at the end (or start) of the member.
+   * @param member the member whose editor title button or hover link was clicked (a URI string from hover links);
+   * the active editor is used when not given
+   */
+  private async goToDateSearchBlock(forward: boolean, member?: vscode.Uri | string) {
+    const uri = typeof member === `string` ? vscode.Uri.parse(member) : member;
+    let editor = vscode.window.activeTextEditor;
+    if (uri instanceof vscode.Uri && editor?.document.uri.toString() !== uri.toString()) {
+      const clicked = vscode.window.visibleTextEditors.find(visible => visible.document.uri.toString() === uri.toString());
+      editor = clicked ? await vscode.window.showTextDocument(clicked.document, clicked.viewColumn) : undefined;
+    }
+
+    if (!editor || editor.document.uri.scheme !== `member`) {
+      return;
+    }
+
+    const blocks = this.highlightedBlocks.get(getAliasName(editor.document.uri)) || [];
+    if (!blocks.length) {
+      const searching = this.highlightSince !== undefined || this.highlightBefore !== undefined;
+      vscode.window.setStatusBarMessage(searching ? `No lines match the source date search` : `No source date search active`, 3000);
+      return;
+    }
+
+    const currentLine = editor.selection.active.line;
+    let target: { start: number, end: number } | undefined;
+    if (forward) {
+      target = blocks.find(block => block.start > currentLine) ?? blocks[0];
+    } else {
+      // From inside a block, go to the start of the previous block rather than the current one
+      const reference = blocks.find(block => block.start <= currentLine && currentLine <= block.end)?.start ?? currentLine;
+      target = blocks.filter(block => block.start < reference).pop() ?? blocks[blocks.length - 1];
+    }
+
+    const position = new vscode.Position(target.start, 0);
+    editor.selection = new vscode.Selection(position, position);
+    editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+
+    vscode.window.setStatusBarMessage(`Source date block ${blocks.indexOf(target) + 1} of ${blocks.length}`, 3000);
+  }
+
   private clearDateSearch() {
     this.sourceDateSearchBarItem.text = SD_BASE;
     this.highlightSince = undefined;
     this.highlightBefore = undefined;
+    this.updateDateSearchContext();
 
     const editor = vscode.window.activeTextEditor;
     if (editor) {
@@ -471,6 +545,8 @@ export class SourceDateHandler {
       this.highlightSince = undefined;
       this.highlightBefore = undefined;
     }
+
+    this.updateDateSearchContext();
 
     const editor = vscode.window.activeTextEditor;
     const connection = instance.getConnection();
