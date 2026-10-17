@@ -650,7 +650,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                         .filter(f => {
                           // Exclude sub-directories and hidden files
                           if (!f.isFile() || f.name.startsWith('.')) {
-                             return false;
+                            return false;
                           }
 
                           // Exclude files in hidden sub-directories
@@ -1202,7 +1202,7 @@ async function doSearchInStreamfiles(searchTerm: string, searchPaths: string[]) 
       vscode.window.showInformationMessage(l10n.t(`No results found searching for "{0}".`, searchTerm));
     }
   } catch (e) {
-    vscode.window.showErrorMessage(l10n.t(`Error searching streamfiles.`));
+    vscode.window.showErrorMessage(l10n.t(`Error searching streamfiles: {0}`, String(e)));
   }
 }
 
