@@ -147,6 +147,14 @@ export class Section {
     this.addField(browser);
     return this;
   }
+
+  addTable(id: string, label: string, columns: TableColumn[], rows: TableRow[], description?: string) {
+    const table = new Field('table', id, label, description);
+    table.tableColumns = columns;
+    table.tableRows = rows;
+    this.addField(table);
+    return this;
+  }
 }
 
 const openedWebviews: Map<string, vscode.WebviewPanel> = new Map;
@@ -501,7 +509,7 @@ export class CustomUI extends CustomHTML {
   }
 }
 
-export type FieldType = "input" | "password" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading" | "browser";
+export type FieldType = "input" | "password" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading" | "browser" | "table";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -529,10 +537,21 @@ export interface FieldItem {
   id?: string
 }
 
+export interface TableColumn {
+  label: string
+}
+
+export interface TableRow {
+  /** Values for each column, in the same order as the columns array. Supports HTML strings. */
+  cells: string[]
+}
+
 export class Field {
   public items?: FieldItem[];
   public treeList?: TreeListItem[];
   public complexTabItems?: ComplexTab[];
+  public tableColumns?: TableColumn[];
+  public tableRows?: TableRow[];
   public default?: string;
   public readonly?: boolean;
   public rows?: number;
@@ -684,6 +703,25 @@ export class Field {
           <div slot="start"><vscode-tree id="${this.id}">${this.treeList?.map(t => this.renderTreeItem(t)).join("")}</vscode-tree></div>
           <div slot="end"><div id="browse_${this.id}">${this.treeList?.at(0)?.value}</div></div>
       </vscode-split-layout>`;
+
+      case `table`: {
+        return /* html */`
+          <vscode-form-group variant="settings-group">
+            ${this.label ? this.renderLabel() : ``}
+            ${this.renderDescription()}
+            <vscode-table bordered-rows zebra resizable>
+              <vscode-table-header slot="header">
+                ${this.tableColumns?.map(col => /* html */`<vscode-table-header-cell>${col.label}</vscode-table-header-cell>`).join(``) ?? ``}
+              </vscode-table-header>
+              <vscode-table-body slot="body">
+                ${this.tableRows?.map(row => /* html */`
+                <vscode-table-row>
+                  ${row.cells.map(cell => /* html */`<vscode-table-cell>${cell}</vscode-table-cell>`).join(``)}
+                </vscode-table-row>`).join(``) ?? ``}
+              </vscode-table-body>
+            </vscode-table>
+          </vscode-form-group>`;
+      }
     }
   }
 

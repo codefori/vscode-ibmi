@@ -143,9 +143,16 @@ export class ComponentManager {
     }
   }
 
-  public async startup(lastInstalled: ComponentInstallState[] = []) {
+  public clearRegistered() {
+    this.registered.splice(0);
+  }
+
+  public async startup(lastInstalled: ComponentInstallState[] = [], onProgress?: (name: string, current: number, total: number) => void) {
     const components = this.getAllAvailableComponents();
-    for (const component of components) {
+    const total = components.length;
+    for (let i = 0; i < total; i++) {
+      const component = components[i];
+      onProgress?.(component.getIdentification().name, i + 1, total);
       await this.startupComponent(component, lastInstalled);
     }
   }
