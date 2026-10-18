@@ -50,13 +50,16 @@ export namespace SearchTools {
         // pfgrep vs. qshell grep difference: uses -r for recursion instead of -R
         // (GNU/BSD grep treat them the same); we don't use recursion yet though...
         // older versions before 0.4 need -t to trim whitespace, 0.4 inverts the flag
-        const command = `${pfgrep} -insHr -F '${sanitizeSearchTerm(searchTerm)}' ${memberFilter}`;
+        const command = `${pfgrep} -insHr -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`;
         result = await connection.sendCommand({
           command: command,
           directory: connection.sysNameInAmerican(`${asp ? `/${asp}` : ``}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
         });
       } else {
-        const command = `/QOpenSys/usr/bin/qsh -c "/usr/bin/grep -insHR -F '${sanitizeSearchTerm(searchTerm)}' ${memberFilter}"`;
+        //create a symlink of qsh named grep so we can invoke grep and use " and ' in the search term
+        //(why use a symlink: https://kadler.io/blog/2018-05-29-calling-qsh-utilities-from-pase/#diving-under-the-hood)
+        const grep = `${config.tempDir}/grep`;
+        const command = `ln -sf /QOpenSys/usr/bin/qsh ${grep} && ${grep} -insHR -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`;
         result = await connection.sendCommand({
           command: command,
           directory: connection.sysNameInAmerican(`${asp ? `/${asp}` : ``}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
@@ -210,7 +213,7 @@ export namespace SearchTools {
   }
 
   function sanitizeSearchTerm(searchTerm: string): string {
-    return searchTerm.replaceAll("'", "''")
+    return searchTerm
       .replaceAll('\\', '\\\\"')
       .replaceAll('"', '\\"');
   }
