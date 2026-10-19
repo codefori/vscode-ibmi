@@ -56,7 +56,7 @@ interface ConnectionCallbacks {
   onConnectedOperations?: Function[],
   onDisconnected?: DisconnectedCallback,
   uiErrorHandler: (connection: IBMi, error: ConnectionErrorCode, data?: any) => Promise<boolean>,
-  progress: (detail: { message: string }) => void,
+  progress: (detail: { message: string, increment?: number }) => void,
   message: (type: ConnectionMessageType, message: string) => void,
   inputBox: (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => Promise<string | undefined>,
   cancelEmitter?: EventEmitter,
@@ -96,6 +96,7 @@ export default class IBMi {
   static readonly CCSID_SYSVAL = -2;
   static readonly bashShellPath = '/QOpenSys/pkgs/bin/bash';
   static readonly locale = 'LC_ALL=EN_US.UTF-8';
+  private static readonly CONNECT_PROGRESS_STEPS = 27;
 
   private systemVersion: number = 0;
   private qccsid: number = IBMi.CCSID_NOCONVERSION;
@@ -280,7 +281,16 @@ export default class IBMi {
 
   async connect(connectionObject: ConnectionData, options: ConnectionOptions): Promise<ConnectionResult> {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
-    const callbacks = options.callbacks;
+    const callbacks: ConnectionCallbacks = {
+      ...options.callbacks,
+      progress: (detail) => {
+        options.callbacks.progress(
+          {
+            increment: 100 / IBMi.CONNECT_PROGRESS_STEPS,
+            ...detail
+          })
+      }
+    };
 
     let wasCancelled = false;
 
@@ -560,7 +570,8 @@ export default class IBMi {
         for (const feature of remoteApps) {
           try {
             callbacks.progress({
-              message: `Checking installed components on host IBM i: ${feature.path}`
+              message: `Checking installed components on host IBM i: ${feature.path}`,
+              increment: 0
             });
 
             const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
@@ -676,6 +687,7 @@ export default class IBMi {
         throw e;
       }
 
+      callbacks.progress({ message: `Setting current ASP.` });
       try {
         await this.setCurrentASP(this.getConfig().iasp);
       }
@@ -873,7 +885,7 @@ export default class IBMi {
       this.appendOutput(`\n`);
 
       callbacks.progress({
-        message: `Checking temporary directory and temporary library configuration.`
+        message: `Checking default shell.`
       });
 
       const commandShellResult = await this.sendCommand({
@@ -1021,6 +1033,7 @@ export default class IBMi {
       let debugConfigLoaded = false
       if ((!quickConnect() || !cachedServerSettings?.debugConfigLoaded)) {
         if (this.debugPTFInstalled()) {
+          callbacks.progress({ message: `Loading debug service configuration.` });
           try {
             const debugServiceConfig = await new DebugConfiguration(this).load();
             delete this.config.debugCertDirectory;
@@ -1043,6 +1056,7 @@ export default class IBMi {
       }
 
       if (!options.reconnecting) {
+        callbacks.progress({ message: `Finalizing connection.` });
         for (const operation of callbacks.onConnectedOperations || []) {
           await operation();
         }

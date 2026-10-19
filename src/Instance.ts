@@ -147,7 +147,7 @@ export default class Instance {
                 onDisconnected,
                 onConnectedOperations: options.onConnectedOperations,
                 uiErrorHandler: handleConnectionResults,
-                progress: (message) => { p.report(message) },
+                progress: (detail) => { p.report(detail) },
                 message: messageCallback,
                 inputBox: async (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => {
                   return await inputBoxCallback(prompt, placeHolder, ignoreFocusOut, cancelToken)
