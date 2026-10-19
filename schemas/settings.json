@@ -49,6 +49,27 @@
           "default": true,
           "description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
         },
+        "useMapepireForSourceMemberSaves": {
+          "type": "boolean",
+          "default": false,
+          "description": "When enabled, source member saves with source dates use a Mapepire SQL save flow with QTEMP staging plus alias-based SQL INSERT (instead of RUNSQLSTM temp scripts)."
+        },
+        "sourceMemberSaveArchiveEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "When enabled, a local archive snapshot of the previous member content is saved before source-date writes."
+        },
+        "sourceMemberSaveArchivePath": {
+          "type": "string",
+          "default": "~/.code-for-ibmi/source-archive",
+          "description": "Local filesystem path where source member archive snapshots are written. Relative paths are resolved from the first workspace folder."
+        },
+        "sourceMemberSaveArchiveMaxFiles": {
+          "type": "number",
+          "default": 25,
+          "minimum": 1,
+          "description": "Maximum number of snapshots retained per member in the local source archive."
+        },
         "setDeviceNameFor5250": {
           "type": "boolean",
           "default": false,
