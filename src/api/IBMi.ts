@@ -96,7 +96,7 @@ export default class IBMi {
   static readonly CCSID_SYSVAL = -2;
   static readonly bashShellPath = '/QOpenSys/pkgs/bin/bash';
   static readonly locale = 'LC_ALL=EN_US.UTF-8';
-  private static readonly CONNECT_PROGRESS_STEPS = 27;
+  private static readonly CONNECT_PROGRESS_STEPS = 26;
 
   private systemVersion: number = 0;
   private qccsid: number = IBMi.CCSID_NOCONVERSION;
@@ -299,7 +299,8 @@ export default class IBMi {
       configVars.replaceAll(connectionObject);
 
       callbacks.progress({
-        message: `Connecting via SSH.`
+        message: `Connecting via SSH.`,
+        increment: 0
       });
 
       if (callbacks.cancelEmitter) {
