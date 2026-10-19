@@ -281,14 +281,13 @@ export default class IBMi {
 
   async connect(connectionObject: ConnectionData, options: ConnectionOptions): Promise<ConnectionResult> {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
+    let connectPercentage = 0;
     const callbacks: ConnectionCallbacks = {
       ...options.callbacks,
       progress: (task) => {
-        options.callbacks.progress(
-          {
-            increment: 100 / IBMi.CONNECT_PROGRESS_STEPS,
-            ...task
-          })
+        const increment = task.increment ?? 100 / IBMi.CONNECT_PROGRESS_STEPS;
+        connectPercentage = Math.min(100, Math.round(connectPercentage + increment));
+        options.callbacks.progress({ increment, ...task, message: `${connectPercentage}% - ${task.message}` });
       }
     };
 
