@@ -507,20 +507,24 @@ async function downloadMembersStructuredImpl(mode: `LIB` | `FILE`, node: ObjectI
   }
 
   await vscode.window.withProgress(
-    { title: vscode.l10n.t(`Downloading {0} member(s)`, toDownload.length), location: vscode.ProgressLocation.Notification },
-    async (progress) => {
+    { title: vscode.l10n.t(`Downloading`), location: vscode.ProgressLocation.Notification, cancellable: true },
+    async (progress, token) => {
       let done = 0;
       const errors: string[] = [];
       for (const member of toDownload) {
+        if (token.isCancellationRequested) {
+          break;
+        }
         const useLibrary = mode === `LIB` || collidingKeys.has(fileKey(member));
         const localDir = useLibrary
           ? path.join(rootPath, member.library.toUpperCase(), member.file.toUpperCase())
           : path.join(rootPath, member.file.toUpperCase());
         const localFile = path.join(localDir, `${member.name.toUpperCase()}.${(member.extension || `MBR`).toUpperCase()}`);
+        const memberLabel = useLibrary
+          ? `${member.library}/${member.file}/${member.name}.${member.extension || `MBR`}`
+          : `${member.file}/${member.name}.${member.extension || `MBR`}`;
         progress.report({
-          message: useLibrary
-            ? `${member.library}/${member.file}/${member.name}.${member.extension || `MBR`}`
-            : `${member.file}/${member.name}.${member.extension || `MBR`}`,
+          message: `${done + 1}/${toDownload.length} (${Math.round(((done + 1) / toDownload.length) * 100)}%) - ${memberLabel}`,
           increment: (100 / toDownload.length)
         });
         try {
@@ -535,7 +539,11 @@ async function downloadMembersStructuredImpl(mode: `LIB` | `FILE`, node: ObjectI
         done++;
       }
 
-      if (errors.length > 0) {
+      if (token.isCancellationRequested) {
+        vscode.window.showWarningMessage(
+          vscode.l10n.t(`Download cancelled. {0} of {1} member(s) downloaded.`, done - errors.length, toDownload.length)
+        );
+      } else if (errors.length > 0) {
         vscode.window.showWarningMessage(
           vscode.l10n.t(`{0} of {1} member(s) downloaded. {2} error(s).`, done - errors.length, toDownload.length, errors.length),
           vscode.l10n.t(`Show Details`)
