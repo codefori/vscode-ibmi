@@ -14,8 +14,9 @@ import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager } from './configuration/config/ConnectionManager';
 import { ConnectionConfig, ConnectionProfile, RemoteConfigFile } from './configuration/config/types';
 import { ConfigFile } from './configuration/configFile';
+import { validateActions } from './actionsValidation';
 import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
-import { CacheItem, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, QsysPath, RemoteCommand } from './types';
+import { Action, CacheItem, CommandData, CommandResult, ConnectionData, EditorPath, IBMiMember, QsysPath, RemoteCommand } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -72,6 +73,7 @@ interface ConnectionOptions {
 interface ConnectionConfigFiles {
   settings: ConfigFile<RemoteConfigFile>;
   profiles: ConfigFile<ConnectionProfile[]>
+  actions: ConfigFile<Action[]>
   [key: string]: ConfigFile<any>;
 }
 
@@ -109,6 +111,7 @@ export default class IBMi {
   private configFiles: ConnectionConfigFiles = {
     settings: new ConfigFile<RemoteConfigFile>(this, `settings`, {}),
     profiles: new ConfigFile<ConnectionProfile[]>(this, `profiles`, []),
+    actions: new ConfigFile<Action[]>(this, `actions`, [], content => validateActions(content, [`member`, `streamfile`, `object`])),
   };
 
   /**
@@ -189,7 +192,8 @@ export default class IBMi {
         await currentConfig.loadFromServer();
       } catch (e) { }
 
-      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+      const stateError = currentConfig.getStateError();
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + (stateError ? ` (${stateError})` : ``) + `\n`);
     }
   }
 

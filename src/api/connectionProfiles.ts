@@ -1,14 +1,13 @@
-import crypto from "crypto";
 import { l10n } from "vscode";
 import { instance } from "../instantiate";
 import IBMi from "./IBMi";
 import { AnyConnectionProfile, LocalConnectionProfile, ServerConnectionProfile, ConnectionConfig, ConnectionProfile, ProfileType } from "./configuration/config/types";
-import { ConfigFileUpdateStep } from "./configuration/configFile";
+import { ConfigConflictError, ConfigFileUpdateStep, hashObject } from "./configuration/configFile";
 
 /**
  * Thrown when a server profile was changed (or deleted, or created) by someone else since it was last loaded
  */
-export class ProfileConflictError extends Error {
+export class ProfileConflictError extends ConfigConflictError {
   constructor(readonly profileName: string) {
     super(l10n.t("Server profile {0} has been changed on the server since it was last loaded.", profileName));
   }
@@ -183,19 +182,7 @@ export function hashProfile(profile: ConnectionProfile) {
     statusBarColor: profile.statusBarColor || undefined
   };
 
-  return crypto.createHash(`sha256`).update(stableStringify(sharedContent)).digest(`hex`);
-}
-
-function stableStringify(value: any): string {
-  if (Array.isArray(value)) {
-    return `[${value.map(stableStringify).join(`,`)}]`;
-  }
-  else if (value && typeof value === `object`) {
-    return `{${Object.keys(value).filter(key => value[key] !== undefined).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(`,`)}}`;
-  }
-  else {
-    return JSON.stringify(value) ?? `null`;
-  }
+  return hashObject(sharedContent);
 }
 
 export async function getConnectionProfile(profileName: string, type: ProfileType) {

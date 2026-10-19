@@ -9,6 +9,30 @@ function hashContent(content: string | Buffer) {
   return crypto.createHash(`sha256`).update(content).digest(`hex`);
 }
 
+/**
+ * @returns a hash of `value` which only changes when its content does (key order and undefined values are ignored)
+ */
+export function hashObject(value: any) {
+  return hashContent(stableStringify(value));
+}
+
+function stableStringify(value: any): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(`,`)}]`;
+  }
+  else if (value && typeof value === `object`) {
+    return `{${Object.keys(value).filter(key => value[key] !== undefined).sort().map(key => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(`,`)}}`;
+  }
+  else {
+    return JSON.stringify(value) ?? `null`;
+  }
+}
+
+/**
+ * Thrown when an entry of a server file was changed (or deleted, or created) by someone else since the file was last loaded
+ */
+export class ConfigConflictError extends Error { }
+
 /** The steps of {@link ConfigFile.update}, in order */
 export type ConfigFileUpdateStep = `access` | `read` | `upload` | `verify` | `write` | `check`;
 
@@ -20,6 +44,8 @@ export class ConfigFile<T> {
   private serverFile: string;
   private serverData: T | undefined;
   private serverHash: string | undefined;
+  /** Why the file could not be used, when it is `failed_to_parse` or `invalid` */
+  private stateError: string | undefined;
 
   // Should throw an error if loaded config is invalid
   private validateData: ((loadedConfig: T) => T) | undefined;
@@ -40,6 +66,7 @@ export class ConfigFile<T> {
     this.state = `no_exist`;
     this.serverData = undefined;
     this.serverHash = undefined;
+    this.stateError = undefined;
 
     const content = this.connection.getContent();
     const isAvailable = await content.testStreamFile(this.serverFile, `r`);
@@ -55,8 +82,9 @@ export class ConfigFile<T> {
         if (this.validateData) {
           try {
             this.serverData = this.validateData(serverConfig);
-          } catch (e) {
+          } catch (e: any) {
             this.state = `invalid`;
+            this.stateError = String(e?.message || e);
             this.serverData = undefined;
           }
         } else {
@@ -64,6 +92,7 @@ export class ConfigFile<T> {
         }
       } catch (e: any) {
         this.state = `failed_to_parse`;
+        this.stateError = String(e?.message || e);
       }
     }
   }
@@ -89,7 +118,7 @@ export class ConfigFile<T> {
     await this.loadFromServer();
 
     if (this.state === `failed_to_parse` || this.state === `invalid`) {
-      throw new Error(`${this.serverFile} is not valid and won't be overwritten; fix or remove it first.`);
+      throw new Error(`${this.serverFile} is not valid and won't be overwritten; fix or remove it first.${this.stateError ? ` ${this.stateError}` : ``}`);
     }
 
     const changedOnServer = this.serverHash !== loadedHash;
@@ -183,10 +212,18 @@ export class ConfigFile<T> {
   reset() {
     this.serverData = undefined;
     this.serverHash = undefined;
+    this.stateError = undefined;
     this.state = `not_loaded`;
   }
 
   getState() {
     return this.state;
+  }
+
+  /**
+   * @returns why the file could not be used, when its state is `failed_to_parse` or `invalid`
+   */
+  getStateError() {
+    return this.stateError;
   }
 }

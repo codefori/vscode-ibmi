@@ -1,10 +1,11 @@
 import { parse } from "path";
 import { stringify } from "querystring";
 import vscode, { l10n } from "vscode";
-import { ActionTools } from "../../../api/actions";
+import { ActionTools, ServerAction } from "../../../api/actions";
 import { parseFSOptions } from "../../../filesystems/qsys/QSysFs";
 import { instance } from "../../../instantiate";
 import { Action, ActionType } from "../../../typings";
+import { saveToServer, ServerSaveUI } from "../../serverConfigFiles";
 import { VscodeTools } from "../../Tools";
 import { EnvironmentItem } from "./environmentItem";
 
@@ -12,6 +13,16 @@ type ActionContext = {
   canRun?: boolean
   matched?: boolean
 }
+
+/**
+ * Where an action is stored: a workspace's .vscode/actions.json, /etc/vscode/actions.json (`server`) or the connection settings (neither)
+ */
+export type ActionLocation = {
+  workspace?: vscode.WorkspaceFolder
+  server?: boolean
+};
+
+type SaveActionOptions = { newName?: string, oldType?: ActionType, delete?: boolean, force?: boolean };
 
 export namespace Actions {
   export function validateName(name: string, names: string[]) {
@@ -21,6 +32,38 @@ export namespace Actions {
     else if (VscodeTools.includesCaseInsensitive(names, name)) {
       return l10n.t("This name is already used by another action");
     }
+  }
+
+  export async function getActions(location: ActionLocation): Promise<Action[]> {
+    return location.server ? await ActionTools.getServerActions() : await ActionTools.getActions(location.workspace);
+  }
+
+  /**
+   * @returns a copy of `action` holding only what is stored in an actions file
+   */
+  export function toStoredAction(action: Action): Action {
+    const { loadedHash, ...stored } = action as ServerAction;
+    return structuredClone(stored);
+  }
+
+  /**
+   * Saves an action where it is stored; if it is a server action that was changed on the server by someone else in the meantime,
+   * the user decides whether to overwrite those changes.
+   * @returns `true` if the action was saved
+   * @throws any error other than a conflict with the changes made on the server
+   */
+  export async function save(action: Action, location: ActionLocation, options: SaveActionOptions = {}, ui: ServerSaveUI = {}): Promise<boolean> {
+    if (!location.server) {
+      await ActionTools.updateAction(action, location.workspace, options);
+      return true;
+    }
+
+    return saveToServer({
+      title: l10n.t("Saving server action {0}", action.name),
+      filePath: instance.getConnection()?.getConfigFile(`actions`).getPaths().server || ``,
+      conflictDetail: l10n.t("Reload the server actions to get the latest changes, or overwrite them with yours."),
+      write: (force, onProgress) => ActionTools.updateServerAction(action, { ...options, force: options.force || force, onProgress })
+    }, ui);
   }
 }
 
@@ -39,6 +82,7 @@ export class ActionsNode extends EnvironmentItem {
     if (!this.children.length) {
       await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasActionSearched`, false);
       const actions = (await ActionTools.getActions()).sort(sortActions);
+      const serverActions = (await ActionTools.getServerActions()).sort(sortActions);
       const localActions = new Map<vscode.WorkspaceFolder, Action[]>();
       for (const workspace of vscode.workspace.workspaceFolders || []) {
         const workspaceActions = (await ActionTools.getActions(workspace));
@@ -48,9 +92,9 @@ export class ActionsNode extends EnvironmentItem {
       }
 
       this.children = [
-        new ActionTypeNode(this, l10n.t("Member"), 'file-code', 'member', actions),
-        new ActionTypeNode(this, l10n.t("Object"), 'database', 'object', actions),
-        new ActionTypeNode(this, l10n.t("Streamfile"), 'file-text', 'streamfile', actions),
+        new ActionTypeNode(this, l10n.t("Member"), 'file-code', 'member', actions, undefined, serverActions),
+        new ActionTypeNode(this, l10n.t("Object"), 'database', 'object', actions, undefined, serverActions),
+        new ActionTypeNode(this, l10n.t("Streamfile"), 'file-text', 'streamfile', actions, undefined, serverActions),
         ...Array.from(localActions).map((([workspace, localActions]) => new ActionTypeNode(this, workspace.name, 'folder', 'file', localActions, workspace)))
       ];
 
@@ -124,10 +168,13 @@ export class ActionsNode extends EnvironmentItem {
 
 export class ActionTypeNode extends EnvironmentItem {
   readonly actionItems: ActionItem[];
-  constructor(parent: EnvironmentItem, label: string, icon: string, readonly type: ActionType, actions: Action[], readonly workspace?: vscode.WorkspaceFolder) {
+  constructor(parent: EnvironmentItem, label: string, icon: string, readonly type: ActionType, actions: Action[], readonly workspace?: vscode.WorkspaceFolder, serverActions: ServerAction[] = []) {
     super(label, { parent, icon, state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = `actionTypeNode_${type}`;
-    this.actionItems = actions.filter(action => action.type === type).map(action => new ActionItem(this, action, workspace));
+    this.actionItems = [
+      ...actions.filter(action => action.type === type).map(action => new ActionItem(this, action, workspace)),
+      ...serverActions.filter(action => action.type === type).map(action => new ActionItem(this, action, undefined, true))
+    ];
   }
 
   getChildren() {
@@ -143,7 +190,7 @@ export class ActionItem extends EnvironmentItem {
 
   private context: ActionContext = {}
 
-  constructor(parent: ActionTypeNode, readonly action: Action, readonly workspace?: vscode.WorkspaceFolder) {
+  constructor(parent: ActionTypeNode, readonly action: Action, readonly workspace?: vscode.WorkspaceFolder, readonly server = false) {
     super(action.name, { parent });
     this.setContext();
     this.command = {
@@ -151,6 +198,10 @@ export class ActionItem extends EnvironmentItem {
       command: "code-for-ibmi.environment.action.edit",
       arguments: [this]
     }
+  }
+
+  get location(): ActionLocation {
+    return { workspace: this.workspace, server: this.server };
   }
 
   setContext(context?: ActionContext) {
@@ -161,15 +212,15 @@ export class ActionItem extends EnvironmentItem {
       this.context.matched = context.matched;
     }
 
-    this.iconPath = new vscode.ThemeIcon("github-action", this.context.matched ? new vscode.ThemeColor(ActionItem.matchedColor) : undefined);
+    this.iconPath = new vscode.ThemeIcon(this.server ? "vm" : "github-action", this.context.matched ? new vscode.ThemeColor(ActionItem.matchedColor) : undefined);
     this.description = this.context.matched ? l10n.t("search match") : undefined;
-    this.tooltip = `${ this.action.command }\nExtensions: ${this.action.extensions?.join(`, `)}`;
+    this.tooltip = `${this.server ? `${l10n.t("Server action")}\n` : ``}${this.action.command}\nExtensions: ${this.action.extensions?.join(`, `)}`;
     this.resourceUri = vscode.Uri.from({
       scheme: ActionItem.contextValue,
       authority: this.action.name,
-      query: stringify({ matched: this.context.matched || undefined, canRun: this.context.canRun || undefined })
+      query: stringify({ matched: this.context.matched || undefined, canRun: this.context.canRun || undefined, server: this.server || undefined })
     });
-    this.contextValue = `${ActionItem.contextValue}${this.context.canRun ? "_canrun" : ""}${this.context.matched ? '_matched' : ''}`;
+    this.contextValue = `${ActionItem.contextValue}${this.context.canRun ? "_canrun" : ""}${this.context.matched ? '_matched' : ''}${this.server ? '_server' : ''}`;
   }
 }
 

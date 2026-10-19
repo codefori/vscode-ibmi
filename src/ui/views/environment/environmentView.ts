@@ -1,9 +1,7 @@
 
 import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem, ThemeIcon, window } from 'vscode';
-import { ActionTools } from '../../../api/actions';
-import { assignProfile, cloneProfile, getAllConnectionProfiles, getConnectionProfile, getDefaultProfile, isActiveProfile, ProfileConflictError, updateConnectionProfile } from '../../../api/connectionProfiles';
-import { ConfigFileUpdateStep } from '../../../api/configuration/configFile';
+import { assignProfile, cloneProfile, getAllConnectionProfiles, getConnectionProfile, getDefaultProfile, isActiveProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
@@ -11,7 +9,8 @@ import { editConnectionProfile, isProfileEdited } from '../../../editors/connect
 import { instance } from '../../../instantiate';
 import { Action, ActionEnvironment, AnyConnectionProfile, BrowserItem, ConnectionConfig, ConnectionProfile, CustomVariable, FocusOptions, ProfileState, ProfileType, ServerConnectionProfile } from '../../../typings';
 import { uriToActionTarget } from '../../actions';
-import { ActionItem, Actions, ActionsNode, ActionTypeNode } from './actions';
+import { saveToServer, ServerSaveUI } from '../../serverConfigFiles';
+import { ActionItem, ActionLocation, Actions, ActionsNode, ActionTypeNode } from './actions';
 import { ConnectionProfiles, ProfileItem, ProfilesNode } from './connectionProfiles';
 import { CustomVariableItem, CustomVariables, CustomVariablesNode } from './customVariables';
 import { EnvironmentItem } from './environmentItem';
@@ -118,6 +117,20 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     }
   };
 
+  const saveAction = async (action: Action, location: ActionLocation, options?: Parameters<typeof Actions.save>[2]) => {
+    try {
+      const saved = await Actions.save(action, location, options);
+      if (saved && location.server) {
+        // Connection and workspace actions are refreshed when their settings or file change; server actions must be refreshed here
+        environmentView.actionsNode.forceRefresh();
+      }
+      return saved;
+    } catch (error: any) {
+      vscode.window.showErrorMessage(l10n.t("Could not save action {0}: {1}", action.name, String(error.message || error)));
+      return false;
+    }
+  };
+
   const localActionsWatcher = vscode.workspace.createFileSystemWatcher(`**/.vscode/actions.json`);
   localActionsWatcher.onDidCreate(() => environmentView.actionsNode?.forceRefresh());
   localActionsWatcher.onDidChange(() => environmentView.actionsNode?.forceRefresh());
@@ -133,6 +146,9 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       updateUIContext(currentProfile);
     }
   });
+
+  // The server actions come from the system just connected to: the ones of a previous connection must not be shown
+  instance.subscribe(context, "connected", "Refresh actions on environment view", () => environmentView.actionsNode.forceRefresh());
 
   context.subscriptions.push(
     environmentTreeViewer,
@@ -166,9 +182,10 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
       await vscode.window.withProgress({ location: { viewId: `environmentView` } }, async (progress) => {
         const connection = instance.getConnection();
         if (connection) {
-          await connection.loadRemoteConfigs([`profiles`]);
+          await connection.loadRemoteConfigs([`profiles`, `actions`]);
         }
 
+        environmentView.actionsNode.forceRefresh();
         environmentView.refresh();
       });
     }),
@@ -220,34 +237,53 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.environment.action.create", async (node: ActionsNode | ActionTypeNode, from?: ActionItem) => {
       const typeNode = "type" in node ? node : (await vscode.window.showQuickPick<QuickPickItem & { typeNode: ActionTypeNode }>((await node.getChildren()).map(typeNode => ({ label: typeNode.label as string, description: typeNode.description ? typeNode.description as string : undefined, typeNode })), { title: l10n.t("Select an action type") }))?.typeNode;
       if (typeNode) {
-        const existingNames = (await ActionTools.getActions(typeNode.workspace)).filter(act => act.type === typeNode.type).map(act => act.name);
+        // Workspace actions are always stored in the workspace; the others can be kept for oneself or shared on the server
+        let location: ActionLocation = { workspace: typeNode.workspace };
+        if (!typeNode.workspace) {
+          const actionsFilePath = instance.getConnection()?.getConfigFile(`actions`).getPaths().server;
+          const store = await vscode.window.showQuickPick([
+            { label: l10n.t(`Local`), description: l10n.t(`Stored on this PC (for your use only)`), iconPath: new ThemeIcon(`github-action`), server: false },
+            { label: l10n.t(`Server`), description: l10n.t(`Stored on IBM i (to be used amongst your team)`), detail: actionsFilePath, iconPath: new ThemeIcon(`vm`), server: true }
+          ], {
+            title: from ? l10n.t("Copy action '{0}'", from.action.name) : l10n.t("New action"),
+            placeHolder: l10n.t(`Select where the action is stored`)
+          });
+          if (!store) {
+            return;
+          }
+          location = { server: store.server };
+        }
 
+        const existingNames = (await Actions.getActions(location)).filter(act => act.type === typeNode.type).map(act => act.name);
         const name = await vscode.window.showInputBox({
           title: from ? l10n.t("Copy action '{0}'", from.action.name) : l10n.t("New action"),
           placeHolder: l10n.t("Action name..."),
           value: from?.action.name,
           validateInput: name => Actions.validateName(name, existingNames)
         });
+        if (!name) {
+          return;
+        }
 
-        if (name) {
-          const action: Action = from ? { ...from.action, name } : {
-            name,
-            type: typeNode.type,
-            environment: "ile" as ActionEnvironment,
-            command: ''
-          };
-          await ActionTools.updateAction(action, typeNode.workspace);
-          vscode.commands.executeCommand("code-for-ibmi.environment.action.edit", { action, workspace: typeNode.workspace });
+        // The default actions have no environment: they run in ILE, which is stored explicitly in the copy
+        const action: Action = from ? { ...Actions.toStoredAction(from.action), name, environment: from.action.environment || `ile` } : {
+          name,
+          type: typeNode.type,
+          environment: "ile" as ActionEnvironment,
+          command: ''
+        };
+        if (await saveAction(action, location)) {
+          vscode.commands.executeCommand("code-for-ibmi.environment.action.edit", { action, location });
         }
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.rename", async (node: ActionItem) => {
       const action = node.action;
-      if (isActionEdited(node.action)) {
+      if (isActionEdited(node.action, node.location)) {
         vscode.window.showWarningMessage(l10n.t("Action '{0}' is being edited. Please close its editor first.", action.name));
       }
       else {
-        const existingNames = (await ActionTools.getActions(node.workspace)).filter(act => act.name !== action.name && act.type === action.type).map(act => act.name);
+        const existingNames = (await Actions.getActions(node.location)).filter(act => act.name !== action.name && act.type === action.type).map(act => act.name);
 
         const newName = await vscode.window.showInputBox({
           title: l10n.t("Rename action"),
@@ -257,22 +293,23 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         });
 
         if (newName) {
-          await ActionTools.updateAction(action, node.workspace, { newName });
+          await saveAction(action, node.location, { newName });
         }
       }
     }),
-    vscode.commands.registerCommand("code-for-ibmi.environment.action.edit", (node: ActionItem) => {
-      editAction(node.action, undefined, node.workspace);
+    vscode.commands.registerCommand("code-for-ibmi.environment.action.edit", (node: ActionItem | { action: Action, location: ActionLocation }) => {
+      const location = node.location;
+      editAction(node.action, async () => { if (location.server) { environmentView.actionsNode.forceRefresh(); } }, location);
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.copy", async (node: ActionItem) => {
       vscode.commands.executeCommand('code-for-ibmi.environment.action.create', node.parent, node);
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.delete", async (node: ActionItem) => {
-      if (isActionEdited(node.action)) {
+      if (isActionEdited(node.action, node.location)) {
         vscode.window.showWarningMessage(l10n.t("Action '{0}' is being edited. Please close its editor first.", node.action.name));
       }
-      else if (await vscode.window.showInformationMessage(l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
-        await ActionTools.updateAction(node.action, node.workspace, { delete: true });
+      else if (await vscode.window.showInformationMessage(node.server ? l10n.t("Do you really want to delete server action '{0}' ?", node.action.name) : l10n.t("Do you really want to delete action '{0}' ?", node.action.name), { modal: true }, l10n.t("Yes"))) {
+        await saveAction(node.action, node.location, { delete: true });
       }
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.runOnEditor", (node: ActionItem) => {
@@ -680,61 +717,23 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
 type SaveProfileOptions = Omit<NonNullable<Parameters<typeof updateConnectionProfile>[1]>, `onProgress`>;
 
-type SaveProfileUI = {
-  /** What to do if the user rather gets the latest changes; refreshes the server profiles by default */
-  onReload?: () => Promise<void>
-  /** Where to report the progress; a notification is shown for server profiles if not set */
-  progress?: vscode.Progress<{ message?: string }>
-};
-
-function describeSaveStep(step: ConfigFileUpdateStep, filePath: string) {
-  switch (step) {
-    case `access`: return l10n.t("Checking access to {0}...", filePath);
-    case `read`: return l10n.t("Reading the latest server profiles...");
-    case `upload`: return l10n.t("Uploading the new content...");
-    case `verify`: return l10n.t("Verifying the uploaded content...");
-    case `write`: return l10n.t("Writing {0}...", filePath);
-    case `check`: return l10n.t("Checking {0}...", filePath);
-  }
-}
-
 /**
  * Saves a profile; if it was changed on the server by someone else in the meantime, the user decides whether to overwrite those changes.
  * @returns `true` if the profile was saved
- * @throws any error other than a {@link ProfileConflictError}
+ * @throws any error other than a conflict with the changes made on the server
  */
-export async function saveConnectionProfile(profile: AnyConnectionProfile, options: SaveProfileOptions = {}, ui: SaveProfileUI = {}): Promise<boolean> {
-  const progress = ui.progress;
-  if (!progress && profile.type === `server`) {
-    // Saving a server profile takes several round trips to the server: show what is going on
-    return vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: l10n.t("Saving server profile {0}", profile.name) }, progress => saveConnectionProfile(profile, options, { ...ui, progress }));
-  }
-
-  try {
-    const filePath = instance.getConnection()?.getConfigFile(`profiles`).getPaths().server || ``;
-    await updateConnectionProfile(profile, { ...options, onProgress: step => progress?.report({ message: describeSaveStep(step, filePath) }) });
+export async function saveConnectionProfile(profile: AnyConnectionProfile, options: SaveProfileOptions = {}, ui: ServerSaveUI = {}): Promise<boolean> {
+  if (profile.type !== `server`) {
+    await updateConnectionProfile(profile, options);
     return true;
-  } catch (error: any) {
-    if (!(error instanceof ProfileConflictError)) {
-      throw error;
-    }
-
-    const overwrite = l10n.t("Overwrite");
-    const reload = l10n.t("Reload");
-    const choice = await window.showWarningMessage(error.message, { modal: true, detail: l10n.t("Reload the server profiles to get the latest changes, or overwrite them with yours.") }, overwrite, reload);
-    if (choice === overwrite) {
-      return saveConnectionProfile(profile, { ...options, force: true }, ui);
-    } else if (choice === reload) {
-      progress?.report({ message: l10n.t("Reloading the server profiles...") });
-      if (ui.onReload) {
-        await ui.onReload();
-      } else {
-        await vscode.commands.executeCommand("code-for-ibmi.environment.refresh");
-      }
-    }
-
-    return false;
   }
+
+  return saveToServer({
+    title: l10n.t("Saving server profile {0}", profile.name),
+    filePath: instance.getConnection()?.getConfigFile(`profiles`).getPaths().server || ``,
+    conflictDetail: l10n.t("Reload the server profiles to get the latest changes, or overwrite them with yours."),
+    write: (force, onProgress) => updateConnectionProfile(profile, { ...options, force: options.force || force, onProgress })
+  }, ui);
 }
 
 export async function verifyLatestServerProfileState(profile: AnyConnectionProfile, options: { ensureInSync: boolean } = { ensureInSync: false }): Promise<boolean> {

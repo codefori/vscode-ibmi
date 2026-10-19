@@ -32,7 +32,7 @@
           "type": "string",
           "title": "File system type",
           "description": "File system which supports this Action.",
-          "default": "ile",
+          "default": "member",
           "enum": [
             "file",
             "member",

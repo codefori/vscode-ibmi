@@ -680,10 +680,12 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
   }
 }
 
-export type AvailableAction = { label: string; action: Action; }
+export type AvailableAction = { label: string; description?: string; action: Action; }
 
 export async function getAllAvailableActions(targets: ActionTarget[], scheme: string) {
-  const allActions = [...await ActionTools.getActions()];
+  // Server actions are shared by everyone using the system: they are shown along with the connection ones
+  const serverActions = await ActionTools.getServerActions();
+  const allActions = [...await ActionTools.getActions(), ...serverActions];
 
   // Then, if we're being called from a local file
   // we fetch the Actions defined from the workspace.
@@ -726,6 +728,7 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
 
   const availableActions: AvailableAction[] = contextActions.map(action => ({
     label: action.name,
+    description: serverActions.includes(action) ? l10n.t("Server") : undefined,
     action
   }));
 
