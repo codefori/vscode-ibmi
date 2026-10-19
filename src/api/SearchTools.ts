@@ -213,9 +213,7 @@ export namespace SearchTools {
   }
 
   function sanitizeSearchTerm(searchTerm: string): string {
-    return searchTerm
-      .replaceAll('\\', '\\\\"')
-      .replaceAll('"', '\\"');
+    return searchTerm.replaceAll(/\\|\$|"/g, c => `\\${c}`);
   }
 
   function nthIndex(aString: string, pattern: string, n: number) {
