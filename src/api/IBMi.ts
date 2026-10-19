@@ -989,8 +989,8 @@ export default class IBMi {
 
           const result = await this.sendQsh({
             command: [
-              `liblist -d ` + IBMi.escapeForShell(this.defaultUserLibraries.join(` `)),
-              ...this.config.libraryList.map(lib => `liblist -a ` + IBMi.escapeForShell(lib))
+              `liblist -d ` + Tools.escapeForShell(this.defaultUserLibraries.join(` `)),
+              ...this.config.libraryList.map(lib => `liblist -a ` + Tools.escapeForShell(lib))
             ].join(`; `)
           });
 
@@ -1189,8 +1189,9 @@ export default class IBMi {
     return CompileTools.runCommand(this, data);
   }
 
+  /** @deprecated Use `Tools.escapeForShell` instead */
   static escapeForShell(command: string) {
-    return command.replace(/\$/g, `\\$`)
+    return Tools.escapeForShell(command);
   }
 
   async sendQsh(options: CommandData) {
@@ -1212,10 +1213,10 @@ export default class IBMi {
     let commands: string[] = [];
     if (options.env) {
       if (this.usingBash()) {
-        commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value ? IBMi.escapeForShell(value) : ``}"`));
+        commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value ? Tools.escapeForShell(value) : ``}"`));
       } else {
         // bourne shell doesn't support the same export syntax as bash
-        commands.push(...Object.entries(options.env).map(([key, value]) => `${key}="${value ? IBMi.escapeForShell(value) : ``}" export ${key}`));
+        commands.push(...Object.entries(options.env).map(([key, value]) => `${key}="${value ? Tools.escapeForShell(value) : ``}" export ${key}`));
       }
     }
 

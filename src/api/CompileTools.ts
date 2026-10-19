@@ -187,9 +187,9 @@ export namespace CompileTools {
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
-      `liblist -d ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(...connection.defaultUserLibraries).join(` `))}`,
-      `liblist -c ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(config.currentLibrary || "*CRTDFT")[0])}`,
-      `liblist -a ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(...buildLibraryList(config)).join(` `))}`
+      `liblist -d ${Tools.escapeForShell(Tools.sanitizeObjNamesForPase(...connection.defaultUserLibraries).join(` `))}`,
+      `liblist -c ${Tools.escapeForShell(Tools.sanitizeObjNamesForPase(config.currentLibrary || "*CRTDFT")[0])}`,
+      `liblist -a ${Tools.escapeForShell(Tools.sanitizeObjNamesForPase(...buildLibraryList(config)).join(` `))}`
     ];
   }
 }
