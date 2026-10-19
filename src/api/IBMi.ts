@@ -151,16 +151,20 @@ export default class IBMi {
   ccsidCache: Map<string, CacheItem<number>> = new Map();
 
   public appendOutput: (text: string) => void = (text) => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hour = String(now.getHours()).padStart(2, '0');
-    const minute = String(now.getMinutes()).padStart(2, '0');
-    const second = String(now.getSeconds()).padStart(2, '0');
-    const millisecond = String(now.getMilliseconds()).padStart(3, '0');
-    const timestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
-    process.stdout.write(`[${timestamp}] ${text}`);
+    if (text.trim() === ``) {
+      process.stdout.write(text);
+    } else {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hour = String(now.getHours()).padStart(2, '0');
+      const minute = String(now.getMinutes()).padStart(2, '0');
+      const second = String(now.getSeconds()).padStart(2, '0');
+      const millisecond = String(now.getMilliseconds()).padStart(3, '0');
+      const timestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
+      process.stdout.write(`[${timestamp}] ${text}`);
+    }
   };
 
   /**
@@ -186,7 +190,7 @@ export default class IBMi {
         await currentConfig.loadFromServer();
       } catch (e) { }
 
-      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n\n`);
     }
   }
 
@@ -597,7 +601,7 @@ export default class IBMi {
         ]);
       }
 
-      this.appendOutput(`\nIBM i components:\n`);
+      this.appendOutput(`IBM i components:\n`);
       for (const [feature, state] of Object.entries(this.remoteFeatures)) {
         this.appendOutput(`\t${feature}: ${state}\n`);
       }
@@ -643,7 +647,7 @@ export default class IBMi {
       }
 
       // Check Mapepire state after startup
-      this.appendOutput(`Mapepire state after startup: ${mapepireState?.status || 'not found'}\n`);
+      this.appendOutput(`Mapepire state after startup: ${mapepireState?.status || 'not found'}\n\n`);
 
       callbacks.progress({ message: `Starting Mapepire.` });
       const mapepire = await this.getComponent<Mapepire>(Mapepire.ID);
@@ -742,9 +746,7 @@ export default class IBMi {
           callbacks.uiErrorHandler(this, `ccsid_warning`, message);
         }
 
-        this.appendOutput(`\nCCSID information:\n`);
-        this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
-        this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
+        this.appendOutput(`\nCCSID information:\n\tQCCSID: ${this.qccsid}\n\tUser Job CCSID: ${this.userJobCcsid}\n\n`);
 
         // We only do this check if we're on 7.3 or below.
         if (this.systemVersion && this.systemVersion <= 7.3) {
@@ -770,12 +772,13 @@ export default class IBMi {
           message: `Fetching local encoding values.`
         });
 
-        const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-          + `  values ( cast( x'7B' as varchar(1) )`
-          + `         , cast( x'7C' as varchar(1) )`
-          + `         , cast( x'5B' as varchar(1) ) )`
-          + `)`
-          + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+        const [variants] = await this.runSQL(/* sql */`
+          WITH VARIANTS ( HASH, AT, DOLLARSIGN ) AS (
+            VALUES ( CAST( X'7B' AS VARCHAR(1) )
+                   , CAST( X'7C' AS VARCHAR(1) )
+                   , CAST( X'5B' AS VARCHAR(1) ) )
+          )
+          SELECT HASH CONCAT AT CONCAT DOLLARSIGN AS LOCAL FROM VARIANTS`);
 
         if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
           this.variantChars.local = variants.LOCAL;
@@ -793,7 +796,9 @@ export default class IBMi {
       this.defaultCurrentLibrary = undefined;
       this.systemLibraries = [];
 
-      const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL())`);
+      const liblRows = await this.runSQL(/* sql */`
+        SELECT TYPE, SYSTEM_SCHEMA_NAME
+          FROM TABLE(QSYS2.QSQLIBL())`);
       for (const row of liblRows) {
         switch (row.TYPE) {
           case `USER`:
@@ -860,7 +865,7 @@ export default class IBMi {
       }
 
       const componentStates = this.componentManager.getComponentStates();
-      this.appendOutput(`\nCode for IBM i components:\n`);
+      this.appendOutput(`Code for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state.status}\n`);
       }
@@ -1481,7 +1486,7 @@ export default class IBMi {
           const log = `Running CL through SQL: ${command}\n\t`;
           try {
             const result = await this.sqlJob.execute<{ MESSAGE_ID: string, MESSAGE_TEXT: string }>(command, { isClCommand: true });
-            this.appendOutput(`${log}-> OK${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}`);
+            this.appendOutput(`${log}-> OK (${result.execution_time})${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}`);
           }
           catch (e: any) {
             // If the CL command errors in the job, then let's run another
@@ -1512,10 +1517,10 @@ export default class IBMi {
             const rs = await query.execute(options.rows ?? 99999);
             if (rs.has_results) {
               lastResultSet.push(...rs.data);
-              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'}`);
+              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'} (${rs.execution_time} ms)`);
             }
             else {
-              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted`);
+              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted (${rs.execution_time} ms)`);
             }
           } catch (e: any) {
             error = new Tools.SqlError(e.message);
