@@ -93,7 +93,7 @@ describe('Content Tests', { concurrent: true }, () => {
   it.each(['$', '#', '#$'])('memberResolve with %s', async (prefix) => {
     const content = connection.getContent();
     const tempLib = connection.getConfig().tempLibrary;
-    const tempSPF = `${prefix}ABCD`.concat(connection.variantChars.local);
+    const tempSPF = connection.sysNameInLocal(`${prefix}ABCD`).concat(connection.variantChars.local);
     const tempMbr = tempSPF;
 
     try {
@@ -191,7 +191,7 @@ describe('Content Tests', { concurrent: true }, () => {
   it.each(['$', '#', '#$'])('objectResolve with %s', async (prefix) => {
     const content = connection.getContent();
     const tempLib = connection.getConfig().tempLibrary;
-    const tempObj = `${prefix}ABCD`.concat(connection.variantChars.local);
+    const tempObj = connection.sysNameInLocal(`${prefix}ABCD`).concat(connection.variantChars.local);
 
     try {
       const result = await connection.runCommand({

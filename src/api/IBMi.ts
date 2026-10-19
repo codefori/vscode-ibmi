@@ -1185,6 +1185,11 @@ export default class IBMi {
     return CompileTools.runCommand(this, data);
   }
 
+  /** @deprecated Use `Tools.escapeForShell` instead */
+  static escapeForShell(command: string) {
+    return Tools.escapeForShell(command);
+  }
+
   async sendQsh(options: CommandData) {
     options.stdin = options.command;
 
