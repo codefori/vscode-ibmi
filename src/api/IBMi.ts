@@ -283,11 +283,11 @@ export default class IBMi {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
     const callbacks: ConnectionCallbacks = {
       ...options.callbacks,
-      progress: (detail) => {
+      progress: (task) => {
         options.callbacks.progress(
           {
             increment: 100 / IBMi.CONNECT_PROGRESS_STEPS,
-            ...detail
+            ...task
           })
       }
     };
