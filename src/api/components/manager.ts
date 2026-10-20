@@ -168,6 +168,7 @@ export class ComponentManager {
       return;
     }
 
+    const startTime = Date.now();
     await component.reset?.();
     const newComponent = new IBMiComponentRuntime(this.connection, component);
 
@@ -185,6 +186,7 @@ export class ComponentManager {
       throw new Error(`Component ${componentId.name} version ${componentId.version} local signature doesn't match its remote signature. It may have been tampered with and may not be safe to use. Clear your temporary folder and library and reconnect.`, { cause: "component_signature_mismatch" as ConnectionErrorCode });
     }
 
+    newComponent.setStartUpTime(Date.now() - startTime);
     this.registered.push(newComponent);
     return newComponent.getState();
   }
@@ -204,6 +206,10 @@ export class ComponentManager {
       }
       return componentEngine.component as T;
     }
+  }
+
+  public getStartUpTime(name: string): number | undefined {
+    return this.registered.find(c => c.component.getIdentification().name === name)?.getStartUpTime();
   }
 
   private mustCheck(id:string){

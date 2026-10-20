@@ -327,6 +327,7 @@ export class SettingsUI {
             { label: `Minimum` },
             { label: `Installed` },
             { label: `Available` },
+            { label: `Startup Time` },
           ];
           extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
             const extension = vscode.extensions.getExtension(extensionId);
@@ -337,6 +338,7 @@ export class SettingsUI {
               const rawStatus = state?.status ?? `Unknown`;
               const { emoji, readableStatus } = componentStatus[rawStatus] ?? { emoji: ``, readableStatus: rawStatus };
               const minVersion = String(id.version);
+              const startUpTime = connection.getComponentManager().getStartUpTime(id.name);
               return {
                 cells: [
                   emoji ? `${emoji} ${id.name}` : id.name,
@@ -345,6 +347,7 @@ export class SettingsUI {
                   minVersion,
                   state?.installedVersion !== undefined ? String(state.installedVersion) : ([`Installed`, `NeedsUpdate`, `UpdateAvailable`].includes(rawStatus) ? minVersion : `-`),
                   state?.availableVersion !== undefined ? String(state.availableVersion) : `-`,
+                  startUpTime !== undefined ? `${startUpTime} ms` : `-`,
                 ]
               };
             });
