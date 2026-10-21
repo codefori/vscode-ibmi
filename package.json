@@ -602,7 +602,7 @@
 				},
 				"code-for-ibmi.safeDeleteMode": {
 					"type": "boolean",
-					"default": false,
+					"default": true,
 					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
 				},
 				"code-for-ibmi.terminals.5250.openInEditorArea": {
@@ -3325,7 +3325,7 @@
 				},
 				{
 					"command": "code-for-ibmi.deleteIFS",
-					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
+					"when": "view == ifsBrowser && !(viewItem =~ /^shortcut.*$/) && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@5"
 				},
 				{
