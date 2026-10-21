@@ -1242,23 +1242,28 @@ export default class IBMi {
       this.appendOutput(`${options.stdin}\n`);
     }
 
+    const start = performance.now();
     const result = await this.client!.execCommand(command, {
       cwd: directory,
       stdin: options.stdin,
       onStdout: options.onStdout,
       onStderr: options.onStderr,
     });
+    const duration = Math.round(performance.now() - start);
 
     // Some simplification
     if (result.code === null) result.code = 0;
     if (result.signal === `SIGABRT`) result.code = 127;
 
-    this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
-
-    return {
+    const commandResult: CommandResult = {
       ...result,
       code: result.code || 0,
+      duration
     };
+
+    this.appendOutput(JSON.stringify({ ...commandResult, duration: `${commandResult.duration} ms` }, null, 4) + `\n\n`);
+
+    return commandResult;
   }
 
   async disconnect() {

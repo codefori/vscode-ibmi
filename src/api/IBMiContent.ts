@@ -206,7 +206,7 @@ export default class IBMiContent {
       while (true) {
         let copyResult: CommandResult;
         if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-          copyResult = { code: 0, stdout: '', stderr: '' };
+          copyResult = { code: 0, duration: 0, stdout: '', stderr: '' };
           if (requiresConversion) {
             await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => { }); // ignore error
             await this.ibmi.runSQL([
@@ -232,7 +232,7 @@ export default class IBMiContent {
         }
         else {
           if (requiresConversion) {
-            copyResult = { code: 0, stdout: '', stderr: '' };
+            copyResult = { code: 0, duration: 0, stdout: '', stderr: '' };
 
             await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => { }); // ignore error
             try {
@@ -319,7 +319,7 @@ export default class IBMiContent {
 
         let copyResult: CommandResult;
         if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-          copyResult = { code: 0, stdout: '', stderr: '' };
+          copyResult = { code: 0, duration: 0, stdout: '', stderr: '' };
 
           if (requiresConversion) {
             try {
@@ -350,7 +350,7 @@ export default class IBMiContent {
         }
         else {
           if (requiresConversion) {
-            copyResult = { code: 0, stdout: '', stderr: '' };
+            copyResult = { code: 0, duration: 0, stdout: '', stderr: '' };
             try {
               await this.ibmi.runSQL([
                 `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
@@ -1110,7 +1110,7 @@ export default class IBMiContent {
         return result;
       }
     }
-    return { code: 0, stdout: "", stderr: "" };
+    return { code: 0, duration: 0, stdout: "", stderr: "" };
   }
 
   /**
