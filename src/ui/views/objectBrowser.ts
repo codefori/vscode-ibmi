@@ -1780,7 +1780,7 @@ async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
     }
 
   } catch (e: any) {
-    vscode.window.showErrorMessage(vscode.l10n.t(`Error searching source members: {0}`, e));
+    vscode.window.showErrorMessage(vscode.l10n.t(`Error searching source members: {0}`, String(e)));
   }
 }
 

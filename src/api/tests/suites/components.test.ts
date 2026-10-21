@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from '../../IBMi';
 import { CustomCLI } from '../components/customCli';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
+import { disposeConnection, envVars, newConnection } from '../setup/connection';
 
 describe('Component Tests', () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT)
+  }, envVars.VITE_CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     await disposeConnection(connection);

@@ -287,4 +287,10 @@ describe('Tools.parseFilterDate tests', { concurrent: true }, () => {
   it('should reject an SQL injection attempt', () => {
     expect(Tools.parseFilterDate(`2024-01-01') OR 1=1 --`)).toBeUndefined();
   });
+
+  it('should escape $ for shell', () => {
+    expect(Tools.escapeForShell('$ABCD')).toBe('\\$ABCD');
+    expect(Tools.escapeForShell('#$ABC$D')).toBe('#\\$ABC\\$D');
+    expect(Tools.escapeForShell('ABCD')).toBe('ABCD');
+  })
 });

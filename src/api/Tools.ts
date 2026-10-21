@@ -304,6 +304,10 @@ export namespace Tools {
     return !value || /\*CRTDFT/i.test(value) ? "*CURLIB" : value;
   }
 
+  export function escapeForShell(command: string) {
+    return command.replace(/\$/g, `\\$`)
+  }
+
   export function getCurrentTimestamp() {
     const now = new Date();
     const year = now.getFullYear();
