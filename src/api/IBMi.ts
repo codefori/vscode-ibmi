@@ -151,20 +151,13 @@ export default class IBMi {
 
   ccsidCache: Map<string, CacheItem<number>> = new Map();
 
-  public appendOutput: (text: string) => void = (text) => {
-    if (text.trim() === ``) {
-      process.stdout.write(text);
+  public appendOutput: (text: string) => void = (message) => {
+    if (message.trim() === ``) {
+      process.stdout.write(message);
     } else {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hour = String(now.getHours()).padStart(2, '0');
-      const minute = String(now.getMinutes()).padStart(2, '0');
-      const second = String(now.getSeconds()).padStart(2, '0');
-      const millisecond = String(now.getMilliseconds()).padStart(3, '0');
-      const timestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
-      process.stdout.write(`[${timestamp}] ${text}`);
+      const timestamp = Tools.getCurrentTimestamp();
+      const timestampedMessage = `[${timestamp}] ${message}`;
+      process.stdout.write(timestampedMessage);
     }
   };
 
@@ -334,7 +327,7 @@ export default class IBMi {
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
         passphrase: connectionObject.privateKeyPath ? connectionObject.passphrase : undefined,
-        debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
+        debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`[SSH debug] ${message}`) : undefined
       };
 
       if (connectionObject.useSshAgent) {
@@ -758,7 +751,7 @@ export default class IBMi {
           callbacks.uiErrorHandler(this, `ccsid_warning`, message);
         }
 
-        this.appendOutput(`\nCCSID information:\n\tQCCSID: ${this.qccsid}\n\tUser Job CCSID: ${this.userJobCcsid}\n\n`);
+        this.appendOutput(`CCSID information:\n\tQCCSID: ${this.qccsid}\n\tUser Job CCSID: ${this.userJobCcsid}\n\n`);
 
         // We only do this check if we're on 7.3 or below.
         if (this.systemVersion && this.systemVersion <= 7.3) {
@@ -1500,7 +1493,7 @@ export default class IBMi {
           const log = `Running CL through SQL: ${command}\n\t`;
           try {
             const result = await this.sqlJob.execute<{ MESSAGE_ID: string, MESSAGE_TEXT: string }>(command, { isClCommand: true });
-            this.appendOutput(`${log}-> OK (${result.execution_time})${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}`);
+            this.appendOutput(`${log}-> OK (${result.execution_time} ms)${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}\n\n`);
           }
           catch (e: any) {
             // If the CL command errors in the job, then let's run another
@@ -1513,7 +1506,7 @@ export default class IBMi {
             for (const row of jobLog) {
               logs += `\t\t${row.MESSAGE_ID}: ${row.MESSAGE_TEXT}\n`
             }
-            this.appendOutput(logs);
+            this.appendOutput(`${logs}\n\n`);
 
             error.cause = {
               command,
@@ -1531,10 +1524,10 @@ export default class IBMi {
             const rs = await query.execute(options.rows ?? 99999);
             if (rs.has_results) {
               lastResultSet.push(...rs.data);
-              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'} (${rs.execution_time} ms)`);
+              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'} (${rs.execution_time} ms)\n\n`);
             }
             else {
-              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted (${rs.execution_time} ms)`);
+              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted (${rs.execution_time} ms)\n\n`);
             }
           } catch (e: any) {
             error = new Tools.SqlError(e.message);
@@ -1552,7 +1545,7 @@ export default class IBMi {
               }
             }
 
-            this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}`);
+            this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}\n\n`);
           } finally {
             query?.close();
           }
@@ -1561,7 +1554,6 @@ export default class IBMi {
             throw error;
           }
         }
-        this.appendOutput("\n\n");
       }
 
       return lastResultSet;

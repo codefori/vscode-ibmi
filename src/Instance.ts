@@ -10,6 +10,7 @@ import { getEnvConfig } from "./filesystems/local/env";
 import { ConnectionConfig, ConnectionData, IBMiEvent, ILELibrarySettings } from "./typings";
 import { VscodeTools } from "./ui/Tools";
 import { handleConnectionResults, inputBoxCallback, messageCallback } from "./ui/connection";
+import { Tools } from "./api/Tools";
 
 
 type IBMiEventSubscription = {
@@ -71,6 +72,7 @@ export default class Instance {
     connection.appendOutput = (message) => {
       if (message.trim() === ``) {
         this.output.channel.append(message);
+        this.output.content += message;
       } else {
         const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
         const persistOutput = config.get<boolean>(`persistOutputOnConnect`);
@@ -79,17 +81,8 @@ export default class Instance {
           this.resetOutput();
         }
 
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const hour = String(now.getHours()).padStart(2, '0');
-        const minute = String(now.getMinutes()).padStart(2, '0');
-        const second = String(now.getSeconds()).padStart(2, '0');
-        const millisecond = String(now.getMilliseconds()).padStart(3, '0');
-        const timestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
+        const timestamp = Tools.getCurrentTimestamp();
         const timestampedMessage = `[${timestamp}] ${message}`;
-
         this.output.channel.append(timestampedMessage);
         this.output.content += timestampedMessage;
         this.output.writeCount++;
