@@ -602,7 +602,7 @@
 				},
 				"code-for-ibmi.safeDeleteMode": {
 					"type": "boolean",
-					"default": true,
+					"default": false,
 					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
 				},
 				"code-for-ibmi.terminals.5250.openInEditorArea": {
