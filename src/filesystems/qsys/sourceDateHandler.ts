@@ -57,6 +57,8 @@ export class SourceDateHandler {
 
   private highlightSince?: number;
   private highlightBefore?: number;
+  /** The date search as last entered, proposed again when starting a new search */
+  private dateSearch?: string;
   private lineEditedBefore?: number;
   private sequenceNumbersShowing: boolean = false;
   private readonly sourceDateSearchBarItem: vscode.StatusBarItem;
@@ -107,6 +109,7 @@ export class SourceDateHandler {
         clearTimeout(this.timeout);
         this.highlightSince = undefined;
         this.highlightBefore = undefined;
+        this.dateSearch = undefined;
         this.lineEditedBefore = undefined;
         this.baseDates.clear();
         this.baseSource.clear();
@@ -526,6 +529,7 @@ export class SourceDateHandler {
     this.sourceDateSearchBarItem.text = SD_BASE;
     this.highlightSince = undefined;
     this.highlightBefore = undefined;
+    this.dateSearch = undefined;
     this.updateDateSearchContext();
 
     const editor = vscode.window.activeTextEditor;
@@ -536,7 +540,7 @@ export class SourceDateHandler {
 
   private async newDateSearch() {
     const value = await vscode.window.showInputBox({
-      value: currentStamp(),
+      value: this.dateSearch ?? currentStamp(),
       prompt: `Show everything on a specific date (=YYMMDD), after a specific date (YYMMDD), or within a date range (FROM-TO, both YYMMDD)`,
       title: `Source Date search`,
       ignoreFocusOut: true,
@@ -571,10 +575,12 @@ export class SourceDateHandler {
       this.highlightSince = Number(dates[0]);
       // An exact search is a range where both ends are the same date
       this.highlightBefore = exact ? Number(dates[0]) : (dates[1] !== undefined ? Number(dates[1]) : undefined);
+      this.dateSearch = value;
     } else {
       this.sourceDateSearchBarItem.text = SD_BASE;
       this.highlightSince = undefined;
       this.highlightBefore = undefined;
+      this.dateSearch = undefined;
     }
 
     this.updateDateSearchContext();
