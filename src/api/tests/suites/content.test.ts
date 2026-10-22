@@ -715,12 +715,25 @@ describe('Content Tests', { concurrent: true }, () => {
   it('Test @clCommand with error', async () => {
     try {
       const [resultA] = await connection.runSQL(`@QSYS/CRTBNDRPG BOOP('hello world');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
-      expect(resultA).toBeDefined(); // Never reaches here
+      expect.fail('Should have thrown an error');
     } catch (e: any) {
       expect(e).toBeInstanceOf(Tools.SqlError);
       expect(e.cause).toBeDefined();
       expect(e.cause.command).toBe(`QSYS/CRTBNDRPG BOOP('hello world')`);
-      expect(e.cause.jobLog).toBeDefined();
+      expect(e.cause.jobLog.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('Test @clCommand with error message in the job log', async () => {
+    try {
+      await connection.runSQL(`@QSYS/CHKOBJ OBJ(QTEMP/NOTEXISTS) OBJTYPE(*FILE)`);
+      expect.fail('Should have thrown an error');
+    } catch (e: any) {
+      expect(e).toBeInstanceOf(Tools.SqlError);
+      expect(e.message).toContain(`CPF9801`);
+      expect(e.cause.command).toBe(`QSYS/CHKOBJ OBJ(QTEMP/NOTEXISTS) OBJTYPE(*FILE)`);
+      // Other tests run at the same time, so their messages can be the last ones in the job log
+      expect(e.cause.jobLog.length).toBeGreaterThan(0);
     }
   });
 
