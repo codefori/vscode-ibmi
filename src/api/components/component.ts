@@ -1,9 +1,14 @@
 import IBMi from "../IBMi";
 
-type ComponentStatus = `NotChecked` | `NotInstalled` | `NeedsUpdate` | `Installed` | `Error`;
+type ComponentStatus = `NotChecked` | `NotInstalled` | `NeedsUpdate` | `UpdateAvailable` | `Installed` | `Error`;
 /** @deprecated use {@link SecureComponentState} instead */
 export type ComponentState = ComponentStatus;
-export type SecureComponentState = { status: ComponentStatus, remoteSignature?: string };
+export type SecureComponentState = {
+  status: ComponentStatus,
+  installedVersion?: number | string,
+  availableVersion?: number | string,
+  remoteSignature?: string
+};
 
 export type ComponentIdentification = {
   name: string

@@ -181,12 +181,7 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
     this.contextValue = `filter${this.library ? "_library" : ''}${this.isProtected() ? `_readonly` : ``}`;
     const details = filterDetails();
     if (details !== `tooltip`) {
-      const memberTextSuffix = filter.memberText && !/^\*(?:ALL)?$/.test(filter.memberText.trim()) ? ` [${filter.memberText}]` : ``;
-      const dateSuffix = [
-        filter.memberCreated ? `created ≥ ${filter.memberCreated}` : ``,
-        filter.memberChanged ? `changed ≥ ${filter.memberChanged}` : ``
-      ].filter(Boolean).join(`, `);
-      this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})${memberTextSuffix}${dateSuffix ? ` {${dateSuffix}}` : ``}`;
+      this.description = VscodeTools.filterToDescription(filter);
     }
     this.tooltip = details !== `description` ? VscodeTools.filterToToolTip(filter) : ``;
 

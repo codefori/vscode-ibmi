@@ -861,7 +861,9 @@ export default class IBMi {
       // Check the remaining components
       callbacks.progress({ message: `Checking Code for i components statuses.` });
       try {
-        await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
+        await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : [], (name, current, total) => {
+          callbacks.progress({ message: `Component Scan: ${current}/${total} - ${name}` });
+        });
       }
       catch (error: any) {
         if (!(error instanceof Error && error.cause === "component_signature_mismatch" && await callbacks.uiErrorHandler(this, error.cause, error.message))) {
