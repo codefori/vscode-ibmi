@@ -327,7 +327,7 @@ export default class IBMi {
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
         passphrase: connectionObject.privateKeyPath ? connectionObject.passphrase : undefined,
-        debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`[SSH debug] ${message}`) : undefined
+        debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`[SSH debug] ${message}\n`) : undefined
       };
 
       if (connectionObject.useSshAgent) {
@@ -676,7 +676,7 @@ export default class IBMi {
       catch (e: any) {
         const error = e.message || e;
         callbacks.message(`error`, `Failed to start Mapepire SQL job: ${error}`);
-        this.appendOutput(`Mapepire error: ${error}\n`);
+        this.appendOutput(`Mapepire error: ${error}\n\n`);
         throw e;
       }
 
@@ -1090,10 +1090,7 @@ export default class IBMi {
         error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
       }
 
-      this.appendOutput(`${JSON.stringify(e)}`);
-      if (typeof e.stack === "string") {
-        this.appendOutput(`\n\n${e.stack}`);
-      }
+      this.appendOutput(`${JSON.stringify(e)}${typeof e.stack === "string" ? `\n\n${e.stack}` : ``}\n\n`);
 
       return {
         error,
@@ -1238,11 +1235,6 @@ export default class IBMi {
     const directory = options.directory || this.config?.homeDirectory;
 
 
-    this.appendOutput(`${directory}: ${command}\n`);
-    if (options && options.stdin) {
-      this.appendOutput(`${options.stdin}\n`);
-    }
-
     const start = performance.now();
     const result = await this.client!.execCommand(command, {
       cwd: directory,
@@ -1262,7 +1254,8 @@ export default class IBMi {
       duration
     };
 
-    this.appendOutput(JSON.stringify({ ...commandResult, duration: `${commandResult.duration} ms` }, null, 4) + `\n\n`);
+    // Log the command and its result as a single entry, so parallel commands don't interleave
+    this.appendOutput(`${directory}: ${command}\n${options.stdin ? `${options.stdin}\n` : ``}${JSON.stringify({ ...commandResult, duration: `${commandResult.duration} ms` }, null, 4)}\n\n`);
 
     return commandResult;
   }
@@ -1505,14 +1498,10 @@ export default class IBMi {
             // If the CL command errors in the job, then let's run another
             // SQL statement to fetch the job log for the error.
             const error = new Tools.SqlError(e.message);
-            this.appendOutput(`${log}-> Failed: ${error.message}`);
 
+            // Fetch the job log first, so the failure is logged as a single entry
             const jobLog = await this.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) order by ORDINAL_POSITION desc limit 5`);
-            let logs = `${log}Job log:\n`
-            for (const row of jobLog) {
-              logs += `\t\t${row.MESSAGE_ID}: ${row.MESSAGE_TEXT}\n`
-            }
-            this.appendOutput(`${logs}\n\n`);
+            this.appendOutput(`${log}-> Failed: ${error.message}\n\tJob log:\n${jobLog.map(row => `\t\t${row.MESSAGE_ID}: ${row.MESSAGE_TEXT}`).join(`\n`)}\n\n`);
 
             error.cause = {
               command,
