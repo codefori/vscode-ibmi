@@ -745,7 +745,7 @@
 								"CBL"
 							],
 							"name": "Create Bound COBOL Program (CRTBNDCBL)",
-							"command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"command": "?CRTBNDCBL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
 							"type": "member",
@@ -754,7 +754,35 @@
 								"CBL"
 							],
 							"name": "Create Module CBLLE (CRTCBLMOD)",
-							"command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"command": "?CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Program (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*PGM) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Module (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"CBL"
+							],
+							"name": "Create COBOL Program (CRTCBLPGM)",
+							"command": "?CRTCBLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*SRCDBG) TGTRLS(*CURRENT)"
 						},
 						{
 							"type": "member",
@@ -944,6 +972,44 @@
 							],
 							"name": "Create RPG Module (CRTRPGMOD)",
 							"command": "?CRTRPGMOD MODULE(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Bound COBOL Program (CRTBNDCBL)",
+							"command": "?CRTBNDCBL PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Module CBLLE (CRTCBLMOD)",
+							"command": "?CRTCBLMOD MODULE(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Program (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*PGM) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Module (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
 						},
 						{
 							"type": "streamfile",
@@ -1167,6 +1233,20 @@
 				"enablement": "code-for-ibmi:connected",
 				"title": "Apply Source Date Filter",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.member.nextDateSearchBlock",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Go to Next Source Date Block",
+				"category": "IBM i",
+				"icon": "$(arrow-down)"
+			},
+			{
+				"command": "code-for-ibmi.member.previousDateSearchBlock",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Go to Previous Source Date Block",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.selectForCompare",
@@ -1566,9 +1646,15 @@
 			{
 				"command": "code-for-ibmi.maintainFilter",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Change...",
+				"title": "Edit...",
 				"category": "IBM i",
 				"icon": "$(filter)"
+			},
+			{
+				"command": "code-for-ibmi.renameFilter",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Rename...",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.objectBrowser.delete",
@@ -2010,6 +2096,16 @@
 			}
 		],
 		"keybindings": [
+			{
+				"command": "code-for-ibmi.member.nextDateSearchBlock",
+				"key": "alt+f5",
+				"when": "editorTextFocus && !isInDiffEditor && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
+			},
+			{
+				"command": "code-for-ibmi.member.previousDateSearchBlock",
+				"key": "shift+alt+f5",
+				"when": "editorTextFocus && !isInDiffEditor && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
+			},
 			{
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
@@ -2695,6 +2791,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.renameFilter",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.sortFilters",
 					"when": "never"
 				},
@@ -2992,6 +3092,16 @@
 			],
 			"editor/title": [
 				{
+					"command": "code-for-ibmi.member.previousDateSearchBlock",
+					"when": "resourceScheme == member && !isInDiffEditor && code-for-ibmi:sourceDateSearchActive",
+					"group": "navigation@0"
+				},
+				{
+					"command": "code-for-ibmi.member.nextDateSearchBlock",
+					"when": "resourceScheme == member && !isInDiffEditor && code-for-ibmi:sourceDateSearchActive",
+					"group": "navigation@0"
+				},
+				{
 					"command": "code-for-ibmi.refreshJobLog",
 					"when": "activeWebviewPanelId == 'jobLogView'",
 					"group": "navigation@1"
@@ -3149,14 +3259,19 @@
 					"group": "4_filters@1"
 				},
 				{
-					"command": "code-for-ibmi.copyFilter",
+					"command": "code-for-ibmi.renameFilter",
 					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
 					"group": "4_filters@2"
 				},
 				{
+					"command": "code-for-ibmi.copyFilter",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
+					"group": "4_filters@3"
+				},
+				{
 					"command": "code-for-ibmi.objectBrowser.delete",
 					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
-					"group": "4_filters@3"
+					"group": "4_filters@4"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",

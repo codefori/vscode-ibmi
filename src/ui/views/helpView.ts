@@ -119,16 +119,21 @@ async function openNewIssue() {
     issueUrl = issueUrl.substring(0, 8130);
   }
 
-  const target = (await vscode.window.showQuickPick<vscode.QuickPickItem & { target: string }>([
-    { label: "Code for IBM i", target: 'vscode-ibmi' },
-    { label: "Db2 for IBM i", target: 'vscode-db2i' },
-    { label: "RPGLE language tools", target: 'vscode-rpgle' },
-    { label: "IBM i FileSystem", target: 'vscode-ibmi-fs' },
-    { label: "IBM i Debugger", target: 'vscode-ibmi-debug-issues' },
-  ], { title: l10n.t("Please pick the extension to report the issue on"), placeHolder: l10n.t("Report an issue on...") }))?.target;
+  if (vscode.extensions.getExtension('IBM.bob-code') === undefined) {
+    const target = (await vscode.window.showQuickPick<vscode.QuickPickItem & { target: string }>([
+      { label: "Code for IBM i", target: 'vscode-ibmi' },
+      { label: "Db2 for IBM i", target: 'vscode-db2i' },
+      { label: "RPGLE language tools", target: 'vscode-rpgle' },
+      { label: "IBM i FileSystem", target: 'vscode-ibmi-fs' },
+      { label: "IBM i Debugger", target: 'vscode-ibmi-debug-issues' },
+    ], { title: l10n.t("Please pick the extension to report the issue on"), placeHolder: l10n.t("Report an issue on...") }))?.target;
 
-  if (target) {
-    vscode.commands.executeCommand(`vscode.open`, `https://github.com/codefori/${target}/issues/new?body=${issueUrl}`);
+    if (target) {
+      vscode.commands.executeCommand(`vscode.open`, `https://github.com/codefori/${target}/issues/new?body=${issueUrl}`);
+    }
+  }
+  else{
+    vscode.commands.executeCommand(`vscode.open`, `https://github.com/IBM/ibm-bob/issues/new?body=${issueUrl}`);
   }
 }
 

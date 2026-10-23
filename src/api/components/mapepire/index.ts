@@ -56,7 +56,7 @@ export class Mapepire implements IBMiComponent {
     sqlJob.options["extended metadata"] = sqlJob.options["extended metadata"] ?? config.mapepireExtendedMetadata;
     const application = options?.application || this.application;
     if (useServer) {
-      connection.appendOutput(`Connecting to Mapepire over HTTP on port ${config.mapepireServerPort}${config.mapepireAllowSelfCert ? ", allowing self-signed certificates" : ""}`);
+      connection.appendOutput(`Connecting to Mapepire over HTTP on port ${config.mapepireServerPort}${config.mapepireAllowSelfCert ? ", allowing self-signed certificates" : ""}\n\n`);
       //HTTP connection
       const password = await this.getPassword(connection);
       if (!password) {

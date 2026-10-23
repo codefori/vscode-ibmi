@@ -196,7 +196,7 @@ export class ExtendedIBMiContent {
           const sourceCcsid = await connection.getFileCcsid(memberPath);
           const { requiresConversion, targetCcsid } = Tools.determineCcsidConversion(sourceCcsid, config);
 
-          let insertResult: CommandResult = { code: 0, stdout: '', stderr: '' };
+          let insertResult: CommandResult = { code: 0, duration: 0, stdout: '', stderr: '' };
           if (requiresConversion) {
             await connection.runSQL([
               `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`
