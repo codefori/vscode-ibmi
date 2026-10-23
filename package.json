@@ -733,33 +733,51 @@
 					},
 					"default": [
 						{
-								"type": "member",
-								"extensions": [
-									"CBLLE",
-									"CBL"
-								],
-								"name": "Create Bound COBOL Program (CRTBNDCBL)",
-								"command": "?CRTBNDCBL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-							},
-							{
-								"type": "member",
-								"extensions": [
-									"CBLLE",
-									"CBL"
-								],
-								"name": "Create Module CBLLE (CRTCBLMOD)",
-								"command": "?CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-							},
-							{
-								"type": "member",
-								"extensions": [
-									"SQLCBLLE",
-									"CBLLE",
-									"CBL"
-								],
-								"name": "Create SQL ILE COBOL Object (CRTSQLCBLI)",
-								"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-							},
+							"type": "member",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Bound COBOL Program (CRTBNDCBL)",
+							"command": "?CRTBNDCBL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Module CBLLE (CRTCBLMOD)",
+							"command": "?CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Program (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*PGM) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Module (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"CBL"
+							],
+							"name": "Create COBOL Program (CRTCBLPGM)",
+							"command": "?CRTCBLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*SRCDBG) REPLACE(*YES)"
+						},
 						{
 							"type": "member",
 							"extensions": [
@@ -948,6 +966,44 @@
 							],
 							"name": "Create RPG Module (CRTRPGMOD)",
 							"command": "?CRTRPGMOD MODULE(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Bound COBOL Program (CRTBNDCBL)",
+							"command": "?CRTBNDCBL PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Module CBLLE (CRTCBLMOD)",
+							"command": "?CRTCBLMOD MODULE(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Program (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*PGM) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Module (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
 						},
 						{
 							"type": "streamfile",
