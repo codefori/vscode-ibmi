@@ -776,7 +776,7 @@
 								"CBL"
 							],
 							"name": "Create COBOL Program (CRTCBLPGM)",
-							"command": "?CRTCBLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*SRCDBG) REPLACE(*YES)"
+							"command": "?CRTCBLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*SRCDBG) TGTRLS(*CURRENT)"
 						},
 						{
 							"type": "member",
