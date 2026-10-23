@@ -283,7 +283,6 @@ export class SettingsUI {
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
 
           if (!isManaged()) {
-            debuggerTab.addHorizontalRule();
             if (await certificates.remoteCertificatesExists()) {
               let localCertificateIssue;
               try {
@@ -292,6 +291,7 @@ export class SettingsUI {
               catch (error) {
                 localCertificateIssue = `${String(error)}. Debugging will not function correctly.`;
               }
+              debuggerTab.addHorizontalRule();
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
                 .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
                 .addButtons(
