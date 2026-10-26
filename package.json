@@ -1026,6 +1026,12 @@
 				"icon": "$(desktop-download)"
 			},
 			{
+				"command": "code-for-ibmi.testSourceMemberPrompt",
+				"title": "Test Source Member Prompt",
+				"category": "IBM i (debug)",
+				"icon": "$(debug-alt)"
+			},
+			{
 				"command": "code-for-ibmi.debug.batch",
 				"title": "Debug as Batch",
 				"category": "IBM i",
@@ -1368,6 +1374,13 @@
 				"title": "Copy...",
 				"category": "IBM i",
 				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.saveMemberAs",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
+				"title": "Save As...",
+				"category": "IBM i",
+				"icon": "$(save-as)"
 			},
 			{
 				"command": "code-for-ibmi.updateMemberText",
@@ -2067,6 +2080,12 @@
 				"command": "code-for-ibmi.showAdditionalSettings",
 				"key": "ctrl+alt+,",
 				"mac": "cmd+alt+,"
+			},
+			{
+				"command": "code-for-ibmi.testSourceMemberPrompt",
+				"key": "ctrl+alt+shift+p",
+				"mac": "cmd+alt+shift+p",
+				"when": "editorFocus"
 			},
 			{
 				"command": "code-for-ibmi.launchTerminalPicker",
@@ -3296,6 +3315,11 @@
 					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
 					"when": "view == objectBrowser && !listMultiSelection && viewItem == member",
 					"group": "3_memberTransfer@2"
+				},
+				{
+					"command": "code-for-ibmi.saveMemberAs",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem == member && !(viewItem =~ /_readonly$/)",
+					"group": "3_memberTransfer@3"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowserItem",

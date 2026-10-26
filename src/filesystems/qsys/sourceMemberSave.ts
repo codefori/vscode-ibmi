@@ -6,6 +6,7 @@ import { archiveSourceMemberSnapshot } from "./sourceMemberArchive";
 
 const DEFAULT_SRCDTA_LENGTH = 100;
 const saveQueues = new Map<string, Promise<void>>();
+const saveAsSourceDateMap = new Map<string, { body: string; sourceDates: string[] }>();
 
 function getConnectionSaveKey(connection: IBMi): string {
     return connection.currentConnectionName || connection.currentHost || `default`;
@@ -30,6 +31,22 @@ async function enqueueSourceMemberSave<T>(connection: IBMi, task: () => Promise<
             saveQueues.delete(key);
         }
     }
+}
+
+export function prepareSourceMemberSaveAsCopy(sourceUri: vscode.Uri, targetUri: vscode.Uri, body: string, sourceDates: string[]) {
+    saveAsSourceDateMap.set(targetUri.toString(), {
+        body,
+        sourceDates: sourceDates.slice(),
+    });
+}
+
+export function consumeSourceMemberSaveAsCopy(targetUri: vscode.Uri): { body: string; sourceDates: string[] } | undefined {
+    const key = targetUri.toString();
+    const entry = saveAsSourceDateMap.get(key);
+    if (entry) {
+        saveAsSourceDateMap.delete(key);
+    }
+    return entry;
 }
 
 function sanitizeTempObjectSegment(value: string): string {
@@ -96,7 +113,12 @@ async function saveRowsToHost(connection: IBMi, uri: vscode.Uri, rows: [number, 
             `CREATE OR REPLACE TABLE ${stagingTable} LIKE "${library}"."${file}" ON REPLACE DELETE ROWS;`
         );
 
-        const rowsPerBatch = 500;
+        const configuredBatchSize = (() => {
+            const configValue = (connection as any).config?.mapepireSaveBufferSize ?? (connection as any).getConfig?.()?.mapepireSaveBufferSize ?? 500;
+            const parsed = Number(configValue);
+            return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : 500;
+        })();
+        const rowsPerBatch = configuredBatchSize;
         for (let i = 0; i < rows.length; i += rowsPerBatch) {
             const batch = rows.slice(i, i + rowsPerBatch);
             const batchNumber = Math.floor(i / rowsPerBatch) + 1;

@@ -21,6 +21,7 @@ import { IFSFS } from "./filesystems/ifsFs";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
 import { handleEditorsLeftOpened } from "./filesystems/qsys/FSUtils";
+import { promptForSourceMember } from "./filesystems/qsys/sourceMemberPrompt";
 import { instance, loadAllofExtension } from './instantiate';
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import { mergeCommandProfiles } from "./mergeProfiles";
@@ -146,6 +147,28 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     });
   }
 
+  context.subscriptions.push(
+    commands.registerCommand(`code-for-ibmi.promptSourceMember`, async (defaults) => {
+      return await promptForSourceMember(defaults ?? {});
+    }),
+    commands.registerCommand(`code-for-ibmi.testSourceMemberPrompt`, async () => {
+      const result = await promptForSourceMember({
+        library: `QGPL`,
+        sourceFile: `QRPGLESRC`,
+        member: `TESTMEM`
+      });
+
+      if (result) {
+        window.showInformationMessage(`Source member prompt result: ${result.path}`);
+      }
+      else {
+        window.showInformationMessage(`Source member prompt cancelled.`);
+      }
+
+      return result;
+    })
+  );
+
   const mapepire = new Mapepire(path.join(context.extensionPath, `dist`), async (connection) => {
     return await getPassword(connection, l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName));
   });
@@ -173,6 +196,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager,
     searchTools: SearchTools,
+    promptForSourceMember,
     onCodeForIBMiConfigurationChange
   };
 }

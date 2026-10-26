@@ -17,6 +17,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   hideCompileErrors: string[];
   enableSourceDates: boolean;
   useMapepireForSourceMemberSaves: boolean;
+  mapepireSaveBufferSize: number;
   sourceMemberSaveArchiveEnabled: boolean;
   sourceMemberSaveArchivePath: string;
   sourceMemberSaveArchiveMaxFiles: number;

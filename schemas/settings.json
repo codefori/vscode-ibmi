@@ -54,6 +54,12 @@
           "default": false,
           "description": "When enabled, source member saves with source dates use a Mapepire SQL save flow with QTEMP staging plus alias-based SQL INSERT (instead of RUNSQLSTM temp scripts)."
         },
+        "mapepireSaveBufferSize": {
+          "type": "number",
+          "default": 500,
+          "minimum": 1,
+          "description": "Number of rows staged per Mapepire SQL batch when saving source members. (500 or more recommended)."
+        },
         "sourceMemberSaveArchiveEnabled": {
           "type": "boolean",
           "default": true,

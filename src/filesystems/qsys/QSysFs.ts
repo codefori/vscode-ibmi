@@ -8,7 +8,8 @@ import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { waitOnReconnect } from "./FSUtils";
-import { SourceDateHandler } from "./sourceDateHandler";
+import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
+import { consumeSourceMemberSaveAsCopy } from "./sourceMemberSave";
 
 export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
     return getUriFromPath(`${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`, options);
@@ -222,6 +223,14 @@ export class QSysFS implements vscode.FileSystemProvider {
                         throw new FileSystemError(addMember.stderr);
                     }
                 }
+            }
+
+            const saveAsCopy = consumeSourceMemberSaveAsCopy(uri);
+            if (saveAsCopy) {
+                const alias = getAliasName(uri);
+                this.sourceDateHandler.baseDates.set(alias, saveAsCopy.sourceDates.slice());
+                this.sourceDateHandler.baseSource.set(alias, saveAsCopy.body);
+                this.sourceDateHandler.baseSequences.delete(alias);
             }
 
             this.savedAsMembers.delete(uri.path);
