@@ -862,7 +862,7 @@ export default class IBMi {
       callbacks.progress({ message: `Checking Code for i components statuses.` });
       try {
         await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : [], (name, current, total) => {
-          callbacks.progress({ message: `Component Scan: ${current}/${total} - ${name}` });
+          callbacks.progress({ message: `Component Scan: ${current}/${total} - ${name}`, increment: 0 });
         });
       }
       catch (error: any) {
