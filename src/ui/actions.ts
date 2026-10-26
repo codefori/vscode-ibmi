@@ -43,11 +43,20 @@ export function registerActionTools(context: vscode.ExtensionContext) {
 }
 
 export function uriToActionTarget(uri: vscode.Uri, workspaceFolder?: WorkspaceFolder, ibmi?: IBMi): ActionTarget {
+  const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
+  let path = uri.path;
+  if (uri.scheme === `object`) {
+    const qsysPath = Tools.parseQSysPath(path);
+    path = (extension === `LIB` ? qsysPath.name.split(`.`)[0] : qsysPath.library);
+  }
   return {
     uri,
-    extension: uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase(),
+    extension,
     fragment: uri.fragment.toUpperCase(),
-    protected: parseFSOptions(uri).readonly || ibmi?.getConfig().readOnlyMode || ibmi?.getContent().isProtectedPath(uri.path) || false,
+    protected: ibmi?.getConfig().readOnlyMode ||
+      parseFSOptions(uri).readonly ||
+      ibmi?.getContent().isProtectedPath(path) ||
+      false,
     workspaceFolder: workspaceFolder || vscode.workspace.getWorkspaceFolder(uri),
     executionOK: false,
     hasRun: false,
@@ -73,6 +82,17 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
     const content = connection.getContent();
 
     const targets = uris.map(uri => uriToActionTarget(uri, workspaceFolder, connection));
+
+    // To perform an action on Objects/members protected filter you need "runOnProtected" action
+    const protectedUris = new Set((browserItems || [])
+      .filter(item => item.isProtected())
+      .map(item => item.resourceUri?.toString())
+      .filter((value): value is string => Boolean(value)));
+    targets.forEach(target => {
+      if (protectedUris.has(target.uri.toString())) {
+        target.protected = true;
+      }
+    });
 
     workspaceFolder = targets[0].workspaceFolder;
     if (!targets.every(target => target.workspaceFolder === workspaceFolder)) {
@@ -101,7 +121,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         // deploying the file. This is because we need to know the relative path of the file to the deploy directory.
         if (workspaceFolder && chosenAction.type === `file`) {
           if (chosenAction.deployFirst) {
-            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
+            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method, uris);
             if (deployResult !== undefined) {
               workspaceId = deployResult.workspaceId;
               remoteCwd = Tools.ensureFullPath(deployResult.remoteDirectory, config.homeDirectory);
@@ -224,14 +244,14 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                   name = name.substring(0, name.indexOf(`-`));
                 }
 
-                evfeventInfo.library = connection.upperCaseName(variables.get(`&CURLIB`) || config.currentLibrary);
+                evfeventInfo.library = Tools.getCurLib(connection.upperCaseName(variables.get(`&CURLIB`) || config.currentLibrary || ''));
                 evfeventInfo.object = connection.upperCaseName(name);
                 evfeventInfo.extension = ext;
 
                 if (chosenAction.command.includes(`&SRCFILE`)) {
-                  variables.set(`&SRCLIB`, evfeventInfo.library)
+                  variables.set(`&SRCLIB`, 'QTEMP')
                     .set(`&SRCPF`, `QTMPSRC`)
-                    .set(`&SRCFILE`, `${evfeventInfo.library}/QTMPSRC`);
+                    .set(`&SRCFILE`, `${variables.get('&SRCLIB')}/${variables.get('&SRCPF')}`);
                 }
 
                 switch (chosenAction.type) {
@@ -302,7 +322,6 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             task.report({ message: `${processedPath}${targets.length > 1 ? ` (${done++}/${targets.length})` : ''}`, increment })
 
             const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
-            let actionName = chosenAction.name;
 
             const exitCode = await new Promise<number>(resolve =>
               tasks.executeTask({
@@ -342,31 +361,38 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                         const fullPath = variables.get(`&FULLPATH`);
                         const srcFile = variables.get(`&SRCFILE`);
                         if (fullPath && srcFile && evfeventInfo.object) {
-                          const [lib, srcpf] = srcFile.split(`/`);
-
-                          const createSourceFile = content.toCl(`CRTSRCPF`, {
-                            rcdlen: 112, //NICE: this configurable in a VS Code setting?
-                            file: `${lib}/${srcpf}`,
+                          const crtsrcpfResult = await CompileTools.runCommand(connection, {
+                            command: content.toCl(`CRTSRCPF`, {
+                              rcdlen: 112, //NICE: this configurable in a VS Code setting?
+                              file: srcFile,
+                            }),
+                            environment: `ile`,
+                            noLibList: true
                           });
 
-                          const copyFromStreamfile = content.toCl(`QSYS/CPYFRMSTMF`, {
-                            fromstmf: fullPath,
-                            tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
-                            mbropt: `*REPLACE`,
-                            dbfccsid: `*FILE`,
-                            stmfccsid: 1208,
-                          });
-
-                          // We don't care if this fails. Usually it's because the source file already exists.
-                          await CompileTools.runCommand(connection, { command: createSourceFile, environment: `ile`, noLibList: true });
-
-                          // Attempt to copy to member
-                          const copyResult = await CompileTools.runCommand(connection, { command: copyFromStreamfile, environment: `ile`, noLibList: true });
-
-                          if (copyResult.code !== 0) {
-                            writeEmitter.fire(`Failed to copy file to a temporary member.\n\t${copyResult.stderr}\n\n`);
-                            closeEmitter.fire(copyResult.code || 1);
+                          //CPF5813: file already exists, which is OK here
+                          if (crtsrcpfResult.code !== 0 && Tools.parseMessages(crtsrcpfResult.stderr).findId("CPF5813") === undefined) {
+                            throw new Error(l10n.t("Failed to create temporary source file {0}: {1}", srcFile, crtsrcpfResult.stderr));
                           }
+
+                          const [library, sourcePF] = srcFile.split('/');
+                          const copyFromStreamfile = await CompileTools.runCommand(connection, {
+                            command: content.toCl(`QSYS/CPYFRMSTMF`, {
+                              fromstmf: fullPath,
+                              tombr: `'${Tools.qualifyPath(library, sourcePF, evfeventInfo.object)}'`,
+                              mbropt: `*REPLACE`,
+                              dbfccsid: `*FILE`,
+                              stmfccsid: 1208,
+                            }),
+                            environment: `ile`,
+                            noLibList: true
+                          });
+
+                          if (copyFromStreamfile.code !== 0) {
+                            throw new Error(l10n.t("Failed to copy file to temporary member: {0}", copyFromStreamfile.stderr));
+                          }
+
+                          evfeventInfo.tempSourceMember = new Map().set(connection.upperCaseName(`${library}/${sourcePF}/${evfeventInfo.object}`), target.uri);
                         }
 
                         const commandResult = await CompileTools.runCommand(connection,
@@ -412,16 +438,10 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             }
                             else {
                               //Add a default eventf target
-                              evfeventInfos.push({
-                                library: evfeventInfo.library,
-                                object: evfeventInfo.object,
-                                extension: evfeventInfo.extension,
-                                asp: evfeventInfo.asp
-                              });
+                              evfeventInfos.push({ ...evfeventInfo });
                             }
                           }
 
-                          actionName = (isIleCommand && possibleObjects ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
                           successful = (commandResult.code === 0 || commandResult.code === null);
 
                           writeEmitter.fire(CompileTools.NEWLINE);
@@ -431,9 +451,13 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           }
                           else if (evfeventInfo.object && evfeventInfo.library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
-                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfos[0].library}/${evfeventInfos[0].object}.`) + CompileTools.NEWLINE);
-                              refreshDiagnosticsFromServer(connection, evfeventInfos);
-                              problemsFetched = true;
+                              if (evfeventInfos.length === 0) {
+                                writeEmitter.fire(`*EVFEVENT found in command string, but no objects specified to fetch errors for.` + CompileTools.NEWLINE);
+                              } else {
+                                writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfos[0].library}/${evfeventInfos[0].object}.`) + CompileTools.NEWLINE);
+                                refreshDiagnosticsFromServer(connection, evfeventInfos);
+                                problemsFetched = true;
+                              }
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
                               writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
                             }
@@ -631,9 +655,23 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         message: actionMessage
       };
     }
+    else if (targets.some(t => t.protected)) {
+      actionMessage = l10n.t(`Action cannot be applied on a read only target.`);
+      vscode.window.showErrorMessage(actionMessage);
+      return { success: false, output: [], message: actionMessage };
+    }
     else {
       actionMessage = l10n.t(`No suitable actions found for {0} - {1}`, scheme, targets.map(t => t.extension).filter(Tools.distinct).join(", "));
-      vscode.window.showErrorMessage(actionMessage);
+      const launchActionSetupLabel = l10n.t("Setup Workspace Actions");
+      const manageActionsLabel = l10n.t("Manage All Actions");
+      const buttons = scheme === "file" ? [launchActionSetupLabel, manageActionsLabel] : [manageActionsLabel];
+      vscode.window.showErrorMessage(actionMessage, ...buttons).then(selected => {
+        if (selected === launchActionSetupLabel) {
+          vscode.commands.executeCommand("code-for-ibmi.launchActionsSetup");
+        } else if (selected === manageActionsLabel) {
+          vscode.commands.executeCommand("code-for-ibmi.environment.actions.focus");
+        }
+      });
       return { success: false, output: [], message: actionMessage };
     }
   }
@@ -670,7 +708,7 @@ export async function getAllAvailableActions(targets: ActionTarget[], scheme: st
   });
 
   // Get the sort preference from settings
-  const sortBy = IBMi.connectionManager.get<'name'|'usage'|'config'>(`sortActionsBy`) || `usage`;
+  const sortBy = IBMi.connectionManager.get<'name' | 'usage' | 'config'>(`sortActionsBy`) || `usage`;
 
   // Then we get all the available Actions for the current context
   const contextActions = allActions.filter(action => action.type === scheme)

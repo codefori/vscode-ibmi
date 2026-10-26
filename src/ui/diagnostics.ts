@@ -14,6 +14,7 @@ export interface EvfEventInfo {
   object: string,
   extension?: string,
   workspace?: vscode.WorkspaceFolder
+  tempSourceMember?: Map<string, vscode.Uri>
 }
 
 export function registerDiagnostics(): vscode.Disposable[] {
@@ -134,6 +135,12 @@ export async function handleEvfeventLines(connection: IBMi, lines: string[], evf
           }
         }
 
+        const localUri = evfeventInfo.tempSourceMember?.get(file);
+        if (localUri) {
+          ileDiagnostics.set(localUri, diagnostics);
+          continue;
+        }
+
         if (evfeventInfo.workspace) {
           const workspaceFolder = evfeventInfo.workspace;
           const storage = instance.getStorage();
@@ -170,8 +177,7 @@ export async function handleEvfeventLines(connection: IBMi, lines: string[], evf
         // findExistingDocumentByName searches all open tabs — no workspace needed — so this works for
         // member-type actions too (where evfeventInfo.workspace is not set).
         if (!file.startsWith(`/`) && evfeventInfo.extension) {
-          const baseName = file.split(`/`).pop();
-          const lookupName = `${baseName}.${evfeventInfo.extension}`;
+          const lookupName = `${file}.${evfeventInfo.extension}`;
           const openFile = VscodeTools.findExistingDocumentByName(lookupName);
           if (openFile) {
             ileDiagnostics.set(openFile, diagnostics);

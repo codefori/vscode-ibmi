@@ -5,13 +5,14 @@ import vscode, { commands, DataTransferItem, l10n, Uri } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
+import * as ObjectFilter from "../../api/objectFilters";
 import { SearchTools } from "../../api/SearchTools";
 import { Tools } from "../../api/Tools";
 import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
+import { checkObjectFilter, editObjectFilter, isFilterEdited } from "../../editors/filterEditor";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
 import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
-import { editFilter } from "../../webviews/filters";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
@@ -198,7 +199,7 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
   }
 
   isProtected(): boolean {
-    return this.filter.protected;
+    return this.filter.protected || (Boolean(this.library) && getContent().isProtectedPath(this.library));
   }
 
   async getChildren(): Promise<ObjectBrowserItem[]> {
@@ -366,7 +367,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
   }
 
   isProtected(): boolean {
-    return this.filter.protected || getContent().isProtectedPath(this.object.library);
+    return this.filter.protected || getContent().isProtectedPath(this.library || this.object.library);
   }
 
   updateDescription() {
@@ -506,20 +507,24 @@ async function downloadMembersStructuredImpl(mode: `LIB` | `FILE`, node: ObjectI
   }
 
   await vscode.window.withProgress(
-    { title: vscode.l10n.t(`Downloading {0} member(s)`, toDownload.length), location: vscode.ProgressLocation.Notification },
-    async (progress) => {
+    { title: vscode.l10n.t(`Downloading`), location: vscode.ProgressLocation.Notification, cancellable: true },
+    async (progress, token) => {
       let done = 0;
       const errors: string[] = [];
       for (const member of toDownload) {
+        if (token.isCancellationRequested) {
+          break;
+        }
         const useLibrary = mode === `LIB` || collidingKeys.has(fileKey(member));
         const localDir = useLibrary
           ? path.join(rootPath, member.library.toUpperCase(), member.file.toUpperCase())
           : path.join(rootPath, member.file.toUpperCase());
         const localFile = path.join(localDir, `${member.name.toUpperCase()}.${(member.extension || `MBR`).toUpperCase()}`);
+        const memberLabel = useLibrary
+          ? `${member.library}/${member.file}/${member.name}.${member.extension || `MBR`}`
+          : `${member.file}/${member.name}.${member.extension || `MBR`}`;
         progress.report({
-          message: useLibrary
-            ? `${member.library}/${member.file}/${member.name}.${member.extension || `MBR`}`
-            : `${member.file}/${member.name}.${member.extension || `MBR`}`,
+          message: `${done + 1}/${toDownload.length} (${Math.round(((done + 1) / toDownload.length) * 100)}%) - ${memberLabel}`,
           increment: (100 / toDownload.length)
         });
         try {
@@ -534,7 +539,11 @@ async function downloadMembersStructuredImpl(mode: `LIB` | `FILE`, node: ObjectI
         done++;
       }
 
-      if (errors.length > 0) {
+      if (token.isCancellationRequested) {
+        vscode.window.showWarningMessage(
+          vscode.l10n.t(`Download cancelled. {0} of {1} member(s) downloaded.`, done - errors.length, toDownload.length)
+        );
+      } else if (errors.length > 0) {
         vscode.window.showWarningMessage(
           vscode.l10n.t(`{0} of {1} member(s) downloaded. {2} error(s).`, done - errors.length, toDownload.length, errors.length),
           vscode.l10n.t(`Show Details`)
@@ -582,15 +591,41 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       item.sortBy({ order: "date" });
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.createFilter`, async () => {
-      await editFilter();
-      objectBrowser.refresh();
+    vscode.commands.registerCommand(`code-for-ibmi.createFilter`, async (_node?: ObjectBrowserItem, from?: ObjectFilters) => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const existingNames = connection.getConfig().objectFilters.map(f => f.name) || [];
+        const name = await vscode.window.showInputBox({
+          title: l10n.t("Enter new Object Filter name"),
+          placeHolder: l10n.t("Object Filter name..."),
+          value: from?.name,
+          validateInput: name => ObjectFilter.validateFilterName(name, existingNames)
+        });
+
+        if (name) {
+          const newFilter: ObjectFilters = from ? ObjectFilter.cloneObjectFilter(from, name) : {
+            name,
+            filterType: 'simple',
+            library: `QGPL`,
+            object: `*`,
+            types: [`*SRCPF`],
+            member: `*`,
+            memberType: `*`,
+            memberText: `*`,
+            memberCreated: ``,
+            memberChanged: ``,
+            protected: false
+          }
+          await ObjectFilter.updateObjectFilter(newFilter);
+          objectBrowser.refresh();
+          editObjectFilter(newFilter, async () => objectBrowser.refresh());
+        }
+      }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createQuickFilter`, async () => {
-      const config = getConfig();
       const connection = getConnection();
-      const objectFilters = config.objectFilters;
+      const objectFilters = ObjectFilter.getObjectFilters();
 
       const LIBRARY_REGEX = /^(?<lib>[^/.() ]+)\*$/;
       const FILTER_REGEX = /^(?<lib>[^/.() ]+)(\/(?<obj>[^/.() ]+))?(\/(?<mbr>[^/.() ]+))?(\.(?<mbrType>[^/.() ]+))?( \((?<objType>[^/.()]+)\))?$/;
@@ -601,15 +636,18 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         validateInput: newFilter => {
           const libraryRegex = LIBRARY_REGEX.exec(connection.upperCaseName(newFilter));
           const filterRegex = FILTER_REGEX.exec(connection.upperCaseName(newFilter));
-          if (!libraryRegex && !filterRegex) return `Invalid filter: ${newFilter}. Use format LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`;
+          if (!libraryRegex && !filterRegex) {
+            return `Invalid filter: ${newFilter}. Use format LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`;
+          }
         }
       });
 
       if (newFilter) {
         let regex = LIBRARY_REGEX.exec(connection.upperCaseName(newFilter));
         const parsedFilter = regex?.groups;
+        let filter: ObjectFilters | undefined;
         if (regex && parsedFilter) {
-          const filter = {
+          filter = {
             name: `Filter ${objectFilters.length + 1}`,
             filterType: 'simple',
             library: `${parsedFilter.lib}*`,
@@ -619,12 +657,11 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             memberType: `*`,
             protected: false
           } as ObjectFilters;
-          objectFilters.push(filter);
         } else {
           regex = FILTER_REGEX.exec(connection.upperCaseName(newFilter));
           const parsedFilter = regex?.groups;
           if (regex && parsedFilter) {
-            const filter = {
+            filter = {
               name: `Filter ${objectFilters.length + 1}`,
               filterType: 'simple',
               library: parsedFilter.lib || `QGPL`,
@@ -634,28 +671,42 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               memberType: parsedFilter.mbrType || `*`,
               protected: false
             } as ObjectFilters;
-            objectFilters.push(filter);
           }
         }
 
-        config.objectFilters = objectFilters;
-        await IBMi.connectionManager.update(config);
-        objectBrowser.refresh();
+        if (filter) {
+          await checkObjectFilter(connection, filter);
+          await ObjectFilter.updateObjectFilter(filter);
+          objectBrowser.refresh();
+        }
       }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.copyFilter`, async (node: FilteredItem) => {
-      await editFilter(node.filter, true);
-      objectBrowser.refresh();
+      vscode.commands.executeCommand(`code-for-ibmi.createFilter`, undefined, node.filter);
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node?: FilteredItem, nodes?: FilteredItem[]) => {
-      if (node) {
-        (nodes || [node]).map(n => n.filter).forEach(filter => editFilter(filter).then(() => objectBrowser.refresh()));
+    vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node: FilteredItem, nodes?: FilteredItem[]) => {
+      (nodes || [node]).map(n => n.filter).forEach(filter => editObjectFilter(filter, async () => objectBrowser.refresh()));
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.renameFilter`, async (node: FilteredItem) => {
+      const currentName = node.filter.name;
+      if (isFilterEdited(node.filter)) {
+        vscode.window.showWarningMessage(l10n.t("Object Filter {0} is being edited. Please close its editor first.", currentName));
       }
       else {
-        await editFilter();
-        objectBrowser.refresh();
+        const existingNames = ObjectFilter.getObjectFilters().map(filter => filter.name).filter(name => name !== currentName);
+        const newName = await vscode.window.showInputBox({
+          title: l10n.t('Enter Object Filter {0} new name', currentName),
+          placeHolder: l10n.t("Object Filter name..."),
+          value: currentName,
+          validateInput: name => ObjectFilter.validateFilterName(name, existingNames)
+        });
+
+        if (newName) {
+          await ObjectFilter.updateObjectFilter(node.filter, { newName });
+          objectBrowser.refresh();
+        }
       }
     }),
 
@@ -714,6 +765,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string) => {
+      if (checkProtected(node)) {
+        return;
+      }
       const connection = getConnection();
       const toPath = (value: string) => connection.upperCaseName(`${node.path}/${value}`);
       fullName = await vscode.window.showInputBox({
@@ -758,6 +812,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: ObjectBrowserMemberItem, fullPath?: string) => {
+      if (checkProtected(node)) {
+        return;
+      }
       const connection = getConnection();
 
       const oldUri = node.resourceUri as Uri;
@@ -827,7 +884,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             if (IBMi.connectionManager.get(`autoOpenFile`)) {
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, connection.upperCaseName(fullPath));
             }
 
             if (oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()) {
@@ -854,6 +911,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node: ObjectBrowserMemberItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       const connection = getConnection();
       const { library, file, name, basename } = connection.parserMemberPath(node.path);
       const oldText = node.member.text;
@@ -883,6 +943,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: (ObjectBrowserMemberItem)) => {
+      if (checkProtected(node)) {
+        return;
+      }
       const connection = getConnection();
       const oldMember = connection.parserMemberPath(node.path);
       const oldUri = node.resourceUri as vscode.Uri;
@@ -969,7 +1032,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       if (newNameOK && newMemberPath) {
         oldMemberTabs.forEach((tab) => {
           vscode.window.tabGroups.close(tab).then(() => {
-            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, connection.upperCaseName(newMemberPath));
           });
         })
       }
@@ -1243,7 +1306,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         const isSuccess = createResult.code === 0;
         if (isSuccess) {
           const config = connection.getConfig();
-          const libl = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+          const libl = [config.currentLibrary || "", ...config.libraryList].map(library => connection.upperCaseName(library));
           const existsInLibl = libl.includes(connection.upperCaseName(newLibrary));
           if (existsInLibl) {
             commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
@@ -1285,6 +1348,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node: ObjectBrowserFilterItem | ObjectBrowserObjectItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       if (node.library) {
         const connection = getConnection();
         const fileName = await vscode.window.showInputBox({
@@ -1312,6 +1378,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.changeObjectDesc`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       let newText = node.object.text;
       let newTextOK;
       do {
@@ -1399,6 +1468,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       let [, newObject] = node.path.split(`/`);
       let newObjectOK;
       do {
@@ -1435,6 +1507,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.moveObject`, async (node: ObjectBrowserObjectItem) => {
+      if (checkProtected(node)) {
+        return;
+      }
       let [newLibrary,] = node.path.split(`/`);
       let newLibraryOK;
       do {
@@ -1483,7 +1558,34 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         candidates.push(...objectTreeViewer.selection.filter(i => i instanceof ObjectBrowserItem) as ObjectBrowserItem[]);
       }
 
-      const toBeDeleted = candidates.filter(item => item instanceof ObjectBrowserFilterItem || !item.isProtected());
+      const toBeDeleted: ObjectBrowserItem[] = [];
+      const protectedItems: ObjectBrowserItem[] = [];
+      const editedItems: ObjectBrowserItem[] = [];
+      candidates.forEach(item => {
+        if (item instanceof ObjectBrowserFilterItem && isFilterEdited(item.filter)) {
+          editedItems.push(item);
+        }
+        else if (!(item instanceof ObjectBrowserFilterItem) && item.isProtected()) {
+          protectedItems.push(item);
+        }
+        else {
+          toBeDeleted.push(item);
+        }
+      })
+
+      if (protectedItems.length) {
+        vscode.window.showWarningMessage(vscode.l10n.t(`{0} cannot be deleted because they are in a protected filter or library: {1}`, protectedItems.length, protectedItems.map(item => item.toString()).join(`, `)));
+      }
+
+      if (editedItems.length) {
+        if (editedItems.length === 1) {
+          vscode.window.showWarningMessage(vscode.l10n.t(`Object Filter {0} cannot be deleted because it's being being edited.`, editedItems[0].filter.name));
+        }
+        else {
+          vscode.window.showWarningMessage(vscode.l10n.t(`Object Filters {0} cannot be deleted because they are being edited.`, editedItems.map(item => item.filter.name).join(`, `)));
+        }
+      }
+
       if (toBeDeleted.length) {
         const message = toBeDeleted.length === 1 ? vscode.l10n.t(`Are you sure you want to delete {0}?`, toBeDeleted[0].toString()) : vscode.l10n.t("Are you sure you want to delete these {0} elements?", toBeDeleted.length);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(item => `- ${item.toString()}`).join("\n");
@@ -1534,6 +1636,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
     vscode.commands.registerCommand(`code-for-ibmi.renameQSYS`, async (node?: (ObjectBrowserMemberItem | ObjectBrowserObjectItem)) => {
       node = getSelectedItems(node).at(0);
+      if (node && checkProtected(node)) {
+        return;
+      }
       if (node instanceof ObjectBrowserObjectItem || node instanceof ObjectBrowserSourcePhysicalFileItem) {
         vscode.commands.executeCommand(`code-for-ibmi.renameObject`, node);
       }
@@ -1543,6 +1648,14 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
     }),
     vscode.commands.registerCommand(`code-for-ibmi.objectBrowser.selection`, getSelectedItems)
   );
+}
+
+function checkProtected(node: ObjectBrowserItem): boolean {
+  if (node.isProtected()) {
+    vscode.window.showWarningMessage(vscode.l10n.t(`{0} is in a protected filter or library and cannot be modified.`, node.toString()));
+    return true;
+  }
+  return false;
 }
 
 function getConfig() {
@@ -1667,7 +1780,7 @@ async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
     }
 
   } catch (e: any) {
-    vscode.window.showErrorMessage(vscode.l10n.t(`Error searching source members: {0}`, e));
+    vscode.window.showErrorMessage(vscode.l10n.t(`Error searching source members: {0}`, String(e)));
   }
 }
 
@@ -1688,7 +1801,7 @@ async function deleteObject(object: IBMiObject) {
   const isSuccess = deleteResult.code === 0;
   if (isSuccess) {
     const config = connection.getConfig();
-    const libl = [config.currentLibrary, ...config.libraryList].map(library => connection.upperCaseName(library));
+    const libl = [config.currentLibrary || "", ...config.libraryList].map(library => connection.upperCaseName(library));
     if (libl.includes(connection.upperCaseName(object.name))) {
       commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
     }

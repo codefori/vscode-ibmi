@@ -32,9 +32,9 @@ export namespace Tools {
    * @param iasp Optional: an iASP name
    */
   export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean) {
-    [library, object] = Tools.sanitizeObjNamesForPase([library, object]);
-    member = member ? Tools.sanitizeObjNamesForPase([member])[0] : undefined;
-    iasp = iasp ? Tools.sanitizeObjNamesForPase([iasp])[0] : undefined;
+    [library, object] = Tools.sanitizeObjNamesForPase(library, object);
+    member = member ? Tools.sanitizeObjNamesForPase(member)[0] : undefined;
+    iasp = iasp ? Tools.sanitizeObjNamesForPase(iasp)[0] : undefined;
 
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${library}.LIB`;
     const filePath = object ? `${object}.FILE` : '';
@@ -91,7 +91,7 @@ export namespace Tools {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  export function sanitizeObjNamesForPase(libraries: string[]): string[] {
+  export function sanitizeObjNamesForPase(...libraries: string[]): string[] {
     return libraries
       .map(library => {
         // Quote libraries starting with #
@@ -138,7 +138,7 @@ export namespace Tools {
 
   export function fixWindowsPath(path: string) {
     if (process.platform === `win32` && path[0] === `/`) {
-      //Issue with getFile not working propertly on Windows
+      //Issue with getFile not working properly on Windows
       //when there was a / at the start.
       return path.substring(1);
     } else {
@@ -158,7 +158,7 @@ export namespace Tools {
     }
     return 0;
   }
-  
+
   /**
    * Validates a date used in a filter and returns it in its `YYYY-MM-DD` canonical form.
    * @param date a date string, expected to be in the `YYYY-MM-DD` format
@@ -186,10 +186,10 @@ export namespace Tools {
    */
   export function normalizePath(filePath: string) {
     //Test path in lowercase since os.homedir doesn't always has the same case as filePath on Windows
-    if(filePath.toLowerCase().startsWith(os.homedir().toLowerCase())){
+    if (filePath.toLowerCase().startsWith(os.homedir().toLowerCase())) {
       filePath = path.join(`~`, filePath.substring(os.homedir().length));
     }
-    
+
     return process.platform === "win32" ? filePath.replaceAll('\\', '/') : filePath;
   }
 
@@ -294,5 +294,29 @@ export namespace Tools {
       permissions.push((field[i] === "r" ? 4 : 0) + (field[i + 1] === "w" ? 2 : 0) + (["x", "s", "t"].includes(field[i + 2]) ? 1 : 0));
     }
     return permissions.map(String).join("");
+  }
+
+  /**
+   * Helper function to deal with *CRTDFT special value 
+   * @returns `*CURLIB` if `value` is falsy or equal to *CRTDFT; returns `value` otherwise
+   */
+  export function getCurLib(value?: string) {
+    return !value || /\*CRTDFT/i.test(value) ? "*CURLIB" : value;
+  }
+
+  export function escapeForShell(command: string) {
+    return command.replace(/\$/g, `\\$`)
+  }
+
+  export function getCurrentTimestamp() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    const second = String(now.getSeconds()).padStart(2, '0');
+    const millisecond = String(now.getMilliseconds()).padStart(3, '0');
+    return `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
   }
 }

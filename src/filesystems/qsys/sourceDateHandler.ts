@@ -1,6 +1,8 @@
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
+import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { instance } from "../../instantiate";
+import { VscodeTools } from "../../ui/Tools";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);
@@ -28,12 +30,16 @@ const diffOptions = {
 
 const lineDecor = vscode.window.createTextEditorDecorationType({
   backgroundColor: new vscode.ThemeColor(`diffEditor.insertedTextBackground`),
+  overviewRulerColor: seachGutterColor,
+  overviewRulerLane: vscode.OverviewRulerLane.Left,
   rangeBehavior: vscode.DecorationRangeBehavior.OpenOpen,
 });
 
 const SD_BASE = `$(history) Date Search`;
 const SD_ACTIVE = `$(history) From `;
 const SD_EXACT = `$(history) On `;
+
+const DATE_SEARCH_CONTEXT = `code-for-ibmi:sourceDateSearchActive`;
 
 const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
 
@@ -51,6 +57,8 @@ export class SourceDateHandler {
 
   private highlightSince?: number;
   private highlightBefore?: number;
+  /** The date search as last entered, proposed again when starting a new search */
+  private dateSearch?: string;
   private lineEditedBefore?: number;
   private sequenceNumbersShowing: boolean = false;
   private readonly sourceDateSearchBarItem: vscode.StatusBarItem;
@@ -72,12 +80,24 @@ export class SourceDateHandler {
       vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => this.clearDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => this.newDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.toggleSequenceNumbers`, () => this.toggleSequenceNumbers()),
+      vscode.commands.registerCommand(`code-for-ibmi.member.nextDateSearchBlock`, (uri?: vscode.Uri | string) => this.goToDateSearchBlock(true, uri)),
+      vscode.commands.registerCommand(`code-for-ibmi.member.previousDateSearchBlock`, (uri?: vscode.Uri | string) => this.goToDateSearchBlock(false, uri)),
+      onCodeForIBMiConfigurationChange(`connectionSettings`, () => this.updateStatusBarColor()),
       this.sourceDateSearchBarItem
     );
   }
 
+  /**
+   * Use the same status bar colour as the other Code for IBM i bar items.
+   */
+  private updateStatusBarColor() {
+    const config = instance.getConnection()?.getConfig();
+    this.sourceDateSearchBarItem.color = VscodeTools.parseStatusBarColor(config?.statusBarColor);
+  }
+
   setEnabled(enabled: boolean) {
     if (enabled) {
+      this.updateStatusBarColor();
       this.sourceDateSearchBarItem.show();
     } else {
       this.sourceDateSearchBarItem.hide();
@@ -89,11 +109,13 @@ export class SourceDateHandler {
         clearTimeout(this.timeout);
         this.highlightSince = undefined;
         this.highlightBefore = undefined;
+        this.dateSearch = undefined;
         this.lineEditedBefore = undefined;
         this.baseDates.clear();
         this.baseSource.clear();
         this.recordLengths.clear();
         this.baseSequences.clear();
+        this.updateDateSearchContext();
       }
     }
   }
@@ -254,14 +276,18 @@ export class SourceDateHandler {
           const currentDate = currentStamp();
           const currentDateNumber = Number(currentDate);
 
+          // Pass the hovered member so the block links navigate its editor rather than the active one
+          const blockArgs = encodeURIComponent(JSON.stringify([document.uri.toString()]));
           const markdownString = [
             `[Show changes since last local save](command:workbench.files.action.compareWithSaved)`,
-            `${this.highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`,
+            `${this.isSearchActive ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`,
+            this.isSearchActive ? `[Previous block](command:code-for-ibmi.member.previousDateSearchBlock?${blockArgs}) | [Next block](command:code-for-ibmi.member.nextDateSearchBlock?${blockArgs})` : undefined,
             sequenceNumbersAvailable ? `[Show sequence numbers](command:code-for-ibmi.toggleSequenceNumbers)` : undefined
           ].filter(i => i !== undefined) as string[];
 
-          if (this.highlightSince) {
-            const sinceLabel = String(this.highlightSince) == currentDate ? `today` : this.highlightSince;
+          if (this.isSearchActive && this.highlightSince !== undefined) {
+            const since = String(this.highlightSince).padStart(6, `0`);
+            const sinceLabel = since === currentDate ? `today` : since;
             markdownString.push(this.highlightSince === this.highlightBefore
               ? `Changes on ${sinceLabel} highlighted`
               : `Changes from ${sinceLabel} highlighted`);
@@ -270,37 +296,10 @@ export class SourceDateHandler {
           const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n---\n\n`));
           hoverMessage.isTrusted = true;
 
-          // Due to the way source dates are stored, we're doing some magic.
-          // Dates are stored in zoned/character columns, which means 26th
-          // August 2022 is 220826, 4th May 1997 means 970504.
-
-          // We support the ability to search and highlight dates after a
-          // certain date. The issue with these dates value when converted
-          // to numeric is that 970504 is more than 220826, even though
-          // 220826 is after 970504 in terms of dates.
-
-          // To get around this, if the line date or search date is less than
-          // or equal to the date of today, we add 1000000 (one million).
-          // 220826 + 1000000 = 1220826, which is more than 970504.
-
-          const currentHighlightSince = this.highlightSince ? this.highlightSince + (this.highlightSince <= currentDateNumber ? 1000000 : 0) : undefined;
-          const currentHighlightBefore = this.highlightBefore ? this.highlightBefore + (this.highlightBefore <= currentDateNumber ? 1000000 : 0) : undefined;
+          const matchesSearch = this.dateSearchMatcher(currentDateNumber);
 
           for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
-            let highlightForSearch = false;
-
-            // Add 1000000 to date if less than today.
-            let lineDateNumber = Number(dates[cLine]);
-            if (lineDateNumber <= currentDateNumber && lineDateNumber !== 0) {
-              lineDateNumber += 1000000;
-            }
-
-            if (currentHighlightSince && currentHighlightBefore)
-              highlightForSearch = lineDateNumber >= currentHighlightSince && lineDateNumber <= currentHighlightBefore;
-            else if (currentHighlightSince)
-              highlightForSearch = lineDateNumber >= currentHighlightSince;
-            else if (currentHighlightBefore)
-              highlightForSearch = lineDateNumber <= currentHighlightBefore;
+            const highlightForSearch = matchesSearch(dates[cLine]);
 
             lineGutters.push({
               hoverMessage,
@@ -337,6 +336,76 @@ export class SourceDateHandler {
         }
       }
     }
+  }
+
+  private get isSearchActive() {
+    return this.highlightSince !== undefined || this.highlightBefore !== undefined;
+  }
+
+  /**
+   * Returns a predicate telling whether a source date (YYMMDD) falls within the current date search.
+   * It never matches when no search is active.
+   */
+  private dateSearchMatcher(currentDateNumber: number) {
+    // Due to the way source dates are stored, we're doing some magic.
+    // Dates are stored in zoned/character columns, which means 26th
+    // August 2022 is 220826, 4th May 1997 means 970504.
+
+    // We support the ability to search and highlight dates after a
+    // certain date. The issue with these dates value when converted
+    // to numeric is that 970504 is more than 220826, even though
+    // 220826 is after 970504 in terms of dates.
+
+    // To get around this, if the line date or search date is less than
+    // or equal to the date of today, we add 1000000 (one million).
+    // 220826 + 1000000 = 1220826, which is more than 970504.
+
+    const currentHighlightSince = this.highlightSince ? this.highlightSince + (this.highlightSince <= currentDateNumber ? 1000000 : 0) : undefined;
+    const currentHighlightBefore = this.highlightBefore ? this.highlightBefore + (this.highlightBefore <= currentDateNumber ? 1000000 : 0) : undefined;
+
+    return (lineDate: string) => {
+      // Add 1000000 to date if less than today.
+      let lineDateNumber = Number(lineDate);
+      if (lineDateNumber <= currentDateNumber && lineDateNumber !== 0) {
+        lineDateNumber += 1000000;
+      }
+
+      if (currentHighlightSince && currentHighlightBefore)
+        return lineDateNumber >= currentHighlightSince && lineDateNumber <= currentHighlightBefore;
+      else if (currentHighlightSince)
+        return lineDateNumber >= currentHighlightSince;
+      else if (currentHighlightBefore)
+        return lineDateNumber <= currentHighlightBefore;
+      return false;
+    };
+  }
+
+  /**
+   * Computes the blocks of consecutive lines matching the date search (0-based, inclusive),
+   * regardless of what the gutter is currently showing.
+   */
+  private getDateSearchBlocks(document: vscode.TextDocument) {
+    const blocks: { start: number, end: number }[] = [];
+    const alias = getAliasName(document.uri);
+    const sourceDates = this.baseDates.get(alias);
+
+    if (this.isSearchActive && sourceDates) {
+      const dates = document.isDirty ? this.calcNewSourceDates(alias, document.getText()) : sourceDates;
+      const matchesSearch = this.dateSearchMatcher(Number(currentStamp()));
+
+      for (let line = 0; line < dates.length && line < document.lineCount; line++) {
+        if (matchesSearch(dates[line])) {
+          const last = blocks[blocks.length - 1];
+          if (last && last.end === line - 1) {
+            last.end = line;
+          } else {
+            blocks.push({ start: line, end: line });
+          }
+        }
+      }
+    }
+
+    return blocks;
   }
 
   calcNewSourceDates(alias: string, body: string) {
@@ -406,10 +475,62 @@ export class SourceDateHandler {
     }
   }
 
+  private updateDateSearchContext() {
+    vscode.commands.executeCommand(`setContext`, DATE_SEARCH_CONTEXT, this.isSearchActive);
+  }
+
+  /**
+   * Moves the cursor to the next (or previous) block of lines highlighted by the date search,
+   * wrapping around at the end (or start) of the member.
+   * @param member the member whose editor title button or hover link was clicked (a URI string from hover links);
+   * the active editor is used when not given
+   */
+  private async goToDateSearchBlock(forward: boolean, member?: vscode.Uri | string) {
+    const uri = typeof member === `string` ? vscode.Uri.parse(member) : member;
+    let editor = vscode.window.activeTextEditor;
+    if (uri instanceof vscode.Uri && editor?.document.uri.toString() !== uri.toString()) {
+      const clicked = vscode.window.visibleTextEditors.find(visible => visible.document.uri.toString() === uri.toString());
+      editor = clicked ? await vscode.window.showTextDocument(clicked.document, clicked.viewColumn) : undefined;
+    }
+
+    if (!editor || editor.document.uri.scheme !== `member`) {
+      return;
+    }
+
+    if (!this.isSearchActive) {
+      vscode.window.setStatusBarMessage(vscode.l10n.t(`No source date search active`), 3000);
+      return;
+    }
+
+    const blocks = this.getDateSearchBlocks(editor.document);
+    if (!blocks.length) {
+      vscode.window.setStatusBarMessage(vscode.l10n.t(`No lines match the source date search`), 3000);
+      return;
+    }
+
+    const currentLine = editor.selection.active.line;
+    let target: { start: number, end: number } | undefined;
+    if (forward) {
+      target = blocks.find(block => block.start > currentLine) ?? blocks[0];
+    } else {
+      // From inside a block, go to the start of the previous block rather than the current one
+      const reference = blocks.find(block => block.start <= currentLine && currentLine <= block.end)?.start ?? currentLine;
+      target = blocks.filter(block => block.start < reference).pop() ?? blocks[blocks.length - 1];
+    }
+
+    const position = new vscode.Position(target.start, 0);
+    editor.selection = new vscode.Selection(position, position);
+    editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+
+    vscode.window.setStatusBarMessage(vscode.l10n.t(`Source date block {0} of {1}`, blocks.indexOf(target) + 1, blocks.length), 3000);
+  }
+
   private clearDateSearch() {
     this.sourceDateSearchBarItem.text = SD_BASE;
     this.highlightSince = undefined;
     this.highlightBefore = undefined;
+    this.dateSearch = undefined;
+    this.updateDateSearchContext();
 
     const editor = vscode.window.activeTextEditor;
     if (editor) {
@@ -419,7 +540,7 @@ export class SourceDateHandler {
 
   private async newDateSearch() {
     const value = await vscode.window.showInputBox({
-      value: currentStamp(),
+      value: this.dateSearch ?? currentStamp(),
       prompt: `Show everything on a specific date (=YYMMDD), after a specific date (YYMMDD), or within a date range (FROM-TO, both YYMMDD)`,
       title: `Source Date search`,
       ignoreFocusOut: true,
@@ -454,11 +575,15 @@ export class SourceDateHandler {
       this.highlightSince = Number(dates[0]);
       // An exact search is a range where both ends are the same date
       this.highlightBefore = exact ? Number(dates[0]) : (dates[1] !== undefined ? Number(dates[1]) : undefined);
+      this.dateSearch = value;
     } else {
       this.sourceDateSearchBarItem.text = SD_BASE;
       this.highlightSince = undefined;
       this.highlightBefore = undefined;
+      this.dateSearch = undefined;
     }
+
+    this.updateDateSearchContext();
 
     const editor = vscode.window.activeTextEditor;
     const connection = instance.getConnection();
