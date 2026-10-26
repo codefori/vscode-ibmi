@@ -143,15 +143,34 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       environment: `ile`,
     }
   ],
-  DSPF: [
+  DDS: [
     {
-      "name": "Create DSPF",
-      "command": "CRTDSPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) RSTDSP(*NO) OPTION(*EVENTF)",
-      "environment": "ile",
-      "deployFirst": true,
-      "extensions": [
-        "dspf"
-      ]
+      name: `Create Physical File`,
+      command: `CRTPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) SIZE(*NOMAX) MAXMBRS(1) OPTION(*EVENTF)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`PF`, `pf`]
+    },
+    {
+      name: `Create Logical File`,
+      command: `CRTLF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`LF`, `lf`]
+    },
+    {
+      name: `Create Display File`,
+      command: `CRTDSPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) RSTDSP(*NO) OPTION(*EVENTF)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`DSPF`, `dspf`]
+    },
+    {
+      name: `Create Printer File`,
+      command: `CRTPRTF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`PRTF`, `prtf`]
     }
   ],
   "Service Programs": [
