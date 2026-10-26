@@ -860,14 +860,6 @@
 						{
 							"type": "member",
 							"extensions": [
-								"dspf"
-							],
-							"name": "Create Display File (CRTDSPF)",
-							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF) RSTDSP(*NO) REPLACE(*YES)"
-						},
-						{
-							"type": "member",
-							"extensions": [
 								"pf"
 							],
 							"name": "Create Physical File (CRTPF)",
@@ -880,6 +872,14 @@
 							],
 							"name": "Create Logical File (CRTLF)",
 							"command": "?CRTLF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"dspf"
+							],
+							"name": "Create Display File (CRTDSPF)",
+							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF) RSTDSP(*NO) REPLACE(*YES)"
 						},
 						{
 							"type": "member",
