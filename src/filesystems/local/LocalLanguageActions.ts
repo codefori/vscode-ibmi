@@ -149,28 +149,28 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       command: `CRTPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) SIZE(*NOMAX) MAXMBRS(1) OPTION(*EVENTF)`,
       deployFirst: true,
       environment: `ile`,
-      extensions: [`PF`, `pf`]
+      extensions: [`PF`]
     },
     {
       name: `Create Logical File`,
       command: `CRTLF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)`,
       deployFirst: true,
       environment: `ile`,
-      extensions: [`LF`, `lf`]
+      extensions: [`LF`]
     },
     {
       name: `Create Display File`,
       command: `CRTDSPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) RSTDSP(*NO) OPTION(*EVENTF)`,
       deployFirst: true,
       environment: `ile`,
-      extensions: [`DSPF`, `dspf`]
+      extensions: [`DSPF`]
     },
     {
       name: `Create Printer File`,
       command: `CRTPRTF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)`,
       deployFirst: true,
       environment: `ile`,
-      extensions: [`PRTF`, `prtf`]
+      extensions: [`PRTF`]
     }
   ],
   "Service Programs": [
