@@ -724,14 +724,21 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         // Shortcuts point to real directories: make the user choose between removing the shortcut and deleting the directory
         const selectedShortcuts = items.filter((item): item is IFSShortcutItem => item instanceof IFSShortcutItem);
         if (selectedShortcuts.length) {
-          const message = selectedShortcuts.length === 1 ?
-            l10n.t(`{0} is an IFS shortcut. Do you want to remove the shortcut or delete the directory and all its contents?`, selectedShortcuts[0].path) :
-            l10n.t(`{0} of the selected items are IFS shortcuts. Do you want to remove the shortcuts or delete the directories and all their contents?`, selectedShortcuts.length);
-          const detail = selectedShortcuts.length === 1 ? undefined : selectedShortcuts.map(i => `- ${i.path}`).join("\n");
           const removeShortcut = l10n.t(`Remove shortcut`);
           const deleteDirectory = l10n.t(`Delete directory`);
-          const choices = selectedShortcuts.some(shortcut => isProtected(shortcut.path)) ? [removeShortcut] : [removeShortcut, deleteDirectory];
-          const choice = await vscode.window.showWarningMessage(message, { modal: true, detail }, ...choices);
+          let choice;
+          if (selectedShortcuts.some(shortcut => isProtected(shortcut.path))) {
+            // Protected directories can't be deleted: removing the shortcuts is the only option, so there is nothing to ask
+            choice = removeShortcut;
+          }
+          else {
+            const message = selectedShortcuts.length === 1 ?
+              l10n.t(`{0} is an IFS shortcut. Do you want to remove the shortcut or delete the directory and all its contents?`, selectedShortcuts[0].path) :
+              l10n.t(`{0} of the selected items are IFS shortcuts. Do you want to remove the shortcuts or delete the directories and all their contents?`, selectedShortcuts.length);
+            const detail = selectedShortcuts.length === 1 ? undefined : selectedShortcuts.map(i => `- ${i.path}`).join("\n");
+            choice = await vscode.window.showWarningMessage(message, { modal: true, detail }, removeShortcut, deleteDirectory);
+          }
+
           if (choice === removeShortcut) {
             await vscode.commands.executeCommand(`code-for-ibmi.removeIFSShortcut`, selectedShortcuts[0], selectedShortcuts);
             items = items.filter(item => !(item instanceof IFSShortcutItem));
@@ -750,8 +757,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             const contentCounts = new Map<string, number>();
             const directories = items.filter(item => item.file.type === `directory`);
             if (directories.length) {
-              const countResult = await connection.sendCommand({ command: directories.map(directory => `ls -A ${Tools.escapePath(directory.path)} 2>/dev/null | wc -l`).join(`; `) });
-              const counts = countResult.stdout.split(`\n`).map(line => Number(line.trim()));
+              const counts = await connection.getContent().countFiles(directories.map(directory => directory.path));
               directories.forEach((directory, index) => {
                 if (counts[index] > 0) {
                   contentCounts.set(directory.path, counts[index]);
