@@ -3465,7 +3465,7 @@
 				},
 				{
 					"command": "code-for-ibmi.deleteIFS",
-					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
+					"when": "view == ifsBrowser && !(viewItem =~ /^shortcut.*$/) && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@5"
 				},
 				{

@@ -1031,8 +1031,21 @@ export default class IBMiContent {
     return this.countFiles(this.ibmi.sysNameInAmerican(Tools.qualifyPath(path.library, path.name, undefined, path.asp)))
   }
 
-  async countFiles(directory: string) {
-    return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
+  /**
+   * Count the entries of one or more directories (hidden ones included), in a single command.
+   * A directory that doesn't exist (or can't be read) counts as 0.
+   */
+  async countFiles(directory: string): Promise<number>;
+  async countFiles(directories: string[]): Promise<number[]>;
+  async countFiles(directories: string | string[]) {
+    const list = Array.isArray(directories) ? directories : [directories];
+    if (!list.length) {
+      return [];
+    }
+
+    const result = await this.ibmi.sendCommand({ command: list.map(directory => `(cd "${Tools.escapePath(directory, true)}" 2>/dev/null && ls -A | wc -l || echo 0)`).join(`; `) });
+    const counts = result.stdout.split(`\n`).map(line => Number(line.trim()) || 0);
+    return Array.isArray(directories) ? list.map((_, index) => counts[index] || 0) : counts[0] || 0;
   }
 
 
