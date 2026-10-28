@@ -310,7 +310,7 @@
 							"connectringStringFor5250": {
 								"type": "string",
 								"default": "+uninhibited localhost",
-								"description": "The connectring string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+								"description": "The connection string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
 							},
 							"autoSaveBeforeAction": {
 								"type": "boolean",
@@ -519,7 +519,7 @@
 				"code-for-ibmi.autoRefresh": {
 					"type": "boolean",
 					"default": true,
-					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delele, etc). Turn this off if you find performance is bad."
+					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delete, etc). Turn this off if you find performance is bad."
 				},
 				"code-for-ibmi.ObjectBrowser.showNamesInLowercase": {
 					"type": "boolean",
@@ -569,7 +569,7 @@
 				"code-for-ibmi.createLibraryOnBranchChange": {
 					"type": "boolean",
 					"default": false,
-					"description": "Used in conjuction with git. When the branch changes, prompt the user if they would like a new branch library for this branch. The branch name, which is deterministic, always starts with 'VS', followed by 8 characters."
+					"description": "Used in conjunction with git. When the branch changes, prompt the user if they would like a new branch library for this branch. The branch name, which is deterministic, always starts with 'VS', followed by 8 characters."
 				},
 				"code-for-ibmi.recentlyOpenedFilesLimit": {
 					"type": "integer",
@@ -745,7 +745,7 @@
 								"CBL"
 							],
 							"name": "Create Bound COBOL Program (CRTBNDCBL)",
-							"command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"command": "?CRTBNDCBL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
 							"type": "member",
@@ -754,7 +754,35 @@
 								"CBL"
 							],
 							"name": "Create Module CBLLE (CRTCBLMOD)",
-							"command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"command": "?CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Program (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*PGM) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Module (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"CBL"
+							],
+							"name": "Create COBOL Program (CRTCBLPGM)",
+							"command": "?CRTCBLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*SRCDBG) TGTRLS(*CURRENT)"
 						},
 						{
 							"type": "member",
@@ -832,18 +860,10 @@
 						{
 							"type": "member",
 							"extensions": [
-								"dspf"
-							],
-							"name": "Create Display File (CRTDSPF)",
-							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF) RSTDSP(*NO) REPLACE(*YES)"
-						},
-						{
-							"type": "member",
-							"extensions": [
 								"pf"
 							],
 							"name": "Create Physical File (CRTPF)",
-							"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF) SIZE(*NOMAX) MAXMBRS(1)"
+							"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) SIZE(*NOMAX) MAXMBRS(1) OPTION(*EVENTF)"
 						},
 						{
 							"type": "member",
@@ -856,11 +876,27 @@
 						{
 							"type": "member",
 							"extensions": [
+								"dspf"
+							],
+							"name": "Create Display File (CRTDSPF)",
+							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) RSTDSP(*NO) OPTION(*EVENTF)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"prtf"
+							],
+							"name": "Create Printer File (CRTPRTF)",
+							"command": "?CRTPRTF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF)"
+						},
+						{
+							"type": "member",
+							"extensions": [
 								"CLP",
 								"CLLE"
 							],
 							"name": "Create CL Program (CRTCLP)",
-							"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT) REPLACE(*YES)"
+							"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT)"
 						},
 						{
 							"type": "member",
@@ -948,6 +984,44 @@
 						{
 							"type": "streamfile",
 							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Bound COBOL Program (CRTBNDCBL)",
+							"command": "?CRTBNDCBL PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Module CBLLE (CRTCBLMOD)",
+							"command": "?CRTCBLMOD MODULE(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Program (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*PGM) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Module (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
 								"CLP",
 								"CLLE"
 							],
@@ -977,6 +1051,38 @@
 							],
 							"name": "Create Command (Allow Return Variables - CRTCMD)",
 							"command": "?CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') ALLOW(*BPGM *IPGM *BMOD *IMOD *BREXX *IREXX) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"pf"
+							],
+							"name": "Create Physical File (CRTPF)",
+							"command": "?CRTPF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) SIZE(*NOMAX) MAXMBRS(1) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"lf"
+							],
+							"name": "Create Logical File (CRTLF)",
+							"command": "?CRTLF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"dspf"
+							],
+							"name": "Create Display File (CRTDSPF)",
+							"command": "?CRTDSPF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) RSTDSP(*NO) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"prtf"
+							],
+							"name": "Create Printer File (CRTPRTF)",
+							"command": "?CRTPRTF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)"
 						},
 						{
 							"type": "streamfile",
@@ -1167,6 +1273,20 @@
 				"enablement": "code-for-ibmi:connected",
 				"title": "Apply Source Date Filter",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.member.nextDateSearchBlock",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Go to Next Source Date Block",
+				"category": "IBM i",
+				"icon": "$(arrow-down)"
+			},
+			{
+				"command": "code-for-ibmi.member.previousDateSearchBlock",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Go to Previous Source Date Block",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.selectForCompare",
@@ -1566,9 +1686,15 @@
 			{
 				"command": "code-for-ibmi.maintainFilter",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Change...",
+				"title": "Edit...",
 				"category": "IBM i",
 				"icon": "$(filter)"
+			},
+			{
+				"command": "code-for-ibmi.renameFilter",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Rename...",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.objectBrowser.delete",
@@ -2010,6 +2136,16 @@
 			}
 		],
 		"keybindings": [
+			{
+				"command": "code-for-ibmi.member.nextDateSearchBlock",
+				"key": "alt+f5",
+				"when": "editorTextFocus && !isInDiffEditor && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
+			},
+			{
+				"command": "code-for-ibmi.member.previousDateSearchBlock",
+				"key": "shift+alt+f5",
+				"when": "editorTextFocus && !isInDiffEditor && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
+			},
 			{
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
@@ -2695,6 +2831,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.renameFilter",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.sortFilters",
 					"when": "never"
 				},
@@ -2992,6 +3132,16 @@
 			],
 			"editor/title": [
 				{
+					"command": "code-for-ibmi.member.previousDateSearchBlock",
+					"when": "resourceScheme == member && !isInDiffEditor && code-for-ibmi:sourceDateSearchActive",
+					"group": "navigation@0"
+				},
+				{
+					"command": "code-for-ibmi.member.nextDateSearchBlock",
+					"when": "resourceScheme == member && !isInDiffEditor && code-for-ibmi:sourceDateSearchActive",
+					"group": "navigation@0"
+				},
+				{
 					"command": "code-for-ibmi.refreshJobLog",
 					"when": "activeWebviewPanelId == 'jobLogView'",
 					"group": "navigation@1"
@@ -3149,14 +3299,19 @@
 					"group": "4_filters@1"
 				},
 				{
-					"command": "code-for-ibmi.copyFilter",
+					"command": "code-for-ibmi.renameFilter",
 					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
 					"group": "4_filters@2"
 				},
 				{
+					"command": "code-for-ibmi.copyFilter",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
+					"group": "4_filters@3"
+				},
+				{
 					"command": "code-for-ibmi.objectBrowser.delete",
 					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
-					"group": "4_filters@3"
+					"group": "4_filters@4"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",
@@ -3310,7 +3465,7 @@
 				},
 				{
 					"command": "code-for-ibmi.deleteIFS",
-					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
+					"when": "view == ifsBrowser && !(viewItem =~ /^shortcut.*$/) && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@5"
 				},
 				{

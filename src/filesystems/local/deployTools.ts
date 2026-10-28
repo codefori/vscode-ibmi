@@ -96,6 +96,12 @@ export namespace DeployTools {
       if (remotePath) {
         if (!method) {
           const methods = [];
+          if (selectedFiles?.length) {
+            // Files are known (e.g. an Action with deployFirst): always upload exactly those files
+            const count = selectedFiles.length;
+            methods.push({ method: "selected" as DeploymentMethod, label: l10n.t("Selected"), description: l10n.t("{0} file(s) this Action runs on, uploaded even if unchanged", count) });
+          }
+
           if (Deployment.getConnection().remoteFeatures.md5sum) {
             methods.push({ method: "compare" as DeploymentMethod, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
           }
@@ -118,7 +124,8 @@ export namespace DeployTools {
             method = defaultDeploymentMethod
 
           } else {
-            if (defaultDeploymentMethod as string !== '') {
+            // "selected" as default only applies when the caller knows the files (Actions); fall back to the picker silently otherwise
+            if (defaultDeploymentMethod as string !== '' && defaultDeploymentMethod !== "selected") {
               vscode.window.showWarningMessage('Default deployment method is set but not usable in your environment.')
             }
 

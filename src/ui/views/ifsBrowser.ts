@@ -2,7 +2,7 @@ import os from "os";
 import path, { dirname, extname } from "path";
 import vscode, { CancellationToken, FileDecorationProvider, FileType, l10n, ThemeColor, Uri, window } from "vscode";
 
-import { existsSync, mkdirSync, rmdirSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, rmdirSync, statSync } from "fs";
 import IBMi from "../../api/IBMi";
 import { SortOptions } from "../../api/IBMiContent";
 import { SearchTools } from "../../api/SearchTools";
@@ -596,15 +596,101 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           }, async (progress) => {
             try {
               if (filesToUpload.length) {
-                progress.report({ message: l10n.t(`sending {0} file(s)...`, filesToUpload.length) });
-                await connection.getContent().uploadFiles(filesToUpload, { concurrency: 5 });
+                progress.report({ message: l10n.t(`Calculating file upload size...`) });
+                const totalBytes = filesToUpload.reduce((sum, f) => sum + statSync(f.local).size, 0);
+
+                const formatBytes = (bytes: number): string => {
+                  const KB = 1024;
+                  const MB = 1024 * KB;
+                  const GB = 1024 * MB;
+                  if (totalBytes >= GB) {
+                    return `${(bytes / GB).toFixed(1)} GB`;
+                  } else if (totalBytes >= MB) {
+                    return `${(bytes / MB).toFixed(1)} MB`;
+                  } else {
+                    return `${(bytes / KB).toFixed(1)} KB`;
+                  }
+                };
+
+                progress.report({ message: l10n.t(`Total Files: {0}. Total Bytes: {1}. Starting upload...`, filesToUpload.length, formatBytes(totalBytes)) });
+                let bytesTransferred = 0;
+                let filesCompleted = 0;
+                await connection.getContent().uploadFiles(filesToUpload, {
+                  concurrency: 5,
+                  transferOptions: {
+                    step: (total: number, nb: number, fsize: number) => {
+
+                      bytesTransferred += nb;
+
+                      // A file is complete when its transferred bytes equal its size
+                      if (total === fsize) {
+                        filesCompleted++;
+                      }
+
+                      const filePercentage = Math.round((filesCompleted / filesToUpload.length) * 100);
+                      const bytePercentage = totalBytes > 0 ? Math.round((bytesTransferred / totalBytes) * 100) : 0;
+                      progress.report({
+                        increment: totalBytes > 0 ? (nb / totalBytes) * 100 : 0,
+                        message: l10n.t(`Total Files: {0}/{1} ({2}%). Total Bytes: {3}/{4} ({5}%).`,
+                          filesCompleted, filesToUpload.length, filePercentage,
+                          formatBytes(bytesTransferred), formatBytes(totalBytes), bytePercentage)
+                      });
+                    }
+                  }
+                });
               }
 
               if (directoriesToUpload.length) {
-                for (const directory of directoriesToUpload) {
+                progress.report({ message: l10n.t(`Calculating file count...`) });
+                const dirFileCounts = await Promise.all(
+                  directoriesToUpload.map(directory =>
+                    Promise.resolve(
+                      // node-ssh by default ignores hidden files: https://github.com/steelbrain/node-ssh/blob/fca27faedee85736403cb6b46f15e5677302f8a8/src/index.ts#L97
+                      readdirSync(directory.fsPath, { recursive: true, withFileTypes: true })
+                        .filter(f => {
+                          // Exclude sub-directories and hidden files
+                          if (!f.isFile() || f.name.startsWith('.')) {
+                            return false;
+                          }
+
+                          // Exclude files in hidden sub-directories
+                          const relativeParent = path.relative(directory.fsPath, f.parentPath);
+                          return !relativeParent.split(path.sep).some(segment => segment.startsWith('.'));
+                        }).length
+                    )
+                  )
+                );
+                const totalFilesAcrossDirs = dirFileCounts.reduce((sum, n) => sum + n, 0);
+
+                progress.report({ message: l10n.t(`Total Folders: {0}. Total Files: {1}. Starting upload...`, directoriesToUpload.length, totalFilesAcrossDirs) });
+                let directoriesCompleted = 0;
+                let totalFilesCompleted = 0;
+                for (let i = 0; i < directoriesToUpload.length; i++) {
+                  const directory = directoriesToUpload[i];
                   const name = path.basename(directory.fsPath);
-                  progress.report({ message: l10n.t(`sending {0} directory...`, name) })
-                  await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
+
+                  await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), {
+                    concurrency: 5,
+                    transferOptions: {
+                      step: (total: number, nb: number, fsize: number) => {
+                        // A file is complete when its transferred bytes equal its size
+                        if (total === fsize) {
+                          totalFilesCompleted++;
+                        }
+
+                        const folderPercentage = Math.round((directoriesCompleted / directoriesToUpload.length) * 100);
+                        const filePercentage = totalFilesAcrossDirs > 0 ? Math.round((totalFilesCompleted / totalFilesAcrossDirs) * 100) : 0;
+                        progress.report({
+                          increment: totalFilesAcrossDirs > 0 ? (nb / fsize) * (1 / totalFilesAcrossDirs) * 100 : 0,
+                          message: l10n.t(`Total Folders: {0}/{1} ({2}%). Total Files: {3}/{4} ({5}%).`,
+                            directoriesCompleted, directoriesToUpload.length, folderPercentage,
+                            totalFilesCompleted, totalFilesAcrossDirs, filePercentage)
+                        });
+                      }
+                    }
+                  });
+
+                  directoriesCompleted++;
                 }
               }
 
@@ -635,11 +721,66 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           items = getSelectedItems(singleItem).filter(reduceIFSPath);
         }
 
+        // Shortcuts point to real directories: make the user choose between removing the shortcut and deleting the directory
+        const selectedShortcuts = items.filter((item): item is IFSShortcutItem => item instanceof IFSShortcutItem);
+        if (selectedShortcuts.length) {
+          const removeShortcut = l10n.t(`Remove shortcut`);
+          const deleteDirectory = l10n.t(`Delete directory`);
+          let choice;
+          if (selectedShortcuts.some(shortcut => isProtected(shortcut.path))) {
+            // Protected directories can't be deleted: removing the shortcuts is the only option, so there is nothing to ask
+            choice = removeShortcut;
+          }
+          else {
+            const message = selectedShortcuts.length === 1 ?
+              l10n.t(`{0} is an IFS shortcut. Do you want to remove the shortcut or delete the directory and all its contents?`, selectedShortcuts[0].path) :
+              l10n.t(`{0} of the selected items are IFS shortcuts. Do you want to remove the shortcuts or delete the directories and all their contents?`, selectedShortcuts.length);
+            const detail = selectedShortcuts.length === 1 ? undefined : selectedShortcuts.map(i => `- ${i.path}`).join("\n");
+            choice = await vscode.window.showWarningMessage(message, { modal: true, detail }, removeShortcut, deleteDirectory);
+          }
+
+          if (choice === removeShortcut) {
+            await vscode.commands.executeCommand(`code-for-ibmi.removeIFSShortcut`, selectedShortcuts[0], selectedShortcuts);
+            items = items.filter(item => !(item instanceof IFSShortcutItem));
+          }
+          else if (choice !== deleteDirectory) {
+            vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
+            return;
+          }
+        }
+
         if (items && items.length) {
           if (!items.find(n => isProtected(n.path))) {
             let deletionConfirmed = false;
-            const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t("Are you sure you want to delete the {0} selected files?", items.length);
-            const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
+
+            // Count the entries of each directory, so the user knows when content will be deleted too
+            const contentCounts = new Map<string, number>();
+            const directories = items.filter(item => item.file.type === `directory`);
+            if (directories.length) {
+              const counts = await connection.getContent().countFiles(directories.map(directory => directory.path));
+              directories.forEach((directory, index) => {
+                if (counts[index] > 0) {
+                  contentCounts.set(directory.path, counts[index]);
+                }
+              });
+            }
+
+            let message;
+            let detail;
+            if (items.length === 1) {
+              const item = items[0];
+              message = item.file.type === `directory` ? l10n.t(`Are you sure you want to delete the directory {0}?`, item.path) : l10n.t(`Are you sure you want to delete {0}?`, item.path);
+              const count = contentCounts.get(item.path);
+              detail = count ? l10n.t(`It contains {0} item(s), which will be permanently deleted with it.`, count) : undefined;
+            }
+            else {
+              message = l10n.t(`Are you sure you want to delete these {0} elements?`, items.length);
+              detail = items.map(item => {
+                const count = contentCounts.get(item.path);
+                return `- ${item.path}${count ? ` ${l10n.t(`(contains {0} item(s))`, count)}` : ``}`;
+              }).join("\n");
+            }
+
             if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
               const toBeDeleted: string[] = [];
               for (const item of items) {
@@ -668,6 +809,11 @@ Please type "{0}" to confirm deletion.`, dirName);
                 }
               }
 
+              if (!toBeDeleted.length) {
+                vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
+                return;
+              }
+
               try {
                 const removeResult = await vscode.window.withProgress({ title: l10n.t(`Deleting {0} element(s)...`, toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
                   return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
@@ -683,6 +829,7 @@ Please type "{0}" to confirm deletion.`, dirName);
                   const detail = deletedShortcuts.length === 1 ? undefined : deletedShortcuts.map(i => `- ${i}`).join("\n");
                   if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
                     config.ifsShortcuts = shortcuts.filter(path => !deletedShortcuts.includes(path));
+                    await IBMi.connectionManager.update(config);
                   }
                 }
 
@@ -754,7 +901,7 @@ Please type "{0}" to confirm deletion.`, dirName);
             }
 
             try {
-              const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
+              const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh", noLibList: true });
               if (moveResult.code !== 0) {
                 throw moveResult.stderr;
               }
@@ -1116,7 +1263,7 @@ async function doSearchInStreamfiles(searchTerm: string, searchPaths: string[]) 
       vscode.window.showInformationMessage(l10n.t(`No results found searching for "{0}".`, searchTerm));
     }
   } catch (e) {
-    vscode.window.showErrorMessage(l10n.t(`Error searching streamfiles.`));
+    vscode.window.showErrorMessage(l10n.t(`Error searching streamfiles: {0}`, String(e)));
   }
 }
 

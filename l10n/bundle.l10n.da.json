@@ -36,7 +36,7 @@
   "Are you sure you want to disconnect from {0}?": "Are you sure you want to disconnect from {0}?",
   "Attribute": "Attribut",
   "Authentication methods removed for \"{0}\".": "Kodeord og privat nøgle er fjernet for \"{0}\".",
-  "Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.": "Nedenfor er de tilgængelige variable, baseret på objekt typen. Du kan angive forskellige kommandoer på hver linie. Hver kommando er \"stateless\" og afvikles i eget job.",
+  "Below are available variables based on the type you have selected below. You can specify different commands on each line. Each command is stateless and runs in its own job.": "Nedenfor er de tilgængelige variable, baseret på objekt typen. Du kan angive forskellige kommandoer på hver linie. Hver kommando er \"stateless\" og afvikles i eget job.",
   "Branch library, based on the current branch": "Bibliotek for den nuværende Git-gren",
   "Browser": "Vindue",
   "Cancel": "Afbryd",
@@ -424,5 +424,9 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Uha, dette tager virkelig lang tid. Lad os håbe du får det ønskede resultat.",
   "Yes": "Ja",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Du bruger dette system på egen risiko. Del ingen følsomme eller private informationer.",
-  "Your changes will be discarded": "Dine ændringer vil blive kasseret"
+  "Your changes will be discarded": "Dine ændringer vil blive kasseret",
+  "Selected": "Selected",
+  "{0} file(s) this Action runs on, uploaded even if unchanged": "{0} file(s) this Action runs on, uploaded even if unchanged",
+  "Action files": "Action files",
+  "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.": "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method."
 }

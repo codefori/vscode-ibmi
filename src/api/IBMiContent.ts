@@ -46,14 +46,8 @@ export type SortOptions = {
 export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
-  private dummyDSPF = false;
-
   private get config() {
     return this.ibmi.getConfig();
-  }
-
-  reset() {
-    this.dummyDSPF = false;
   }
 
   private getTempRemote(path: string) {
@@ -212,7 +206,7 @@ export default class IBMiContent {
       while (true) {
         let copyResult: CommandResult;
         if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-          copyResult = { code: 0, stdout: '', stderr: '' };
+          copyResult = { code: 0, duration: 0, stdout: '', stderr: '' };
           if (requiresConversion) {
             await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => { }); // ignore error
             await this.ibmi.runSQL([
@@ -238,7 +232,7 @@ export default class IBMiContent {
         }
         else {
           if (requiresConversion) {
-            copyResult = { code: 0, stdout: '', stderr: '' };
+            copyResult = { code: 0, duration: 0, stdout: '', stderr: '' };
 
             await this.ibmi.runSQL(`@QSYS/RMVLNK OBJLNK('${tempRmt}')`).catch(_ => { }); // ignore error
             try {
@@ -325,7 +319,7 @@ export default class IBMiContent {
 
         let copyResult: CommandResult;
         if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-          copyResult = { code: 0, stdout: '', stderr: '' };
+          copyResult = { code: 0, duration: 0, stdout: '', stderr: '' };
 
           if (requiresConversion) {
             try {
@@ -356,7 +350,7 @@ export default class IBMiContent {
         }
         else {
           if (requiresConversion) {
-            copyResult = { code: 0, stdout: '', stderr: '' };
+            copyResult = { code: 0, duration: 0, stdout: '', stderr: '' };
             try {
               await this.ibmi.runSQL([
                 `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`,
@@ -550,109 +544,71 @@ export default class IBMiContent {
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
-    const sourceFileNameLike = () => objectFilter ? ` and PHFILE ${(objectFilter.includes('*') ? `like` : `=`)} '${objectFilter.replace('*', '%')}'` : '';
 
-    let createOBJLIST: string[];
-
-    if (sourceFilesOnly || withSourceFiles) {
-      if (!this.dummyDSPF) {
-        //Drop if already exists
-        await this.ibmi.runSQL('drop table if exists SESSION.PFS');
-        //Create an empty PFS table
-        await this.ibmi.runSQL('declare global temporary table SESSION.PFS like QSYS.QAFDPHY rcdfmt QWHFDPHY');
-        this.dummyDSPF = true;
-      }
-      //Clear and fill the PFs list - if the command crashes it won't break the queries below
-      await this.ibmi.runSQL(`delete from SESSION.PFS`);
-      await this.ibmi.runCommand({ command: `QSYS/DSPFD FILE(${localLibrary}/*ALL) TYPE(*ATR) OUTPUT(*OUTFILE) FILEATR(*PF) OUTFILE(QTEMP/PFS)` });
-    }
+    let createOBJLIST: string;
 
     if (sourceFilesOnly) {
-      createOBJLIST = [
-        /* sql */
-        `select
-            trim(PHFILE) NAME,
-            PHFATR ATTRIBUTE,
-            trim(PHTXT) TEXT,
-            PHMXRL SOURCE_LENGTH,
-            1 as IS_SOURCE,
-            '*FILE' as TYPE
-            from SESSION.PFS
-            where PHDTAT = 'S'
-            ${sourceFileNameLike()}`
-      ];
+      const sourceFileNameLike = () => objectFilter ? ` and SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? `like` : `=`)} '${this.ibmi.sysNameInAmerican(objectFilter).replaceAll('*', '%')}'` : '';
+      createOBJLIST = /* sql */
+        `select  SYSTEM_TABLE_NAME NAME,
+                'PF' ATTRIBUTE,
+                ifNull(TEXT_DESCRIPTION, '') TEXT,
+                RECORD_LENGTH SOURCE_LENGTH,
+                1 as IS_SOURCE,
+                '*FILE' as TYPE
+        from QSYS2.SYSFILES
+        where FILE_TYPE = 'SOURCE' and 
+              SYSTEM_TABLE_SCHEMA = '${this.ibmi.sysNameInAmerican(localLibrary)}'
+              ${sourceFileNameLike()}`;
     } else if (!withSourceFiles) {
-      createOBJLIST = [
-        /* sql */
+      createOBJLIST = /* sql */
         `select
-          OBJNAME          as NAME,
-          OBJTYPE          as TYPE,
-          OBJATTRIBUTE     as ATTRIBUTE,
-          OBJTEXT          as TEXT,
-          0                as IS_SOURCE,
-          OBJSIZE          as SIZE,
+          OBJNAME               as NAME,
+          OBJTYPE               as TYPE,
+          OBJATTRIBUTE          as ATTRIBUTE,
+          ifNull(OBJTEXT, '')   as TEXT,
+          0                     as IS_SOURCE,
+          OBJSIZE               as SIZE,
           extract(epoch from (OBJCREATED))*1000       as CREATED,
           extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,
           OBJOWNER         as OWNER,
           OBJDEFINER       as CREATED_BY
-        from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary !== 'QSYS' ? localLibrary : localLibrary.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`
-      ];
+        from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary !== 'QSYS' ? localLibrary : localLibrary.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`;
     }
     else {
-      createOBJLIST = [
-        /* sql */
-        `with SRCFILES as (
-          select
-            trim(PHFILE) NAME,
-            1 as IS_SOURCE,
-            PHMXRL as SOURCE_LENGTH
-          from SESSION.PFS
-          where PHDTAT = 'S'
-        ),
-         OBJD as (
-          select
-            OBJNAME           as NAME,
-            OBJTYPE           as TYPE,
-            OBJATTRIBUTE      as ATTRIBUTE,
-            OBJTEXT           as TEXT,
-            0                 as IS_SOURCE,
-            OBJSIZE           as SIZE,
-            extract(epoch from (OBJCREATED))*1000       as CREATED,
-            extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,
-            OBJOWNER          as OWNER,
-            OBJDEFINER        as CREATED_BY
-          from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))
-          )
-        select
-          o.NAME,
-          o.TYPE,
-          o.ATTRIBUTE,
-          o.TEXT,
-          ifNull(s.IS_SOURCE, o.IS_SOURCE) IS_SOURCE,
-          s.SOURCE_LENGTH,
-          o.SIZE,
-          o.CREATED,
-          o.CHANGED,
-          o.OWNER,
-          o.CREATED_BY
-        from OBJD o
-        left join SRCFILES s on o.NAME = s.NAME`
-      ];
+      createOBJLIST = /* sql */
+        `select
+            o.OBJNAME             as NAME,
+            o.OBJTYPE             as TYPE,
+            o.OBJATTRIBUTE        as ATTRIBUTE,
+            ifNull(o.OBJTEXT, '') as TEXT,
+            case when s.SYSTEM_TABLE_NAME is null then 0 else 1 end as IS_SOURCE,
+            s.RECORD_LENGTH SOURCE_LENGTH,
+            o.OBJSIZE           as SIZE,
+            extract(epoch from (o.OBJCREATED))*1000       as CREATED,
+            extract(epoch from (o.CHANGE_TIMESTAMP))*1000 as CHANGED,
+            o.OBJOWNER          as OWNER,
+            o.OBJDEFINER        as CREATED_BY
+          from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()})) o
+          left join QSYS2.SYSFILES s on FILE_TYPE = 'SOURCE' and
+                                        cast(s.SYSTEM_TABLE_SCHEMA as varchar(10) for bit data) = o.OBJLIB and
+                                        cast(s.SYSTEM_TABLE_NAME as varchar(10) for bit data) = o.OBJNAME`;
     }
 
     const localLibASP = await this.ibmi.getLibraryIAsp(localLibrary);
     const objects = (await this.ibmi.runSQL(createOBJLIST));
     const result: IBMiObject[] = [];
+    const getName = sourceFilesOnly ? (row: Tools.DB2Row) => this.ibmi.sysNameInLocal(row.NAME as string) : (row: Tools.DB2Row) => row.NAME as string;
     for (const object of objects) {
-      const name = String(object.NAME);
+      const name = getName(object);
       result.push({
         library: localLibrary,
         name,
         type: String(object.TYPE),
         attribute: String(object.ATTRIBUTE),
-        text: String(object.TEXT || ""),
+        text: String(object.TEXT),
         sourceFile: Boolean(object.IS_SOURCE),
-        sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
+        sourceLength: object.SOURCE_LENGTH !== undefined && object.SOURCE_LENGTH !== null ? Number(object.SOURCE_LENGTH) : undefined,
         size: Number(object.SIZE),
         created: new Date(Number(object.CREATED)),
         changed: new Date(Number(object.CHANGED)),
@@ -731,7 +687,7 @@ export default class IBMiContent {
 
   /**
    *
-   * @param filter: the criterias used to list the members
+   * @param filter: the criteria used to list the members
    * @returns
    */
   async getMemberList(filter: { library: string, sourceFile: string, members?: string | string[], extensions?: string, memberText?: string, memberCreated?: string, memberChanged?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
@@ -892,7 +848,7 @@ export default class IBMiContent {
     // Escape names for shell
     const pathList: string[] = [];
     for (const file of files) {
-      pathList.push(Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), await this.ibmi.getLibraryIAsp(file.library), true));
+      pathList.push(Tools.escapeForShell(Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), await this.ibmi.getLibraryIAsp(file.library), true)));
     }
 
     const command = `for f in ${pathList.join(' ').toUpperCase()}; do if [ -f $f ]; then echo $f; break; fi; done`;
@@ -918,7 +874,7 @@ export default class IBMiContent {
   }
 
   async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
-    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.sysNameInAmerican(lib)}.LIB/${this.ibmi.sysNameInAmerican(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+    const command = `for f in ${Tools.escapeForShell(libraries.map(lib => `/QSYS.LIB/${this.ibmi.sysNameInAmerican(lib)}.LIB/${this.ibmi.sysNameInAmerican(object)}.*`).join(` `))}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -1052,7 +1008,7 @@ export default class IBMiContent {
     let result: CommandResult;
 
     if (assumeMember) {
-      target = IBMi.escapeForShell(target);
+      target = Tools.escapeForShell(target);
       result = await this.ibmi.sendQsh({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
     } else {
       target = Tools.escapePath(target, true);
@@ -1075,8 +1031,21 @@ export default class IBMiContent {
     return this.countFiles(this.ibmi.sysNameInAmerican(Tools.qualifyPath(path.library, path.name, undefined, path.asp)))
   }
 
-  async countFiles(directory: string) {
-    return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
+  /**
+   * Count the entries of one or more directories (hidden ones included), in a single command.
+   * A directory that doesn't exist (or can't be read) counts as 0.
+   */
+  async countFiles(directory: string): Promise<number>;
+  async countFiles(directories: string[]): Promise<number[]>;
+  async countFiles(directories: string | string[]) {
+    const list = Array.isArray(directories) ? directories : [directories];
+    if (!list.length) {
+      return [];
+    }
+
+    const result = await this.ibmi.sendCommand({ command: list.map(directory => `(cd "${Tools.escapePath(directory, true)}" 2>/dev/null && ls -A | wc -l || echo 0)`).join(`; `) });
+    const counts = result.stdout.split(`\n`).map(line => Number(line.trim()) || 0);
+    return Array.isArray(directories) ? list.map((_, index) => counts[index] || 0) : counts[0] || 0;
   }
 
 
@@ -1154,11 +1123,11 @@ export default class IBMiContent {
         return result;
       }
     }
-    return { code: 0, stdout: "", stderr: "" };
+    return { code: 0, duration: 0, stdout: "", stderr: "" };
   }
 
   /**
-   * Move one or more folders or files into a directory. Uses QSH's `mv` to ensures attributes are not altered during the opration.
+   * Move one or more folders or files into a directory. Uses QSH's `mv` to ensure attributes are not altered during the operation.
    * @param paths one or more files/folders to copy
    * @param toDirectory the directory where the files/folders will be copied into
    * @returns the {@link CommandResult} of the `mv` command execution

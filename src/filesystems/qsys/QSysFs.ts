@@ -28,7 +28,7 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
 
 export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
     const fsOptions = parseFSOptions(uri);
-    if (instance.getConnection()?.getConfig().readOnlyMode || fsOptions.readonly) {
+    if (fsOptions.readonly || instance.getConnection()?.getConfig().readOnlyMode) {
         return FilePermission.Readonly;
     }
 }

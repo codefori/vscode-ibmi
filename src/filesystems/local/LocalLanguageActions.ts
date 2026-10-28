@@ -33,8 +33,22 @@ export const LocalLanguageActions: Record<string, Action[]> = {
   ],
   COBOL: [
     {
+      name: `Create Bound COBOL Program`,
+      command: `CRTBNDCBL PGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTCCSID(*JOB)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`CBLLE`, `CBL`]
+    },
+    {
+      name: `Create COBOL Module`,
+      command: `CRTCBLMOD MODULE(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTCCSID(*JOB)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`CBLLE`, `CBL`]
+    },
+    {
       name: `Create COBOL Program (SQL)`,
-      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB) TOSRCFILE(&CURLIB/QSQLTEMP)`,
+      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OBJTYPE(*PGM) OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB) TOSRCFILE(&CURLIB/QSQLTEMP)`,
       deployFirst: true,
       environment: `ile`,
       extensions: [`SQLCBL`, `SQLCBBLE`, `SQLCBLLE`, `COB`, `CBLLE`, `CBL`, `CBBLE`]
@@ -129,15 +143,34 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       environment: `ile`,
     }
   ],
-  DSPF: [
+  DDS: [
     {
-      "name": "Create DSPF",
-      "command": "CRTDSPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) RSTDSP(*NO) OPTION(*EVENTF)",
-      "environment": "ile",
-      "deployFirst": true,
-      "extensions": [
-        "dspf"
-      ]
+      name: `Create Physical File`,
+      command: `CRTPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) SIZE(*NOMAX) MAXMBRS(1) OPTION(*EVENTF)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`PF`]
+    },
+    {
+      name: `Create Logical File`,
+      command: `CRTLF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`LF`]
+    },
+    {
+      name: `Create Display File`,
+      command: `CRTDSPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) RSTDSP(*NO) OPTION(*EVENTF)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`DSPF`]
+    },
+    {
+      name: `Create Printer File`,
+      command: `CRTPRTF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)`,
+      deployFirst: true,
+      environment: `ile`,
+      extensions: [`PRTF`]
     }
   ],
   "Service Programs": [

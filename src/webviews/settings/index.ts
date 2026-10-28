@@ -219,6 +219,12 @@ export class SettingsUI {
               value: `all`,
               description: `All`,
               text: `Every file in the local workspace`,
+            },
+            {
+              selected: config.defaultDeploymentMethod === `selected`,
+              value: `selected`,
+              description: vscode.l10n.t(`Action files`),
+              text: vscode.l10n.t(`Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.`),
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()
@@ -280,7 +286,6 @@ export class SettingsUI {
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
 
           if (!isManaged()) {
-            debuggerTab.addHorizontalRule();
             if (await certificates.remoteCertificatesExists()) {
               let localCertificateIssue;
               try {
@@ -289,6 +294,7 @@ export class SettingsUI {
               catch (error) {
                 localCertificateIssue = `${String(error)}. Debugging will not function correctly.`;
               }
+              debuggerTab.addHorizontalRule();
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
                 .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
                 .addButtons(

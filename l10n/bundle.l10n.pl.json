@@ -36,7 +36,7 @@
   "Are you sure you want to disconnect from {0}?": "Are you sure you want to disconnect from {0}?",
   "Attribute": "Atrybut",
   "Authentication methods removed for \"{0}\".": "Usunięto metody uwierzytelniania dla \"{0}\".",
-  "Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.": "Poniżej znajdują się dostępne zmienne w zależności od typu, który wybrałeś poniżej. W każdym wierszu możesz określić różne polecenia. Każde uruchomienie polecenia jest bezstanowe i uruchamiane w ramach własnego zadania.",
+  "Below are available variables based on the type you have selected below. You can specify different commands on each line. Each command is stateless and runs in its own job.": "Poniżej znajdują się dostępne zmienne w zależności od typu, który wybrałeś poniżej. W każdym wierszu możesz określić różne polecenia. Każde uruchomienie polecenia jest bezstanowe i uruchamiane w ramach własnego zadania.",
   "Branch library, based on the current branch": "Biblioteka gałęzi, bazująca na bieżącej gałęzi",
   "Browser": "Przeglądarka",
   "Cancel": "Anuluj",
@@ -424,5 +424,9 @@
   "Wow. This really is taking a while. Let's hope you get the result you want.": "Wow. To naprawdę zajmuje trochę czasu. Miejmy nadzieję, że uzyskasz pożądany rezultat.",
   "Yes": "Tak",
   "You are using this system at your own risk. Do not share any sensitive or private information.": "Używasz tego systemu na własne ryzyko. Nie udostępniaj żadnych wrażliwych ani prywatnych informacji.",
-  "Your changes will be discarded": "Twoje zmiany zostaną usunięte"
+  "Your changes will be discarded": "Twoje zmiany zostaną usunięte",
+  "Selected": "Selected",
+  "{0} file(s) this Action runs on, uploaded even if unchanged": "{0} file(s) this Action runs on, uploaded even if unchanged",
+  "Action files": "Action files",
+  "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.": "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method."
 }

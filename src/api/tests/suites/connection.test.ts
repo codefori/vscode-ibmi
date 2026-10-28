@@ -5,13 +5,13 @@ import IBMi from '../../IBMi';
 import { Tools } from '../../Tools';
 import { getJavaHome } from '../../configuration/DebugConfiguration';
 import { ConnectionData } from '../../types';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
+import { disposeConnection, envVars, newConnection } from '../setup/connection';
 
 describe(`connection tests`, { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT)
+  }, envVars.VITE_CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     await disposeConnection(connection);
@@ -267,6 +267,11 @@ describe(`connection tests`, { concurrent: true }, () => {
 
       // Directory does not exist
       expect(await content.countFiles(`${tempDir}/${Tools.makeid(20)}`)).toBe(0);
+
+      // Several directories at once, in the same order, hidden entries included
+      const subDir = `${tempDir}/sub dir`;
+      expect((await connection.sendCommand({ command: `mkdir "${subDir}" && touch "${subDir}/a" "${subDir}/b" "${subDir}/.hidden"` })).code).toBe(0);
+      expect(await content.countFiles([tempDir, `${tempDir}/${Tools.makeid(20)}`, subDir])).toEqual([toCreate + 1, 0, 3]);
     });
 
     if (temp) {
@@ -366,7 +371,7 @@ describe('SSH Agent connection tests', { concurrent: false }, () => {
         await disposeConnection(sshAgentConnection);
       }
     }
-  }, CONNECTION_TIMEOUT);
+  }, envVars.VITE_CONNECTION_TIMEOUT);
 
   it('should fail gracefully when SSH agent is not available', async () => {
     // Skip this test if we're actually using SSH agent
@@ -431,5 +436,5 @@ describe('SSH Agent connection tests', { concurrent: false }, () => {
     } finally {
       await conn.disconnect();
     }
-  }, CONNECTION_TIMEOUT);
+  }, envVars.VITE_CONNECTION_TIMEOUT);
 })
