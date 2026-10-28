@@ -3,9 +3,10 @@ import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickI
 import Instance from "../Instance";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
-import { getUriFromPath } from "../filesystems/qsys/QSysFs";
+import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
 import { BrowserItem, DefaultOpenMode, MemberItem, QsysFsOptions, WithPath } from "../typings";
 import { VscodeTools } from "../ui/Tools";
+import { MemberLocks } from "../filesystems/qsys/memberLocks";
 
 const CLEAR_RECENT = `$(trash) ${l10n.t('Clear recently opened')}`;
 const CLEAR_CACHED = `$(trash) ${l10n.t('Clear cached')}`;
@@ -35,13 +36,36 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
 
       const uri = getUriFromPath(path, options);
 
+      const existingUri = VscodeTools.findExistingDocumentUri(uri);
+
+      if (existingUri) {
+        const existingOptions = parseFSOptions(existingUri);
+        if (existingOptions.readonly !== options.readonly) {
+          window.showWarningMessage(l10n.t(`The file is already opened in another mode.`));
+          window.showTextDocument(existingUri);
+          return false;
+        }
+      }
+
+      let lockAcquired = false;
+      let documentOpened = false;
+      const config = connection.getConfig();
+      const shouldLockMembers = config.lockMembers
+        && uri.scheme === `member`;
+
+      const memberLocks = new MemberLocks();
       try {
+        if (shouldLockMembers) {
+          await memberLocks.allocate(connection, uri);
+          lockAcquired = true;
+        }
+
         if (options.position) {
           await commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as TextDocumentShowOptions);
-        }
-        else {
+        } else {
           await commands.executeCommand(`vscode.open`, uri);
         }
+        documentOpened = true;
 
         // Add file to front of recently opened files list.
         const recentLimit = IBMi.connectionManager.get<number>(`recentlyOpenedFilesLimit`);
@@ -54,9 +78,42 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
         }
 
         return true;
-      } catch (e) {
-        console.log(e);
-        return false;
+      } catch (e: any) {
+        if (lockAcquired) {
+          await memberLocks.deallocate(connection, uri);
+        }
+
+        if (documentOpened) {
+          const tabs = VscodeTools.findUriTabs(uri);
+          for await (const tab of tabs) {
+            await window.tabGroups.close(tab);
+          }
+        }
+
+        if (shouldLockMembers && !documentOpened) {
+          const messages = Tools.parseMessages(e.message);
+          if (messages.findId(`CPF1002`)) {
+            const openReadOnly = l10n.t(`Open read only`);
+            const selection = await window.showWarningMessage(
+              l10n.t(`The member is currently locked by another IBM i job.`),
+              { modal: true },
+              openReadOnly
+            );
+            if (selection === openReadOnly) {
+              return commands.executeCommand<boolean>(`code-for-ibmi.openEditable`, path, { ...options, readonly: true });
+            }
+            return false;
+          } else {
+            window.showErrorMessage(
+              l10n.t(`Unable to open the member for editing.`),
+              { modal: true, detail: e.message }
+            );
+            return false;
+          }
+        } else {
+          console.log(e);
+          return false;
+        }
       }
     }),
 
