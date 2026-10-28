@@ -860,18 +860,10 @@
 						{
 							"type": "member",
 							"extensions": [
-								"dspf"
-							],
-							"name": "Create Display File (CRTDSPF)",
-							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF) RSTDSP(*NO) REPLACE(*YES)"
-						},
-						{
-							"type": "member",
-							"extensions": [
 								"pf"
 							],
 							"name": "Create Physical File (CRTPF)",
-							"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF) SIZE(*NOMAX) MAXMBRS(1)"
+							"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) SIZE(*NOMAX) MAXMBRS(1) OPTION(*EVENTF)"
 						},
 						{
 							"type": "member",
@@ -884,11 +876,27 @@
 						{
 							"type": "member",
 							"extensions": [
+								"dspf"
+							],
+							"name": "Create Display File (CRTDSPF)",
+							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) RSTDSP(*NO) OPTION(*EVENTF)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"prtf"
+							],
+							"name": "Create Printer File (CRTPRTF)",
+							"command": "?CRTPRTF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF)"
+						},
+						{
+							"type": "member",
+							"extensions": [
 								"CLP",
 								"CLLE"
 							],
 							"name": "Create CL Program (CRTCLP)",
-							"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT) REPLACE(*YES)"
+							"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT)"
 						},
 						{
 							"type": "member",
@@ -1043,6 +1051,38 @@
 							],
 							"name": "Create Command (Allow Return Variables - CRTCMD)",
 							"command": "?CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') ALLOW(*BPGM *IPGM *BMOD *IMOD *BREXX *IREXX) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"pf"
+							],
+							"name": "Create Physical File (CRTPF)",
+							"command": "?CRTPF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) SIZE(*NOMAX) MAXMBRS(1) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"lf"
+							],
+							"name": "Create Logical File (CRTLF)",
+							"command": "?CRTLF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"dspf"
+							],
+							"name": "Create Display File (CRTDSPF)",
+							"command": "?CRTDSPF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) RSTDSP(*NO) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"prtf"
+							],
+							"name": "Create Printer File (CRTPRTF)",
+							"command": "?CRTPRTF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)"
 						},
 						{
 							"type": "streamfile",
