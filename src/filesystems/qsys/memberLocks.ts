@@ -128,14 +128,6 @@ export class MemberLocks {
         }
       });
 
-      // try {
-      //   await connection.runSQL(`@QSYS/ALCOBJ OBJ((${memberParts.library}/${memberParts.file} *FILE ${lockState} ${memberParts.name})) SCOPE(*JOB)`);
-      //   const deallocateCommand = `QSYS/DLCOBJ OBJ((${memberParts.library}/${memberParts.file} *FILE lockState ${memberParts.name})) SCOPE(*JOB)`;
-      //   MemberLocks.locks.set(memberKey, deallocateCommand);
-      // } catch (e) {
-      //   console.log(e);
-      // }
-
       MemberLocks.acquiring.set(memberKey, allocatePromise);
 
       return await allocatePromise;
