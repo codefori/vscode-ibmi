@@ -28,7 +28,7 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
 
 export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
     const fsOptions = parseFSOptions(uri);
-    if (instance.getConnection()?.getConfig().readOnlyMode || fsOptions.readonly) {
+    if (fsOptions.readonly || instance.getConnection()?.getConfig().readOnlyMode) {
         return FilePermission.Readonly;
     }
 }
@@ -154,6 +154,24 @@ export class QSysFS implements vscode.FileSystemProvider {
         return await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
     }
 
+    private async createMember(connection: IBMi, uri: vscode.Uri, library: string, file: string, member: string, extension: string | undefined): Promise<boolean> {
+        const addMember = await connection.runCommand({
+            command: `QSYS/ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
+            noLibList: true
+        });
+        if (addMember.code === 0) {
+            this.savedAsMembers.add(uri.path);
+            vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+            return true;
+        } else {
+            const messages = Tools.parseMessages(addMember.stderr);
+            if (!messages.findId(`CPF5812`)) { // CPF5812 - Member already exists
+                throw new FileSystemError(addMember.stderr);
+            }
+            return false;
+        }
+    }
+
     async parseMemberPath(connection: IBMi, path: string) {
         const memberParts = connection.parserMemberPath(path);
         memberParts.asp = memberParts.asp || await connection.getLibraryIAsp(memberParts.library);
@@ -209,22 +227,10 @@ export class QSysFS implements vscode.FileSystemProvider {
             asp = asp || await connection.getLibraryIAsp(library);
 
             if (!content.length) { //Coming from "Save as"
-                const addMember = await connection.runCommand({
-                    command: `QSYS/ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
-                    noLibList: true
-                });
-                if (addMember.code === 0) {
-                    await this.prepareNativeSaveAsCopy(connection, uri);
-                    this.savedAsMembers.add(uri.path);
-                    vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+                const isCreated = await this.createMember(connection, uri, library, file, member, extension);
+                await this.prepareNativeSaveAsCopy(connection, uri);
+                if (isCreated) {
                     return;
-                } else {
-                    const copyMessages = Tools.parseMessages(addMember.stderr);
-                    if (!copyMessages.findId(`CPF5812`)) { // CPF5812 - Member already exists
-                        throw new FileSystemError(addMember.stderr);
-                    }
-
-                    await this.prepareNativeSaveAsCopy(connection, uri);
                 }
             }
 
@@ -238,10 +244,20 @@ export class QSysFS implements vscode.FileSystemProvider {
 
             this.savedAsMembers.delete(uri.path);
             if (this.extendedMemberSupport) {
-                await this.extendedContent.uploadMemberContentWithDates(uri, content.toString());
+                try {
+                    await this.extendedContent.uploadMemberContentWithDates(uri, content.toString());
+                } catch (error: any) {
+                    if (error?.sqlstate === `42704`) {
+                        // Member doesn't exists so create and try again
+                        await this.createMember(connection, uri, library, file, member, extension);
+                        await this.extendedContent.uploadMemberContentWithDates(uri, content.toString());
+                    } else {
+                        throw error;
+                    }
+                }
             } else {
                 await warnAboutSourceDates();
-                await contentApi.uploadMemberContent(library, file, member, content);
+                await contentApi.uploadMemberContent(library, file, member, content, extension);
             }
         }
         else {

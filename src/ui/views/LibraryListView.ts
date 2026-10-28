@@ -38,6 +38,7 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
       if (connection && storage) {
         const config = connection.getConfig();
         const currentLibrary = config.currentLibrary ? connection.upperCaseName(config.currentLibrary) : undefined;
+        const defaultCurrentLibrary = connection.defaultCurrentLibrary ? connection.upperCaseName(connection.defaultCurrentLibrary) : undefined;
         let prevCurLibs = storage.getPreviousCurLibs();
         let list = [...prevCurLibs];
         const listHeader: vscode.QuickPickItem[] = [];
@@ -49,17 +50,24 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
         }
         listHeader.push({ label: l10n.t(`Recently used`), kind: vscode.QuickPickItemKind.Separator });
 
-        const clearList = l10n.t(`$(trash) Clear list`);
-        const clearListArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
+        const clearList = l10n.t(`$(trash) Clear List`);
+        const resetToDefault = l10n.t(`$(sync) Reset to Default`);
+        const additionalOptions: vscode.QuickPickItem[] = [
+          { label: ``, kind: vscode.QuickPickItemKind.Separator },
+          { label: clearList }
+        ];
+        if (currentLibrary !== defaultCurrentLibrary) {
+          additionalOptions.push({ label: resetToDefault });
+        }
 
         const quickPick = vscode.window.createQuickPick();
-        quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(clearListArray);
+        quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(additionalOptions);
         quickPick.placeholder = l10n.t(`Filter or new library to set as current library`);
         quickPick.title = l10n.t(`Change current library`);
 
         quickPick.onDidChangeValue(() => {
           if (quickPick.value === ``) {
-            quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(clearListArray);
+            quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(additionalOptions);
           } else if (!list.includes(connection.upperCaseName(quickPick.value))) {
             quickPick.items = [{ label: connection.upperCaseName(quickPick.value) }].concat(listHeader)
               .concat(list.map(lib => ({ label: lib })))
@@ -75,6 +83,11 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
               quickPick.items = list.map(lib => ({ label: lib }));
               vscode.window.showInformationMessage(l10n.t(`Cleared list.`));
               quickPick.show();
+            } else if (newLibrary === resetToDefault) {
+              if (await changeCurrentLibrary(defaultCurrentLibrary)) {
+                libraryListView.refresh();
+                quickPick.hide();
+              }
             } else {
               if (newLibrary !== currentLibrary) {
                 if (await changeCurrentLibrary(newLibrary)) {
@@ -119,8 +132,7 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
               .filter((lib, idx, libl) => lib && libl.indexOf(lib) === idx);
 
             // Validate no library is already in the system portion
-            const sysLibs = await content.getSystemLibraries();
-            const sysLibsFound = newLibraryList.filter(lib => sysLibs.includes(lib));
+            const sysLibsFound = newLibraryList.filter(lib => connection.systemLibraries.includes(lib));
             if (sysLibsFound.length > 0) {
               newLibraryList = newLibraryList.filter(lib => !sysLibsFound.includes(lib));
               vscode.window.showWarningMessage(l10n.t(`The following libraries are already in the system portion of the library list and were removed: {0}`, sysLibsFound.join(', ')));
@@ -157,8 +169,7 @@ export function initializeLibraryListView(context: vscode.ExtensionContext) {
         }
 
         // Validate library is not in the system portion
-        const sysLibs = await content.getSystemLibraries();
-        if (sysLibs.includes(addingLib)) {
+        if (connection.systemLibraries.includes(addingLib)) {
           vscode.window.showErrorMessage(l10n.t(`Library {0} is already in the system portion of the library list.`, addingLib));
           return;
         }
@@ -388,11 +399,9 @@ class LibraryListView implements vscode.TreeDataProvider<LibraryListNode> {
         curAndUsrLibs.unshift({ library: `QSYS`, type: `*LIB`, name: '', attribute: ``, text: `` });
       }
 
-      const sysLibs = await content.getSystemLibraries();
-
       items.push(...curAndUsrLibs.map((lib, index) => {
         const upperCaseLibName = connection.upperCaseName(lib.name);
-        const isSystemLib = sysLibs.includes(upperCaseLibName);
+        const isSystemLib = connection.systemLibraries.includes(upperCaseLibName);
         return new LibraryListNode(upperCaseLibName, lib, (index === 0 ? `currentLibrary` : `library`), config.showDescInLibList, isSystemLib);
       }));
     }

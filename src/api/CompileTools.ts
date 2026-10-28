@@ -101,12 +101,15 @@ export namespace CompileTools {
           default:
             commandResult = {
               code: 0,
+              duration: 0,
               stderr: ``,
               stdout: ``,
               command: commands.join(`, `),
             };
 
             await ileQueue.next(async () => {
+              const startTime = performance.now();
+
               const start = options.getSpooledFiles ? (await connection.runSQL('Values Current TimeStamp'))[0]["00001"] : undefined;
               try {
                 await connection.runSQL([
@@ -158,6 +161,7 @@ export namespace CompileTools {
               if (!start || !connection.getConfig().keepActionSpooledFiles) {
                 await connection.runSQL(`@QSYS/DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${connection.splfUserData})`);
               }
+              commandResult.duration = Math.round(performance.now() - startTime);
             });
 
             break;
@@ -169,6 +173,7 @@ export namespace CompileTools {
       } else {
         return {
           code: DID_NOT_RUN,
+          duration: 0,
           command: options.command,
           stdout: ``,
           stderr: `Command execution failed. (No command)`,
@@ -187,9 +192,9 @@ export namespace CompileTools {
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
-      `liblist -d ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(...connection.defaultUserLibraries).join(` `))}`,
-      `liblist -c ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(config.currentLibrary || "*CRTDFT")[0])}`,
-      `liblist -a ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(...buildLibraryList(config)).join(` `))}`
+      `liblist -d ${Tools.escapeForShell(Tools.sanitizeObjNamesForPase(...connection.defaultUserLibraries).join(` `))}`,
+      `liblist -c ${Tools.escapeForShell(Tools.sanitizeObjNamesForPase(config.currentLibrary || "*CRTDFT")[0])}`,
+      `liblist -a ${Tools.escapeForShell(Tools.sanitizeObjNamesForPase(...buildLibraryList(config)).join(` `))}`
     ];
   }
 }

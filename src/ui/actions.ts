@@ -121,7 +121,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
         // deploying the file. This is because we need to know the relative path of the file to the deploy directory.
         if (workspaceFolder && chosenAction.type === `file`) {
           if (chosenAction.deployFirst) {
-            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
+            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method, uris);
             if (deployResult !== undefined) {
               workspaceId = deployResult.workspaceId;
               remoteCwd = Tools.ensureFullPath(deployResult.remoteDirectory, config.homeDirectory);
@@ -322,7 +322,6 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
             task.report({ message: `${processedPath}${targets.length > 1 ? ` (${done++}/${targets.length})` : ''}`, increment })
 
             const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
-            let actionName = chosenAction.name;
 
             const exitCode = await new Promise<number>(resolve =>
               tasks.executeTask({
@@ -443,7 +442,6 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                             }
                           }
 
-                          actionName = (isIleCommand && possibleObjects ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
                           successful = (commandResult.code === 0 || commandResult.code === null);
 
                           writeEmitter.fire(CompileTools.NEWLINE);
@@ -453,9 +451,13 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           }
                           else if (evfeventInfo.object && evfeventInfo.library) {
                             if (chosenAction.command.includes(`*EVENTF`)) {
-                              writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfos[0].library}/${evfeventInfos[0].object}.`) + CompileTools.NEWLINE);
-                              refreshDiagnosticsFromServer(connection, evfeventInfos);
-                              problemsFetched = true;
+                              if (evfeventInfos.length === 0) {
+                                writeEmitter.fire(`*EVFEVENT found in command string, but no objects specified to fetch errors for.` + CompileTools.NEWLINE);
+                              } else {
+                                writeEmitter.fire(`Fetching errors for ` + (evfeventInfos.length > 1 ? `multiple objects` : `${evfeventInfos[0].library}/${evfeventInfos[0].object}.`) + CompileTools.NEWLINE);
+                                refreshDiagnosticsFromServer(connection, evfeventInfos);
+                                problemsFetched = true;
+                              }
                             } else if (chosenAction.command.trimStart().toUpperCase().startsWith(`CRT`)) {
                               writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + CompileTools.NEWLINE);
                             }
@@ -660,7 +662,16 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
     }
     else {
       actionMessage = l10n.t(`No suitable actions found for {0} - {1}`, scheme, targets.map(t => t.extension).filter(Tools.distinct).join(", "));
-      vscode.window.showErrorMessage(actionMessage);
+      const launchActionSetupLabel = l10n.t("Setup Workspace Actions");
+      const manageActionsLabel = l10n.t("Manage All Actions");
+      const buttons = scheme === "file" ? [launchActionSetupLabel, manageActionsLabel] : [manageActionsLabel];
+      vscode.window.showErrorMessage(actionMessage, ...buttons).then(selected => {
+        if (selected === launchActionSetupLabel) {
+          vscode.commands.executeCommand("code-for-ibmi.launchActionsSetup");
+        } else if (selected === manageActionsLabel) {
+          vscode.commands.executeCommand("code-for-ibmi.environment.actions.focus");
+        }
+      });
       return { success: false, output: [], message: actionMessage };
     }
   }

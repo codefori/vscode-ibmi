@@ -13,6 +13,86 @@ import { uriToActionTarget } from '../../actions';
 import { ActionItem, Actions, ActionsNode, ActionTypeNode } from './actions';
 import { ConnectionProfiles, ProfileItem, ProfilesNode } from './connectionProfiles';
 import { CustomVariableItem, CustomVariables, CustomVariablesNode } from './customVariables';
+import { EnvironmentItem } from './environmentItem';
+
+const SQL_JOB_DOUBLE_CLICK_WINDOW_MS = 500;
+let lastSqlJobClick: { jobName: string; clickedAt: number } | undefined;
+
+class ConnectionNode extends EnvironmentItem {
+  constructor() {
+    super(l10n.t("Connection"), { icon: "server-environment", state: vscode.TreeItemCollapsibleState.Collapsed });
+    this.contextValue = "connectionNode";
+  }
+
+  get name() {
+    return instance.getConnection()?.currentConnectionName || "";
+  }
+
+  updateFromConnection() {
+    const connection = instance.getConnection();
+    this.label = connection ? l10n.t("Connection: {0}", connection.currentConnectionName) : l10n.t("Connection");
+  }
+
+  getChildren() {
+    const connection = instance.getConnection();
+    if (!connection) {
+      return [];
+    }
+
+    return [
+      ...(connection.getSqlJobId() ? [new SqlJobItem(this, connection.getSqlJobId()!)] : []),
+      new ConnectionInfoItem(this, l10n.t("Host"), connection.currentHost, "vm"),
+      new ConnectionInfoItem(this, l10n.t("Port"), String(connection.currentPort), "plug"),
+      new ConnectionInfoItem(this, l10n.t("User"), connection.currentUser, "account"),
+      new DisconnectItem(this, connection.currentConnectionName)
+    ];
+  }
+}
+
+class ConnectionInfoItem extends EnvironmentItem {
+  constructor(parent: EnvironmentItem, label: string, value: string, icon: string) {
+    super(label, { parent, icon });
+    this.contextValue = "connectionInfoItem";
+    this.description = value;
+    this.tooltip = l10n.t("{0}: {1}", label, value);
+  }
+}
+
+class SqlJobItem extends EnvironmentItem {
+  constructor(parent: EnvironmentItem, sqlJobId: string) {
+    super(l10n.t("SQL Job"), { parent, icon: "database", state: vscode.TreeItemCollapsibleState.Collapsed });
+    this.contextValue = "connectionSqlJobItem";
+    this.description = sqlJobId;
+    this.tooltip = l10n.t("SQL Job: {0}", sqlJobId);
+    this.command = {
+      title: l10n.t("Display SQL Job Log"),
+      command: "code-for-ibmi.environment.connection.showJobLogOnDoubleClick",
+      arguments: [sqlJobId]
+    };
+  }
+
+  getChildren() {
+    const jdbcOptions = instance.getConnection()?.getSqlJobJDBCOptions() || {};
+    return Object.entries(jdbcOptions)
+      .map(([key, value]) => ({ key, value }))
+      .filter(option => option.value !== undefined && option.value !== null)
+      .map(option => new ConnectionInfoItem(this, option.key, String(option.value), "symbol-property"));
+  }
+}
+
+class DisconnectItem extends EnvironmentItem {
+  constructor(parent: EnvironmentItem, connectionName: string) {
+    super(l10n.t("Disconnect {0}", connectionName), { parent, icon: "debug-disconnect", color: "charts.red" });
+    this.contextValue = "connectionDisconnectItem";
+    this.description = l10n.t("Disconnect from current system");
+    this.tooltip = l10n.t("Click to Disconnect from {0}", connectionName);
+    this.command = {
+      title: l10n.t("Disconnect from {0}", connectionName),
+      command: "code-for-ibmi.environment.connection.disconnect",
+      arguments: [connectionName]
+    };
+  }
+}
 
 export function initializeEnvironmentView(context: vscode.ExtensionContext) {
   const environmentView = new EnvironmentView();
@@ -62,6 +142,45 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.environment.refresh", () => environmentView.refresh()),
     vscode.commands.registerCommand("code-for-ibmi.environment.refresh.item", (item: BrowserItem) => environmentView.refresh(item)),
     vscode.commands.registerCommand("code-for-ibmi.environment.reveal", (item: BrowserItem, options?: FocusOptions) => environmentTreeViewer.reveal(item, options)),
+    vscode.commands.registerCommand("code-for-ibmi.environment.connection.showJobLog", async (jobName?: string) => {
+      const sqlJobId = jobName || instance.getConnection()?.getSqlJobId();
+      if (!sqlJobId) {
+        vscode.window.showWarningMessage(l10n.t("No active SQL job found."));
+        return;
+      }
+
+      await vscode.commands.executeCommand("code-for-ibmi.showJobLog", sqlJobId);
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.environment.connection.showJobLogOnDoubleClick", async (jobName?: string) => {
+      const sqlJobId = jobName || instance.getConnection()?.getSqlJobId();
+      if (!sqlJobId) {
+        return;
+      }
+
+      const now = Date.now();
+      if (lastSqlJobClick && lastSqlJobClick.jobName === sqlJobId && (now - lastSqlJobClick.clickedAt) <= SQL_JOB_DOUBLE_CLICK_WINDOW_MS) {
+        lastSqlJobClick = undefined;
+        await vscode.commands.executeCommand("code-for-ibmi.environment.connection.showJobLog", sqlJobId);
+        return;
+      }
+
+      lastSqlJobClick = { jobName: sqlJobId, clickedAt: now };
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.environment.connection.disconnect", async (connectionName?: string) => {
+      const connectedName = instance.getConnection()?.currentConnectionName;
+      const name = connectionName || connectedName;
+      if (!name) return;
+
+      const yes = await vscode.window.showWarningMessage(
+        l10n.t("Are you sure you want to disconnect from {0}?", name),
+        { modal: true },
+        l10n.t("Yes")
+      );
+
+      if (yes) {
+        await vscode.commands.executeCommand("code-for-ibmi.disconnect");
+      }
+    }),
 
     vscode.commands.registerCommand("code-for-ibmi.environment.action.search", (node: ActionsNode) => node.searchActions()),
     vscode.commands.registerCommand("code-for-ibmi.environment.action.search.next", (node: ActionsNode) => node.goToNextSearchMatch()),
@@ -394,6 +513,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 class EnvironmentView implements vscode.TreeDataProvider<BrowserItem> {
   private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
   readonly onDidChangeTreeData = this.emitter.event;
+  readonly connectionNode = new ConnectionNode();
   readonly actionsNode = new ActionsNode();
   readonly profilesNode = new ProfilesNode();
 
@@ -414,7 +534,9 @@ class EnvironmentView implements vscode.TreeDataProvider<BrowserItem> {
       return item.getChildren?.();
     }
     else {
+      this.connectionNode.updateFromConnection();
       return [
+        this.connectionNode,
         this.actionsNode,
         new CustomVariablesNode(),
         this.profilesNode

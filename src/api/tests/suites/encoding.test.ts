@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from "../../IBMi";
 import { Tools } from "../../Tools";
 import { IBMiObject } from "../../types";
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from "../connection";
+import { disposeConnection, envVars, newConnection } from "../setup/connection";
 
 const contents = {
   '37': [`Hello world`],
@@ -104,7 +104,7 @@ describe('Encoding tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT)
+  }, envVars.VITE_CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     await disposeConnection(connection);
@@ -130,7 +130,7 @@ describe('Encoding tests', { concurrent: true }, () => {
 
   it('Run variants through shells', async () => {
     const text = `Hello${connection?.variantChars.local}world`;
-    const basicCommandA = `echo "${IBMi.escapeForShell(text)}"`;
+    const basicCommandA = `echo "${Tools.escapeForShell(text)}"`;
     const basicCommandB = `echo '${text}'`;
     const basicCommandC = `echo 'abc'\\''123'`;
     const printEscapeChar = `echo "\\\\"`;
@@ -408,13 +408,13 @@ describe('Encoding tests', { concurrent: true }, () => {
   });
 });
 
-// seperate suite for tests that require synchronous execution
+// separate suite for tests that require synchronous execution
 // as global variables are modified in each test
 describe('BiDi encoding tests', () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT);
+  }, envVars.VITE_CONNECTION_TIMEOUT);
 
   afterAll(async () => {
     await disposeConnection(connection);
@@ -492,7 +492,7 @@ describe('IFS streamfile encoding tests', () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT);
+  }, envVars.VITE_CONNECTION_TIMEOUT);
 
   afterAll(async () => {
     await disposeConnection(connection);
@@ -538,7 +538,7 @@ describe('Non-BiDi encoding tests', () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT);
+  }, envVars.VITE_CONNECTION_TIMEOUT);
 
   afterAll(async () => {
     await disposeConnection(connection);

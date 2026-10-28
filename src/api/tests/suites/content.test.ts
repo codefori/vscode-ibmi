@@ -6,13 +6,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from '../../IBMi';
 import { Tools } from '../../Tools';
 import { ModuleExport, ProgramExportImportInfo } from '../../types';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
+import { disposeConnection, envVars, newConnection } from '../setup/connection';
 
 describe('Content Tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT)
+  }, envVars.VITE_CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     await disposeConnection(connection);
@@ -90,6 +90,42 @@ describe('Content Tests', { concurrent: true }, () => {
     }
   });
 
+  it.each(['$', '#', '#$'])('memberResolve with %s', async (prefix) => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempSPF = connection.sysNameInLocal(`${prefix}ABCD`).concat(connection.variantChars.local);
+    const tempMbr = tempSPF;
+
+    try {
+      const result = await connection.runCommand({
+        command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+        environment: 'ile'
+      });
+      expect(result.code).toBe(0);
+
+      const member = await content.memberResolve(tempMbr, [
+        { library: 'QSYSINC', name: 'MIH' }, // Doesn't exist here
+        { library: 'NOEXIST', name: 'SUP' }, // Doesn't exist here
+        { library: tempLib, name: tempSPF } // Does exist here
+      ]);
+
+      expect(member).toEqual({
+        asp: undefined,
+        library: tempLib,
+        file: tempSPF,
+        name: tempMbr,
+        extension: 'MBR',
+        basename: `${tempMbr}.MBR`
+      });
+    }
+    finally {
+      await connection.runCommand({
+        command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
+        environment: 'ile'
+      })
+    }
+  });
+  
   it('memberResolve with bad name', async () => {
     const content = connection.getContent();
 
@@ -149,6 +185,35 @@ describe('Content Tests', { concurrent: true }, () => {
         command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
         environment: 'ile'
       });
+    }
+  });
+
+  it.each(['$', '#', '#$'])('objectResolve with %s', async (prefix) => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempObj = connection.sysNameInLocal(`${prefix}ABCD`).concat(connection.variantChars.local);
+
+    try {
+      const result = await connection.runCommand({
+        command: `QSYS/CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+        environment: 'ile'
+      });
+      expect(result.code).toBe(0);
+
+      const lib = await content.objectResolve(tempObj, [
+        'QSYSINC', // Doesn't exist here
+        'QSYS2', // Doesn't exist here
+        tempLib // Does exist here
+      ]);
+
+      expect(lib).toBe(tempLib);
+    }
+    finally{
+      // Cleanup...
+      await connection.runCommand({
+        command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
+        environment: 'ile'
+      })
     }
   });
 
@@ -292,18 +357,6 @@ describe('Content Tests', { concurrent: true }, () => {
     // // Test with rows parameter greater than actual row count
     const moreRowsThanAvailable = await connection.runSQL('select * from qiws.qcustcdt', { rows: 99999 });
     expect(moreRowsThanAvailable?.length).toBe(allRows.length);
-  });
-
-  it('Test getTable', async () => {
-    const content = connection.getContent();
-
-    const rows = await content.getTable('qiws', 'qcustcdt', '*all');
-
-    expect(rows?.length).not.toBe(0);
-    const firstRow = rows![0];
-
-    expect(typeof firstRow['BALDUE']).toBe('number');
-    expect(typeof firstRow['CITY']).toBe('string');
   });
 
   it('Test validateLibraryList', async () => {
@@ -582,39 +635,6 @@ describe('Content Tests', { concurrent: true }, () => {
     finally {
       await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${sourceFile})`, noLibList: true });
     }
-  });
-
-  it('getQtempTable', async () => {
-    const content = connection.getContent();
-
-    const queries = [
-      `CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYSINC/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/DSPOBJD)')`,
-      `Create Table QTEMP.OBJECTS As (
-      Select ODLBNM as LIBRARY,
-        ODOBNM as NAME,
-        ODOBAT as ATTRIBUTE,
-        ODOBTP as TYPE,
-        Coalesce(ODOBTX, '') as TEXT
-      From QTEMP.DSPOBJD
-    ) With Data`
-    ];
-
-
-    const nosqlContent = await content?.getQTempTable(queries, "OBJECTS");
-    const objects = nosqlContent?.map(row => ({
-      library: row.LIBRARY,
-      name: row.NAME,
-      attribute: row.ATTRIBUTE,
-      type: row.TYPE,
-      text: row.TEXT,
-    }));
-    expect(objects?.length).not.toBe(0);
-    expect(objects?.every(obj => obj.library === "QSYSINC")).toBe(true);
-
-    const qrpglesrc = objects?.find(obj => obj.name === "QRPGLESRC");
-    expect(qrpglesrc).toBeDefined();
-    expect(qrpglesrc?.attribute).toBe("PF");
-    expect(qrpglesrc?.type).toBe("*FILE");
   });
 
   it('toCl', () => {
@@ -940,5 +960,27 @@ describe('Content Tests', { concurrent: true }, () => {
   it('Get new libl', async () => {
     const newLibl = await connection.getContent().getLibraryListFromCommand(`CHGLIBL CURLIB(SYSTOOLS)`);
     expect(newLibl?.currentLibrary).toBe(`SYSTOOLS`);
+  });
+
+  it('uploadMemberContent on non-existent member', async () => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const sourceFile = Tools.makeid(8);
+    const member = Tools.makeid(8);
+
+    try {
+      const createSPF = await connection.runCommand({ command: `QSYS/CRTSRCPF FILE(${tempLib}/${sourceFile}) RCDLEN(112)`, noLibList: true });
+      expect(createSPF.code).toBe(0);
+
+      const uploaded = await content.uploadMemberContent(tempLib, sourceFile, member, `CONTENT`, `RPGLE`);
+      expect(uploaded).toBe(true);
+
+      const [memberInfo] = await content.getMemberList({ library: tempLib, sourceFile, members: member });
+      expect(memberInfo).toBeDefined();
+      expect(memberInfo.name).toBe(member.toUpperCase());
+      expect(memberInfo.extension).toBe(`RPGLE`);
+    } finally {
+      await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${sourceFile})`, noLibList: true });
+    }
   });
 });
