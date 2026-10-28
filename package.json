@@ -3791,7 +3791,6 @@
 		"lint": "eslint src/**/*.js --no-error-on-unmatched-pattern",
 		"pretest": "npm run lint",
 		"test": "vitest run",
-		"test:unit": "vitest run --config vitest.unit.config.ts",
 		"package": "vsce package --allow-package-all-secrets",
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
