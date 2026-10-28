@@ -5,6 +5,7 @@ export default defineConfig({
         include: [
             "src/api/tests/suites/sourceMemberArchive.test.ts",
             "src/api/tests/suites/sourceMemberPrompt.test.ts",
+            "src/api/tests/suites/sourceMemberSaveNativeGate.test.ts",
         ],
         environment: "node",
         testTimeout: 120000,

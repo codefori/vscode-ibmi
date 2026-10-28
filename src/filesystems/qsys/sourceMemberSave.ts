@@ -1,12 +1,38 @@
 import path from "path";
 import vscode from "vscode";
-import IBMi from "../../api/IBMi";
-import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
+import type IBMi from "../../api/IBMi";
+import type { SourceDateHandler } from "./sourceDateHandler";
 import { archiveSourceMemberSnapshot } from "./sourceMemberArchive";
 
 const DEFAULT_SRCDTA_LENGTH = 100;
 const saveQueues = new Map<string, Promise<void>>();
-const saveAsSourceDateMap = new Map<string, { body: string; sourceDates: string[] }>();
+const SAVE_AS_COPY_TTL_MS = 5 * 60 * 1000;
+const SAVE_AS_COPY_MAX_ENTRIES = 200;
+
+type SaveAsCopyEntry = {
+    body: string;
+    sourceDates: string[];
+    createdAt: number;
+};
+
+const saveAsSourceDateMap = new Map<string, SaveAsCopyEntry>();
+
+function pruneSaveAsSourceDateMap(now = Date.now()) {
+    for (const [key, entry] of saveAsSourceDateMap.entries()) {
+        if ((now - entry.createdAt) > SAVE_AS_COPY_TTL_MS) {
+            saveAsSourceDateMap.delete(key);
+        }
+    }
+
+    while (saveAsSourceDateMap.size >= SAVE_AS_COPY_MAX_ENTRIES) {
+        const oldestKey = saveAsSourceDateMap.keys().next().value as string | undefined;
+        if (!oldestKey) {
+            break;
+        }
+
+        saveAsSourceDateMap.delete(oldestKey);
+    }
+}
 
 function getConnectionSaveKey(connection: IBMi): string {
     return connection.currentConnectionName || connection.currentHost || `default`;
@@ -34,19 +60,78 @@ async function enqueueSourceMemberSave<T>(connection: IBMi, task: () => Promise<
 }
 
 export function prepareSourceMemberSaveAsCopy(sourceUri: vscode.Uri, targetUri: vscode.Uri, body: string, sourceDates: string[]) {
+    pruneSaveAsSourceDateMap();
+
     saveAsSourceDateMap.set(targetUri.toString(), {
         body,
         sourceDates: sourceDates.slice(),
+        createdAt: Date.now(),
     });
 }
 
+interface NativeSaveAsPreparationOptions {
+    useMapepireForSourceMemberSaves: boolean;
+    activeDocument?: {
+        uri: vscode.Uri;
+        getText: () => string;
+    };
+    targetUri: vscode.Uri;
+    sourceDates?: string[];
+    readSourceDates?: () => Promise<string[] | undefined>;
+}
+
+export async function prepareNativeSaveAsSourceDateCopy(options: NativeSaveAsPreparationOptions): Promise<boolean> {
+    const {
+        useMapepireForSourceMemberSaves,
+        activeDocument,
+        targetUri,
+        sourceDates,
+        readSourceDates,
+    } = options;
+
+    if (useMapepireForSourceMemberSaves !== true) {
+        return false;
+    }
+
+    if (!activeDocument || activeDocument.uri.scheme !== `member`) {
+        return false;
+    }
+
+    if (activeDocument.uri.toString() === targetUri.toString()) {
+        return false;
+    }
+
+    const sourceBody = activeDocument.getText();
+    if (!sourceBody.length) {
+        return false;
+    }
+
+    const effectiveSourceDates = sourceDates?.length ? sourceDates : await readSourceDates?.();
+    if (!effectiveSourceDates?.length) {
+        return false;
+    }
+
+    prepareSourceMemberSaveAsCopy(activeDocument.uri, targetUri, sourceBody, effectiveSourceDates);
+    return true;
+}
+
 export function consumeSourceMemberSaveAsCopy(targetUri: vscode.Uri): { body: string; sourceDates: string[] } | undefined {
+    pruneSaveAsSourceDateMap();
+
     const key = targetUri.toString();
     const entry = saveAsSourceDateMap.get(key);
     if (entry) {
         saveAsSourceDateMap.delete(key);
+
+        if ((Date.now() - entry.createdAt) <= SAVE_AS_COPY_TTL_MS) {
+            return {
+                body: entry.body,
+                sourceDates: entry.sourceDates,
+            };
+        }
     }
-    return entry;
+
+    return undefined;
 }
 
 function sanitizeTempObjectSegment(value: string): string {
@@ -253,7 +338,7 @@ export async function saveSourceMbrToHost(options: SaveSourceMbrOptions) {
     const { connection, uri, body, sourceDateHandler, ensureBaseSourceLoaded } = options;
 
     await enqueueSourceMemberSave(connection, async () => {
-        const alias = getAliasName(uri);
+        const alias = uri.toString();
         const { library, file, name } = connection.parserMemberPath(uri.path);
 
         connection.appendOutput(`[Source save] Using Mapepire SQL save for ${library}/${file}(${name})\n`);

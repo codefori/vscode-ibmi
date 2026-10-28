@@ -9,7 +9,7 @@ import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { waitOnReconnect } from "./FSUtils";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
-import { consumeSourceMemberSaveAsCopy } from "./sourceMemberSave";
+import { consumeSourceMemberSaveAsCopy, prepareNativeSaveAsSourceDateCopy } from "./sourceMemberSave";
 
 export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
     return getUriFromPath(`${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`, options);
@@ -214,6 +214,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                     noLibList: true
                 });
                 if (addMember.code === 0) {
+                    await this.prepareNativeSaveAsCopy(connection, uri);
                     this.savedAsMembers.add(uri.path);
                     vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
                     return;
@@ -222,6 +223,8 @@ export class QSysFS implements vscode.FileSystemProvider {
                     if (!copyMessages.findId(`CPF5812`)) { // CPF5812 - Member already exists
                         throw new FileSystemError(addMember.stderr);
                     }
+
+                    await this.prepareNativeSaveAsCopy(connection, uri);
                 }
             }
 
@@ -244,6 +247,34 @@ export class QSysFS implements vscode.FileSystemProvider {
         else {
             throw new FileSystemError("Not connected to IBM i");
         }
+    }
+
+    private async prepareNativeSaveAsCopy(connection: IBMi, targetUri: vscode.Uri) {
+        const config = connection.getConfig();
+        const activeDocument = vscode.window.activeTextEditor?.document;
+        const sourceDates = activeDocument
+            ? this.sourceDateHandler.baseDates.get(getAliasName(activeDocument.uri))
+            : undefined;
+
+        await prepareNativeSaveAsSourceDateCopy({
+            useMapepireForSourceMemberSaves: config.useMapepireForSourceMemberSaves === true,
+            activeDocument,
+            targetUri,
+            sourceDates,
+            readSourceDates: activeDocument ? async () => {
+                const { library, file, name } = connection.parserMemberPath(activeDocument.uri.path);
+                const overFile = await connection.getContent().overDBFile(library, file, name);
+                try {
+                    const rows = await connection.runSQL(
+                        `SELECT CASE WHEN LOCATE('40', HEX(SRCDAT)) > 0 THEN 0 ELSE SRCDAT END AS SRCDAT FROM ${overFile} ORDER BY SRCSEQ`
+                    ) as { SRCDAT: number }[];
+
+                    return rows.map(row => String(Number(row.SRCDAT || 0)).padStart(6, `0`));
+                } finally {
+                    await connection.getContent().deleteOVRDBFile(overFile);
+                }
+            } : undefined,
+        });
     }
 
     rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
