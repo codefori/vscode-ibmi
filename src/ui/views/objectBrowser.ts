@@ -12,7 +12,7 @@ import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { checkObjectFilter, editObjectFilter, isFilterEdited } from "../../editors/filterEditor";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { promptForSourceMember } from "../../filesystems/qsys/sourceMemberPrompt";
-import { prepareSourceMemberSaveAsCopy } from "../../filesystems/qsys/sourceMemberSave";
+import { prepareSourceMemberSaveAs } from "../../filesystems/qsys/sourceMemberSave";
 import { instance } from "../../instantiate";
 import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
 import { VscodeTools } from "../Tools";
@@ -1019,7 +1019,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
           }
 
-          prepareSourceMemberSaveAsCopy(oldUri, targetUri, sourceBody, sourceDates);
+          prepareSourceMemberSaveAs(oldUri, targetUri, sourceBody, sourceDates);
           await vscode.workspace.fs.writeFile(targetUri, Buffer.from(sourceBody, `utf8`));
 
           vscode.window.showInformationMessage(vscode.l10n.t(`Saved member as {0}.`, targetPath));

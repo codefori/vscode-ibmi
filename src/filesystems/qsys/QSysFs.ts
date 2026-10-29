@@ -9,7 +9,7 @@ import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { waitOnReconnect } from "./FSUtils";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
-import { consumeSourceMemberSaveAsCopy, prepareNativeSaveAsSourceDateCopy } from "./sourceMemberSave";
+import { consumeSourceMemberSaveAs, prepareNativeSaveAsSourceDates } from "./sourceMemberSave";
 
 export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
     return getUriFromPath(`${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`, options);
@@ -228,17 +228,17 @@ export class QSysFS implements vscode.FileSystemProvider {
 
             if (!content.length) { //Coming from "Save as"
                 const isCreated = await this.createMember(connection, uri, library, file, member, extension);
-                await this.prepareNativeSaveAsCopy(connection, uri);
+                await this.prepareNativeSaveAs(connection, uri);
                 if (isCreated) {
                     return;
                 }
             }
 
-            const saveAsCopy = consumeSourceMemberSaveAsCopy(uri);
-            if (saveAsCopy) {
+            const saveAs = consumeSourceMemberSaveAs(uri);
+            if (saveAs) {
                 const alias = getAliasName(uri);
-                this.sourceDateHandler.baseDates.set(alias, saveAsCopy.sourceDates.slice());
-                this.sourceDateHandler.baseSource.set(alias, saveAsCopy.body);
+                this.sourceDateHandler.baseDates.set(alias, saveAs.sourceDates.slice());
+                this.sourceDateHandler.baseSource.set(alias, saveAs.body);
                 this.sourceDateHandler.baseSequences.delete(alias);
             }
 
@@ -265,14 +265,14 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
     }
 
-    private async prepareNativeSaveAsCopy(connection: IBMi, targetUri: vscode.Uri) {
+    private async prepareNativeSaveAs(connection: IBMi, targetUri: vscode.Uri) {
         const config = connection.getConfig();
         const activeDocument = vscode.window.activeTextEditor?.document;
         const sourceDates = activeDocument
             ? this.sourceDateHandler.baseDates.get(getAliasName(activeDocument.uri))
             : undefined;
 
-        await prepareNativeSaveAsSourceDateCopy({
+        await prepareNativeSaveAsSourceDates({
             useMapepireForSourceMemberSaves: config.useMapepireForSourceMemberSaves === true,
             activeDocument,
             targetUri,

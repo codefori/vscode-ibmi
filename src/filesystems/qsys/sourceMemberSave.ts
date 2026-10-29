@@ -6,25 +6,25 @@ import { archiveSourceMemberSnapshot } from "./sourceMemberArchive";
 
 const DEFAULT_SRCDTA_LENGTH = 100;
 const saveQueues = new Map<string, Promise<void>>();
-const SAVE_AS_COPY_TTL_MS = 5 * 60 * 1000;
-const SAVE_AS_COPY_MAX_ENTRIES = 200;
+const SAVE_AS_TTL_MS = 5 * 60 * 1000;
+const SAVE_AS_MAX_ENTRIES = 200;
 
-type SaveAsCopyEntry = {
+type SaveAsEntry = {
     body: string;
     sourceDates: string[];
     createdAt: number;
 };
 
-const saveAsSourceDateMap = new Map<string, SaveAsCopyEntry>();
+const saveAsSourceDateMap = new Map<string, SaveAsEntry>();
 
 function pruneSaveAsSourceDateMap(now = Date.now()) {
     for (const [key, entry] of saveAsSourceDateMap.entries()) {
-        if ((now - entry.createdAt) > SAVE_AS_COPY_TTL_MS) {
+        if ((now - entry.createdAt) > SAVE_AS_TTL_MS) {
             saveAsSourceDateMap.delete(key);
         }
     }
 
-    while (saveAsSourceDateMap.size >= SAVE_AS_COPY_MAX_ENTRIES) {
+    while (saveAsSourceDateMap.size >= SAVE_AS_MAX_ENTRIES) {
         const oldestKey = saveAsSourceDateMap.keys().next().value as string | undefined;
         if (!oldestKey) {
             break;
@@ -59,7 +59,7 @@ async function enqueueSourceMemberSave<T>(connection: IBMi, task: () => Promise<
     }
 }
 
-export function prepareSourceMemberSaveAsCopy(sourceUri: vscode.Uri, targetUri: vscode.Uri, body: string, sourceDates: string[]) {
+export function prepareSourceMemberSaveAs(sourceUri: vscode.Uri, targetUri: vscode.Uri, body: string, sourceDates: string[]) {
     pruneSaveAsSourceDateMap();
 
     saveAsSourceDateMap.set(targetUri.toString(), {
@@ -80,7 +80,7 @@ interface NativeSaveAsPreparationOptions {
     readSourceDates?: () => Promise<string[] | undefined>;
 }
 
-export async function prepareNativeSaveAsSourceDateCopy(options: NativeSaveAsPreparationOptions): Promise<boolean> {
+export async function prepareNativeSaveAsSourceDates(options: NativeSaveAsPreparationOptions): Promise<boolean> {
     const {
         useMapepireForSourceMemberSaves,
         activeDocument,
@@ -111,11 +111,11 @@ export async function prepareNativeSaveAsSourceDateCopy(options: NativeSaveAsPre
         return false;
     }
 
-    prepareSourceMemberSaveAsCopy(activeDocument.uri, targetUri, sourceBody, effectiveSourceDates);
+    prepareSourceMemberSaveAs(activeDocument.uri, targetUri, sourceBody, effectiveSourceDates);
     return true;
 }
 
-export function consumeSourceMemberSaveAsCopy(targetUri: vscode.Uri): { body: string; sourceDates: string[] } | undefined {
+export function consumeSourceMemberSaveAs(targetUri: vscode.Uri): { body: string; sourceDates: string[] } | undefined {
     pruneSaveAsSourceDateMap();
 
     const key = targetUri.toString();
@@ -123,7 +123,7 @@ export function consumeSourceMemberSaveAsCopy(targetUri: vscode.Uri): { body: st
     if (entry) {
         saveAsSourceDateMap.delete(key);
 
-        if ((Date.now() - entry.createdAt) <= SAVE_AS_COPY_TTL_MS) {
+        if ((Date.now() - entry.createdAt) <= SAVE_AS_TTL_MS) {
             return {
                 body: entry.body,
                 sourceDates: entry.sourceDates,

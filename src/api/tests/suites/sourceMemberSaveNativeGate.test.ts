@@ -4,10 +4,10 @@ vi.mock("vscode", () => ({
     default: {},
 }));
 
-import { consumeSourceMemberSaveAsCopy, prepareNativeSaveAsSourceDateCopy } from "../../../filesystems/qsys/sourceMemberSave";
+import { consumeSourceMemberSaveAs, prepareNativeSaveAsSourceDates } from "../../../filesystems/qsys/sourceMemberSave";
 
-describe("prepareNativeSaveAsSourceDateCopy", () => {
-    it("does not prepare copy when useMapepireForSourceMemberSaves is disabled", async () => {
+describe("prepareNativeSaveAsSourceDates", () => {
+    it("does not stage save-as source dates when useMapepireForSourceMemberSaves is disabled", async () => {
         const sourceUri = {
             scheme: "member",
             path: "/QGPL/QRPGLESRC/HELLO.RPGLE",
@@ -20,7 +20,7 @@ describe("prepareNativeSaveAsSourceDateCopy", () => {
             toString: () => "member:/QGPL/QRPGLESRC/HELLO2.RPGLE",
         } as any;
 
-        const prepared = await prepareNativeSaveAsSourceDateCopy({
+        const prepared = await prepareNativeSaveAsSourceDates({
             useMapepireForSourceMemberSaves: false,
             activeDocument: {
                 uri: sourceUri,
@@ -31,10 +31,10 @@ describe("prepareNativeSaveAsSourceDateCopy", () => {
         });
 
         expect(prepared).toBe(false);
-        expect(consumeSourceMemberSaveAsCopy(targetUri)).toBeUndefined();
+        expect(consumeSourceMemberSaveAs(targetUri)).toBeUndefined();
     });
 
-    it("prepares copy when useMapepireForSourceMemberSaves is enabled", async () => {
+    it("stages save-as source dates when useMapepireForSourceMemberSaves is enabled", async () => {
         const sourceUri = {
             scheme: "member",
             path: "/QGPL/QRPGLESRC/HELLO.RPGLE",
@@ -47,7 +47,7 @@ describe("prepareNativeSaveAsSourceDateCopy", () => {
             toString: () => "member:/QGPL/QRPGLESRC/HELLO2.RPGLE",
         } as any;
 
-        const prepared = await prepareNativeSaveAsSourceDateCopy({
+        const prepared = await prepareNativeSaveAsSourceDates({
             useMapepireForSourceMemberSaves: true,
             activeDocument: {
                 uri: sourceUri,
@@ -59,7 +59,7 @@ describe("prepareNativeSaveAsSourceDateCopy", () => {
 
         expect(prepared).toBe(true);
 
-        const seeded = consumeSourceMemberSaveAsCopy(targetUri);
+        const seeded = consumeSourceMemberSaveAs(targetUri);
         expect(seeded).toBeTruthy();
         expect(seeded?.body).toBe("line 1\nline 2");
         expect(seeded?.sourceDates).toEqual(["240101", "240102"]);
@@ -80,7 +80,7 @@ describe("prepareNativeSaveAsSourceDateCopy", () => {
 
         const readSourceDates = vi.fn().mockResolvedValue(["240201", "240202"]);
 
-        const prepared = await prepareNativeSaveAsSourceDateCopy({
+        const prepared = await prepareNativeSaveAsSourceDates({
             useMapepireForSourceMemberSaves: true,
             activeDocument: {
                 uri: sourceUri,
@@ -93,7 +93,7 @@ describe("prepareNativeSaveAsSourceDateCopy", () => {
         expect(prepared).toBe(true);
         expect(readSourceDates).toHaveBeenCalledTimes(1);
 
-        const seeded = consumeSourceMemberSaveAsCopy(targetUri);
+        const seeded = consumeSourceMemberSaveAs(targetUri);
         expect(seeded?.sourceDates).toEqual(["240201", "240202"]);
     });
 });
