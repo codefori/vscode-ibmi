@@ -1103,12 +1103,6 @@
 				"icon": "$(desktop-download)"
 			},
 			{
-				"command": "code-for-ibmi.testSourceMemberPrompt",
-				"title": "Test Source Member Prompt",
-				"category": "IBM i (debug)",
-				"icon": "$(debug-alt)"
-			},
-			{
 				"command": "code-for-ibmi.debug.batch",
 				"title": "Debug as Batch",
 				"category": "IBM i",
@@ -2193,12 +2187,6 @@
 				"command": "code-for-ibmi.showAdditionalSettings",
 				"key": "ctrl+alt+,",
 				"mac": "cmd+alt+,"
-			},
-			{
-				"command": "code-for-ibmi.testSourceMemberPrompt",
-				"key": "ctrl+alt+shift+p",
-				"mac": "cmd+alt+shift+p",
-				"when": "editorFocus"
 			},
 			{
 				"command": "code-for-ibmi.launchTerminalPicker",

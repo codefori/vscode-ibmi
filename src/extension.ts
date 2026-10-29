@@ -143,22 +143,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   context.subscriptions.push(
     commands.registerCommand(`code-for-ibmi.promptSourceMember`, async (defaults) => {
       return await promptForSourceMember(defaults ?? {});
-    }),
-    commands.registerCommand(`code-for-ibmi.testSourceMemberPrompt`, async () => {
-      const result = await promptForSourceMember({
-        library: `QGPL`,
-        sourceFile: `QRPGLESRC`,
-        member: `TESTMEM`
-      });
-
-      if (result) {
-        window.showInformationMessage(`Source member prompt result: ${result.path}`);
-      }
-      else {
-        window.showInformationMessage(`Source member prompt cancelled.`);
-      }
-
-      return result;
     })
   );
 
