@@ -211,18 +211,28 @@ async function saveRowsToHost(connection: IBMi, uri: vscode.Uri, rows: [number, 
             const batchEnd = batch[batch.length - 1]?.[0] ?? batchStart;
             connection.appendOutput(`[Source save] Mapepire SQL batch ${batchNumber} rows=${batchStart}-${batchEnd} (${batch.length}).\n`);
 
-            const valuesSql = batch.map(row => `(${formatSourceSequence(row[0])}, ${row[1]}, ?)`).join(`, `);
-            const bindings = batch.map(row => row[2]);
+            // Mapepire server treats a 2D bindings array as a JDBC batch: one inner array per row,
+            // executed via addBatch/executeLargeBatch. Explicit CASTs give the driver concrete SQL
+            // types for the markers, avoiding parameter-metadata derivation against DDS-described
+            // zoned-decimal columns (07006 NumberFormatException from JT400 on mapepire-server 2.3.6).
+            const bindings = batch.map(row => [row[0], row[1], row[2]]);
             try {
                 await connection.runSQL(
-                    `insert into ${stagingTable} (SRCSEQ, SRCDAT, SRCDTA) values ${valuesSql}`,
+                    `insert into ${stagingTable} (SRCSEQ, SRCDAT, SRCDTA) values (cast(? as numeric(6, 2)), cast(? as numeric(6, 0)), cast(? as varchar(${recordLength})))`,
                     { bindings }
                 );
-            } catch (batchInsertError) {
+            } catch (batchInsertError: any) {
                 const firstDate = batch[0]?.[1] ?? 0;
                 const lastDate = batch[batch.length - 1]?.[1] ?? firstDate;
+                const sqlstate = typeof batchInsertError?.sqlstate === `string` && batchInsertError.sqlstate !== `0`
+                    ? batchInsertError.sqlstate
+                    : undefined;
+                const errorDetail = sqlstate
+                    ? `[${sqlstate}] ${batchInsertError.message}`
+                    : String(batchInsertError);
+                const preview = `(${formatSourceSequence(batchStart)}, ${firstDate}, ${JSON.stringify(String(batch[0]?.[2] ?? ``).slice(0, 40))})`;
                 connection.appendOutput(
-                    `[Source save] Mapepire SQL batch ${batchNumber} failed (SRCSEQ ${formatSourceSequence(batchStart)}-${formatSourceSequence(batchEnd)}, SRCDAT ${firstDate}-${lastDate}).\n`
+                    `[Source save] Mapepire SQL batch ${batchNumber} failed (SRCSEQ ${formatSourceSequence(batchStart)}-${formatSourceSequence(batchEnd)}, SRCDAT ${firstDate}-${lastDate}, first row ${preview}): ${errorDetail}\n`
                 );
                 throw batchInsertError;
             }
