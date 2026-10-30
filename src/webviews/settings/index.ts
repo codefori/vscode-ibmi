@@ -180,6 +180,11 @@ export class SettingsUI {
           .addSelect(`ccsidConvertTo`, `Target CCSID`, targetCcsidOptions)
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
+          .addCheckbox(`useMapepireForSourceMemberSaves`, `Use Mapepire for Source Member Saves`, `When enabled, source member saves with source dates use a Mapepire SQL staging flow with alias-based SQL INSERT (instead of the legacy RUNSQLSTM temporary script flow).`, config.useMapepireForSourceMemberSaves)
+          .addInput(`mapepireSaveBufferSize`, `Mapepire Save Buffer Size in rows`, `Number of rows staged in each Mapepire SQL save batch. Lower values may be more reliable on slower connections. (500 or more recommended).`, { default: String(config.mapepireSaveBufferSize ?? 500), inputType: "number", min: 1 })
+          .addCheckbox(`sourceMemberSaveArchiveEnabled`, `Source Member Save: Enable Local Archive`, `When enabled, the previous source member content is archived locally before a source-date save writes to IBM i.`, config.sourceMemberSaveArchiveEnabled)
+          .addInput(`sourceMemberSaveArchivePath`, `Source Member Save: Local Archive Path`, `Directory for local archive snapshots. Supports <code>~/</code> and relative paths (resolved from the first workspace folder).`, { default: config.sourceMemberSaveArchivePath, minlength: 1 })
+          .addInput(`sourceMemberSaveArchiveMaxFiles`, `Source Member Save: Max Snapshots per Member`, `Retention limit for local archive snapshots kept per source member (default 25).`, { default: String(config.sourceMemberSaveArchiveMaxFiles), inputType: "number", min: 1 })
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter. This also enables date search and sequence view.`, config.sourceDateGutter)
           .addHorizontalRule()
           .addSelect(`defaultDeploymentMethod`, `Default Deployment Method`, [

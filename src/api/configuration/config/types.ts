@@ -16,6 +16,11 @@ export interface ConnectionConfig extends ConnectionProfile {
   autoConvertIFSccsid: boolean;
   hideCompileErrors: string[];
   enableSourceDates: boolean;
+  useMapepireForSourceMemberSaves: boolean;
+  mapepireSaveBufferSize: number;
+  sourceMemberSaveArchiveEnabled: boolean;
+  sourceMemberSaveArchivePath: string;
+  sourceMemberSaveArchiveMaxFiles: number;
   sourceDateGutter: boolean;
   ccsidConversionEnabled: boolean;
   ccsidConvertFrom: string;
