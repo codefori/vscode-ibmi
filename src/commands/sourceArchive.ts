@@ -105,7 +105,17 @@ async function pickSnapshot(instance: Instance, memberUri?: vscode.Uri): Promise
         return;
     }
 
-    const activeSearchSnapshot = memberUri ? await listSourceMemberSnapshots(connection, memberUri) : [];
+    let activeSearchSnapshot: SourceArchiveSnapshotInfo[] = [];
+    if (memberUri) {
+        try {
+            activeSearchSnapshot = await listSourceMemberSnapshots(connection, memberUri);
+            connection.appendOutput(`[Source archive] ${memberUri.path}: ${activeSearchSnapshot.length} snapshot(s) found.\n`);
+        } catch (e) {
+            connection.appendOutput(`[Source archive] Failed to list snapshots for ${memberUri.path}: ${String(e)}\n`);
+            window.showErrorMessage(l10n.t("Could not read source archive for {0}: {1}", memberUri.path.substring(1), String(e)));
+            return;
+        }
+    }
 
     type ArchiveQuickPickItem = vscode.QuickPickItem & { snapshot: SourceArchiveSnapshotInfo };
 
@@ -117,7 +127,15 @@ async function pickSnapshot(instance: Instance, memberUri?: vscode.Uri): Promise
         quickPick.ignoreFocusOut = true;
         quickPick.matchOnDescription = false;
         quickPick.matchOnDetail = false;
-        quickPick.value = ``;
+
+        // When the member has no snapshots of its own, seed the search with the member name
+        // so global matching kicks in immediately instead of showing an empty list.
+        if (memberUri && !activeSearchSnapshot.length) {
+            const memberName = memberUri.path.split(`/`).pop()?.split(`.`)[0] ?? ``;
+            quickPick.value = memberName;
+        } else {
+            quickPick.value = ``;
+        }
 
         let requestId = 0;
 
@@ -127,7 +145,10 @@ async function pickSnapshot(instance: Instance, memberUri?: vscode.Uri): Promise
 
             if (!query) {
                 quickPick.busy = true;
-                const snapshots = memberUri ? activeSearchSnapshot : await listSourceMemberSnapshotsMatching(connection, query);
+                // Scoped to the member only when it actually has snapshots; otherwise an empty
+                // search falls through to the global archive so clearing the box shows everything.
+                const useMemberScope = memberUri && activeSearchSnapshot.length > 0;
+                const snapshots = useMemberScope ? activeSearchSnapshot : await listSourceMemberSnapshotsMatching(connection, query);
                 if (currentRequest !== requestId) {
                     return;
                 }
@@ -288,6 +309,33 @@ function refreshPreviewDecorationsForEditor(editor?: vscode.TextEditor) {
     applySourceDatePreviewDecorations(editor, previewInfo.sourceDates);
 }
 
+async function openSnapshotPicker(instance: Instance, memberUri?: vscode.Uri) {
+    const snapshot = await pickSnapshot(instance, memberUri);
+    if (!snapshot) {
+        return;
+    }
+
+    const snapshotData = await readSourceMemberSnapshot(snapshot.filePath);
+    const previewUri = createSnapshotPreviewUri(snapshotData.member || `snapshot`, snapshotData.extension || `txt`);
+    const preferredLanguage = snapshotData.languageId || getLanguageForSnapshotExtension(snapshotData.extension);
+
+    previewSnapshotMap.set(previewUri.toString(), {
+        previewUri,
+        snapshotPath: snapshot.filePath,
+        sourceDates: snapshotData.sourceDates || [],
+        content: snapshotData.body,
+        memberPath: snapshotData.memberPath,
+        memberLabel: `${snapshotData.member}.${snapshotData.extension || `NONE`}`,
+        preferredLanguageId: preferredLanguage,
+    });
+
+    const document = await workspace.openTextDocument(previewUri);
+    const languageId = await resolveAvailableLanguageId(preferredLanguage);
+    await vscode.languages.setTextDocumentLanguage(document, languageId);
+    const previewEditor = await window.showTextDocument(document, { preview: false });
+    applySourceDatePreviewDecorations(previewEditor, snapshotData.sourceDates || []);
+}
+
 export function registerSourceArchiveCommands(instance: Instance): Disposable[] {
     const previewProvider: vscode.TextDocumentContentProvider = {
         provideTextDocumentContent(uri) {
@@ -311,30 +359,13 @@ export function registerSourceArchiveCommands(instance: Instance): Disposable[] 
 
         commands.registerCommand("code-for-ibmi.sourceArchive.openSnapshot", async () => {
             const editor = getActiveMemberEditor();
-            const snapshot = await pickSnapshot(instance, editor?.document.uri);
-            if (!snapshot) {
-                return;
-            }
+            await openSnapshotPicker(instance, editor?.document.uri);
+        }),
 
-            const snapshotData = await readSourceMemberSnapshot(snapshot.filePath);
-            const previewUri = createSnapshotPreviewUri(snapshotData.member || `snapshot`, snapshotData.extension || `txt`);
-            const preferredLanguage = snapshotData.languageId || getLanguageForSnapshotExtension(snapshotData.extension);
-
-            previewSnapshotMap.set(previewUri.toString(), {
-                previewUri,
-                snapshotPath: snapshot.filePath,
-                sourceDates: snapshotData.sourceDates || [],
-                content: snapshotData.body,
-                memberPath: snapshotData.memberPath,
-                memberLabel: `${snapshotData.member}.${snapshotData.extension || `NONE`}`,
-                preferredLanguageId: preferredLanguage,
-            });
-
-            const document = await workspace.openTextDocument(previewUri);
-            const languageId = await resolveAvailableLanguageId(preferredLanguage);
-            await vscode.languages.setTextDocumentLanguage(document, languageId);
-            const previewEditor = await window.showTextDocument(document, { preview: false });
-            applySourceDatePreviewDecorations(previewEditor, snapshotData.sourceDates || []);
+        commands.registerCommand("code-for-ibmi.sourceArchive.openSnapshotForMember", async (node?: { resourceUri?: vscode.Uri }) => {
+            // From the Object Browser member context menu, the node carries the member's resourceUri.
+            // Fall back to the global archive picker when invoked without a member (e.g. command palette).
+            await openSnapshotPicker(instance, node?.resourceUri);
         }),
 
         commands.registerCommand("code-for-ibmi.sourceArchive.restoreToHost", async () => {

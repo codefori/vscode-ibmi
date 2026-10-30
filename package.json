@@ -1514,6 +1514,13 @@
 				"icon": "$(save-as)"
 			},
 			{
+				"command": "code-for-ibmi.sourceArchive.openSnapshotForMember",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Member Archive...",
+				"category": "IBM i",
+				"icon": "$(archive)"
+			},
+			{
 				"command": "code-for-ibmi.updateMemberText",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Change Description...",
@@ -3480,6 +3487,11 @@
 					"command": "code-for-ibmi.saveMemberAs",
 					"when": "view == objectBrowser && !listMultiSelection && viewItem == member && !(viewItem =~ /_readonly$/)",
 					"group": "3_memberTransfer@3"
+				},
+				{
+					"command": "code-for-ibmi.sourceArchive.openSnapshotForMember",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^member.*$/",
+					"group": "3_memberTransfer@4"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowserItem",
