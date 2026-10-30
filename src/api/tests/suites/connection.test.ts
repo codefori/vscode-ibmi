@@ -267,6 +267,11 @@ describe(`connection tests`, { concurrent: true }, () => {
 
       // Directory does not exist
       expect(await content.countFiles(`${tempDir}/${Tools.makeid(20)}`)).toBe(0);
+
+      // Several directories at once, in the same order, hidden entries included
+      const subDir = `${tempDir}/sub dir`;
+      expect((await connection.sendCommand({ command: `mkdir "${subDir}" && touch "${subDir}/a" "${subDir}/b" "${subDir}/.hidden"` })).code).toBe(0);
+      expect(await content.countFiles([tempDir, `${tempDir}/${Tools.makeid(20)}`, subDir])).toEqual([toCreate + 1, 0, 3]);
     });
 
     if (temp) {
