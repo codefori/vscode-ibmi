@@ -12,7 +12,6 @@ import { DeployTools } from "./filesystems/local/deployTools";
 import { VscodeTools } from "./ui/Tools";
 import { FrontendTables } from "./ui/frontendTables";
 import { CustomUI } from "./webviews/CustomUI";
-import { SourceMemberPromptInput, SourceMemberPromptResult, promptForSourceMember } from "./filesystems/qsys/sourceMemberPrompt";
 
 export interface CodeForIBMi {
   instance: Instance,
@@ -27,7 +26,6 @@ export interface CodeForIBMi {
   componentRegistry: ComponentRegistry,
   connectionManager: ConnectionManager,
   searchTools: typeof SearchTools,
-  promptForSourceMember: (defaults?: SourceMemberPromptInput) => Promise<SourceMemberPromptResult | undefined>,
   onCodeForIBMiConfigurationChange: (props: string | string[], todo: (event: ConfigurationChangeEvent) => void) => Disposable
 }
 

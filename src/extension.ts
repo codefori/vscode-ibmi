@@ -19,7 +19,6 @@ import { IFSFS } from "./filesystems/ifsFs";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
 import { handleEditorsLeftOpened } from "./filesystems/qsys/FSUtils";
-import { promptForSourceMember } from "./filesystems/qsys/sourceMemberPrompt";
 import { instance, loadAllofExtension } from './instantiate';
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import { mergeCommandProfiles } from "./mergeProfiles";
@@ -141,9 +140,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   }
 
   context.subscriptions.push(
-    commands.registerCommand(`code-for-ibmi.promptSourceMember`, async (defaults) => {
-      return await promptForSourceMember(defaults ?? {});
-    })
   );
 
   const mapepire = new Mapepire(`${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`, async (connection) => {
@@ -179,7 +175,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager,
     searchTools: SearchTools,
-    promptForSourceMember,
     onCodeForIBMiConfigurationChange
   };
 }
