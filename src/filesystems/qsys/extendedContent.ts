@@ -49,12 +49,15 @@ export class ExtendedIBMiContent {
         const jobCcsid = connection.getCcsid();
 
         // Build the SELECT statement with conditional CAST for CCSID 65535
+        // TRANSLATE maps x'00' to blank: legacy members can contain NUL bytes (e.g. old
+        // tooling wrote NUL-terminated strings into full-length CHAR fields), and a single
+        // NUL makes VS Code treat the downloaded document as binary and refuse to display it.
         let srcdtaColumn: string;
         if (columnCcsid === IBMi.CCSID_NOCONVERSION) {
           console.log(`[downloadMemberContentWithDates] CCSID 65535 detected for ${library}/${file}, using CAST to CCSID ${jobCcsid}`);
-          srcdtaColumn = `cast(srcdta as varchar(${columnLength}) CCSID ${jobCcsid}) as srcdta`;
+          srcdtaColumn = `translate(cast(srcdta as varchar(${columnLength}) CCSID ${jobCcsid}), ' ', x'00') as srcdta`;
         } else {
-          srcdtaColumn = `srcdta`;
+          srcdtaColumn = `translate(srcdta, ' ', x'00') as srcdta`;
         }
 
         const rows = await connection.runSQL(
