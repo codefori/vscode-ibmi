@@ -34,6 +34,7 @@ export interface ConnectionConfig extends ConnectionProfile {
   readOnlyMode: boolean;
   quickConnect: boolean;
   defaultDeploymentMethod: DeploymentMethod | '';
+  lockMembers: boolean;
   protectedPaths: string[];
   showHiddenFiles: boolean;
   secureSQL: boolean;
