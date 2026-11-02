@@ -1467,6 +1467,12 @@
 				"icon": "$(new-file)"
 			},
 			{
+				"command": "code-for-ibmi.createAndUploadMember",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
+				"title": "Upload New Member...",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.copyMember",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isReadonly",
 				"title": "Copy...",
@@ -2675,6 +2681,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.createAndUploadMember",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.copyMember",
 					"when": "never"
 				},
@@ -3337,6 +3347,11 @@
 					"command": "code-for-ibmi.createMember",
 					"when": "view == objectBrowser && !listMultiSelection && viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.createAndUploadMember",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem == SPF",
+					"group": "3_sourceFileStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.searchSourceFile",

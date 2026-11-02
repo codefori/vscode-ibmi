@@ -1219,4 +1219,17 @@ export default class IBMiContent {
   async deleteOVRDBFile(overFile: string) {
     await this.ibmi.runSQL(`@QSYS/DLTOVR FILE(${overFile}) LVL(*JOB)`);
   }
+
+  async deleteMember(path: string) {
+    const { library, file, name } = this.ibmi.parserMemberPath(path);
+
+    const removeResult = await this.ibmi.runCommand({
+      command: `QSYS/RMVM FILE(${library}/${file}) MBR(${name})`,
+      noLibList: true
+    });
+
+    if (removeResult.code !== 0) {
+      throw new Error(removeResult.stderr);
+    }
+  }
 }

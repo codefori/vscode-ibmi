@@ -423,19 +423,14 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
   }
 
   async delete() {
-    const connection = getConnection();
-    const { library, file, name } = connection.parserMemberPath(this.path);
-
-    const removeResult = await connection.runCommand({
-      command: `QSYS/RMVM FILE(${library}/${file}) MBR(${name})`,
-      noLibList: true
-    });
-
-    if (removeResult.code !== 0) {
-      vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting member! {0}`, removeResult.stderr));
+    try {
+      await getContent().deleteMember(this.path);
+      return true;
     }
-
-    return removeResult.code === 0;
+    catch (e: any) {
+      vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting member! {0}`, e));
+      return false;
+    }
   }
 }
 
@@ -764,7 +759,26 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       });
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string) => {
+    vscode.commands.registerCommand(`code-for-ibmi.createAndUploadMember`, async (node: ObjectBrowserSourcePhysicalFileItem) => {
+      const newMember = await vscode.commands.executeCommand<string | undefined>(`code-for-ibmi.createMember`, node, undefined, true);
+      if (newMember) {
+        if (await vscode.commands.executeCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, newMember)) {
+          if (IBMi.connectionManager.get(`autoOpenFile`)) {
+            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMember);
+          }
+        }
+        else {
+          try {
+            await getContent().deleteMember(newMember);
+            objectBrowser.refresh(node);
+          }
+          catch (e: any) {
+            vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting member! {0}`, e));
+          }
+        }
+      }
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string, skipOpen?: boolean) => {
       if (checkProtected(node)) {
         return;
       }
@@ -792,7 +806,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           })
 
           if (addResult.code === 0) {
-            if (IBMi.connectionManager.get(`autoOpenFile`)) {
+            if (!skipOpen && IBMi.connectionManager.get(`autoOpenFile`)) {
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
@@ -804,9 +818,15 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         });
 
         if (error) {
-          if (await vscode.window.showErrorMessage(vscode.l10n.t(`Error creating member {0}: {1}`, fullPath, error), vscode.l10n.t("Retry"))) {
-            vscode.commands.executeCommand(`code-for-ibmi.createMember`, node, fullName);
-          }
+          return vscode.window.showErrorMessage(vscode.l10n.t(`Error creating member {0}: {1}`, fullPath, error), vscode.l10n.t("Retry"))
+            .then((retry) => {
+              if (retry) {
+                return vscode.commands.executeCommand<string | undefined>(`code-for-ibmi.createMember`, node, fullName);
+              }
+            });
+        }
+        else {
+          return fullPath;
         }
       }
     }),
@@ -1038,24 +1058,25 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, async (node: MemberItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, async (target: MemberItem | string) => {
       const contentApi = getContent();
 
       const originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
 
       if (originPath) {
         const connection = getConnection();
-        const { asp, library, file, name } = connection.parserMemberPath(node.path);
+        const { asp, library, file, name } = connection.parserMemberPath(typeof target === "string" ? target : target.path);
         const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
 
         try {
-          contentApi.uploadMemberContent(library, file, name, data);
+          await contentApi.uploadMemberContent(library, file, name, data);
           vscode.window.showInformationMessage(vscode.l10n.t(`Member was uploaded.`));
+          return true
         } catch (e: any) {
           vscode.window.showErrorMessage(vscode.l10n.t(`Error uploading content to member! {0}`, e));
         }
       }
-
+      return false;
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node: ObjectItem | MemberItem, nodes?: (ObjectItem | MemberItem)[]) => {
