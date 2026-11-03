@@ -951,17 +951,15 @@ export default class IBMiContent {
       //the IFS is case insensitive, except for the QOpenSys file system
       const flags = /^\/QOpenSys/i.test(path) ? '' : 'i';
       return this.config.protectedPaths.some(p => {
-        // Drop trailing slashes so "/docs/a/" behaves like "/docs/a"
-        const entry = p.length > 1 ? p.replace(/\/+$/, '') : p;
-
+        // "/" -> "", "//" -> "", "/docs/a/" -> "/docs/a"
+        const entry = p.replace(/\/+$/, '');
         // Escape everything except explicit wildcards the user typed
         const body = entry
           .split(/([*?])/)
           .map(part => part === '*' ? '[^/]*'
                 : part === '?' ? '[^/]'
                 : escapeStringRegexp(part))
-          .join('');
-        
+          .join('');        
         // Entry must end at a path boundary, and also covers everything beneath it
         return new RegExp(`^${body}(?:/.*)?$`, flags).test(path);
       });

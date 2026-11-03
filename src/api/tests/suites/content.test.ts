@@ -983,4 +983,51 @@ describe('Content Tests', { concurrent: true }, () => {
       await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${sourceFile})`, noLibList: true });
     }
   });
+
+  enum Protection {
+    Protected = 'protected',
+    NotProtected = 'not-protected'
+  }
+
+  it.each([
+    // protectedPath without a wildcard: exact path and everything beneath it
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/a', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/a/x/y', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/A', expected: Protection.Protected },    
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/abc', expected: Protection.NotProtected }, 
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/a.txt', expected: Protection.NotProtected },
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/b', expected: Protection.NotProtected },
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs', expected: Protection.NotProtected }, 
+  // Trailing slash in the protectedPath behaves the same as without
+  { protectedPath: '/home/USERNAME/docs/a/', path: '/home/USERNAME/docs/a', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a/', path: '/home/USERNAME/docs/abc', expected: Protection.NotProtected },
+  // Explicit * wildcard: stays within one segment, plus everything beneath
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/a', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/abc', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/a.txt', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/abc/deep/file', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/b', expected: Protection.NotProtected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/ba', expected: Protection.NotProtected },
+  // Explicit ? wildcard: exactly one character
+  { protectedPath: '/tmp/file?', path: '/tmp/file1', expected: Protection.Protected },
+  { protectedPath: '/tmp/file?', path: '/tmp/file1/x', expected: Protection.Protected },
+  { protectedPath: '/tmp/file?', path: '/tmp/file', expected: Protection.NotProtected },
+  { protectedPath: '/tmp/file?', path: '/tmp/file12', expected: Protection.NotProtected },
+  // /QOpenSys paths are case-sensitive
+  { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secret', expected: Protection.Protected },
+  { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secret/x', expected: Protection.Protected },
+  { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/Secret', expected: Protection.NotProtected },
+  { protectedPath: '/QOpenSys/secret', path: '/qopensys/secret', expected: Protection.NotProtected },
+  { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secretary', expected: Protection.NotProtected },
+  // Root protects everything
+  { protectedPath: '/', path: '/anything/at/all', expected: Protection.Protected }
+  ])
+  ('if $protectedPath, then $path is $expected', async ({protectedPath, path, expected}) => {
+    const content = connection.getContent();
+    const config = connection.getConfig();
+    config.protectedPaths = [protectedPath];
+    
+    const result = content.isProtectedPath(path) ? Protection.Protected : Protection.NotProtected;
+    expect(result).toBe(expected);
+  });
 });
