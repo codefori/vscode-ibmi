@@ -254,6 +254,15 @@ export namespace VscodeTools {
     return tooltip;
   }
 
+  export function filterToDescription(filter: ObjectFilters) {
+    const memberTextSuffix = filter.memberText && !/^\*(?:ALL)?$/.test(filter.memberText.trim()) ? ` [${filter.memberText}]` : ``;
+    const dateSuffix = [
+      filter.memberCreated ? `created ≥ ${filter.memberCreated}` : ``,
+      filter.memberChanged ? `changed ≥ ${filter.memberChanged}` : ``
+    ].filter(Boolean).join(`, `);
+    return `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})${memberTextSuffix}${dateSuffix ? ` {${dateSuffix}}` : ``}`
+  }
+
   export function includesCaseInsensitive(haystack: string[], needle: string) {
     return haystack.map(s => s.toLocaleUpperCase()).includes(needle.toLocaleUpperCase());
   }
