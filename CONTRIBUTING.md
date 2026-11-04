@@ -90,5 +90,6 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@Frank-Hildebrandt](https://github.com/Frank-Hildebrandt)
 * [@christianlarsen](https://github.com/christianlarsen)
 * [@Balrocj](https://github.com/Balrocj)
+* [@LuGe00](https://github.com/LuGe00)
 * [@arora23saurabh](https://github.com/arora23saurabh)
 * [@benetti-marco](https://github.com/benetti-marco)
