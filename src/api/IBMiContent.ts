@@ -950,7 +950,21 @@ export default class IBMiContent {
     if (path.startsWith('/')) { //IFS path
       //the IFS is case insensitive, except for the QOpenSys file system
       const flags = /^\/QOpenSys/i.test(path) ? '' : 'i';
-      return this.config.protectedPaths.some(p => new RegExp(`^${escapeStringRegexp(p)}`, flags).test(path));
+      return this.config.protectedPaths
+        .filter(p => p.startsWith('/'))
+        .some(p => {
+          // "/" -> "", "//" -> "", "/docs/a/" -> "/docs/a"
+          const entry = p.replace(/\/+$/, '').replace(/^\/qopensys(?=\/|$)/i, '/QOpenSys');
+          // Escape everything except explicit wildcards the user typed
+          const body = entry
+            .split(/([*?])/)
+            .map(part => part === '*' ? '[^/]*'
+                  : part === '?' ? '[^/]'
+                  : escapeStringRegexp(part))
+            .join('');        
+          // Entry must end at a path boundary, and also covers everything beneath it
+          return new RegExp(`^${body}(?:/.*)?$`, flags).test(path);
+      });
     }
     else { //QSYS path
       const qsysObject = Tools.parseQSysPath(path);
