@@ -49,15 +49,12 @@ export class ExtendedIBMiContent {
         const jobCcsid = connection.getCcsid();
 
         // Build the SELECT statement with conditional CAST for CCSID 65535
-        // TRANSLATE maps x'00' to blank: legacy members can contain NUL bytes (e.g. old
-        // tooling wrote NUL-terminated strings into full-length CHAR fields), and a single
-        // NUL makes VS Code treat the downloaded document as binary and refuse to display it.
         let srcdtaColumn: string;
         if (columnCcsid === IBMi.CCSID_NOCONVERSION) {
           console.log(`[downloadMemberContentWithDates] CCSID 65535 detected for ${library}/${file}, using CAST to CCSID ${jobCcsid}`);
-          srcdtaColumn = `translate(cast(srcdta as varchar(${columnLength}) CCSID ${jobCcsid}), ' ', x'00') as srcdta`;
+          srcdtaColumn = `cast(srcdta as varchar(${columnLength}) CCSID ${jobCcsid}) as srcdta`;
         } else {
-          srcdtaColumn = `translate(srcdta, ' ', x'00') as srcdta`;
+          srcdtaColumn = `srcdta`;
         }
 
         const rows = await connection.runSQL(
@@ -72,14 +69,16 @@ export class ExtendedIBMiContent {
           });
         }
 
+        const originalSource = rows.map(row => String(row.SRCDTA ?? ``));
         const sourceDates = rows.map(row => String(row.SRCDAT).padStart(6, `0`));
-        const body = rows
-          .map(row => row.SRCDTA.includes(`\\\t`) ? row.SRCDTA.replaceAll(`\\\t`, `\t`) : row.SRCDTA)
+        const body = originalSource
+          .map(line => (line.includes(`\\\t`) ? line.replaceAll(`\\\t`, `\t`) : line).replace(/[\u0000\u0016\u001A]/g, ` `))
           .join(`\n`);
         const sequences = rows.map(row => Number(row.SRCSEQ));
 
         this.sourceDateHandler.baseDates.set(alias, sourceDates);
         this.sourceDateHandler.baseSource.set(alias, body);
+        this.sourceDateHandler.baseLegacySource.set(alias, originalSource);
         this.sourceDateHandler.baseSequences.set(alias, sequences);
 
         return body;
@@ -146,6 +145,7 @@ export class ExtendedIBMiContent {
         try {
           const sourceData = body.split(`\n`);
           const recordLength = await this.readRecordLength(connection, alias, overFile);
+          const legacySourceLines = this.sourceDateHandler.baseLegacySource.get(alias) ?? [];
 
           const decimalSequence = sourceData.length >= 10000;
           const tabSize = (vscode.window.activeTextEditor?.options.tabSize as number) || 4;
@@ -154,14 +154,18 @@ export class ExtendedIBMiContent {
             sequence = 0;
           for (let i = 0; i < sourceData.length; i++) {
             sequence = decimalSequence ? ((i + 1) / 100) : i + 1;
+
+            const originalLine = legacySourceLines[i] ?? ``;
+            const preservedLine = restoreLegacySourceControlChars(sourceData[i], originalLine);
+
             // Convert tabs to spaces to avoid escaping issues with special characters
-            sourceData[i] = sourceData[i].replace(/\t/g, (_, offset) => ' '.repeat(tabSize - (offset % tabSize))).trimEnd();
+            sourceData[i] = preservedLine.replace(/\t/g, (_, offset) => ' '.repeat(tabSize - (offset % tabSize))).trimEnd();
             if (sourceData[i].length > recordLength) {
               sourceData[i] = sourceData[i].substring(0, recordLength);
             }
 
             rows.push(
-              `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${escapeString(sourceData[i])}')`,
+              `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${escapeString(sourceData[i], true)}')`,
             );
           }
 
@@ -241,10 +245,33 @@ function sliceUp(arr: any[], size: number): any[] {
   return result;
 }
 
-function escapeString(val: string): string {
+export function restoreLegacySourceControlChars(currentLine: string, originalLine: string): string {
+  if (!originalLine || !/[\u0000\u0016\u001A]/.test(originalLine)) {
+    return currentLine;
+  }
+
+  const originalChars = Array.from(originalLine);
+  const currentChars = Array.from(currentLine);
+  const rebuilt = Array.from({ length: Math.max(originalChars.length, currentChars.length) }, (_, index) => {
+    const originalChar = originalChars[index];
+    if (originalChar && /[\u0000\u0016\u001A]/.test(originalChar)) {
+      return originalChar;
+    }
+
+    return currentChars[index] ?? ` `;
+  });
+
+  return rebuilt.join(``);
+}
+
+export function escapeString(val: string, preserveLegacySourceControlChars = false): string {
   // Note: Tabs are converted to spaces before this function is called (in uploadMemberContentWithDates),
   // so we don't need to handle them here. This prevents the backslash artifacts in #2463 and #3086.
-  val = val.replace(/[\0\n\r\b'\x1a]/g, function (s) {
+  if (!preserveLegacySourceControlChars) {
+    val = val.replace(/[\u0000\u0016\u001A]/g, ` `);
+  }
+
+  val = val.replace(/[\0\n\r\b']/g, function (s) {
     switch (s) {
       case `\0`:
         return `\\0`;
@@ -254,8 +281,6 @@ function escapeString(val: string): string {
         return ``;
       case `\b`:
         return `\\b`;
-      case `\x1a`:
-        return `\\Z`;
       case `'`:
         return `''`;
       default:
