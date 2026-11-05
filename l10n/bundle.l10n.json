@@ -469,5 +469,5 @@
   "{0} file(s) this Action runs on, uploaded even if unchanged": "{0} file(s) this Action runs on, uploaded even if unchanged",
   "Action files": "Action files",
   "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.": "Only the file(s) an Action is run on, even if unchanged. Other deployments will ask for a method.",
-  "A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, /home/app*, MYLIB, /QIBM</code>": "A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, /home/app*, MYLIB, /QIBM</code>"
+  "A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, /home/app*, MYLIB, /QIBM</code>)": "A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, /home/app*, MYLIB, /QIBM</code>"
 }

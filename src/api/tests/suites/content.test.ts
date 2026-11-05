@@ -1017,7 +1017,7 @@ describe('Content Tests', { concurrent: true }, () => {
   { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secret', expected: Protection.Protected },
   { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secret/x', expected: Protection.Protected },
   { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/Secret', expected: Protection.NotProtected },
-  { protectedPath: '/QOpenSys/secret', path: '/qopensys/secret', expected: Protection.NotProtected },
+  { protectedPath: '/qopensys/secret', path: '/QOpenSys/secret', expected: Protection.Protected },
   { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secretary', expected: Protection.NotProtected },
   // Root protects everything
   { protectedPath: '/', path: '/anything/at/all', expected: Protection.Protected }
@@ -1025,9 +1025,14 @@ describe('Content Tests', { concurrent: true }, () => {
   ('if $protectedPath, then $path is $expected', async ({protectedPath, path, expected}) => {
     const content = connection.getContent();
     const config = connection.getConfig();
+    const savedProtectedPaths = config.protectedPaths;
     config.protectedPaths = [protectedPath];
-    
-    const result = content.isProtectedPath(path) ? Protection.Protected : Protection.NotProtected;
-    expect(result).toBe(expected);
+    try {      
+      const result = content.isProtectedPath(path) ? Protection.Protected : Protection.NotProtected;
+      expect(result).toBe(expected);
+    }
+    finally {
+      config.protectedPaths = savedProtectedPaths; 
+    }
   });
 });
