@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Tools } from '../../Tools';
-import { escapeString, restoreLegacySourceControlChars } from '../../../filesystems/qsys/extendedContent';
+import { escapeString, sanitizeSourceLine } from '../../../filesystems/qsys/extendedContent';
 
 describe('Tools.ensureFullPath tests', { concurrent: true }, () => {
   describe('Tilde expansion', () => {
@@ -139,35 +139,12 @@ describe('Tools.ensureFullPath tests', { concurrent: true }, () => {
 });
 
 describe('legacy source control byte handling', () => {
-  it('should preserve legacy control bytes when reintroducing them before saving', () => {
-    const original = '     \u001A' + 'F* OBJETIVO';
-    const edited = '      F* OBJETIVO';
-    expect(restoreLegacySourceControlChars(edited, original)).toBe(original);
-    expect(escapeString(restoreLegacySourceControlChars(edited, original), true)).toBe(original);
-  });
+  it('should replace legacy control bytes with spaces while preserving fixed-format columns', () => {
+    const source = '     \u0000F* OBJETIVO\n      \u0016THIS IS A TEST\n     \u001AD DESCRIPTIONS';
+    const expected = '      F* OBJETIVO\n       THIS IS A TEST\n      D DESCRIPTIONS';
 
-  it('should restore multiple legacy control bytes across several lines while keeping the visible text aligned', () => {
-    const original = [
-      '     \u001A' + 'F* OBJETIVO',
-      '      \u0016' + 'THIS IS A TEST',
-      '     \u001A' + 'D DESCRIPTIONS',
-      '      ' + 'END'
-    ].join('\n');
-
-    const edited = [
-      '      F* OBJETIVO',
-      '       THIS IS A TEST',
-      '      D DESCRIPTIONS',
-      '      END'
-    ].join('\n');
-
-    const restored = original
-      .split('\n')
-      .map((line, index) => restoreLegacySourceControlChars(edited.split('\n')[index], line))
-      .join('\n');
-
-    expect(restored).toBe(original);
-    expect(escapeString(restored, true)).toBe(original);
+    expect(source.split('\n').map(sanitizeSourceLine).join('\n')).toBe(expected);
+    expect(escapeString(source)).toBe(expected);
   });
 });
 

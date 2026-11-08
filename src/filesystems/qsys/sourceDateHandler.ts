@@ -46,7 +46,6 @@ const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Le
 export class SourceDateHandler {
   readonly baseDates: Map<string, string[]> = new Map;
   readonly baseSource: Map<string, string> = new Map;
-  readonly baseLegacySource: Map<string, string[]> = new Map;
   readonly recordLengths: Map<string, number> = new Map;
   readonly baseSequences: Map<string, number[]> = new Map;
 
@@ -114,7 +113,6 @@ export class SourceDateHandler {
         this.lineEditedBefore = undefined;
         this.baseDates.clear();
         this.baseSource.clear();
-        this.baseLegacySource.clear();
         this.recordLengths.clear();
         this.baseSequences.clear();
         this.updateDateSearchContext();
@@ -130,7 +128,6 @@ export class SourceDateHandler {
         const alias = getAliasName(document.uri);
         this.baseDates.delete(alias);
         this.baseSource.delete(alias);
-        this.baseLegacySource.delete(alias);
         this.recordLengths.delete(alias);
       }
     }

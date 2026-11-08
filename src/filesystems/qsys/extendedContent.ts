@@ -69,16 +69,14 @@ export class ExtendedIBMiContent {
           });
         }
 
-        const originalSource = rows.map(row => String(row.SRCDTA ?? ``));
         const sourceDates = rows.map(row => String(row.SRCDAT).padStart(6, `0`));
-        const body = originalSource
-          .map(line => (line.includes(`\\\t`) ? line.replaceAll(`\\\t`, `\t`) : line).replace(/[\u0000\u0016\u001A]/g, ` `))
+        const body = rows
+          .map(row => sanitizeSourceLine(String(row.SRCDTA ?? ``)))
           .join(`\n`);
         const sequences = rows.map(row => Number(row.SRCSEQ));
 
         this.sourceDateHandler.baseDates.set(alias, sourceDates);
         this.sourceDateHandler.baseSource.set(alias, body);
-        this.sourceDateHandler.baseLegacySource.set(alias, originalSource);
         this.sourceDateHandler.baseSequences.set(alias, sequences);
 
         return body;
@@ -145,7 +143,6 @@ export class ExtendedIBMiContent {
         try {
           const sourceData = body.split(`\n`);
           const recordLength = await this.readRecordLength(connection, alias, overFile);
-          const legacySourceLines = this.sourceDateHandler.baseLegacySource.get(alias) ?? [];
 
           const decimalSequence = sourceData.length >= 10000;
           const tabSize = (vscode.window.activeTextEditor?.options.tabSize as number) || 4;
@@ -155,17 +152,14 @@ export class ExtendedIBMiContent {
           for (let i = 0; i < sourceData.length; i++) {
             sequence = decimalSequence ? ((i + 1) / 100) : i + 1;
 
-            const originalLine = legacySourceLines[i] ?? ``;
-            const preservedLine = restoreLegacySourceControlChars(sourceData[i], originalLine);
-
             // Convert tabs to spaces to avoid escaping issues with special characters
-            sourceData[i] = preservedLine.replace(/\t/g, (_, offset) => ' '.repeat(tabSize - (offset % tabSize))).trimEnd();
+            sourceData[i] = sourceData[i].replace(/\t/g, (_, offset) => ' '.repeat(tabSize - (offset % tabSize))).trimEnd();
             if (sourceData[i].length > recordLength) {
               sourceData[i] = sourceData[i].substring(0, recordLength);
             }
 
             rows.push(
-              `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${escapeString(sourceData[i], true)}')`,
+              `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${escapeString(sourceData[i])}')`,
             );
           }
 
@@ -245,31 +239,14 @@ function sliceUp(arr: any[], size: number): any[] {
   return result;
 }
 
-export function restoreLegacySourceControlChars(currentLine: string, originalLine: string): string {
-  if (!originalLine || !/[\u0000\u0016\u001A]/.test(originalLine)) {
-    return currentLine;
-  }
-
-  const originalChars = Array.from(originalLine);
-  const currentChars = Array.from(currentLine);
-  const rebuilt = Array.from({ length: Math.max(originalChars.length, currentChars.length) }, (_, index) => {
-    const originalChar = originalChars[index];
-    if (originalChar && /[\u0000\u0016\u001A]/.test(originalChar)) {
-      return originalChar;
-    }
-
-    return currentChars[index] ?? ` `;
-  });
-
-  return rebuilt.join(``);
+export function sanitizeSourceLine(line: string): string {
+  return (line.includes(`\\\t`) ? line.replaceAll(`\\\t`, `\t`) : line).replace(/[\u0000\u0016\u001A]/g, ` `);
 }
 
-export function escapeString(val: string, preserveLegacySourceControlChars = false): string {
+export function escapeString(val: string): string {
   // Note: Tabs are converted to spaces before this function is called (in uploadMemberContentWithDates),
   // so we don't need to handle them here. This prevents the backslash artifacts in #2463 and #3086.
-  if (!preserveLegacySourceControlChars) {
-    val = val.replace(/[\u0000\u0016\u001A]/g, ` `);
-  }
+  val = val.replace(/[\u0000\u0016\u001A]/g, ` `);
 
   val = val.replace(/[\0\n\r\b']/g, function (s) {
     switch (s) {
