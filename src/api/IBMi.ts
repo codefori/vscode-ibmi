@@ -843,15 +843,11 @@ export default class IBMi {
           message: `Clearing temporary data.`
         });
 
-        this.runCommand({
-          command: `QSYS/DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
-          noLibList: true,
-        })
+        this.runCL(`QSYS/DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`)
           .then(result => {
             // All good!
-            if (result && result.stderr) {
-              const messages = Tools.parseMessages(result.stderr);
-              if (!messages.findId(`CPF2125`)) {
+            if (!result.success) {
+              if (!result.data.some(m => m.id === `CPF2125`)) {
                 // @ts-ignore We know the config exists.
                 callbacks.message(`error`, `Temporary data not cleared from ${this.config.tempLibrary}.`);
               }
@@ -911,21 +907,13 @@ export default class IBMi {
         });
 
 
-        const QCPTOIMPF = await this.runCommand({
-          command: `QSYS/CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-          noLibList: true
-        });
-
-        if (QCPTOIMPF?.code === 0) {
+        const QCPTOIMPF = await this.runCL(`QSYS/CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`);
+        if (QCPTOIMPF.success) {
           callbacks.uiErrorHandler(this, `QCPTOIMPF_exists`);
         }
 
-        const QCPFRMIMPF = await this.runCommand({
-          command: `QSYS/CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-          noLibList: true
-        })
-
-        if (QCPFRMIMPF?.code === 0) {
+        const QCPFRMIMPF = await this.runCL(`QSYS/CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`)
+        if (QCPFRMIMPF.success) {
           callbacks.uiErrorHandler(this, `QCPFRMIMPF_exists`);
         }
       }
@@ -1144,21 +1132,17 @@ export default class IBMi {
     }
     else {
       //Library doesn't exist
-      const createdTempLib = await this.runCommand({
-        command: `QSYS/CRTLIB LIB(${tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
-        noLibList: true
-      });
-
-      if (createdTempLib.code === 0) {
+      const createdTempLib = await this.runCL(`QSYS/CRTLIB LIB(${tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`);
+      if (createdTempLib.success) {
         await setLibraryUDA();
       }
       else if (fallbackTempLib && !fallbackTempLib.startsWith(`Q`)) {
         //Using current library as the temporary library for temporary data.
-        message('warning', `Could not create temporary library ${tempLibrary}; using ${fallbackTempLib} instead. (${createdTempLib.stderr})`);
+        message('warning', `Could not create temporary library ${tempLibrary}; using ${fallbackTempLib} instead. (${createdTempLib.error})`);
         this.config.tempLibrary = fallbackTempLib;
       }
       else {
-        message('error', `Could not create temporary library ${tempLibrary}: ${createdTempLib.stderr}`);
+        message('error', `Could not create temporary library ${tempLibrary}: ${createdTempLib.error}`);
         return false;
       }
     }

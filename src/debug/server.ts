@@ -2,7 +2,6 @@ import { Socket } from "net";
 import path from "path";
 import { commands, l10n, window } from "vscode";
 import IBMi from "../api/IBMi";
-import { Tools } from "../api/Tools";
 import { DebugConfiguration, getDebugServiceDetails, getJavaHome } from "../api/configuration/DebugConfiguration";
 import { instance } from "../instantiate";
 import { CustomUI } from "../webviews/CustomUI";
@@ -90,13 +89,13 @@ export async function startService(connection: IBMi) {
 
       const navigatorLogFile = debugConfig.getNavigatorLogFile();
       const command = `QSYS/SBMJOB JOB(QDBGSRV) SYSLIBL(*SYSVAL) CURLIB(*USRPRF) INLLIBL(*JOBD) ${submitOptions} CMD(QSH CMD('touch ${navigatorLogFile};attr ${navigatorLogFile} CCSID=1208;export JAVA_HOME=${javaHome};${debugConfig.getRemoteServiceBin()}/startDebugService.sh > ${navigatorLogFile} 2>&1'))`
-      const submitResult = await connection.runCommand({ command, noLibList: true });
+      const submitResult = await connection.runCL(command);
 
       // Note: The submit command will always return success (code 0)
       // We need to read the log file to check for actual errors
-      const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
+      const submitMessage = submitResult.data.find(m => m.id === "CPC1221")?.text;
       if (!submitMessage) {
-        throw new Error(`Failed to submit Debug Service job: ${submitResult.stderr || submitResult.stdout}`);
+        throw new Error(`Failed to submit Debug Service job: ${submitResult.error}`);
       }
 
       const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
@@ -302,10 +301,10 @@ export function endJobs(jobIds: string[], connection: IBMi) {
 }
 
 export async function startServer() {
-  const result = await instance.getConnection()?.runCommand({ command: "QSYS/STRDBGSVR", noLibList: true });
+  const result = await instance.getConnection()?.runCL("QSYS/STRDBGSVR");
   if (result) {
-    if (result.code) {
-      window.showErrorMessage(l10n.t(`Failed to start debug server: {0}`, result.stderr));
+    if (!result.success) {
+      window.showErrorMessage(l10n.t(`Failed to start debug server: {0}`, result.error ?? l10n.t("unknown error")));
       return false;
     }
     else {
@@ -317,10 +316,10 @@ export async function startServer() {
 }
 
 export async function stopServer() {
-  const result = await instance.getConnection()?.runCommand({ command: "QSYS/ENDDBGSVR", noLibList: true });
+  const result = await instance.getConnection()?.runCL("QSYS/ENDDBGSVR");
   if (result) {
-    if (result.code) {
-      window.showErrorMessage(l10n.t(`Failed to stop debug server: {0}`, result.stderr));
+    if (!result.success) {
+      window.showErrorMessage(l10n.t(`Failed to stop debug server: {0}`, result.error ?? l10n.t("unknown error")));
       return false;
     }
     else {

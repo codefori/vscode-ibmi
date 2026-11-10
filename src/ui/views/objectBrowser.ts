@@ -1,3 +1,4 @@
+import { CLCommandResult } from "@ibm/mapepire-js";
 import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
@@ -12,7 +13,7 @@ import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { checkObjectFilter, editObjectFilter, isFilterEdited } from "../../editors/filterEditor";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
+import { DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
@@ -426,16 +427,12 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     const connection = getConnection();
     const { library, file, name } = connection.parserMemberPath(this.path);
 
-    const removeResult = await connection.runCommand({
-      command: `QSYS/RMVM FILE(${library}/${file}) MBR(${name})`,
-      noLibList: true
-    });
-
-    if (removeResult.code !== 0) {
-      vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting member! {0}`, removeResult.stderr));
+    const removeResult = await connection.runCL(`QSYS/RMVM FILE(${library}/${file}) MBR(${name})`);
+    if (!removeResult.success) {
+      vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting member! {0}`, removeResult.error ?? l10n.t("unknown error")));
     }
 
-    return removeResult.code === 0;
+    return removeResult.success;
   }
 }
 
@@ -786,20 +783,15 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const fullPath = toPath(fullName);
         const member = connection.parserMemberPath(fullPath);
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Creating member {0}...`, fullPath) }, async (progress) => {
-          const addResult = await connection.runCommand({
-            command: `QSYS/ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`,
-            noLibList: true
-          })
-
-          if (addResult.code === 0) {
+          const addResult = await connection.runCL(`QSYS/ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`);
+          if (addResult.success) {
             if (IBMi.connectionManager.get(`autoOpenFile`)) {
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
             objectBrowser.refresh(node);
-
           } else {
-            return addResult.stderr
+            return addResult.error;
           }
         });
 
@@ -847,40 +839,23 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const memberPath = connection.parserMemberPath(fullPath);
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Creating member {0}...`, fullPath.toUpperCase()) }, async (progress) => {
           try {
-            const checkResult = await connection.runCommand({
-              command: `QSYS/CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`,
-              noLibList: true
-            })
-
-            const newMemberExists = checkResult.code === 0;
-
-            if (newMemberExists) {
+            const checkResult = await connection.runCL(`QSYS/CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`);
+            if (checkResult.success) {
               const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Are you sure you want overwrite member {0}?`, memberPath.name), { modal: true }, vscode.l10n.t("Yes"));
               if (result === vscode.l10n.t(`Yes`)) {
-                await connection.runCommand({
-                  command: `QSYS/RMVM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name})`,
-                  noLibList: true
-                })
+                await connection.runCL(`QSYS/RMVM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name})`);
               } else {
                 throw vscode.l10n.t(`Member {0} already exists!`, memberPath.name)
               }
             }
 
-            const copyResult = await connection.runCommand({
-              command: `QSYS/CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`,
-              noLibList: true
-            })
-
-            const copyMessages = Tools.parseMessages(copyResult.stderr);
-            if (copyResult.code !== 0 && copyMessages.messages.length && !(copyMessages.findId(`CPF2869`) && copyMessages.findId(`CPF2817`))) {
-              throw (copyResult.stderr)
+            const copyResult = await connection.runCL(`QSYS/CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`);
+            if (!copyResult.success && copyResult.data.length && !(copyResult.data.some(m => m.id === `CPF2869`) && copyResult.data.some(m => m.id === `CPF2817`))) {
+              throw (copyResult.error)
             }
 
             if (oldMember.extension !== memberPath.extension) {
-              await connection.runCommand({
-                command: `QSYS/CHGPFM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name}) SRCTYPE(${memberPath.extension.length > 0 ? memberPath.extension : `*NONE`})`,
-                noLibList: true
-              });
+              await connection.runCL(`QSYS/CHGPFM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name}) SRCTYPE(${memberPath.extension.length > 0 ? memberPath.extension : `*NONE`})`);
             }
 
             if (IBMi.connectionManager.get(`autoOpenFile`)) {
@@ -926,18 +901,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const escapedText = newText.replace(/'/g, `''`);
         const connection = getConnection();
 
-        const changeResult = await connection.runCommand({
-          command: `QSYS/CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
-          noLibList: true
-        });
-
-        if (changeResult.code === 0) {
+        const changeResult = await connection.runCL(`QSYS/CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`);
+        if (changeResult.success) {
           //pre updating description to avoid old description when multiple updates are performed without refreshing
           node.description = newText.toUpperCase() !== `*BLANK` ? newText : ``;
           node.member.text = node.description;
           objectBrowser.refresh(node);
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t(`Error changing member description! {0}`, changeResult.stderr));
+          vscode.window.showErrorMessage(vscode.l10n.t(`Error changing member description! {0}`, changeResult.error ?? l10n.t("unknown error")));
         }
 
       }
@@ -994,28 +965,20 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           }
 
           if (newMember) {
-            let commandResult: CommandResult;
+            let commandResult: CLCommandResult;
 
             if (oldMember.name !== newMember.name) {
-              commandResult = await connection.runCommand({
-                command: `QSYS/RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
-                noLibList: true
-              });
-
-              if (commandResult.code !== 0) {
+              commandResult = await connection.runCL(`QSYS/RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`);
+              if (!commandResult.success) {
                 newNameOK = false;
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.stderr));
+                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.error ?? l10n.t("unknown error")));
               }
             }
             if (oldMember.extension !== newMember.extension) {
-              commandResult = await connection.runCommand({
-                command: `QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
-                noLibList: true
-              });
-
-              if (commandResult.code !== 0) {
+              commandResult = await connection.runCL(`QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`);
+              if (!commandResult.success) {
                 newNameOK = false;
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.stderr));
+                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.error ?? l10n.t("unknown error")));
               }
             }
 
@@ -1303,14 +1266,8 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       if (newLibrary) {
         const filters = config.objectFilters;
 
-        const createResult = await connection.runCommand({
-          command: `QSYS/CRTLIB LIB(${newLibrary})`,
-          noLibList: true
-        });
-
-
-        const isSuccess = createResult.code === 0;
-        if (isSuccess) {
+        const createResult = await connection.runCL(`QSYS/CRTLIB LIB(${newLibrary})`);
+        if (createResult.success) {
           const config = connection.getConfig();
           const libl = [config.currentLibrary || "", ...config.libraryList].map(library => connection.upperCaseName(library));
           const existsInLibl = libl.includes(connection.upperCaseName(newLibrary));
@@ -1348,7 +1305,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
               });
           }
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t(`Cannot create library "{0}": {1}`, newLibrary, createResult.stderr));
+          vscode.window.showErrorMessage(vscode.l10n.t(`Cannot create library "{0}": {1}`, newLibrary, createResult.error ?? l10n.t("unknown error")));
         }
       }
     }),
@@ -1369,15 +1326,11 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const uriPath = `${library}/${connection.upperCaseName(fileName)}`
 
           vscode.window.showInformationMessage(vscode.l10n.t(`Creating source file {0}.`, uriPath));
-          const createResult = await connection.runCommand({
-            command: `QSYS/CRTSRCPF FILE(${uriPath}) RCDLEN(112)`,
-            noLibList: true
-          });
-
-          if (createResult.code === 0) {
+          const createResult = await connection.runCL(`QSYS/CRTSRCPF FILE(${uriPath}) RCDLEN(112)`);
+          if (createResult.success) {
             objectBrowser.refresh(node);
           } else {
-            vscode.window.showErrorMessage(vscode.l10n.t(`Error creating source file! {0}`, createResult.stderr));
+            vscode.window.showErrorMessage(vscode.l10n.t(`Error creating source file! {0}`, createResult.error ?? l10n.t("unknown error")));
           }
         }
       }
@@ -1403,18 +1356,14 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const connection = getConnection();
 
           newTextOK = true;
-          const changeResult = await connection.runCommand({
-            command: `QSYS/CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
-            noLibList: true
-          });
-
-          if (changeResult.code === 0) {
+          const changeResult = await connection.runCL(`QSYS/CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`);
+          if (changeResult.success) {
             node.object.text = newText;
             node.updateDescription();
             objectBrowser.refresh(node);
             vscode.window.showInformationMessage(vscode.l10n.t(`Changed object description for {0} {1}.`, node.path, node.object.type.toUpperCase()));
           } else {
-            vscode.window.showErrorMessage(vscode.l10n.t(`Error changing description for {0}! {1}`, node.path, changeResult.stderr));
+            vscode.window.showErrorMessage(vscode.l10n.t(`Error changing description for {0}! {1}`, node.path, changeResult.error ?? l10n.t("unknown error")));
             newTextOK = false;
           }
         }
@@ -1452,13 +1401,8 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
             command = `QSYS/CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
           }
 
-          const commandRes = await connection.runCommand({
-            command,
-            noLibList: true
-          });
-
-          if (commandRes.code === 0) {
-
+          const commandRes = await connection.runCL(command);
+          if (commandRes.success) {
             if (oldLibrary.toLocaleLowerCase() === newLibrary.toLocaleLowerCase()) {
               objectBrowser.refresh(node.parent);
             }
@@ -1466,7 +1410,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
               vscode.window.showInformationMessage(vscode.l10n.t(`Copied object {0} {1} to {2}. Refresh object browser.`, node.path, node.object.type.toUpperCase(), escapedPath));
             }
           } else {
-            vscode.window.showErrorMessage(vscode.l10n.t(`Error copying object {0}! {1}`, node.path, commandRes.stderr));
+            vscode.window.showErrorMessage(vscode.l10n.t(`Error copying object {0}! {1}`, node.path, commandRes.error ?? l10n.t("unknown error")));
             newPathOK = false;
           }
         }
@@ -1493,13 +1437,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const connection = getConnection();
           newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Renaming object {0} {1} to {2}...`, node.path, node.object.type.toUpperCase(), escapedObject.join('/')) }
             , async (progress) => {
-              const renameResult = await connection.runCommand({
-                command: `QSYS/RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`,
-                noLibList: true
-              });
-
-              if (renameResult.code !== 0) {
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming object {0}! {1}`, node.path, renameResult.stderr));
+              const renameResult = await connection.runCL(`QSYS/RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`);
+              if (!renameResult.success) {
+                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming object {0}! {1}`, node.path, renameResult.error ?? l10n.t("unknown error")));
                 return false;
               }
 
@@ -1533,14 +1473,10 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const connection = getConnection();
 
           newLibraryOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Moving object {0} {1} to {2}...`, node.path, node.object.type.toUpperCase(), escapedLibrary) }
-            , async (progress) => {
-              const moveResult = await connection.runCommand({
-                command: `QSYS/MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`,
-                noLibList: true
-              });
-
-              if (moveResult.code !== 0) {
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error moving object {0}! {1}`, node.path, moveResult.stderr));
+            , async () => {
+              const moveResult = await connection.runCL(`QSYS/MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`);
+              if (!moveResult.success) {
+                vscode.window.showErrorMessage(vscode.l10n.t(`Error moving object {0}! {1}`, node.path, moveResult.error ?? l10n.t("unknown error")));
                 return false;
               }
 
@@ -1799,21 +1735,16 @@ async function listObjects(item: ObjectBrowserFilterItem, filter?: ObjectFilters
 
 async function deleteObject(object: IBMiObject) {
   const connection = getConnection();
-  const deleteResult = await connection.runCommand({
-    command: `QSYS/DLTOBJ OBJ(${object.library}/${object.name}) OBJTYPE(${object.type})`,
-    noLibList: true
-  });
-
-  const isSuccess = deleteResult.code === 0;
-  if (isSuccess) {
+  const deleteResult = await connection.runCL(`QSYS/DLTOBJ OBJ(${object.library}/${object.name}) OBJTYPE(${object.type})`);
+  if (deleteResult.success) {
     const config = connection.getConfig();
     const libl = [config.currentLibrary || "", ...config.libraryList].map(library => connection.upperCaseName(library));
     if (libl.includes(connection.upperCaseName(object.name))) {
       commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
     }
   } else {
-    vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting object! {0}`, deleteResult.stderr));
+    vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting object! {0}`, deleteResult.error ?? l10n.t("unknown error")));
   }
 
-  return isSuccess;
+  return deleteResult.success;
 }

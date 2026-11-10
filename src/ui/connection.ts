@@ -1,4 +1,4 @@
-import { CancellationToken, commands, env, Uri, window, workspace } from "vscode";
+import { CancellationToken, commands, env, Uri, window } from "vscode";
 import IBMi, { ConnectionErrorCode, ConnectionMessageType } from "../api/IBMi";
 import { Tools } from "../api/Tools";
 
@@ -69,12 +69,12 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       const { homeDir, homePerms, vscodeExists, vscodePerms } = data;
       let message = `Security recommendation: Update directory permissions?\n\n`;
       let needsUpdate = false;
-      
+
       if (homePerms && homePerms !== '750' && homePerms !== '700') {
         message += `• Home directory (${homeDir}) has permissions ${homePerms}, recommended: 750\n`;
         needsUpdate = true;
       }
-      
+
       if (vscodeExists && vscodePerms && vscodePerms !== '700') {
         message += `• ${homeDir}/.vscode directory has permissions ${vscodePerms}, recommended: 700\n`;
         needsUpdate = true;
@@ -82,13 +82,13 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
         message += `• ${homeDir}/.vscode directory does not exist and will be created with permissions 700\n`;
         needsUpdate = true;
       }
-      
+
       if (needsUpdate) {
         const config = connection.getConfig();
         const autoUpdateSetting = config.autoUpdateDirectoryPermissions || "ask";
-        
+
         let shouldUpdate = false;
-        
+
         if (autoUpdateSetting === `always`) {
           shouldUpdate = true;
         } else if (autoUpdateSetting === `never`) {
@@ -99,7 +99,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
             modal: true,
             detail: message + `\nWould you like to update these permissions for better security?`,
           }, `Yes`, `No`, `Always`, `Never`);
-          
+
           if (response === `Yes`) {
             shouldUpdate = true;
           } else if (response === `Always`) {
@@ -113,10 +113,10 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
           }
           // If response is 'No' or undefined (dialog closed), shouldUpdate remains false
         }
-        
+
         if (shouldUpdate) {
           let updateCmd = '';
-          
+
           const escapedHomeDir = Tools.escapePath(homeDir, true);
           const escapedVscodeDir = Tools.escapePath(`${homeDir}/.vscode`, true);
 
@@ -129,7 +129,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
           } else if (vscodePerms && vscodePerms !== '700') {
             updateCmd += (updateCmd ? ' && ' : '') + `chmod 0700 "${escapedVscodeDir}"`;
           }
-          
+
           if (updateCmd) {
             let updateResult = await connection.sendCommand({ command: updateCmd, directory: `.` });
             if (0 === updateResult.code) {
@@ -151,15 +151,12 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       }, `Delete`, `Read more`).then(choice => {
         switch (choice) {
           case `Delete`:
-            connection.runCommand({
-              command: `QSYS/DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-              noLibList: true
-            })
+            connection.runCL(`QSYS/DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`)
               .then((result) => {
-                if (result?.code === 0) {
+                if (result.success) {
                   window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
                 } else {
-                  window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
+                  window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended: ${result.error}`);
                 }
               })
             break;
@@ -176,15 +173,12 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       }, `Delete`, `Read more`).then(choice => {
         switch (choice) {
           case `Delete`:
-            connection.runCommand({
-              command: `QSYS/DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-              noLibList: true
-            })
+            connection.runCL(`QSYS/DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`)
               .then((result) => {
-                if (result?.code === 0) {
+                if (result.success) {
                   window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
                 } else {
-                  window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
+                  window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended:  ${result.error}`);
                 }
               })
             break;
@@ -199,7 +193,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
       window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
         switch (choice) {
           case `Set shell to bash`:
-            if (connection.remoteFeatures[`chsh`]){
+            if (connection.remoteFeatures[`chsh`]) {
               const commandSetBashResult = await connection.sendCommand({
                 command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
               });
@@ -214,7 +208,7 @@ export async function handleConnectionResults(connection: IBMi, error: Connectio
                 await connection.runSQL(`CALL QSYS2.SET_PASE_SHELL_INFO('*CURRENT', '/QOpenSys/pkgs/bin/bash')`);
                 window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
               }
-              catch (e: any){
+              catch (e: any) {
                 window.showInformationMessage(e.message);
               }
             }
