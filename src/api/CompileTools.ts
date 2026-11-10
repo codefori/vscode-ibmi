@@ -114,7 +114,6 @@ export namespace CompileTools {
             await new Promise<void>((done) => {
               connection.asyncLock.acquire('ileCommand', async () => {
                 for (const command of prepareContext) {
-                  console.log(`Running ${spooledUserData ?? "n/a"} ${command}`);
                   const result = await connection.runCL(command);
                   if (!result.success) {
                     commandResult.code = 1;
@@ -125,7 +124,6 @@ export namespace CompileTools {
                 }
 
                 for (const command of commands) {
-                  console.log(`Running ${spooledUserData ?? "n/a"} ${command}`);
                   const result = await connection.runCL(command);
                   commandResult.duration += result.execution_time;
                   if (!result.success) {

@@ -356,7 +356,6 @@ export default class IBMiContent {
         await this.ibmi.clearTempRemote(path);
       }
     } catch (error) {
-      console.log(`Failed uploading member: ` + error);
       return Promise.reject(error);
     }
   }
