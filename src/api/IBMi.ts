@@ -3,6 +3,7 @@ import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
 import { ClientErrorExtensions } from "ssh2";
 import { EventEmitter } from 'stream';
+import { SemanticVersion } from "../typings";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { Tools } from './Tools';
@@ -131,6 +132,7 @@ export default class IBMi {
 
   private sqlJob: SQLJob | undefined;
   splfUserData: string | undefined;
+  private noRCCLsupport = false;
 
   private libraryAsps = new Map<string, string>();
 
@@ -665,8 +667,20 @@ export default class IBMi {
 
           this.sqlJob = await mapepire.newJob(this);
           if (this.sqlJob.id) {
+            if (this.getConfig().mapepireUseServer) {
+              //We have no control over the remote Mapepire version running in server mode
+              //Since rccl support was added in 2.5, the remote version needs to be checked
+              const parts = (await this.sqlJob.getVersion()).version.split('.').map(s => Number(s));
+              const version: SemanticVersion = {
+                major: parts[0],
+                minor: parts[1],
+                patch: parts[2]
+              };
+              this.noRCCLsupport = version.major < 2 || (version.major == 2 && version.minor < 5);
+              this.appendOutput(`Mapepire server version: ${version.major}.${version.minor}.${version.patch} - rccl support: ${this.noRCCLsupport ? "no" : "yes"}\n\n`);
+            }
             this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
-            await this.sqlJob.execute(`CALL QSYS2.QCMDEXC('OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)')`);
+            await this.runCL(`OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)`);
           }
         }
         else {
@@ -1275,8 +1289,6 @@ export default class IBMi {
   }
 
   private async dispose() {
-    CompileTools.reset();
-
     //Clear connected resources
     if (this.sqlJob) {
       delete this.sqlJob;
@@ -1472,6 +1484,34 @@ export default class IBMi {
     return this.componentManager.get<T>(name, options);
   }
 
+  async runCL(command: string, throughSQL?: boolean) {
+    if (!this.sqlJob) {
+      throw new Error(`There is no way to run CL on this system.`);
+    }
+    throughSQL = throughSQL === true || this.noRCCLsupport === true;
+    const log = `Running CL${throughSQL ? " through SQL" : ""}: ${command}\n\t`;
+    const result = await (throughSQL ? this.sqlJob.clcommand(command) : this.sqlJob.rcclcommand(command));
+    if (this.noRCCLsupport) {
+      //Map the data from Mapepire < 2.5 format
+      result.data = (result.data as any[]).map(d => ({
+        id: d.MESSAGE_ID,
+        type: d.MESSAGE_TYPE,
+        severity: d.SEVERITY,
+        text: d.MESSAGE_TEXT,
+        help: d.MESSAGE_SECOND_LEVEL_TEXT,
+        time: new Date(d.MESSAGE_TIMESTAMP).getTime(),
+        messageLibrary: d.MESSAGE_LIBRARY,
+        messageFile: d.MESSAGE_FILE,
+        sendingProgram: d.FROM_PROGRAM,
+        sendingInstruction: d.FROM_INSTRUCTION,
+        receivingProgram: d.TO_PROGRAM,
+        receivingInstruction: d.TO_INSTRUCTION
+      }));
+    }
+    this.appendOutput(`${log}-> ${result.success ? "OK" : "Failed"} (${result.execution_time} ms)${result.data.length ? "\n" + result.data.map(message => `\t[${message.id}] ${message.text}`).join("\n") : ''}\n\n`);
+    return result;
+  }
+
   /**
    * Run SQL statements.
    * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
@@ -1489,27 +1529,7 @@ export default class IBMi {
       for (const statement of list) {
         if (statement.startsWith(`@`)) {
           const command = statement.substring(1);
-          const log = `Running CL through SQL: ${command}\n\t`;
-          try {
-            const result = await this.sqlJob.execute<{ MESSAGE_ID: string, MESSAGE_TEXT: string }>(command, { isClCommand: true });
-            this.appendOutput(`${log}-> OK (${result.execution_time} ms)${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}\n\n`);
-          }
-          catch (e: any) {
-            // If the CL command errors in the job, then let's run another
-            // SQL statement to fetch the job log for the error.
-            const error = new Tools.SqlError(e.message);
-
-            // Fetch the job log first, so the failure is logged as a single entry
-            const jobLog = await this.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) order by ORDINAL_POSITION desc limit 5`);
-            this.appendOutput(`${log}-> Failed: ${error.message}\n\tJob log:\n${jobLog.map(row => `\t\t${row.MESSAGE_ID}: ${row.MESSAGE_TEXT}`).join(`\n`)}\n\n`);
-
-            error.cause = {
-              command,
-              jobLog
-            }
-
-            throw error;
-          }
+          await this.runCL(command, true);
         } else {
           let query;
           let error: Tools.SqlError | undefined;
