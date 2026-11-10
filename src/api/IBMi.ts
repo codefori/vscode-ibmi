@@ -1,4 +1,5 @@
 import { BindingValue, SQLJob } from "@ibm/mapepire-js";
+import AsyncLock from "async-lock";
 import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
 import { ClientErrorExtensions } from "ssh2";
@@ -131,8 +132,8 @@ export default class IBMi {
   systemLibraries: string[] = [];
 
   private sqlJob: SQLJob | undefined;
-  splfUserData: string | undefined;
   private noRCCLsupport = false;
+  asyncLock = new AsyncLock();
 
   private libraryAsps = new Map<string, string>();
 
@@ -679,8 +680,6 @@ export default class IBMi {
               this.noRCCLsupport = version.major < 2 || (version.major == 2 && version.minor < 5);
               this.appendOutput(`Mapepire server version: ${version.major}.${version.minor}.${version.patch} - rccl support: ${this.noRCCLsupport ? "no" : "yes"}\n\n`);
             }
-            this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
-            await this.runCL(`OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)`);
           }
         }
         else {
@@ -1292,7 +1291,6 @@ export default class IBMi {
     //Clear connected resources
     if (this.sqlJob) {
       delete this.sqlJob;
-      delete this.splfUserData;
     }
     delete this.client;
   }

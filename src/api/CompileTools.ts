@@ -9,6 +9,7 @@ export namespace CompileTools {
   export const DID_NOT_RUN = -123;
   const HIDE_MESSAGE_IDS = [`CPF3485`, `SQL0462`];
 
+
   interface RunCommandEvents {
     writeEvent?: (content: string) => void
     commandConfirm?: (command: string) => Promise<string>
@@ -92,9 +93,16 @@ export namespace CompileTools {
             };
 
             const startTime = performance.now();
-
             //Set library list and current directory
-            const prepareContext = [];
+            const prepareContext: string[] = [];
+
+            let spooledUserData: string | undefined;
+            if (options.getSpooledFiles) {
+              spooledUserData = Tools.makeid().toUpperCase();
+              prepareContext.push(`QSYS/OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${spooledUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)`);
+              commands.push('QSYS/DLTOVR FILE(*PRTF) LVL(*JOB)');
+            }
+
             if (!options.noLibList) {
               prepareContext.push(`QSYS/CHGLIBL CURLIB(${ileSetup.currentLibrary || "*CRTDFT"}) LIBL(${ileSetup.libraryList.join(` `)})`);
             }
@@ -102,37 +110,43 @@ export namespace CompileTools {
             if (cwd) {
               prepareContext.push(`QSYS/CHGCURDIR DIR('${cwd}')`);
             }
-            for (const command of prepareContext) {
-              const result = await connection.runCL(command);
-              if (!result.success) {
-                commandResult.code = 1;
-                commandResult.stderr = result.error || result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
-                callbacks.onStderr?.(Buffer.from(commandResult.stderr));
-                return commandResult;
-              }
-            }
 
-            const start = options.getSpooledFiles ? (await connection.runSQL('values CURRENT TIMESTAMP'))[0]["00001"] : undefined;
-            for (const command of commands) {
-              const result = await connection.runCL(command);
-              commandResult.duration += result.execution_time;
-              if (!result.success) {
-                commandResult.code = 1;
-                commandResult.stdout = result.error ?? "";
-                commandResult.stderr = result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
-                callbacks.onStderr?.(Buffer.from(commandResult.stderr));
-                break;
-              }
-            }
+            await new Promise<void>((done) => {
+              connection.asyncLock.acquire('ileCommand', async () => {
+                for (const command of prepareContext) {
+                  console.log(`Running ${spooledUserData ?? "n/a"} ${command}`);
+                  const result = await connection.runCL(command);
+                  if (!result.success) {
+                    commandResult.code = 1;
+                    commandResult.stderr = result.error || result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
+                    callbacks.onStderr?.(Buffer.from(commandResult.stderr));
+                    return commandResult;
+                  }
+                }
+
+                for (const command of commands) {
+                  console.log(`Running ${spooledUserData ?? "n/a"} ${command}`);
+                  const result = await connection.runCL(command);
+                  commandResult.duration += result.execution_time;
+                  if (!result.success) {
+                    commandResult.code = 1;
+                    commandResult.stdout = result.error ?? "";
+                    commandResult.stderr = result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
+                    callbacks.onStderr?.(Buffer.from(commandResult.stderr));
+                    break;
+                  }
+                }
+                done();
+              });
+            });
 
             // Fetch the spooled files if requested
-            if (start) {
+            if (spooledUserData) {
               try {
                 commandResult.stdout = (await connection.runSQL(/* sql */ `
                   select rtrim(SPOOLED_DATA) LINE
                   from table(QSYS2.SPOOLED_FILE_INFO(
-                    STARTING_TIMESTAMP => '${start}',
-                    USER_DATA => '${connection.splfUserData}',
+                    USER_DATA => '${spooledUserData}',
                     STATUS => '*HELD'
                   ))
                   cross join table(SYSTOOLS.SPOOLED_FILE_DATA(
@@ -147,10 +161,10 @@ export namespace CompileTools {
                 commandResult.code = 2;
                 callbacks.onStderr?.(Buffer.from(`Failed to get spool output: ${JSON.stringify(e, undefined, 2)}`));
               }
-            }
 
-            if (!start || !connection.getConfig().keepActionSpooledFiles) {
-              await connection.runCL(`QSYS/DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${connection.splfUserData})`);
+              if (!connection.getConfig().keepActionSpooledFiles) {
+                await connection.runCL(`QSYS/DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${spooledUserData})`);
+              }
             }
 
             commandResult.duration = Math.round(performance.now() - startTime);
