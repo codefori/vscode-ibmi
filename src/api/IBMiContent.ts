@@ -328,6 +328,10 @@ export default class IBMiContent {
           }
         }
 
+        if (extension) {
+          commands.push(`QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(${extension})`);
+        }
+
         let copyResult: undefined | CLCommandResult;
         for (const command of commands) {
           copyResult = await this.ibmi.runCL(command);
@@ -341,11 +345,6 @@ export default class IBMiContent {
           if (messages.some(m => m.id === "CPIA083")) {
             // TODO: what do we do about this, really?
             // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
-          } else if (messages.some(m => m.id === "CPIA083")) {
-            // Member was newly created so we need to set the source type
-            if (extension) {
-              await this.ibmi.runCL(`QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(${extension})`);
-            }
           }
           return true;
         } else {
