@@ -414,13 +414,15 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (connection) {
         const config = connection.getConfig();
         const content = connection.getContent();
-        const newDirectory = (await vscode.window.showInputBox({
+        const input = (await vscode.window.showInputBox({
           prompt: l10n.t(`Path to IFS directory`),
           value: node ? node.path : undefined
         }))?.trim();
 
         try {
-          if (newDirectory) {
+          if (input) {
+            // Normalize so shortcuts are stored consistently (no duplicate or trailing slashes)
+            const newDirectory = trimPath(path.posix.normalize(input));
             const shortcuts = config.ifsShortcuts;
             if (await content.isDirectory(newDirectory) !== true) {
               throw (l10n.t(`{0} is not a directory.`, newDirectory));
