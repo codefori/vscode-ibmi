@@ -49,15 +49,12 @@ export class ExtendedIBMiContent {
         const jobCcsid = connection.getCcsid();
 
         // Build the SELECT statement with conditional CAST for CCSID 65535
-        // TRANSLATE maps x'00' to blank: legacy members can contain NUL bytes (e.g. old
-        // tooling wrote NUL-terminated strings into full-length CHAR fields), and a single
-        // NUL makes VS Code treat the downloaded document as binary and refuse to display it.
         let srcdtaColumn: string;
         if (columnCcsid === IBMi.CCSID_NOCONVERSION) {
           console.log(`[downloadMemberContentWithDates] CCSID 65535 detected for ${library}/${file}, using CAST to CCSID ${jobCcsid}`);
-          srcdtaColumn = `translate(cast(srcdta as varchar(${columnLength}) CCSID ${jobCcsid}), ' ', x'00') as srcdta`;
+          srcdtaColumn = `cast(srcdta as varchar(${columnLength}) CCSID ${jobCcsid}) as srcdta`;
         } else {
-          srcdtaColumn = `translate(srcdta, ' ', x'00') as srcdta`;
+          srcdtaColumn = `srcdta`;
         }
 
         const rows = await connection.runSQL(
@@ -74,7 +71,7 @@ export class ExtendedIBMiContent {
 
         const sourceDates = rows.map(row => String(row.SRCDAT).padStart(6, `0`));
         const body = rows
-          .map(row => row.SRCDTA.includes(`\\\t`) ? row.SRCDTA.replaceAll(`\\\t`, `\t`) : row.SRCDTA)
+          .map(row => sanitizeSourceLine(String(row.SRCDTA ?? ``)))
           .join(`\n`);
         const sequences = rows.map(row => Number(row.SRCSEQ));
 
@@ -154,6 +151,7 @@ export class ExtendedIBMiContent {
             sequence = 0;
           for (let i = 0; i < sourceData.length; i++) {
             sequence = decimalSequence ? ((i + 1) / 100) : i + 1;
+
             // Convert tabs to spaces to avoid escaping issues with special characters
             sourceData[i] = sourceData[i].replace(/\t/g, (_, offset) => ' '.repeat(tabSize - (offset % tabSize))).trimEnd();
             if (sourceData[i].length > recordLength) {
@@ -241,10 +239,16 @@ function sliceUp(arr: any[], size: number): any[] {
   return result;
 }
 
-function escapeString(val: string): string {
+export function sanitizeSourceLine(line: string): string {
+  return (line.includes(`\\\t`) ? line.replaceAll(`\\\t`, `\t`) : line).replace(/[\u0000\u0016\u001A]/g, ` `);
+}
+
+export function escapeString(val: string): string {
   // Note: Tabs are converted to spaces before this function is called (in uploadMemberContentWithDates),
   // so we don't need to handle them here. This prevents the backslash artifacts in #2463 and #3086.
-  val = val.replace(/[\0\n\r\b'\x1a]/g, function (s) {
+  val = val.replace(/[\u0000\u0016\u001A]/g, ` `);
+
+  val = val.replace(/[\0\n\r\b']/g, function (s) {
     switch (s) {
       case `\0`:
         return `\\0`;
@@ -254,8 +258,6 @@ function escapeString(val: string): string {
         return ``;
       case `\b`:
         return `\\b`;
-      case `\x1a`:
-        return `\\Z`;
       case `'`:
         return `''`;
       default:

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Tools } from '../../Tools';
+import { escapeString, sanitizeSourceLine } from '../../../filesystems/qsys/extendedContent';
 
 describe('Tools.ensureFullPath tests', { concurrent: true }, () => {
   describe('Tilde expansion', () => {
@@ -134,6 +135,16 @@ describe('Tools.ensureFullPath tests', { concurrent: true }, () => {
       const result = Tools.ensureFullPath('path/with/$dollar/and/#hash', '/home/user');
       expect(result).toBe('/home/user/path/with/$dollar/and/#hash');
     });
+  });
+});
+
+describe('legacy source control byte handling', () => {
+  it('should replace legacy control bytes with spaces while preserving fixed-format columns', () => {
+    const source = '     \u0000F* OBJETIVO\n      \u0016THIS IS A TEST\n     \u001AD DESCRIPTIONS';
+    const expected = '      F* OBJETIVO\n       THIS IS A TEST\n      D DESCRIPTIONS';
+
+    expect(source.split('\n').map(sanitizeSourceLine).join('\n')).toBe(expected);
+    expect(escapeString(source)).toBe(expected);
   });
 });
 
