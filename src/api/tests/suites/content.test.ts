@@ -1019,8 +1019,17 @@ describe('Content Tests', { concurrent: true }, () => {
   { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/Secret', expected: Protection.NotProtected },
   { protectedPath: '/qopensys/secret', path: '/QOpenSys/secret', expected: Protection.Protected },
   { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secretary', expected: Protection.NotProtected },
+  // ...but not the QOpenSys name itself
+  { protectedPath: '/QOpenSys/secret', path: '/qopensys/secret', expected: Protection.Protected },
+  { protectedPath: '/QOpenSys/secret', path: '/QOPENSYS/secret/x', expected: Protection.Protected },
+  { protectedPath: '/qopensys/secret', path: '/qopensys/Secret', expected: Protection.NotProtected },
+  { protectedPath: '/qopensysdata/secret', path: '/QOpenSysData/Secret/x', expected: Protection.Protected },
   // Root protects everything
-  { protectedPath: '/', path: '/anything/at/all', expected: Protection.Protected }
+  { protectedPath: '/', path: '/anything/at/all', expected: Protection.Protected },
+  // No wildcards for libraries
+  { protectedPath: 'MYLIB', path: 'MYLIB', expected: Protection.Protected },
+  { protectedPath: 'PROD*', path: 'PRODLIB', expected: Protection.NotProtected },
+  { protectedPath: '*', path: '/home/USERNAME', expected: Protection.NotProtected }
   ])
   ('if $protectedPath, then $path is $expected', async ({protectedPath, path, expected}) => {
     const content = connection.getContent();
@@ -1032,7 +1041,27 @@ describe('Content Tests', { concurrent: true }, () => {
       expect(result).toBe(expected);
     }
     finally {
-      config.protectedPaths = savedProtectedPaths; 
+      config.protectedPaths = savedProtectedPaths;
+    }
+  });
+
+  it('isProtectedPath picks up changes to the protected paths', () => {
+    const content = connection.getContent();
+    const config = connection.getConfig();
+    const savedProtectedPaths = config.protectedPaths;
+    try {
+      config.protectedPaths = ['/home/a'];
+      expect(content.isProtectedPath('/home/a/x')).toBe(true);
+      expect(content.isProtectedPath('/home/b/x')).toBe(false);
+
+      config.protectedPaths.push('/home/b');
+      expect(content.isProtectedPath('/home/b/x')).toBe(true);
+
+      config.protectedPaths = [];
+      expect(content.isProtectedPath('/home/a/x')).toBe(false);
+    }
+    finally {
+      config.protectedPaths = savedProtectedPaths;
     }
   });
 });
