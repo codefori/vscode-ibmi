@@ -18,6 +18,8 @@ const UTF8_CCSIDS = [`819`, `1208`, `1252`];
 
 /** Separates the two `stat` runs performed by {@link IBMiContent.getFileList} */
 const STAT_SECTIONS_SEPARATOR = `--from-here-symlinks--`;
+/** `/QOpenSys` at the IFS root, any case */
+const QOPENSYS_ROOT = /^\/qopensys(?=\/|$)/i;
 
 /**
  * Reads the output of a non dereferencing `stat` run and maps symbolyc link to real path
@@ -45,6 +47,8 @@ export type SortOptions = {
 
 export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
+
+  private protectedIfsPatterns?: { key: string, patterns: { caseInsensitive: RegExp, caseSensitive: RegExp }[] };
 
   private get config() {
     return this.ibmi.getConfig();
@@ -946,11 +950,38 @@ export default class IBMiContent {
     return (await this.ibmi.sendCommand({ command: `test -${right} ${Tools.escapePath(path)}` })).code === 0;
   }
 
+  /** Compiled IFS entries of `protectedPaths`, rebuilt only when they change */
+  private getProtectedIfsPatterns() {
+    const protectedPaths = this.config.protectedPaths;
+    const key = protectedPaths.join('\n');
+    if (this.protectedIfsPatterns?.key !== key) {
+      const patterns = protectedPaths
+        .filter(p => p.startsWith('/'))
+        .map(p => {
+          // "/" -> "", "//" -> "", "/docs/a/" -> "/docs/a"
+          const entry = p.replace(/\/+$/, '').replace(QOPENSYS_ROOT, '/QOpenSys');
+          // Escape everything except explicit wildcards the user typed
+          const body = entry
+            .split(/([*?])/)
+            .map(part => part === '*' ? '[^/]*'
+              : part === '?' ? '[^/]'
+                : escapeStringRegexp(part))
+            .join('');
+          // Entry must end at a path boundary, and also covers everything beneath it
+          const source = `^${body}(?:/.*)?$`;
+          return { caseInsensitive: new RegExp(source, 'i'), caseSensitive: new RegExp(source) };
+        });
+      this.protectedIfsPatterns = { key, patterns };
+    }
+    return this.protectedIfsPatterns.patterns;
+  }
+
   isProtectedPath(path: string) {
     if (path.startsWith('/')) { //IFS path
-      //the IFS is case insensitive, except for the QOpenSys file system
-      const flags = /^\/QOpenSys/i.test(path) ? '' : 'i';
-      return this.config.protectedPaths.some(p => new RegExp(`^${escapeStringRegexp(p)}`, flags).test(path));
+      // Only the content of QOpenSys is case sensitive, not its name
+      const inQOpenSys = QOPENSYS_ROOT.test(path);
+      const target = inQOpenSys ? path.replace(QOPENSYS_ROOT, '/QOpenSys') : path;
+      return this.getProtectedIfsPatterns().some(pattern => (inQOpenSys ? pattern.caseSensitive : pattern.caseInsensitive).test(target));
     }
     else { //QSYS path
       const qsysObject = Tools.parseQSysPath(path);

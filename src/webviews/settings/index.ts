@@ -227,7 +227,7 @@ export class SettingsUI {
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()
-          .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
+          .addInput(`protectedPaths`, `Protected paths`, vscode.l10n.t(`A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. Wildcards (<code>*</code> for any characters, <code>?</code> for a single character) are only supported for IFS directories: libraries must be listed by their exact name. (Example: <code>QGPL, MYLIB, /home/QSECOFR, /home/app*, /QIBM</code>)`), { default: config.protectedPaths.join(`, `) });
 
         setFieldsReadOnly(sourceTab);
 
