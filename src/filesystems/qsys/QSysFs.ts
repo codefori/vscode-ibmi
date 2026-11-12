@@ -9,6 +9,7 @@ import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { waitOnReconnect } from "./FSUtils";
 import { SourceDateHandler } from "./sourceDateHandler";
+import { ObjAttr } from "../../api/components/objAttr";
 
 export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
     return getUriFromPath(`${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`, options);
@@ -127,8 +128,8 @@ export class QSysFS implements vscode.FileSystemProvider {
                 const attributes = await this.getMemberAttributes(connection, qsysPath);
                 if (attributes) {
                     return {
-                        ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
-                        mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
+                        ctime: Number(attributes.CREATE_TIME),
+                        mtime: Number(attributes.MODIFY_TIME),
                         size: Number(attributes.DATA_SIZE),
                         type,
                         permissions: member && !this.savedAsMembers.has(uri.path) ? getFilePermission(uri) : undefined
@@ -148,9 +149,30 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
     }
 
+    private toQSysPathName(path: QsysPath & { member?: string }) {
+        const aspPrefix = path.asp ? `/${path.asp}` : ``;
+        const memberSuffix = path.member ? `/${path.member}.MBR` : ``;
+        return `${aspPrefix}/QSYS.LIB/${path.library}.LIB/${path.name}.FILE${memberSuffix}`;
+    }
+
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
-        path.asp = path.asp || await connection.getLibraryIAsp(path.library);
-        return await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+        const udfLibrary = connection.getConfig().tempLibrary.toUpperCase();
+        const pathName = connection.sysNameInAmerican(this.toQSysPathName(path));
+        const [attributes] = await connection.runSQL(
+            `select extract(epoch from created_date) * 1000 as CREATE_TIME,
+                extract(epoch from coalesce(data_changed_date, changed_date, created_date)) * 1000 as MODIFY_TIME,
+                    data_size as DATA_SIZE
+             from table(${udfLibrary}.${ObjAttr.SPECIFIC_NAME}(PATH_NAME => ?))`,
+            {
+                bindings: [pathName],
+                rows: 1
+            }
+        );
+
+        // Uncomment the following appendOutput to log the new PATH_NAME to the code for i Output Console
+        // connection.appendOutput(`[OBJ_ATTR stat] ${path.library}/${path.name}${path.member ? `/${path.member}` : ``} PATH_NAME='${pathName}' -> ${attributes ? `hit` : `miss`}\n`);
+
+        return attributes;
     }
 
     private async createMember(connection: IBMi, uri: vscode.Uri, library: string, file: string, member: string, extension: string | undefined): Promise<boolean> {
