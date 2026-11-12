@@ -127,11 +127,9 @@ export class QSysFS implements vscode.FileSystemProvider {
                 const qsysPath = { ...Tools.parseQSysPath(path), member };
                 const attributes = await this.getMemberAttributes(connection, qsysPath);
                 if (attributes) {
-                    const created = this.parseStatTimestamp(attributes.CREATE_TIME);
-                    const changed = this.parseStatTimestamp(attributes.MODIFY_TIME);
                     return {
-                        ctime: created,
-                        mtime: changed,
+                        ctime: Number(attributes.CREATE_TIME),
+                        mtime: Number(attributes.MODIFY_TIME),
                         size: Number(attributes.DATA_SIZE),
                         type,
                         permissions: member && !this.savedAsMembers.has(uri.path) ? getFilePermission(uri) : undefined
@@ -151,21 +149,6 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
     }
 
-    private parseStatTimestamp(value: unknown): number {
-        if (value === undefined || value === null) {
-            return 0;
-        }
-
-        const textValue = String(value);
-        const attrTimestamp = Tools.parseAttrDate(textValue);
-        if (attrTimestamp > 0) {
-            return attrTimestamp;
-        }
-
-        const sqlTimestamp = Date.parse(textValue);
-        return Number.isNaN(sqlTimestamp) ? 0 : sqlTimestamp;
-    }
-
     private toQSysPathName(path: QsysPath & { member?: string }) {
         const aspPrefix = path.asp ? `/${path.asp}` : ``;
         const memberSuffix = path.member ? `/${path.member}.MBR` : ``;
@@ -174,10 +157,10 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
         const udfLibrary = connection.getConfig().tempLibrary.toUpperCase();
-        const pathName = this.toQSysPathName(path);
+        const pathName = connection.sysNameInAmerican(this.toQSysPathName(path));
         const [attributes] = await connection.runSQL(
-            `select created_date as CREATE_TIME,
-                    coalesce(data_changed_date, changed_date, created_date) as MODIFY_TIME,
+            `select extract(epoch from created_date) * 1000 as CREATE_TIME,
+                extract(epoch from coalesce(data_changed_date, changed_date, created_date)) * 1000 as MODIFY_TIME,
                     data_size as DATA_SIZE
              from table(${udfLibrary}.${ObjAttr.SPECIFIC_NAME}(PATH_NAME => ?))`,
             {

@@ -1,9 +1,5 @@
 export const OBJ_ATTR_RPGLE_SOURCE = `**FREE
 
-// SPDX-License-Identifier: Apache-2.0
-// Copyright (c) 2026 by R. Cozzi, Jr.
-
-
     ////////////////////////////////////////////////////////////////////////
     // IBM i Retrieve Object Attributes
     // This is an SQL UDTF External Program
@@ -856,11 +852,14 @@ end-proc;
 
 
 
-export const OBJ_ATTR_SQL_TEMPLATE = `
+export function getSource_objattr(targetLibrary: string, version: number): string {
+    const functionLibrary = targetLibrary.trim().toUpperCase();
+
+    return `
  -- Get Object Attributes
  -- @author BobCozzi
 
-CREATE or REPLACE FUNCTION \${functionLibrary}.OBJ_ATTR(
+CREATE or REPLACE FUNCTION ${functionLibrary}.OBJ_ATTR(
                     PATH_NAME VARCHAR(4096) CCSID 1208 DEFAULT NULL,
                     LIBRARY_NAME varchar(10) DEFAULT '*LIBL',
                     OBJECT_NAME varchar(10) DEFAULT NULL,
@@ -902,19 +901,19 @@ CREATE or REPLACE FUNCTION \${functionLibrary}.OBJ_ATTR(
   NOT DETERMINISTIC
   DISALLOW PARALLEL
   SCRATCHPAD 16
-  SPECIFIC \${functionLibrary}.OBJ_ATTR
-  EXTERNAL NAME '\${functionLibrary}/OBJ_ATTR'
+    SPECIFIC ${functionLibrary}.OBJ_ATTR
+    EXTERNAL NAME '${functionLibrary}/OBJ_ATTR'
   CARDINALITY 1
   PARAMETER STYLE DB2SQL;
 
-LABEL on specific routine \${functionLibrary}.OBJ_ATTR IS
-'\${version} - Retrieve Object Attributes';
+LABEL on specific routine ${functionLibrary}.OBJ_ATTR IS
+'${version} - Retrieve Object Attributes';
 
-COMMENT ON Specific FUNCTION \${functionLibrary}.OBJ_ATTR  IS
- '\${version} - Retrieve Object Attributes for a given object
+COMMENT ON Specific FUNCTION ${functionLibrary}.OBJ_ATTR  IS
+ '${version} - Retrieve Object Attributes for a given object
  or member in a database file. @author BobCozzi';
 
-comment on parameter SPECIFIC FUNCTION \${functionLibrary}.OBJ_ATTR
+comment on parameter SPECIFIC FUNCTION ${functionLibrary}.OBJ_ATTR
  ( library_NAME IS 'The library name containing the object whose
   attributes are to be received. If the OBJECT_NAME parameter is
   null or empty, then this parameter is ignored.',
@@ -954,14 +953,4 @@ comment on parameter SPECIFIC FUNCTION \${functionLibrary}.OBJ_ATTR
    value is used as specified.'
  );
 `;
-
-export const FUNCTION_LIBRARY_TOKEN = "${functionLibrary}";
-
-export function getSource_objattr(targetLibrary: string, version: number): string {
-    const library = targetLibrary.trim().toUpperCase();
-
-    return OBJ_ATTR_SQL_TEMPLATE
-        .replace(/\$\{version\}/gi, String(version))
-        .replace(/\\\$\{version\}/gi, String(version))
-        .split(FUNCTION_LIBRARY_TOKEN).join(library);
 }
