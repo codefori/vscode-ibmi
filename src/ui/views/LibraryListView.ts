@@ -436,8 +436,8 @@ async function changeCurrentLibrary(library?: string) {
   const storage = instance.getStorage();
   if (connection && storage) {
     const config = connection.getConfig();
-    const commandResult = await connection.runCommand({ command: `QSYS/CHGCURLIB ${library || "*CRTDFT"}`, noLibList: true });
-    if (commandResult.code === 0) {
+    const commandResult = await connection.runCL(`QSYS/CHGCURLIB ${library || "*CRTDFT"}`);
+    if (commandResult.success) {
       const currentLibrary = config.currentLibrary ? connection.upperCaseName(config.currentLibrary) : undefined;
       if (library) {
         config.currentLibrary = library;
@@ -458,10 +458,10 @@ async function changeCurrentLibrary(library?: string) {
       return true;
     } else {
       if (library) {
-        vscode.window.showErrorMessage(l10n.t(`Failed to set {0} as current library: {1}`, library, commandResult.stderr));
+        vscode.window.showErrorMessage(l10n.t(`Failed to set {0} as current library: {1}`, library, commandResult.error ?? l10n.t("unknown error")));
       }
       else {
-        vscode.window.showErrorMessage(l10n.t(`Failed to remove current library: {0}`, commandResult.stderr));
+        vscode.window.showErrorMessage(l10n.t(`Failed to remove current library: {0}`, commandResult.error ?? l10n.t("unknown error")));
       }
       return false;
     }

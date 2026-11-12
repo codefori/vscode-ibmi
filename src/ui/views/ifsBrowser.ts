@@ -346,12 +346,9 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         for (const uri of uris) {
           const member = connection.parserMemberPath(uri.path);
           const command: string = `QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath(member.library, member.file, member.name, member.asp)}') TOSTMF('${toDirectory.path}/${member.basename.toLocaleLowerCase()}') STMFCCSID(1208) ENDLINFMT(*LF)`;
-          const result = await connection.runCommand({
-            command: command,
-            noLibList: true
-          });
-          if (result.code !== 0) {
-            throw (l10n.t(`Error copying member(s) to {0}: {1}`, toDirectory.path, result!.stderr));
+          const result = await connection.runCL(command);
+          if (!result.success) {
+            throw (l10n.t(`Error copying member(s) to {0}: {1}`, toDirectory.path, result.error ?? l10n.t("unkown error")));
           }
         };
 

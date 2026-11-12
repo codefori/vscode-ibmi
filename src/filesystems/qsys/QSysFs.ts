@@ -154,18 +154,14 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     private async createMember(connection: IBMi, uri: vscode.Uri, library: string, file: string, member: string, extension: string | undefined): Promise<boolean> {
-        const addMember = await connection.runCommand({
-            command: `QSYS/ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
-            noLibList: true
-        });
-        if (addMember.code === 0) {
+        const addMember = await connection.runCL(`QSYS/ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`);
+        if (addMember.success) {
             this.savedAsMembers.add(uri.path);
             vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
             return true;
         } else {
-            const messages = Tools.parseMessages(addMember.stderr);
-            if (!messages.findId(`CPF5812`)) { // CPF5812 - Member already exists
-                throw new FileSystemError(addMember.stderr);
+            if (!addMember.data.some(m => m.id === `CPF5812`)) { // CPF5812 - Member already exists
+                throw new FileSystemError(addMember.error);
             }
             return false;
         }
@@ -308,21 +304,15 @@ export class QSysFS implements vscode.FileSystemProvider {
         if (connection) {
             const qsysPath = Tools.parseQSysPath(uri.path);
             if (qsysPath.library && !await connection.getContent().checkObject({ library: "QSYS", name: qsysPath.library, type: "*LIB" })) {
-                const createLibrary = await connection.runCommand({
-                    command: `QSYS/CRTLIB LIB(${qsysPath.library})`,
-                    noLibList: true
-                });
-                if (createLibrary.code !== 0) {
-                    throw FileSystemError.NoPermissions(createLibrary.stderr);
+                const createLibrary = await connection.runCL(`QSYS/CRTLIB LIB(${qsysPath.library})`);
+                if (!createLibrary.success) {
+                    throw FileSystemError.NoPermissions(createLibrary.error);
                 }
             }
             if (qsysPath.name) {
-                const createFile = await connection.runCommand({
-                    command: `QSYS/CRTSRCPF FILE(${qsysPath.library}/${qsysPath.name}) RCDLEN(112)`,
-                    noLibList: true
-                });
-                if (createFile.code !== 0) {
-                    throw FileSystemError.NoPermissions(createFile.stderr);
+                const createFile = await connection.runCL(`QSYS/CRTSRCPF FILE(${qsysPath.library}/${qsysPath.name}) RCDLEN(112)`);
+                if (!createFile.success) {
+                    throw FileSystemError.NoPermissions(createFile.error);
                 }
             }
         }

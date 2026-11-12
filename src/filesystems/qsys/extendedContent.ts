@@ -1,10 +1,10 @@
+import { CLCommandResult } from "@ibm/mapepire-js";
 import fs from "fs";
 import tmp from "tmp";
 import util from "util";
 import vscode from "vscode";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
-import { CommandResult } from "../../api/types";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
 
@@ -120,7 +120,6 @@ export class ExtendedIBMiContent {
       const config = connection.getConfig();
       const setccsid = connection.remoteFeatures.setccsid;
 
-      const tempLib = "QTEMP";
       const alias = getAliasName(uri);
 
       let sourceDates;
@@ -199,25 +198,17 @@ export class ExtendedIBMiContent {
           const sourceCcsid = await connection.getFileCcsid(memberPath);
           const { requiresConversion, targetCcsid } = Tools.determineCcsidConversion(sourceCcsid, config);
 
-          let insertResult: CommandResult = { code: 0, duration: 0, stdout: '', stderr: '' };
+          let insertResult: undefined | CLCommandResult;
           if (requiresConversion) {
-            await connection.runSQL([
-              `@QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`
-            ].join("\n")).catch(e => {
-              insertResult.code = -1;
-              insertResult.stderr = String(e);
-            });
+            insertResult = await connection.runCL(`QSYS/CPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(${targetCcsid}) DTAFMT(*TEXT) REPLACE(*YES)`);
           }
 
-          if (insertResult.code === 0) {
-            insertResult = await connection.runCommand({
-              command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
-              noLibList: true
-            });
+          if (!insertResult || insertResult.success) {
+            insertResult = await connection.runCL(`QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`, true);
           }
 
-          if (insertResult.code !== 0) {
-            throw new Error(`Failed to save member: ` + insertResult.stderr);
+          if (!insertResult.success) {
+            throw new Error(`Failed to save member: ` + insertResult.error);
           }
 
           this.sourceDateHandler.baseSource.set(alias, body);

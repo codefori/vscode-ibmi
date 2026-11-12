@@ -1,10 +1,10 @@
 import { ExtensionContext, WorkspaceFolder, commands, window } from "vscode";
-import { getBranchLibraryName } from "./env";
-import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
 import IBMiContent from "../../api/IBMiContent";
-import { VscodeTools } from "../../ui/Tools";
+import { instance } from "../../instantiate";
 import { ConnectionConfig } from "../../typings";
+import { VscodeTools } from "../../ui/Tools";
+import { getBranchLibraryName } from "./env";
 
 const lastBranch: { [workspaceUri: string]: string } = {};
 
@@ -85,9 +85,9 @@ function setupBranchLibrary(currentBranch: string, content: IBMiContent, connect
       window.showInformationMessage(`Would you like to create a new library ${newBranchLib} for this branch?`, `Yes`, `No`).then(answer => {
         if (answer === `Yes`) {
           const escapedText = currentBranch.replace(/'/g, `''`);
-          connection.runCommand({ command: `QSYS/CRTLIB LIB(${newBranchLib}) TEXT('${escapedText}') TYPE(*TEST)`, noLibList: true })
+          connection.runCL(`QSYS/CRTLIB LIB(${newBranchLib}) TEXT('${escapedText}') TYPE(*TEST)`)
             .then((createResult) => {
-              if (createResult && createResult.code === 0) {
+              if (createResult.success) {
                 window.showInformationMessage(`Library ${newBranchLib} created. Use '&BRANCHLIB' as a reference to it.`, `Create filter`).then(answer => {
                   if (answer === `Create filter`) {
                     filters.push({
@@ -108,7 +108,7 @@ function setupBranchLibrary(currentBranch: string, content: IBMiContent, connect
                   }
                 });
               } else {
-                window.showErrorMessage(`Error creating library ${newBranchLib}: ${createResult ? createResult.stderr : `Unknown error`}`);
+                window.showErrorMessage(`Error creating library ${newBranchLib}: ${createResult ? createResult.error : `Unknown error`}`);
               }
             });
         }

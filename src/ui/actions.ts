@@ -361,35 +361,28 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                         const fullPath = variables.get(`&FULLPATH`);
                         const srcFile = variables.get(`&SRCFILE`);
                         if (fullPath && srcFile && evfeventInfo.object) {
-                          const crtsrcpfResult = await CompileTools.runCommand(connection, {
-                            command: content.toCl(`CRTSRCPF`, {
-                              rcdlen: 112, //NICE: this configurable in a VS Code setting?
-                              file: srcFile,
-                            }),
-                            environment: `ile`,
-                            noLibList: true
-                          });
+                          const crtsrcpfResult = await connection.runCL(content.toCl(`CRTSRCPF`, {
+                            rcdlen: 112, //NICE: this configurable in a VS Code setting?
+                            file: srcFile,
+                          }));
 
                           //CPF5813: file already exists, which is OK here
-                          if (crtsrcpfResult.code !== 0 && Tools.parseMessages(crtsrcpfResult.stderr).findId("CPF5813") === undefined) {
-                            throw new Error(l10n.t("Failed to create temporary source file {0}: {1}", srcFile, crtsrcpfResult.stderr));
+                          if (!crtsrcpfResult.success && !crtsrcpfResult.data.some(m => m.id === "CPF5813")) {
+                            throw new Error(l10n.t("Failed to create temporary source file {0}: {1}", srcFile, crtsrcpfResult.error ?? "-"));
                           }
 
                           const [library, sourcePF] = srcFile.split('/');
-                          const copyFromStreamfile = await CompileTools.runCommand(connection, {
-                            command: content.toCl(`QSYS/CPYFRMSTMF`, {
+                          const copyFromStreamfile = await connection.runCL(
+                            content.toCl(`QSYS/CPYFRMSTMF`, {
                               fromstmf: fullPath,
                               tombr: `'${Tools.qualifyPath(library, sourcePF, evfeventInfo.object)}'`,
                               mbropt: `*REPLACE`,
                               dbfccsid: `*FILE`,
                               stmfccsid: 1208,
-                            }),
-                            environment: `ile`,
-                            noLibList: true
-                          });
+                            }));
 
-                          if (copyFromStreamfile.code !== 0) {
-                            throw new Error(l10n.t("Failed to copy file to temporary member: {0}", copyFromStreamfile.stderr));
+                          if (!copyFromStreamfile.success) {
+                            throw new Error(l10n.t("Failed to copy file to temporary member: {0}", copyFromStreamfile.error ?? "-"));
                           }
 
                           evfeventInfo.tempSourceMember = new Map().set(connection.upperCaseName(`${library}/${sourcePF}/${evfeventInfo.object}`), target.uri);
