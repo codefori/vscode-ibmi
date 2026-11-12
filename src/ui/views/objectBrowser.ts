@@ -910,6 +910,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         }
       }
     }),
+
     vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node: ObjectBrowserMemberItem) => {
       if (checkProtected(node)) {
         return;
