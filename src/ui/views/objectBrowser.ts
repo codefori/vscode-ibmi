@@ -1139,7 +1139,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
               for (const command of copyToStreamFiles) {
                 const result = await connection.runCL(command);
                 if (!result.success) {
-                  throw result.error;
+                  throw new Error(result.error);
                 }
               }
 
