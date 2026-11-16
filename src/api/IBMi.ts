@@ -847,7 +847,7 @@ export default class IBMi {
           .then(result => {
             // All good!
             if (!result.success) {
-              if (!result.data.some(m => m.id === `CPF2125`)) {
+              if (!result.findMessage(`CPF2125`)) {
                 // @ts-ignore We know the config exists.
                 callbacks.message(`error`, `Temporary data not cleared from ${this.config.tempLibrary}.`);
               }

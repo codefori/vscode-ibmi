@@ -228,7 +228,7 @@ export default class IBMiContent {
           }
         }
 
-        let copyResult: undefined | CLCommandResult;
+        let copyResult;
         for (const command of commands) {
           copyResult = await this.ibmi.runCL(command);
           if (!copyResult.success) {
@@ -244,7 +244,7 @@ export default class IBMiContent {
           return await readFileAsync(localPath, `utf8`);
         } else if (copyResult) {
           if (!retry) {
-            if (copyResult.data.some(m => m.id === "CPDA08A")) {
+            if (copyResult.findMessage("CPDA08A")) {
               //We need to try again after we delete the temp remote
               await this.ibmi.clearTempRemote(path);
               retry = true;

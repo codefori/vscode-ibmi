@@ -367,7 +367,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                           }));
 
                           //CPF5813: file already exists, which is OK here
-                          if (!crtsrcpfResult.success && !crtsrcpfResult.data.some(m => m.id === "CPF5813")) {
+                          if (!crtsrcpfResult.success && !crtsrcpfResult.findMessage("CPF5813")) {
                             throw new Error(l10n.t("Failed to create temporary source file {0}: {1}", srcFile, crtsrcpfResult.error ?? "-"));
                           }
 

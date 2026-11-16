@@ -850,7 +850,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             const copyResult = await connection.runCL(`QSYS/CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`);
-            if (!copyResult.success && copyResult.data.length && !(copyResult.data.some(m => m.id === `CPF2869`) && copyResult.data.some(m => m.id === `CPF2817`))) {
+            if (!copyResult.success && copyResult.data.length && !(copyResult.findMessage(`CPF2869`) && copyResult.findMessage(`CPF2817`))) {
               throw (copyResult.error)
             }
 

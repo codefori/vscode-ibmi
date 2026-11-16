@@ -160,7 +160,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
             return true;
         } else {
-            if (!addMember.data.some(m => m.id === `CPF5812`)) { // CPF5812 - Member already exists
+            if (!addMember.findMessage(`CPF5812`)) { // CPF5812 - Member already exists
                 throw new FileSystemError(addMember.error);
             }
             return false;
