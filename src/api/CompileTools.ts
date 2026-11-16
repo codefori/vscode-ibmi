@@ -1,4 +1,5 @@
 
+import { CLMessage } from '@ibm/mapepire-js';
 import IBMi from './IBMi';
 import { Tools } from './Tools';
 import { CommandResult, ILELibrarySettings, RemoteCommand, StandardIO } from './types';
@@ -113,13 +114,14 @@ export namespace CompileTools {
 
             await new Promise<void>((done) => {
               connection.asyncLock.acquire('ileCommand', async () => {
+                const output: CLMessage[] = [];
                 try {
                   const result = await connection.runCL([...prepareContext, ...commands]);
+                  output.push(...result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)));
+
                   if (!result.success) {
                     commandResult.code = 1;
-                    commandResult.stdout = result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
-                    commandResult.stderr = result.error ?? commandResult.stdout;
-                    callbacks.onStderr?.(Buffer.from(commandResult.stderr));
+                    commandResult.stderr = result.error!;
                   }
                 }
                 catch (error: unknown) {
@@ -127,6 +129,11 @@ export namespace CompileTools {
                   commandResult.stderr = error instanceof Error ? error.message : String(error);
                 }
                 finally {
+                  commandResult.stdout = output.map(message => `${message.id}: ${message.text}`).join("\n");
+                  callbacks.onStdout?.(Buffer.from(commandResult.stdout));
+                  if (commandResult.stderr) {
+                    callbacks.onStderr?.(Buffer.from("\n" + commandResult.stderr));
+                  }
                   done();
                 }
               });
@@ -143,12 +150,12 @@ export namespace CompileTools {
                   ))
                   cross join table(SYSTOOLS.SPOOLED_FILE_DATA(
                     JOB_NAME => QUALIFIED_JOB_NAME,
-                    SPOOLED_FILE_NAME => SPOOLED_FILE_NAME, 
+                    SPOOLED_FILE_NAME => SPOOLED_FILE_NAME,
                     SPOOLED_FILE_NUMBER => SPOOLED_FILE_NUMBER
                   ))
                   order by JOB_NAME, SPOOLED_FILE_NAME, SPOOLED_FILE_NUMBER, ORDINAL_POSITION
                 `)).map(row => row.LINE as string).join("\n");
-                callbacks.onStdout?.(Buffer.from(commandResult.stdout));
+                callbacks.onStdout?.(Buffer.from(`\nSpooled files:\n${commandResult.stdout}`));
               } catch (e) {
                 commandResult.code = 2;
                 callbacks.onStderr?.(Buffer.from(`Failed to get spool output: ${JSON.stringify(e, undefined, 2)}`));
@@ -181,7 +188,7 @@ export namespace CompileTools {
   }
 
   function buildLibraryList(config: ILELibrarySettings): string[] {
-    //We have to reverse it because `liblist -a` adds the next item to the top always 
+    //We have to reverse it because `liblist -a` adds the next item to the top always
     return config.libraryList.slice(0).reverse();
   }
 
