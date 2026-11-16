@@ -1,4 +1,4 @@
-import { BindingValue, SQLJob } from "@ibm/mapepire-js";
+import { BindingValue, CLCommandResult, CLMessage, SQLJob } from "@ibm/mapepire-js";
 import AsyncLock from "async-lock";
 import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
@@ -1464,32 +1464,55 @@ export default class IBMi {
     return this.componentManager.get<T>(name, options);
   }
 
-  async runCL(command: string, throughSQL?: boolean) {
+  /**
+   * Run one or more commands en returns the result of the last run command.
+   * 
+   * @param commands one or more CL commands
+   * @param throughSQL forces the execution of the commands in the SQL job
+   * @returns the execution result of the last executed command 
+   */
+  async runCL(commands: string | string[], throughSQL?: boolean): Promise<CLCommandResult & { findMessage: (id: string) => CLMessage | undefined }> {
+    commands = Array.isArray(commands) ? commands : [commands];
     if (!this.sqlJob) {
       throw new Error(`There is no way to run CL on this system.`);
     }
     throughSQL = throughSQL === true || this.noRCCLsupport === true;
-    const log = `Running CL${throughSQL ? " through SQL" : ""}: ${command}\n\t`;
-    const result = await (throughSQL ? this.sqlJob.clcommand(command) : this.sqlJob.rcclcommand(command));
-    if (this.noRCCLsupport) {
-      //Map the data from Mapepire < 2.5 format
-      result.data = (result.data as any[]).map(d => ({
-        id: d.MESSAGE_ID,
-        type: d.MESSAGE_TYPE,
-        severity: d.SEVERITY,
-        text: d.MESSAGE_TEXT,
-        help: d.MESSAGE_SECOND_LEVEL_TEXT,
-        time: new Date(d.MESSAGE_TIMESTAMP).getTime(),
-        messageLibrary: d.MESSAGE_LIBRARY,
-        messageFile: d.MESSAGE_FILE,
-        sendingProgram: d.FROM_PROGRAM,
-        sendingInstruction: d.FROM_INSTRUCTION,
-        receivingProgram: d.TO_PROGRAM,
-        receivingInstruction: d.TO_INSTRUCTION
-      }));
+    let result: CLCommandResult = {
+      id: "",
+      data: [],
+      execution_time: 0,
+      success: false
+    };
+    for (const command of commands) {
+      const log = `Running CL${throughSQL ? " through SQL" : ""}: ${command}\n\t`;
+      result = await (throughSQL ? this.sqlJob.clcommand(command) : this.sqlJob.rcclcommand(command));
+      if (this.noRCCLsupport) {
+        //Map the data from Mapepire < 2.5 format
+        result.data = (result.data as any[]).map(d => ({
+          id: d.MESSAGE_ID,
+          type: d.MESSAGE_TYPE,
+          severity: d.SEVERITY,
+          text: d.MESSAGE_TEXT,
+          help: d.MESSAGE_SECOND_LEVEL_TEXT,
+          time: new Date(d.MESSAGE_TIMESTAMP).getTime(),
+          messageLibrary: d.MESSAGE_LIBRARY,
+          messageFile: d.MESSAGE_FILE,
+          sendingProgram: d.FROM_PROGRAM,
+          sendingInstruction: d.FROM_INSTRUCTION,
+          receivingProgram: d.TO_PROGRAM,
+          receivingInstruction: d.TO_INSTRUCTION
+        }));
+      }
+      this.appendOutput(`${log}-> ${result.success ? "OK" : "Failed"} (${result.execution_time} ms)${result.data.length ? "\n" + result.data.map(message => `\t[${message.id}] ${message.text}`).join("\n") : ''}\n\n`);
+
+      if (!result.success) {
+        break;
+      }
     }
-    this.appendOutput(`${log}-> ${result.success ? "OK" : "Failed"} (${result.execution_time} ms)${result.data.length ? "\n" + result.data.map(message => `\t[${message.id}] ${message.text}`).join("\n") : ''}\n\n`);
-    return result;
+    return {
+      ...result,
+      findMessage: id => result.data.find(message => message.id === id)
+    };
   }
 
   /**
