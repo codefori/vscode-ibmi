@@ -1136,11 +1136,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
                   ];
                 });
 
-              for (const command of copyToStreamFiles) {
-                const result = await connection.runCL(command);
-                if (!result.success) {
-                  throw new Error(result.error);
-                }
+              const result = await connection.runCL(copyToStreamFiles);
+              if (!result.success) {
+                throw new Error(result.error);
               }
 
               task.report({ message: vscode.l10n.t(`getting streamfiles`), increment: -1 })

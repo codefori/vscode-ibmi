@@ -1,4 +1,3 @@
-import { CLCommandResult } from '@ibm/mapepire-js';
 import crypto from 'crypto';
 import escapeStringRegexp from 'escape-string-regexp';
 import fs from 'fs';
@@ -228,21 +227,15 @@ export default class IBMiContent {
           }
         }
 
-        let copyResult;
-        for (const command of commands) {
-          copyResult = await this.ibmi.runCL(command);
-          if (!copyResult.success) {
-            break;
-          }
-        }
-
-        if (copyResult?.success === true) {
+        const copyResult = await this.ibmi.runCL(commands);
+        if (copyResult.success) {
           if (!localPath) {
             localPath = await tmpFile();
           }
           await this.downloadFile(localPath, tempRmt);
           return await readFileAsync(localPath, `utf8`);
-        } else if (copyResult) {
+        }
+        else {
           if (!retry) {
             if (copyResult.findMessage("CPDA08A")) {
               //We need to try again after we delete the temp remote
@@ -332,19 +325,12 @@ export default class IBMiContent {
           commands.push(`QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(${extension})`);
         }
 
-        let copyResult: undefined | CLCommandResult;
-        for (const command of commands) {
-          copyResult = await this.ibmi.runCL(command);
-          if (!copyResult.success) {
-            break;
-          }
-        }
-
-        if (copyResult?.success) {
-          const messages = copyResult.data;
-          if (messages.some(m => m.id === "CPIA083")) {
+        const copyResult = await this.ibmi.runCL(commands);
+        if (copyResult.success) {
+          if (copyResult.findMessage("CPIA083")) {
             // TODO: what do we do about this, really?
             // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
+            this.ibmi.appendOutput(`${library}/${sourceFile}(${member}) was saved with truncated records!\n`);
           }
           return true;
         } else {

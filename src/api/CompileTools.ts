@@ -114,29 +114,12 @@ export namespace CompileTools {
             await new Promise<void>((done) => {
               connection.asyncLock.acquire('ileCommand', async () => {
                 try {
-                  let proceed = true;
-                  for (const command of prepareContext) {
-                    const result = await connection.runCL(command);
-                    if (!result.success) {
-                      proceed = false;
-                      commandResult.code = 1;
-                      commandResult.stderr = result.error || result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
-                      callbacks.onStderr?.(Buffer.from(commandResult.stderr));
-                      break;
-                    }
-                  }
-
-                  if (proceed) {
-                    for (const command of commands) {
-                      const result = await connection.runCL(command);
-                      if (!result.success) {
-                        commandResult.code = 1;
-                        commandResult.stdout = result.error ?? "";
-                        commandResult.stderr = result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
-                        callbacks.onStderr?.(Buffer.from(commandResult.stderr));
-                        break;
-                      }
-                    }
+                  const result = await connection.runCL([...prepareContext, ...commands]);
+                  if (!result.success) {
+                    commandResult.code = 1;
+                    commandResult.stdout = result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
+                    commandResult.stderr = result.error ?? commandResult.stdout;
+                    callbacks.onStderr?.(Buffer.from(commandResult.stderr));
                   }
                 }
                 catch (error: unknown) {
