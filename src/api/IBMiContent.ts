@@ -321,10 +321,6 @@ export default class IBMiContent {
           }
         }
 
-        if (extension) {
-          commands.push(`QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(${extension})`);
-        }
-
         const copyResult = await this.ibmi.runCL(commands);
         if (copyResult.success) {
           if (copyResult.findMessage("CPIA083")) {
@@ -332,9 +328,16 @@ export default class IBMiContent {
             // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
             this.ibmi.appendOutput(`${library}/${sourceFile}(${member}) was saved with truncated records!\n`);
           }
+
+          if (extension && copyResult.findMessage("CPC7305")) {
+            const changeExtension = await this.ibmi.runCL(`QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(${extension})`);
+            if (!changeExtension.success) {
+              throw new Error(`Failed changing member ${library}/${sourceFile},${extension}: ${changeExtension.error}`);
+            }
+          }
           return true;
         } else {
-          throw new Error(`Failed uploading member: ${copyResult?.error}`);
+          throw new Error(`Failed uploading member: ${copyResult.error}`);
         }
       } finally {
         // Clean up temporary file
