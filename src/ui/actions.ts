@@ -361,7 +361,7 @@ export async function runAction(instance: Instance, uris: vscode.Uri | vscode.Ur
                         const fullPath = variables.get(`&FULLPATH`);
                         const srcFile = variables.get(`&SRCFILE`);
                         if (fullPath && srcFile && evfeventInfo.object) {
-                          const crtsrcpfResult = await connection.runCL(content.toCl(`CRTSRCPF`, {
+                          const crtsrcpfResult = await connection.runCL(content.toCl(`QSYS/CRTSRCPF`, {
                             rcdlen: 112, //NICE: this configurable in a VS Code setting?
                             file: srcFile,
                           }));
