@@ -1485,10 +1485,10 @@ export default class IBMi {
     };
     for (const command of commands) {
       const log = `Running CL${throughSQL ? " through SQL" : ""}: ${command}\n\t`;
-      const commanResult = await (throughSQL ? this.sqlJob.clcommand(command) : this.sqlJob.rcclcommand(command));
+      const commandResult = await (throughSQL ? this.sqlJob.clcommand(command) : this.sqlJob.rcclcommand(command));
       if (this.noRCCLsupport) {
         //Map the data from Mapepire < 2.5 format
-        commanResult.data = (commanResult.data as any[]).map(d => ({
+        commandResult.data = (commandResult.data as any[]).map(d => ({
           id: d.MESSAGE_ID,
           type: d.MESSAGE_TYPE,
           severity: d.SEVERITY,
@@ -1503,11 +1503,11 @@ export default class IBMi {
           receivingInstruction: d.TO_INSTRUCTION
         }));
       }
-      this.appendOutput(`${log}-> ${commanResult.success ? "OK" : "Failed"} (${commanResult.execution_time} ms)${commanResult.data.length ? "\n" + commanResult.data.map(message => `\t[${message.id}] ${message.text}`).join("\n") : ''}\n\n`);
+      this.appendOutput(`${log}-> ${commandResult.success ? "OK" : "Failed"} (${commandResult.execution_time} ms)${commandResult.data.length ? "\n" + commandResult.data.map(message => `\t[${message.id}] ${message.text}`).join("\n") : ''}\n\n`);
       
-      result = {...commanResult, ...{ data: [...result.data, ...commanResult.data] }};
+      result = {...commandResult, ...{ data: [...result.data, ...commandResult.data] }};
 
-      if (!commanResult.success) {
+      if (!commandResult.success) {
         break;
       }
     }
