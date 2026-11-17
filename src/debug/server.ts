@@ -93,7 +93,7 @@ export async function startService(connection: IBMi) {
 
       // Note: The submit command will always return success (code 0)
       // We need to read the log file to check for actual errors
-      const submitMessage = submitResult.data.find(m => m.id === "CPC1221")?.text;
+      const submitMessage = submitResult.findMessage("CPC1221")?.text;
       if (!submitMessage) {
         throw new Error(`Failed to submit Debug Service job: ${submitResult.error}`);
       }
