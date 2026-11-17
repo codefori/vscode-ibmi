@@ -1,5 +1,4 @@
 
-import { CLMessage } from '@ibm/mapepire-js';
 import IBMi from './IBMi';
 import { Tools } from './Tools';
 import { CommandResult, ILELibrarySettings, RemoteCommand, StandardIO } from './types';
@@ -114,26 +113,24 @@ export namespace CompileTools {
 
             await new Promise<void>((done) => {
               connection.asyncLock.acquire('ileCommand', async () => {
-                const output: CLMessage[] = [];
                 try {
                   const result = await connection.runCL([...prepareContext, ...commands]);
-                  output.push(...result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)));
+                  //Put messages in standard output (as "system" did)
+                  commandResult.stderr = result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
+                  callbacks.onStdout?.(Buffer.from(commandResult.stderr));                  
 
                   if (!result.success) {
                     commandResult.code = 1;
-                    commandResult.stderr = result.error!;
+                    callbacks.onStderr?.(Buffer.from(result.error!)); //Print pretty error from cl/rccl Mapepire execution
                   }
                 }
                 catch (error: unknown) {
+                  //unexpected error (Mapepire exception, ...)
                   commandResult.code = -1;
                   commandResult.stderr = error instanceof Error ? error.message : String(error);
+                  callbacks.onStderr?.(Buffer.from(commandResult.stderr));
                 }
-                finally {
-                  commandResult.stdout = output.map(message => `${message.id}: ${message.text}`).join("\n");
-                  callbacks.onStdout?.(Buffer.from(commandResult.stdout));
-                  if (commandResult.stderr) {
-                    callbacks.onStderr?.(Buffer.from("\n" + commandResult.stderr));
-                  }
+                finally {                  
                   done();
                 }
               });
@@ -152,8 +149,8 @@ export namespace CompileTools {
                     JOB_NAME => QUALIFIED_JOB_NAME,
                     SPOOLED_FILE_NAME => SPOOLED_FILE_NAME,
                     SPOOLED_FILE_NUMBER => SPOOLED_FILE_NUMBER
-                  ))
-                  order by JOB_NAME, SPOOLED_FILE_NAME, SPOOLED_FILE_NUMBER, ORDINAL_POSITION
+                  ))                  
+                  order by CREATION_TIMESTAMP, SPOOLED_FILE_NUMBER, ORDINAL_POSITION
                 `)).map(row => row.LINE as string).join("\n");
                 callbacks.onStdout?.(Buffer.from(`\nSpooled files:\n${commandResult.stdout}`));
               } catch (e) {
