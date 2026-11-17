@@ -6,6 +6,7 @@ import { commands, ExtensionContext, l10n, languages, window, workspace } from "
 
 import path from "path";
 import IBMi from "./api/IBMi";
+import { registerCommandPrompter } from "./api/commandPrompter";
 import { SearchTools } from "./api/SearchTools";
 import { ActionTools } from "./api/actions";
 import { extensionComponentRegistry } from "./api/components/manager";
@@ -153,7 +154,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     actionTools: ActionTools,
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager,
-    searchTools: SearchTools
+    searchTools: SearchTools,
+    registerCommandPrompter
   };
 }
 

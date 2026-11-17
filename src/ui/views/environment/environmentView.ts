@@ -3,6 +3,7 @@ import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem } from 'vscode';
 import { ActionTools } from '../../../api/actions';
 import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
+import { promptCommand } from '../../../api/commandPrompter';
 import IBMi from '../../../api/IBMi';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
@@ -342,25 +343,10 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           let command: string | undefined;
 
           if (profile.setLibraryListCommand.startsWith(`?`)) {
-            // Command starts with '?' - needs prompting
             const commandToPrompt = profile.setLibraryListCommand.substring(1);
-
-            // Check if CLPrompter extension is installed
-            const clPrompterExt = vscode.extensions.getExtension('CozziResearch.clprompter');
-            if (clPrompterExt) {
-              // Use CLPrompter for advanced prompting
-              if (!clPrompterExt.isActive) {
-                await clPrompterExt.activate();
-              }
-              const { CLPrompter } = clPrompterExt.exports;
-              command = await CLPrompter(commandToPrompt, context.extensionUri);
-            } else {
-              // Fall back to simple input box
-              command = await vscode.window.showInputBox({
-                title: l10n.t(`Run Library List Command`),
-                value: commandToPrompt
-              });
-            }
+            command = await promptCommand(commandToPrompt, {
+              title: l10n.t(`Run Library List Command`)
+            });
           } else {
             // No prompting needed
             command = profile.setLibraryListCommand;

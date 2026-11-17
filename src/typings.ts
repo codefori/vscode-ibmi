@@ -1,6 +1,7 @@
 import { Ignore } from "ignore";
-import { Uri, WorkspaceFolder } from "vscode";
+import { Disposable, Uri, WorkspaceFolder } from "vscode";
 import Instance from "./Instance";
+import { CommandPrompter } from "./api/commandPrompter";
 import { ComponentRegistry } from './api/components/manager';
 import { ConnectionManager } from "./api/configuration/config/ConnectionManager";
 import { DeploymentMethod, FileError } from "./api/types";
@@ -21,7 +22,8 @@ export interface CodeForIBMi {
   actionTools: typeof ActionTools,
   componentRegistry: ComponentRegistry,
   connectionManager: ConnectionManager,
-  searchTools: typeof SearchTools
+  searchTools: typeof SearchTools,
+  registerCommandPrompter: (prompter: CommandPrompter) => Disposable
 }
 
 export interface DeploymentParameters {
