@@ -228,7 +228,6 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
           const newConnectionSetting = Object.assign({}, connectionSetting);
           newConnectionSetting.name = newConnectionName;
           newConnectionSetting.homeDirectory = '.';
-          newConnectionSetting.currentLibrary = '';
           newConnectionSetting.libraryList = [];
           newConnectionSetting.objectFilters = [];
           newConnectionSetting.ifsShortcuts = [];

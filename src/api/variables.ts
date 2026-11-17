@@ -1,4 +1,5 @@
 import IBMi from "./IBMi";
+import { Tools } from "./Tools";
 
 export class Variables extends Map<string, string> {
   constructor(connection?: IBMi, variables?: Record<string, string> | Map<string, string>) {
@@ -7,12 +8,12 @@ export class Variables extends Map<string, string> {
     if (connection) {
       const config = connection.getConfig();
       //Add default variables
-      this.set(`&BUILDLIB`, this.get(`CURLIB`) || config.currentLibrary);
+      this.set(`&BUILDLIB`, Tools.getCurLib(this.get(`CURLIB`) || config.currentLibrary));
       if (!this.has(`&CURLIB`)) {
-        this.set(`&CURLIB`, config.currentLibrary);
+        this.set(`&CURLIB`, Tools.getCurLib(config.currentLibrary));
       }
       if (!this.has(`\\*CURLIB`)) {
-        this.set(`\\*CURLIB`, config.currentLibrary);
+        this.set(`\\*CURLIB`, Tools.getCurLib(config.currentLibrary));
       }
       this.set(`&USERNAME`, connection.currentUser)
         .set(`{usrprf}`, connection.currentUser)

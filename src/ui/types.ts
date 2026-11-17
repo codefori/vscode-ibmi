@@ -30,6 +30,10 @@ export class BrowserItem extends TreeItem {
     return this.params?.parent;
   }
 
+  isProtected(): boolean {
+    return false;
+  }
+
   getChildren?(): ProviderResult<BrowserItem[]>;
   refresh?(): Thenable<void>;
   reveal?(options?: FocusOptions): Thenable<void>;

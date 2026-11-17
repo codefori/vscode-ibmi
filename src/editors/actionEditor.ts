@@ -43,7 +43,7 @@ export function editAction(targetAction: Action, doAfterSave?: () => Thenable<vo
     .addInput(
       `command`,
       vscode.l10n.t(`Command(s) to run`),
-      vscode.l10n.t(`Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.`),
+      vscode.l10n.t(`Below are available variables based on the type you have selected below. You can specify different commands on each line. Each command is stateless and runs in its own job.`),
       { rows: 5, default: targetAction.command }
     )
     .addTabs(

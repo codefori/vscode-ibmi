@@ -91,7 +91,7 @@ export async function startService(connection: IBMi) {
       const navigatorLogFile = debugConfig.getNavigatorLogFile();
       const command = `QSYS/SBMJOB JOB(QDBGSRV) SYSLIBL(*SYSVAL) CURLIB(*USRPRF) INLLIBL(*JOBD) ${submitOptions} CMD(QSH CMD('touch ${navigatorLogFile};attr ${navigatorLogFile} CCSID=1208;export JAVA_HOME=${javaHome};${debugConfig.getRemoteServiceBin()}/startDebugService.sh > ${navigatorLogFile} 2>&1'))`
       const submitResult = await connection.runCommand({ command, noLibList: true });
-      
+
       // Note: The submit command will always return success (code 0)
       // We need to read the log file to check for actual errors
       const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
@@ -260,11 +260,13 @@ export async function stopService(connection: IBMi) {
 }
 
 export async function getDebugEngineJobs(): Promise<DebugJobs> {
-  const rows = await instance.getConnection()?.runSQL([
-    "select 'SERVER' as TYPE, JOB_NAME from table(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'QB5ROUTER'))",
-    "Union",
-    "select 'SERVICE' as TYPE, JOB_NAME from table(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'QP0ZSP*')) where JOB_USER = 'QDBGSRV'"
-  ].join(" "));
+  const rows = await instance.getConnection()?.runSQL(/* sql */`
+    select 'SERVER' as TYPE, JOB_NAME
+      from table(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'QB5ROUTER'))
+    Union
+    select 'SERVICE' as TYPE, JOB_NAME
+      from table(QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => 'QP0ZSP*'))
+      where JOB_USER = 'QDBGSRV'`);
 
   return {
     server: rows?.find(row => row.TYPE === 'SERVER')?.JOB_NAME as string,

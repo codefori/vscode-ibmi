@@ -1,5 +1,5 @@
 import { ConnectionData } from "../../types";
-import { ConnectionConfig } from "./types";
+import { ConnectionConfig, GlobalConfiguration } from "./types";
 import { Config, VirtualConfig } from "./VirtualConfig";
 
 function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
@@ -19,7 +19,7 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     /** Undefined means not created, so default to on */
     tempLibrary: parameters.tempLibrary || `ILEDITOR`,
     tempDir: parameters.tempDir || `~/.vscode/tmp`,
-    currentLibrary: parameters.currentLibrary || ``,
+    currentLibrary: parameters.currentLibrary,
     sourceFileCCSID: parameters.sourceFileCCSID || `*FILE`,
     autoConvertIFSccsid: (parameters.autoConvertIFSccsid === true),
     hideCompileErrors: parameters.hideCompileErrors || [],
@@ -51,16 +51,20 @@ function initialize(parameters: Partial<ConnectionConfig>): ConnectionConfig {
     ccsidConversionEnabled: (parameters.ccsidConversionEnabled === true),
     ccsidConvertFrom: parameters.ccsidConvertFrom || ``,
     ccsidConvertTo: parameters.ccsidConvertTo || ``,
+    sqlJobNaming: parameters.sqlJobNaming || `sql`,
+    mapepireExtendedMetadata: (parameters.mapepireExtendedMetadata !== false),
+    statusBarColor: parameters.statusBarColor || ``,
   }
 }
 
 export class ConnectionManager {
   configMethod: Config = new VirtualConfig();
 
-  /**
-   * A bit of a hack to access any piece of configuration. (like actions)
-   */
-  get<T>(key: string) {
+  /** Typed access to a known global setting. */
+  get<K extends keyof GlobalConfiguration>(key: K): GlobalConfiguration[K] | undefined;
+  /** Loose access to any other config (stored blobs, dynamic keys). */
+  get<T>(key: string): T | undefined;
+  get<T>(key: string): T | undefined {
     return this.configMethod.get<T>(key);
   }
 

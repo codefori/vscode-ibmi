@@ -1,15 +1,16 @@
 import { EventEmitter } from "stream";
 import * as vscode from "vscode";
-import { ILELibrarySettings } from "./api/CompileTools";
 import IBMi, { ConnectionResult, DisconnectedCallback } from "./api/IBMi";
 import { BaseStorage } from "./api/configuration/storage/BaseStorage";
 import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
 import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 import { VsCodeConfig } from "./config/Configuration";
+import { clearPassword } from "./extension";
 import { getEnvConfig } from "./filesystems/local/env";
-import { ConnectionConfig, ConnectionData, IBMiEvent } from "./typings";
+import { ConnectionConfig, ConnectionData, IBMiEvent, ILELibrarySettings } from "./typings";
 import { VscodeTools } from "./ui/Tools";
 import { handleConnectionResults, inputBoxCallback, messageCallback } from "./ui/connection";
+import { Tools } from "./api/Tools";
 
 
 type IBMiEventSubscription = {
@@ -69,27 +70,23 @@ export default class Instance {
 
     this.resetOutput();
     connection.appendOutput = (message) => {
-      const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
-      const persistOutput = config.get<boolean>(`persistOutputOnConnect`);
-      
-      if (!persistOutput && this.output.writeCount > 150) {
-        this.resetOutput();
-      }
+      if (message.trim() === ``) {
+        this.output.channel.append(message);
+        this.output.content += message;
+      } else {
+        const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
+        const persistOutput = config.get<boolean>(`persistOutputOnConnect`);
 
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const hour = String(now.getHours()).padStart(2, '0');
-      const minute = String(now.getMinutes()).padStart(2, '0');
-      const second = String(now.getSeconds()).padStart(2, '0');
-      const millisecond = String(now.getMilliseconds()).padStart(3, '0');
-      const timestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
-      const timestampedMessage = `[${timestamp}] ${message}`;
-      
-      this.output.channel.append(timestampedMessage);
-      this.output.content += timestampedMessage;
-      this.output.writeCount++;
+        if (!persistOutput && this.output.writeCount > 150) {
+          this.resetOutput();
+        }
+
+        const timestamp = Tools.getCurrentTimestamp();
+        const timestampedMessage = `[${timestamp}] ${message}`;
+        this.output.channel.append(timestampedMessage);
+        this.output.content += timestampedMessage;
+        this.output.writeCount++;
+      }
     }
 
     let result: ConnectionResult;
@@ -143,7 +140,7 @@ export default class Instance {
                 onDisconnected,
                 onConnectedOperations: options.onConnectedOperations,
                 uiErrorHandler: handleConnectionResults,
-                progress: (message) => { p.report(message) },
+                progress: (task) => { p.report(task) },
                 message: messageCallback,
                 inputBox: async (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => {
                   return await inputBoxCallback(prompt, placeHolder, ignoreFocusOut, cancelToken)
@@ -181,9 +178,10 @@ export default class Instance {
     return this.connected;
   }
 
-  async disconnect(keepTabsOpened?: boolean) {
+  async disconnect(reconnect?: boolean) {
     delete this.connected;
-    if (!keepTabsOpened) {
+    if (!reconnect) {
+      clearPassword();
       vscode.window.tabGroups.close(
         vscode.window.tabGroups.all
           .flatMap(group => group.tabs)
@@ -196,7 +194,8 @@ export default class Instance {
     await Promise.all([
       vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
       vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
-      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
+      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
+      vscode.commands.executeCommand("code-for-ibmi.environment.refresh")
     ]);
   }
 
@@ -265,11 +264,11 @@ export default class Instance {
 
   /**
    * Subscribe to an {@link IBMiEvent}. When the event is triggerred, the `func` function gets executed.
-   * 
+   *
    * Each `context`/`name` couple must be unique.
    * @param context the extension subscribing to the event
-   * @param event the {@link IBMiEvent} to subscribe to 
-   * @param name a human-readable name summarizing the function   
+   * @param event the {@link IBMiEvent} to subscribe to
+   * @param name a human-readable name summarizing the function
    * @param func the function to execute when the {@link IBMiEvent} is triggerred
    * @param transient if `true`, the function will only be executed once during the lifetime of a connection
    */

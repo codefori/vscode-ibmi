@@ -1,5 +1,5 @@
 import path from "path";
-import { commands, Disposable, env, l10n, TreeItem, Uri, window, WorkspaceFolder } from "vscode";
+import { commands, Disposable, l10n, TreeItem, Uri, window, WorkspaceFolder } from "vscode";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import Instance from "../Instance";
@@ -113,21 +113,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
     }),
 
     commands.registerCommand(`code-for-ibmi.openErrors`, async (options: { qualifiedObject?: string, workspace?: WorkspaceFolder, keepDiagnostics?: boolean }) => {
-      interface ObjectDetail {
-        asp?: string;
-        lib: string;
-        object: string;
-        ext?: string;
-      }
-
-      const detail: ObjectDetail = {
-        asp: undefined,
-        lib: ``,
-        object: ``,
-        ext: undefined
-      };
-
-      let inputPath: string | undefined      
+      let inputPath: string | undefined
       const connection = instance.getConnection()!; //safe as action requires to be connected
 
       if (options.qualifiedObject) {
@@ -137,35 +123,25 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
         // Value collected from user input
 
         let initialPath = ``;
-        const editor = window.activeTextEditor;        
+        const editor = window.activeTextEditor;
 
         if (editor && connection) {
           const config = connection.getConfig();
           const uri = editor.document.uri;
 
           if ([`member`, `streamfile`].includes(uri.scheme)) {
-
-            switch (uri.scheme) {
-              case `member`:
-                const memberPath = uri.path.split(`/`);
-                if (memberPath.length === 4) {
-                  detail.lib = memberPath[1];
-                } else if (memberPath.length === 5) {
-                  detail.asp = memberPath[1];
-                  detail.lib = memberPath[2];
-                }
-                break;
-              case `streamfile`:
-                detail.asp = await connection.getLibraryIAsp(config.currentLibrary);
-                detail.lib = config.currentLibrary;
-                break;
+            let library = Tools.getCurLib(config.currentLibrary);
+            if (uri.scheme === "member") {
+              const memberPath = uri.path.split(`/`);
+              if (memberPath.length === 4) {
+                library = memberPath[1];
+              } else if (memberPath.length === 5) {
+                library = memberPath[2];
+              }
             }
 
             const pathDetail = path.parse(editor.document.uri.path);
-            detail.object = pathDetail.name;
-            detail.ext = pathDetail.ext.substring(1);
-
-            initialPath = `${detail.lib}/${pathDetail.base}`;
+            initialPath = `${library}/${pathDetail.base}`;
           }
         }
 
@@ -181,17 +157,6 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
           const nameDetail = path.parse(object);
           refreshDiagnosticsFromServer(connection, [{ library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined), workspace: options.workspace }], options.keepDiagnostics);
         }
-      }
-    }),
-
-    commands.registerCommand(`code-for-ibmi.copyJobId`, async () => {
-      const connection = instance.getConnection();
-      const sqlJobId = connection?.getSqlJobId();
-      if (sqlJobId) {
-        await env.clipboard.writeText(sqlJobId);
-        window.showInformationMessage(`Job ID copied: ${sqlJobId}`);
-      } else {
-        window.showWarningMessage(`No job ID available`);
       }
     }),
   ]

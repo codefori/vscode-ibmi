@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "3.0.11-dev.0",
+	"version": "3.0.14-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -62,6 +62,12 @@
 					"/etc/vscode/settings.json"
 				],
 				"url": "./schemas/settings.json"
+			},
+			{
+				"fileMatch": [
+					"/etc/vscode/snippets/*.json"
+				],
+				"url": "vscode://schemas/snippets"
 			}
 		],
 		"configuration": {
@@ -130,6 +136,11 @@
 											"type": "string",
 											"description": "Member type filter",
 											"maxLength": 10,
+											"default": "*"
+										},
+										"memberText": {
+											"type": "string",
+											"description": "Member text description filter",
 											"default": "*"
 										}
 									}
@@ -299,7 +310,7 @@
 							"connectringStringFor5250": {
 								"type": "string",
 								"default": "+uninhibited localhost",
-								"description": "The connectring string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+								"description": "The connection string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
 							},
 							"autoSaveBeforeAction": {
 								"type": "boolean",
@@ -391,6 +402,37 @@
 									"21"
 								],
 								"description": "The Java version used to run Mapepire."
+							},
+							"mapepireUseServer": {
+								"type": "boolean",
+								"default": false,
+								"description": "Connect to a remote Mapepire Server over HTTPS instead of running it in single mode."
+							},
+							"mapepireServerPort": {
+								"type": "number",
+								"default": 8076,
+								"maximum": 65535,
+								"minimum": 1,
+								"description": "Remote Mapepire Server port."
+							},
+							"mapepireAllowSelfCert": {
+								"type": "boolean",
+								"default": false,
+								"description": "Allow all self-signed certificates or certificates from a CA when connecting to Mapepire."
+							},
+							"sqlJobNaming": {
+								"type": "string",
+								"default": "sql",
+								"enum": [
+									"system",
+									"sql"
+								],
+								"description": "The job naming convention to use when running SQL queries. 'system' will use the system naming convention, 'sql' will use the SQL naming convention."
+							},
+							"mapepireExtendedMetadata": {
+								"type": "boolean",
+								"default": true,
+								"description": "Request extended metadata from the JDBC driver."
 							}
 						}
 					}
@@ -404,6 +446,21 @@
 						"none"
 					],
 					"description": "Determine which view should be shown when running Actions"
+				},
+				"code-for-ibmi.sortActionsBy": {
+					"type": "string",
+					"default": "usage",
+					"enum": [
+						"usage",
+						"name",
+						"config"
+					],
+					"enumDescriptions": [
+						"Sort actions by most recently used",
+						"Sort actions alphabetically by name",
+						"Sort actions in the order they are defined in the configuration, regardless of their origin"
+					],
+					"description": "Determine how actions should be sorted in the action selection menu"
 				},
 				"code-for-ibmi.clearErrorsBeforeBuild": {
 					"type": "boolean",
@@ -439,6 +496,12 @@
 					"default": false,
 					"description": "If enabled, will not clear the IBM i Output when connecting to a system. Useful for tracking connection history and timing."
 				},
+				"code-for-ibmi.debug.certificateDirectory": {
+					"type": "string",
+					"default": "",
+					"scope": "machine",
+					"markdownDescription": "Local folder where the debug service client certificate is stored. Leave empty to use your home directory (default). Use the \"Move certificate to extension storage\" button in a connection's Debugger settings to switch to the recommended, hidden location. This is a machine-specific setting and is not synced via Settings Sync, since it points at a local filesystem path."
+				},
 				"code-for-ibmi.defaultOpenMode": {
 					"type": "string",
 					"default": "edit",
@@ -456,7 +519,7 @@
 				"code-for-ibmi.autoRefresh": {
 					"type": "boolean",
 					"default": true,
-					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delele, etc). Turn this off if you find performance is bad."
+					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delete, etc). Turn this off if you find performance is bad."
 				},
 				"code-for-ibmi.ObjectBrowser.showNamesInLowercase": {
 					"type": "boolean",
@@ -467,6 +530,21 @@
 					"type": "boolean",
 					"default": true,
 					"description": "If enabled, objects will be sorted by object name. If disabled, objects will be sorted by object type (MI object type)."
+				},
+				"code-for-ibmi.ObjectBrowser.filterDetails": {
+					"type": "string",
+					"default": "both",
+					"enum": [
+						"both",
+						"tooltip",
+						"description"
+					],
+					"enumDescriptions": [
+						"Show the details next to the filter name and in its hover",
+						"Only show the details in the filter's hover",
+						"Only show the details next to the filter name"
+					],
+					"description": "Where the details of an object filter (libraries, objects, members, etc.) are shown in the Object Browser."
 				},
 				"code-for-ibmi.IfsBrowser.DragAndDropDefaultBehavior": {
 					"type": "string",
@@ -491,7 +569,7 @@
 				"code-for-ibmi.createLibraryOnBranchChange": {
 					"type": "boolean",
 					"default": false,
-					"description": "Used in conjuction with git. When the branch changes, prompt the user if they would like a new branch library for this branch. The branch name, which is deterministic, always starts with 'VS', followed by 8 characters."
+					"description": "Used in conjunction with git. When the branch changes, prompt the user if they would like a new branch library for this branch. The branch name, which is deterministic, always starts with 'VS', followed by 8 characters."
 				},
 				"code-for-ibmi.recentlyOpenedFilesLimit": {
 					"type": "integer",
@@ -509,6 +587,18 @@
 						"Keep the 20 most recently opened files",
 						"Keep the 30 most recently opened files"
 					]
+				},
+				"code-for-ibmi.tables.itemsPerPage": {
+					"type": "integer",
+					"default": 50,
+					"minimum": 30,
+					"description": "Number of rows shown per page in the extension's table views (job log, object lists, etc.). Minimum is 30."
+				},
+				"code-for-ibmi.views.autoRefreshInterval": {
+					"type": "integer",
+					"default": 30,
+					"minimum": 0,
+					"markdownDescription": "Auto-refresh interval, **in seconds**, for the auto-refreshing views (Job Log, Work with Job, Message Queue). Typical values are `30`, `60` or `120`; any other number of seconds is accepted. Set to `0` to disable auto-refresh. The refresh runs even when the tab is in the background."
 				},
 				"code-for-ibmi.safeDeleteMode": {
 					"type": "boolean",
@@ -655,7 +745,7 @@
 								"CBL"
 							],
 							"name": "Create Bound COBOL Program (CRTBNDCBL)",
-							"command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"command": "?CRTBNDCBL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
 							"type": "member",
@@ -664,7 +754,35 @@
 								"CBL"
 							],
 							"name": "Create Module CBLLE (CRTCBLMOD)",
-							"command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"command": "?CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Program (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*PGM) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Module (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"CBL"
+							],
+							"name": "Create COBOL Program (CRTCBLPGM)",
+							"command": "?CRTCBLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*SRCDBG) TGTRLS(*CURRENT)"
 						},
 						{
 							"type": "member",
@@ -742,18 +860,10 @@
 						{
 							"type": "member",
 							"extensions": [
-								"dspf"
-							],
-							"name": "Create Display File (CRTDSPF)",
-							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF) RSTDSP(*NO) REPLACE(*YES)"
-						},
-						{
-							"type": "member",
-							"extensions": [
 								"pf"
 							],
 							"name": "Create Physical File (CRTPF)",
-							"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF) SIZE(*NOMAX) MAXMBRS(1)"
+							"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) SIZE(*NOMAX) MAXMBRS(1) OPTION(*EVENTF)"
 						},
 						{
 							"type": "member",
@@ -766,11 +876,27 @@
 						{
 							"type": "member",
 							"extensions": [
+								"dspf"
+							],
+							"name": "Create Display File (CRTDSPF)",
+							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) RSTDSP(*NO) OPTION(*EVENTF)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"prtf"
+							],
+							"name": "Create Printer File (CRTPRTF)",
+							"command": "?CRTPRTF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF)"
+						},
+						{
+							"type": "member",
+							"extensions": [
 								"CLP",
 								"CLLE"
 							],
 							"name": "Create CL Program (CRTCLP)",
-							"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT) REPLACE(*YES)"
+							"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT)"
 						},
 						{
 							"type": "member",
@@ -858,6 +984,44 @@
 						{
 							"type": "streamfile",
 							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Bound COBOL Program (CRTBNDCBL)",
+							"command": "?CRTBNDCBL PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Module CBLLE (CRTCBLMOD)",
+							"command": "?CRTCBLMOD MODULE(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Program (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*PGM) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLCBLLE",
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create SQL ILE COBOL Module (CRTSQLCBLI)",
+							"command": "?CRTSQLCBLI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
 								"CLP",
 								"CLLE"
 							],
@@ -887,6 +1051,38 @@
 							],
 							"name": "Create Command (Allow Return Variables - CRTCMD)",
 							"command": "?CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') ALLOW(*BPGM *IPGM *BMOD *IMOD *BREXX *IREXX) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"pf"
+							],
+							"name": "Create Physical File (CRTPF)",
+							"command": "?CRTPF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) SIZE(*NOMAX) MAXMBRS(1) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"lf"
+							],
+							"name": "Create Logical File (CRTLF)",
+							"command": "?CRTLF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"dspf"
+							],
+							"name": "Create Display File (CRTDSPF)",
+							"command": "?CRTDSPF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) RSTDSP(*NO) OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"prtf"
+							],
+							"name": "Create Printer File (CRTPRTF)",
+							"command": "?CRTPRTF FILE(&BUILDLIB/&NAME) SRCFILE(&SRCFILE) OPTION(*EVENTF)"
 						},
 						{
 							"type": "streamfile",
@@ -1028,6 +1224,25 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.showJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Display Job Log",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.environment.connection.showJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Display SQL Job Log",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.refreshJobLog",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Refresh Job Log",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
 				"command": "code-for-ibmi.launchTerminalPicker",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:isSystemReadonly",
 				"title": "Launch Terminal Picker",
@@ -1058,6 +1273,20 @@
 				"enablement": "code-for-ibmi:connected",
 				"title": "Apply Source Date Filter",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.member.nextDateSearchBlock",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Go to Next Source Date Block",
+				"category": "IBM i",
+				"icon": "$(arrow-down)"
+			},
+			{
+				"command": "code-for-ibmi.member.previousDateSearchBlock",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Go to Previous Source Date Block",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.selectForCompare",
@@ -1139,6 +1368,13 @@
 				"enablement": "code-for-ibmi:connected",
 				"title": "Set as Current Library",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.removeCurrentLibrary",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Remove Current Library",
+				"category": "IBM i",
+				"icon": "$(clear-all)"
 			},
 			{
 				"command": "code-for-ibmi.changeUserLibraryList",
@@ -1450,9 +1686,15 @@
 			{
 				"command": "code-for-ibmi.maintainFilter",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Change...",
+				"title": "Edit...",
 				"category": "IBM i",
 				"icon": "$(filter)"
+			},
+			{
+				"command": "code-for-ibmi.renameFilter",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Rename...",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.objectBrowser.delete",
@@ -1550,6 +1792,32 @@
 				"title": "Close",
 				"category": "IBM i",
 				"icon": "$(close)"
+			},
+			{
+				"command": "code-for-ibmi.downloadAllSearchResults",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Download all results",
+				"category": "IBM i",
+				"icon": "$(cloud-download)"
+			},
+			{
+				"command": "code-for-ibmi.downloadSelectedSearchResults",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Download",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.copyAllSearchResultNames",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Copy all names",
+				"category": "IBM i",
+				"icon": "$(copy)"
+			},
+			{
+				"command": "code-for-ibmi.copySelectedSearchResultNames",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Copy names",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.sortIFSFilesByDate",
@@ -1743,6 +2011,29 @@
 				"icon": "$(debug-start)"
 			},
 			{
+				"command": "code-for-ibmi.createSharedSnippetFromDocument",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Create shared snippet from the active document",
+				"shortTitle": "From the active document",
+				"category": "IBM i",
+				"icon": "$(file-code)"
+			},
+			{
+				"command": "code-for-ibmi.createSharedSnippetFromSelection",
+				"enablement": "code-for-ibmi:connected && editorHasSelection",
+				"title": "Create shared snippet from the selection",
+				"shortTitle": "From the selection",
+				"category": "IBM i",
+				"icon": "$(selection)"
+			},
+			{
+				"command": "code-for-ibmi.openSharedSnippets",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Shared Snippets",
+				"category": "IBM i",
+				"icon": "$(symbol-snippet)"
+			},
+			{
 				"command": "code-for-ibmi.environment.variable.declare",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Declare custom variable",
@@ -1846,6 +2137,16 @@
 		],
 		"keybindings": [
 			{
+				"command": "code-for-ibmi.member.nextDateSearchBlock",
+				"key": "alt+f5",
+				"when": "editorTextFocus && !isInDiffEditor && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
+			},
+			{
+				"command": "code-for-ibmi.member.previousDateSearchBlock",
+				"key": "shift+alt+f5",
+				"when": "editorTextFocus && !isInDiffEditor && resourceScheme == member && code-for-ibmi:sourceDateSearchActive"
+			},
+			{
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
 				"mac": "cmd+e",
@@ -1943,51 +2244,51 @@
 					"id": "helpView",
 					"name": "Help and Support",
 					"when": "!code-for-ibmi:helpViewDisabled",
-					"icon": ""
+					"icon": "$(question)"
 				},
 				{
 					"id": "connectionBrowser",
 					"name": "Servers",
 					"when": "!code-for-ibmi:connecting && !code-for-ibmi:connected && !code-for-ibmi:connectionBrowserDisabled",
-					"icon": ""
+					"icon": "$(remote-explorer)"
 				},
 				{
 					"id": "environmentView",
 					"name": "Environment",
 					"when": "code-for-ibmi:connected && !code-for-ibmi:environmentViewDisabled",
-					"icon": "",
+					"icon": "$(circuit-board)",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "libraryListView",
 					"name": "User Library List",
 					"when": "code-for-ibmi:connected && !code-for-ibmi:libraryListDisabled",
-					"icon": ""
+					"icon": "$(folder-library)"
 				},
 				{
 					"id": "libraryListViewDisabled",
 					"name": "User Library List",
 					"when": "code-for-ibmi:connected && code-for-ibmi:libraryListDisabled",
-					"icon": "",
+					"icon": "$(folder-library)",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
 					"when": "code-for-ibmi:connected && !code-for-ibmi:objectBrowserDisabled",
-					"icon": ""
+					"icon": "$(symbol-class)"
 				},
 				{
 					"id": "ifsBrowser",
 					"name": "IFS Browser",
 					"when": "code-for-ibmi:connected && !code-for-ibmi:ifsBrowserDisabled",
-					"icon": ""
+					"icon": "$(file-submodule)"
 				},
 				{
 					"id": "testingView",
 					"name": "Test cases",
 					"when": "code-for-ibmi:connected && code-for-ibmi:testing",
-					"icon": ""
+					"icon": "$(beaker)"
 				}
 			],
 			"ibmi-search": [
@@ -1995,7 +2296,7 @@
 					"id": "searchView",
 					"name": "Results",
 					"when": "code-for-ibmi:searchViewVisible",
-					"icon": ""
+					"icon": "$(search)"
 				}
 			],
 			"debug": [
@@ -2004,7 +2305,7 @@
 					"name": "IBM i debugger",
 					"when": "code-for-ibmi:connected && code-for-ibmi:debug && !code-for-ibmi:debugManaged",
 					"visibility": "collapsed",
-					"icon": ""
+					"icon": "$(debug)"
 				}
 			]
 		},
@@ -2041,9 +2342,39 @@
 			{
 				"id": "code-for-ibmi.structuredDownload",
 				"label": "Download..."
+			},
+			{
+				"id": "code-for-ibmi.searchResults.copy",
+				"label": "Copy"
+			},
+			{
+				"id": "code-for-ibmi.searchResults.download",
+				"label": "Download"
+			},
+			{
+				"id": "code-for-ibmi.createSharedSnippet",
+				"label": "Create shared IBM i snippet"
 			}
 		],
 		"menus": {
+			"code-for-ibmi.createSharedSnippet": [
+				{
+					"command": "code-for-ibmi.createSharedSnippetFromSelection",
+					"when": "editorHasSelection",
+					"group": "1_create@1"
+				},
+				{
+					"command": "code-for-ibmi.createSharedSnippetFromDocument",
+					"group": "1_create@2"
+				}
+			],
+			"editor/context": [
+				{
+					"submenu": "code-for-ibmi.createSharedSnippet",
+					"when": "code-for-ibmi:connected && !isInDiffEditor",
+					"group": "1_codefori@1"
+				}
+			],
 			"code-for-ibmi.structuredDownload": [
 				{
 					"command": "code-for-ibmi.downloadMemberAsFile",
@@ -2056,6 +2387,26 @@
 				{
 					"command": "code-for-ibmi.downloadMembersStructured",
 					"group": "1_download@3"
+				}
+			],
+			"code-for-ibmi.searchResults.copy": [
+				{
+					"command": "code-for-ibmi.copySelectedSearchResultNames",
+					"group": "1_copy@1"
+				},
+				{
+					"command": "code-for-ibmi.copyAllSearchResultNames",
+					"group": "1_copy@2"
+				}
+			],
+			"code-for-ibmi.searchResults.download": [
+				{
+					"command": "code-for-ibmi.downloadSelectedSearchResults",
+					"group": "1_download@1"
+				},
+				{
+					"command": "code-for-ibmi.downloadAllSearchResults",
+					"group": "1_download@2"
 				}
 			],
 			"code-for-ibmi.sortIFSFiles": [
@@ -2079,7 +2430,8 @@
 					"command": "code-for-ibmi.browse"
 				},
 				{
-					"command": "code-for-ibmi.edit"
+					"command": "code-for-ibmi.edit",
+					"when": "viewItem == streamfile"
 				}
 			],
 			"code-for-ibmi.openMember": [
@@ -2192,6 +2544,10 @@
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.showJobLog",
 					"when": "code-for-ibmi:connected"
 				},
 				{
@@ -2411,6 +2767,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.removeCurrentLibrary",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.addToLibraryList",
 					"when": "never"
 				},
@@ -2428,6 +2788,22 @@
 				},
 				{
 					"command": "code-for-ibmi.closeSearchView",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadAllSearchResults",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadSelectedSearchResults",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyAllSearchResultNames",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copySelectedSearchResultNames",
 					"when": "never"
 				},
 				{
@@ -2452,6 +2828,10 @@
 				},
 				{
 					"command": "code-for-ibmi.maintainFilter",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.renameFilter",
 					"when": "never"
 				},
 				{
@@ -2731,7 +3111,7 @@
 				},
 				{
 					"command": "code-for-ibmi.closeSearchView",
-					"group": "navigation@2",
+					"group": "navigation@1",
 					"when": "view == searchView"
 				},
 				{
@@ -2751,6 +3131,21 @@
 				}
 			],
 			"editor/title": [
+				{
+					"command": "code-for-ibmi.member.previousDateSearchBlock",
+					"when": "resourceScheme == member && !isInDiffEditor && code-for-ibmi:sourceDateSearchActive",
+					"group": "navigation@0"
+				},
+				{
+					"command": "code-for-ibmi.member.nextDateSearchBlock",
+					"when": "resourceScheme == member && !isInDiffEditor && code-for-ibmi:sourceDateSearchActive",
+					"group": "navigation@0"
+				},
+				{
+					"command": "code-for-ibmi.refreshJobLog",
+					"when": "activeWebviewPanelId == 'jobLogView'",
+					"group": "navigation@1"
+				},
 				{
 					"submenu": "code-for-ibmi.debug.group",
 					"when": "code-for-ibmi:connected && editorLangId =~ /^rpg(le)?|cl(le)?|(ile)?cobol|c?$/i",
@@ -2778,6 +3173,16 @@
 				}
 			],
 			"view/item/context": [
+				{
+					"submenu": "code-for-ibmi.searchResults.copy",
+					"when": "view == searchView && viewItem == hitSource",
+					"group": "1_copy@1"
+				},
+				{
+					"submenu": "code-for-ibmi.searchResults.download",
+					"when": "view == searchView && viewItem == hitSource",
+					"group": "1_copy@2"
+				},
 				{
 					"command": "code-for-ibmi.copyConnection",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
@@ -2860,13 +3265,23 @@
 				},
 				{
 					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem =~ /^currentLibrary/",
+					"group": "inline@01"
+				},
+				{
+					"command": "code-for-ibmi.removeCurrentLibrary",
 					"when": "view == libraryListView && viewItem == currentLibrary",
-					"group": "inline"
+					"group": "inline@02"
 				},
 				{
 					"command": "code-for-ibmi.changeCurrentLibrary",
-					"when": "view == libraryListView && viewItem == currentLibrary",
+					"when": "view == libraryListView && viewItem =~ /^currentLibrary/",
 					"group": "libraryChangeCurrent@1"
+				},
+				{
+					"command": "code-for-ibmi.removeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "libraryChangeCurrent@2"
 				},
 				{
 					"command": "code-for-ibmi.setCurrentLibrary",
@@ -2884,14 +3299,19 @@
 					"group": "4_filters@1"
 				},
 				{
-					"command": "code-for-ibmi.copyFilter",
+					"command": "code-for-ibmi.renameFilter",
 					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
 					"group": "4_filters@2"
 				},
 				{
+					"command": "code-for-ibmi.copyFilter",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^filter.*$/",
+					"group": "4_filters@3"
+				},
+				{
 					"command": "code-for-ibmi.objectBrowser.delete",
 					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
-					"group": "4_filters@3"
+					"group": "4_filters@4"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",
@@ -2935,12 +3355,12 @@
 				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile) && !listMultiSelection",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem =~ /^streamfile.*$/) && !listMultiSelection",
 					"group": "7_sourceFileStuff@1"
 				},
 				{
 					"submenu": "code-for-ibmi.compareWith",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem =~ /^streamfile.*$/)",
 					"group": "7_sourceFileStuff@2"
 				},
 				{
@@ -3015,22 +3435,22 @@
 				},
 				{
 					"submenu": "code-for-ibmi.openIFSFile",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem =~ /^streamfile.*$/",
 					"group": "0_open@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem =~ /^streamfile.*$/",
 					"group": "1_workspace@1"
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@2"
 				},
 				{
@@ -3045,7 +3465,7 @@
 				},
 				{
 					"command": "code-for-ibmi.deleteIFS",
-					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
+					"when": "view == ifsBrowser && !(viewItem =~ /^shortcut.*$/) && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@5"
 				},
 				{
@@ -3075,12 +3495,12 @@
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@2"
 				},
 				{
@@ -3120,12 +3540,12 @@
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*|streamfile$/",
+					"when": "view == ifsBrowser && viewItem =~ /^(directory|streamfile).*$/",
 					"group": "3_ifsTransfer@1"
 				},
 				{
 					"command": "code-for-ibmi.uploadStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && !(viewItem =~ /^.*_protected$/)",
 					"group": "3_ifsTransfer@2"
 				},
 				{
@@ -3150,7 +3570,7 @@
 				},
 				{
 					"command": "code-for-ibmi.changeObjectDesc",
-					"when": "view == objectBrowser && !listMultiSelection && (viewItem =~ /^object/ || viewItem == SPF)",
+					"when": "view == objectBrowser && !listMultiSelection && (viewItem =~ /^object/ || viewItem == SPF) && !(viewItem =~ /_readonly/)",
 					"group": "1_objActions@1"
 				},
 				{
@@ -3160,12 +3580,12 @@
 				},
 				{
 					"command": "code-for-ibmi.objectBrowser.delete",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && viewItem =~ /^object/ && !(viewItem =~ /_readonly/)",
 					"group": "1_objActions@5"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object(?!.lib)/",
+					"when": "view == objectBrowser && !listMultiSelection && viewItem =~ /^object(?!.lib)/ && !(viewItem =~ /_readonly/)",
 					"group": "1_objActions@4"
 				},
 				{
@@ -3227,6 +3647,21 @@
 					"command": "code-for-ibmi.environment.action.delete",
 					"when": "view === environmentView && viewItem =~ /^actionItem/",
 					"group": "20_actionItemAction01"
+				},
+				{
+					"command": "code-for-ibmi.showAdditionalSettings",
+					"when": "view === environmentView && viewItem === connectionNode",
+					"group": "00_connectionNodeAction01"
+				},
+				{
+					"command": "code-for-ibmi.environment.connection.showJobLog",
+					"when": "view === environmentView && viewItem === connectionNode",
+					"group": "01_connectionNodeAction01"
+				},
+				{
+					"command": "code-for-ibmi.environment.connection.showJobLog",
+					"when": "view === environmentView && viewItem === connectionSqlJobItem",
+					"group": "00_connectionSqlJobItemAction01"
 				},
 				{
 					"command": "code-for-ibmi.environment.variable.declare",
@@ -3326,19 +3761,19 @@
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
 		"types": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node --resolveJsonModule",
-		"postinstall": "npx tsx tools/downloadMapepire"
+		"sqlsignature": "npx tsx tools/sqlSignature"
 	},
 	"devDependencies": {
-		"@octokit/rest": "22.0.1",
 		"@types/adm-zip": "0.5.7",
 		"@types/node": "22.19.7",
 		"@types/ssh2": "^1.15.5",
 		"@types/tar": "6.1.13",
 		"@types/tmp": "0.2.5",
 		"@types/vscode": "^1.90.0",
+		"@types/ws": "^8.18.2",
 		"@vscode/vsce": "^3.9.1",
-		"esbuild": "^0.27.0",
-		"esbuild-loader": "^4.4.2",
+		"esbuild": "0.28.2",
+		"esbuild-loader": "4.5.0",
 		"eslint": "^8.57.1",
 		"ssh2-streams": "^0.4.10",
 		"ts-loader": "^9.3.1",
@@ -3350,16 +3785,16 @@
 	},
 	"dependencies": {
 		"@ibm/ibmi-eventf-parser": "2.0.2",
-		"@ibm/mapepire-js": "0.6.1",
+		"@ibm/mapepire-js": "1.0.1",
 		"@vscode-elements/elements": "2.5.1",
-		"adm-zip": "0.5.16",
+		"@vscode/codicons": "0.0.45",
+		"adm-zip": "0.6.1",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
-		"csv": "6.4.1",
 		"escape-string-regexp": "5.0.0",
 		"ignore": "7.0.5",
 		"node-ssh": "13.2.1",
-		"tar": "^7.5.13",
-		"tmp": "0.2.6",
+		"tar": "7.5.22",
+		"tmp": "0.2.7",
 		"vscode-diff": "3.0.1"
 	},
 	"extensionDependencies": [

@@ -7,12 +7,14 @@ import { registerCompareCommands } from './commands/compare';
 import { registerConnectionCommands } from './commands/connection';
 import { registerOpenCommands } from './commands/open';
 import { registerPasswordCommands } from './commands/password';
+import { registerSnippetCommands } from './commands/snippets';
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import { debugPTFInstalled, isDebugEngineRunning } from './debug/server';
 import { setupGitEventHandler } from './filesystems/local/git';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
 import Instance from "./Instance";
 import { Terminal } from './ui/Terminal';
+import { VscodeTools } from './ui/Tools';
 
 export let instance: Instance;
 
@@ -61,6 +63,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
 
   instance = new Instance(context);
+
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
@@ -74,6 +77,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ...registerCompareCommands(),
 
     ...registerActionsCommands(instance),
+
+    ...registerSnippetCommands(instance),
 
     ...Terminal.registerTerminalCommands(context),
 
@@ -104,7 +109,7 @@ async function updateConnectedBar() {
 
     const remoteConnectionConfig = connection.getConfigFile<RemoteConfigFile>(`settings`);
     const serverConfigOk = remoteConnectionConfig.getState() === `ok`;
-    let serverConfig: RemoteConfigFile|undefined;
+    let serverConfig: RemoteConfigFile | undefined;
     if (serverConfigOk) {
       serverConfig = await remoteConnectionConfig.get();
     }
@@ -113,31 +118,49 @@ async function updateConnectedBar() {
     connectedBarItem.text = `$(${systemReadOnly ? "shield" : (config.readOnlyMode ? "lock" : "settings-gear")}) ${config.name}${config.currentProfile ? ` (${config.currentProfile})` : ''}`;
     const terminalMenuItem = systemReadOnly ? `` : `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`;
     const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.environment.actions.focus)`;
+    const snippetsMenuItem = systemReadOnly ? `` : `[$(symbol-snippet) Snippets](command:code-for-ibmi.openSharedSnippets)`;
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
+
     const sqlJobId = connection.getSqlJobId();
-    const sqlJobInfo = sqlJobId ? `[$(database) Job: ${sqlJobId}](command:code-for-ibmi.copyJobId)` : `$(database) Job: Not available`;
-    
+    const jdbcOptions = connection.getSqlJobJDBCOptions() || {};
+
+    const jdbcInfo = [
+      `Active JDBC connection options:`,
+      ``,
+      ...Object.entries(jdbcOptions).map(([key, value], index) => `${index + 1}. ${String(key).toUpperCase()}: \`${String(value).toUpperCase()}\``)
+    ].join(`\n`);
+    const sqlJobInfo = sqlJobId ? `[Job: ${sqlJobId}](command:code-for-ibmi.copyJobId)` : ``;
+    const jobLogInfo = sqlJobId ? `[$(info) View Job Log](command:code-for-ibmi.showJobLog?${encodeURIComponent(JSON.stringify([sqlJobId]))})` : ``;
+
     connectedBarItemTooltips.push(
+      sqlJobInfo,
+      jobLogInfo,
+      jdbcInfo,
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       terminalMenuItem,
       actionsMenuItem,
+      snippetsMenuItem,
       `[$(key) Change Password](command:code-for-ibmi.changePassword)`,
       debugPTFInstalled(connection) ?
         `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
         :
-        `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`,
-      sqlJobInfo
+        `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
     );
+
     connectedBarItem.tooltip = new vscode.MarkdownString(connectedBarItemTooltips.join(`\n\n---\n\n`), true);
     connectedBarItem.tooltip.isTrusted = true;
 
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isReadonly`, config?.readOnlyMode || systemReadOnly);
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:isSystemReadonly`, systemReadOnly);
+
+    connectedBarItem.color = VscodeTools.parseStatusBarColor(config.statusBarColor);
+    disconnectBarItem.color = VscodeTools.parseStatusBarColor(config.statusBarColor);
   }
 }
 
 async function onConnected() {
+  // Show bar items
   [
     connectedBarItem,
     disconnectBarItem,

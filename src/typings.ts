@@ -1,15 +1,17 @@
 import { Ignore } from "ignore";
-import { Disposable, Uri, WorkspaceFolder } from "vscode";
+import { ConfigurationChangeEvent, Disposable, Uri, WorkspaceFolder } from "vscode";
 import Instance from "./Instance";
+import { SearchTools } from "./api/SearchTools";
+import { ActionTools } from "./api/actions";
 import { CommandPrompter } from "./api/commandPrompter";
 import { ComponentRegistry } from './api/components/manager';
 import { ConnectionManager } from "./api/configuration/config/ConnectionManager";
 import { DeploymentMethod, FileError } from "./api/types";
+import { ViewSettings } from "./config/Configuration";
 import { CustomEditor } from "./editors/customEditorProvider";
 import { DeployTools } from "./filesystems/local/deployTools";
-import { ActionTools } from "./api/actions";
 import { VscodeTools } from "./ui/Tools";
-import { SearchTools } from "./api/SearchTools";
+import { FrontendTables } from "./ui/frontendTables";
 import { CustomUI } from "./webviews/CustomUI";
 
 export interface CodeForIBMi {
@@ -18,11 +20,14 @@ export interface CodeForIBMi {
   customEditor: <T>(target: string, onSave: (data: T) => Promise<void>, onClosed?: () => void) => CustomEditor<T>,
   evfeventParser: (lines: string[]) => Map<string, FileError[]>,
   tools: typeof VscodeTools,
+  frontendTables: typeof FrontendTables,
+  viewSettings: typeof ViewSettings,
   deployTools: typeof DeployTools,
   actionTools: typeof ActionTools,
   componentRegistry: ComponentRegistry,
   connectionManager: ConnectionManager,
   searchTools: typeof SearchTools,
+  onCodeForIBMiConfigurationChange: (props: string | string[], todo: (event: ConfigurationChangeEvent) => void) => Disposable,
   registerCommandPrompter: (prompter: CommandPrompter) => Disposable
 }
 
@@ -36,4 +41,3 @@ export interface DeploymentParameters {
 
 export * from "./api/types";
 export * from "./ui/types";
-

@@ -1,5 +1,6 @@
 /* eslint-disable indent */
 import vscode, { ProviderResult } from 'vscode';
+import { codiconStyles } from './codicons';
 
 //Webpack is returning this as a string
 const vscodeweb = require(`@vscode-elements/elements/dist/bundled`);
@@ -45,7 +46,7 @@ interface WebviewMessageRequest {
   data?: any;
 }
 
-type InputType = "text" | "number";
+type InputType = "text" | "number" | "color" | "date";
 
 export class Section {
   readonly fields: Field[] = [];
@@ -180,6 +181,8 @@ export class CustomHTML extends Section {
 
         <script type="module">${vscodeweb}</script>
         <style>
+            ${codiconStyles}
+
             @media only screen and (min-width: 750px) {
               #laforma {
                 padding-left: ${this.options?.fullWidth || this.options?.fullPage ? '0' : '15'}%;
@@ -197,6 +200,14 @@ export class CustomHTML extends Section {
 
             .long-input {
               width: 100%;
+            }
+
+            .short-input {
+              width: 15%;
+            }
+
+            .date-input {
+              width: 12em;
             }
 
             :root{
@@ -263,7 +274,7 @@ export class CustomHTML extends Section {
                   const field = document.getElementById(response.field);
                   if (field) {
                     field.value = newValue;
-                    let innerInput = field.shadowRoot.querySelector("input");
+                    let innerInput = field.shadowRoot?.querySelector("input");
                     if (innerInput) {
                       innerInput.value = newValue;
                     }
@@ -588,11 +599,29 @@ export class Field {
       case `input`:
         const multiline = (this.rows || 1) > 1;
         const tag = multiline ? "vscode-textarea" : "vscode-textfield";
+        const inputClass = this.inputType === 'color' ? `short-input` : this.inputType === 'date' ? `date-input` : `long-input`;
+
+        if (this.inputType === 'color' && !multiline) {
+          return /* html */`
+            <vscode-form-group variant="settings-group">
+                ${this.renderLabel()}
+                ${this.renderDescription()}
+                <input
+                  class="${inputClass}"
+                  id="${this.id}"
+                  name="${this.id}"
+                  type="color"
+                  ${this.default ? `value="${this.default}"` : ``}
+                  ${this.readonly ? `disabled` : ``}
+                  style="height: 28px; padding: 0; background: transparent; border: 1px solid var(--vscode-input-border); cursor: ${this.readonly ? `not-allowed` : `pointer`};"
+                />
+            </vscode-form-group>`;
+        }
         return /* html */`
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <${tag} class="long-input" id="${this.id}" name="${this.id}"
+              <${tag} class="${inputClass}" id="${this.id}" name="${this.id}"
                 ${this.inputType ? `type="${this.inputType}"` : ``}
                 ${this.default ? `value="${this.default}"` : ``}
                 ${this.readonly ? `readonly` : ``}
@@ -603,7 +632,7 @@ export class Field {
                 ${this.max ? `max="${this.max}"` : ``}
                 ${this.inputType === 'number' ? `step="1"` : ``}
                 >
-              <${tag}>
+              </${tag}>
           </vscode-form-group>`;
 
       case `paragraph`:
@@ -670,7 +699,7 @@ export class Field {
     return /* html */ `<vscode-tree-item ${treeItem.active ? "active " : " "}${treeItem.open ? "open " : " "}${treeItem.selected ? "selected " : " "}${treeItem.value ? `data-value="${treeItem.value}"` : ""}>
       ${treeItem.icons?.branch ? this.renderIcon("icon-branch", treeItem.icons?.branch) : ""}
       ${treeItem.icons?.open ? this.renderIcon("icon-branch-opened", treeItem.icons?.open) : ""}
-      ${treeItem.icons?.leaf ? this.renderIcon("icon-leaf", treeItem.icons?.leaf) : ""}      
+      ${treeItem.icons?.leaf ? this.renderIcon("icon-leaf", treeItem.icons?.leaf) : ""}
       ${treeItem.label}
     </vscode-tree-item>`;
   }

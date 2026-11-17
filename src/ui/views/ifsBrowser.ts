@@ -1,8 +1,8 @@
 import os from "os";
 import path, { dirname, extname } from "path";
-import vscode, { CancellationToken, FileDecoration, FileDecorationProvider, FileType, l10n, ProviderResult, ThemeColor, Uri, window } from "vscode";
+import vscode, { CancellationToken, FileDecorationProvider, FileType, l10n, ThemeColor, Uri, window } from "vscode";
 
-import { existsSync, mkdirSync, rmdirSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, rmdirSync, statSync } from "fs";
 import IBMi from "../../api/IBMi";
 import { SortOptions } from "../../api/IBMiContent";
 import { SearchTools } from "../../api/SearchTools";
@@ -19,11 +19,52 @@ type DragNDropBehavior = DragNDropAction | "ask";
 const getDragDropBehavior = () => IBMi.connectionManager.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
 function isProtected(path: string) {
-  return PROTECTED_DIRS.test(path) || instance.getConnection()?.getContent().isProtectedPath(path);
+  return PROTECTED_DIRS.test(path) || instance.getConnection()?.getContent().isProtectedPath(path) || false;
+}
+
+function checkProtected(path: string): boolean {
+  if (isProtected(path)) {
+    vscode.window.showWarningMessage(l10n.t(`{0} is a protected directory and cannot be modified.`, path));
+    return true;
+  }
+  return false;
 }
 
 function alwaysShow(name: string) {
   return ALWAYS_SHOW_FILES.test(name);
+}
+
+function trimPath(path: string) {
+  return path.length > 1 && path.endsWith(`/`) ? path.substring(0, path.length - 1) : path;
+}
+
+/**
+ * Checks whether copying or moving `sources` to `target` would overwrite existing items and asks confirmation
+ */
+async function confirmOverwrite(connection: IBMi, sources: string[], target: string) {
+  const content = connection.getContent();
+  target = trimPath(target);
+  //When the target is an existing directory, the sources are put inside of it
+  const targetIsDirectory = await content.testStreamFile(target, "d");
+
+  const overwritten: string[] = [];
+  for (const source of sources.map(trimPath)) {
+    const finalPath = targetIsDirectory ? path.posix.join(target, path.posix.basename(source)) : target;
+    if (finalPath !== source && await content.testStreamFile(finalPath, "e")) {
+      overwritten.push(finalPath);
+    }
+  }
+
+  if (overwritten.length) {
+    return await vscode.window.showWarningMessage(
+      overwritten.length > 1 ?
+        l10n.t(`{0} items already exist in {1} and will be overwritten. Do you want to continue?`, overwritten.length, target) :
+        l10n.t(`{0} already exists and will be overwritten. Do you want to continue?`, overwritten[0]),
+      { modal: true, detail: overwritten.length > 1 ? overwritten.join(`\n`) : undefined },
+      l10n.t(`Overwrite`)) !== undefined;
+  }
+
+  return true;
 }
 
 class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
@@ -103,6 +144,10 @@ class IFSItem extends BrowserItem implements WithPath {
     this.tooltip = VscodeTools.ifsFileToToolTip(this.path, file);
   }
 
+  isProtected(): boolean {
+    return this.file.type === "directory" ? isProtected(this.path) : this.parent?.isProtected() || false;
+  }
+
   sortBy(sort: SortOptions) {
     if (this.sort.order !== sort.order) {
       this.sort.order = sort.order;
@@ -129,8 +174,8 @@ class IFSFileItem extends IFSItem {
   constructor(file: IFSFile, readonly ifsParent: IFSDirectoryItem) {
     super(file, { parent: ifsParent });
 
-    this.contextValue = "streamfile";
-    this.iconPath = vscode.ThemeIcon.File;
+    this.contextValue = `streamfile${this.isProtected() ? `_protected` : ``}`;
+    this.iconPath = file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-file") : vscode.ThemeIcon.File;
 
     this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
 
@@ -149,9 +194,10 @@ class IFSFileItem extends IFSItem {
 class IFSDirectoryItem extends IFSItem {
   constructor(file: IFSFile, parent?: IFSDirectoryItem) {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
-    const protectedDir = isProtected(this.file.path);
+    const protectedDir = this.isProtected();
     this.contextValue = `directory${protectedDir ? `_protected` : ``}`;
-    this.iconPath = protectedDir ? new vscode.ThemeIcon("lock-small") : vscode.ThemeIcon.Folder;
+    this.iconPath = protectedDir ? new vscode.ThemeIcon("lock-small") :
+      file.symlink !== undefined ? new vscode.ThemeIcon("file-symlink-directory") : vscode.ThemeIcon.Folder;
   }
 
   async getChildren(): Promise<BrowserItem[]> {
@@ -183,7 +229,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
   constructor(readonly shortcut: string) {
     super({ name: shortcut, path: shortcut, type: "directory" })
 
-    const protectedDir = isProtected(this.file.path);
+    const protectedDir = this.isProtected();
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon(protectedDir ? "lock-small" : "folder-library");
     this.tooltip = ``;
@@ -212,6 +258,9 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
   handleDrop(target: IFSItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     if (target) {
       const toDirectory = (target.file.type === "streamfile" ? target.parent : target) as IFSDirectoryItem;
+      if (checkProtected(toDirectory.path)) {
+        return;
+      }
       const ifsBrowserItems = dataTransfer.get(IFS_BROWSER_MIMETYPE);
       if (ifsBrowserItems) {
         this.moveOrCopyItems(ifsBrowserItems.value as IFSItem[], toDirectory)
@@ -254,6 +303,10 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         let result;
         const froms = ifsBrowserItems.map(item => item.path);
         const to = toDirectory.path;
+        if (!await confirmOverwrite(connection, froms, to)) {
+          return;
+        }
+
         switch (action) {
           case "copy":
             result = await connection.getContent().copy(froms, to);
@@ -435,7 +488,12 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const connection = instance.getConnection();
       if (connection) {
         const config = connection.getConfig();
-        const value = `${node?.path || config.homeDirectory}/`;
+        const parent = node?.path || config.homeDirectory;
+        if (checkProtected(parent)) {
+          return;
+        }
+
+        const value = `${parent}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
           prompt: l10n.t(`Path of new folder`),
@@ -444,6 +502,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         });
 
         if (fullName) {
+          if (checkProtected(path.posix.dirname(trimPath(fullName)))) {
+            return;
+          }
+
           try {
             await connection.sendCommand({ command: `mkdir ${Tools.escapePath(fullName)}` });
 
@@ -464,7 +526,12 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (connection) {
         const config = connection.getConfig();
         const content = connection.getContent();
-        const value = `${node?.path || config.homeDirectory}/`;
+        const parent = node?.path || config.homeDirectory;
+        if (checkProtected(parent)) {
+          return;
+        }
+
+        const value = `${parent}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
           prompt: l10n.t(`Name of new streamfile`),
@@ -473,6 +540,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         });
 
         if (fullName) {
+          if (checkProtected(path.posix.dirname(trimPath(fullName)))) {
+            return;
+          }
+
           if (!await content.testStreamFile(fullName, "e") || await vscode.window.showWarningMessage(l10n.t("Streamfile {0} already exists. Do you want to overwrite it?", fullName), { modal: true }, l10n.t("Overwrite"))) {
             try {
               await content.createStreamFile(fullName);
@@ -495,6 +566,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (connection) {
         const config = connection.getConfig();
         const root = node?.path || config.homeDirectory;
+        if (checkProtected(root)) {
+          return;
+        }
 
         const chosenFiles = files || await showOpenDialog();
 
@@ -522,15 +596,101 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           }, async (progress) => {
             try {
               if (filesToUpload.length) {
-                progress.report({ message: l10n.t(`sending {0} file(s)...`, filesToUpload.length) });
-                await connection.getContent().uploadFiles(filesToUpload, { concurrency: 5 });
+                progress.report({ message: l10n.t(`Calculating file upload size...`) });
+                const totalBytes = filesToUpload.reduce((sum, f) => sum + statSync(f.local).size, 0);
+
+                const formatBytes = (bytes: number): string => {
+                  const KB = 1024;
+                  const MB = 1024 * KB;
+                  const GB = 1024 * MB;
+                  if (totalBytes >= GB) {
+                    return `${(bytes / GB).toFixed(1)} GB`;
+                  } else if (totalBytes >= MB) {
+                    return `${(bytes / MB).toFixed(1)} MB`;
+                  } else {
+                    return `${(bytes / KB).toFixed(1)} KB`;
+                  }
+                };
+
+                progress.report({ message: l10n.t(`Total Files: {0}. Total Bytes: {1}. Starting upload...`, filesToUpload.length, formatBytes(totalBytes)) });
+                let bytesTransferred = 0;
+                let filesCompleted = 0;
+                await connection.getContent().uploadFiles(filesToUpload, {
+                  concurrency: 5,
+                  transferOptions: {
+                    step: (total: number, nb: number, fsize: number) => {
+
+                      bytesTransferred += nb;
+
+                      // A file is complete when its transferred bytes equal its size
+                      if (total === fsize) {
+                        filesCompleted++;
+                      }
+
+                      const filePercentage = Math.round((filesCompleted / filesToUpload.length) * 100);
+                      const bytePercentage = totalBytes > 0 ? Math.round((bytesTransferred / totalBytes) * 100) : 0;
+                      progress.report({
+                        increment: totalBytes > 0 ? (nb / totalBytes) * 100 : 0,
+                        message: l10n.t(`Total Files: {0}/{1} ({2}%). Total Bytes: {3}/{4} ({5}%).`,
+                          filesCompleted, filesToUpload.length, filePercentage,
+                          formatBytes(bytesTransferred), formatBytes(totalBytes), bytePercentage)
+                      });
+                    }
+                  }
+                });
               }
 
               if (directoriesToUpload.length) {
-                for (const directory of directoriesToUpload) {
+                progress.report({ message: l10n.t(`Calculating file count...`) });
+                const dirFileCounts = await Promise.all(
+                  directoriesToUpload.map(directory =>
+                    Promise.resolve(
+                      // node-ssh by default ignores hidden files: https://github.com/steelbrain/node-ssh/blob/fca27faedee85736403cb6b46f15e5677302f8a8/src/index.ts#L97
+                      readdirSync(directory.fsPath, { recursive: true, withFileTypes: true })
+                        .filter(f => {
+                          // Exclude sub-directories and hidden files
+                          if (!f.isFile() || f.name.startsWith('.')) {
+                            return false;
+                          }
+
+                          // Exclude files in hidden sub-directories
+                          const relativeParent = path.relative(directory.fsPath, f.parentPath);
+                          return !relativeParent.split(path.sep).some(segment => segment.startsWith('.'));
+                        }).length
+                    )
+                  )
+                );
+                const totalFilesAcrossDirs = dirFileCounts.reduce((sum, n) => sum + n, 0);
+
+                progress.report({ message: l10n.t(`Total Folders: {0}. Total Files: {1}. Starting upload...`, directoriesToUpload.length, totalFilesAcrossDirs) });
+                let directoriesCompleted = 0;
+                let totalFilesCompleted = 0;
+                for (let i = 0; i < directoriesToUpload.length; i++) {
+                  const directory = directoriesToUpload[i];
                   const name = path.basename(directory.fsPath);
-                  progress.report({ message: l10n.t(`sending {0} directory...`, name) })
-                  await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
+
+                  await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), {
+                    concurrency: 5,
+                    transferOptions: {
+                      step: (total: number, nb: number, fsize: number) => {
+                        // A file is complete when its transferred bytes equal its size
+                        if (total === fsize) {
+                          totalFilesCompleted++;
+                        }
+
+                        const folderPercentage = Math.round((directoriesCompleted / directoriesToUpload.length) * 100);
+                        const filePercentage = totalFilesAcrossDirs > 0 ? Math.round((totalFilesCompleted / totalFilesAcrossDirs) * 100) : 0;
+                        progress.report({
+                          increment: totalFilesAcrossDirs > 0 ? (nb / fsize) * (1 / totalFilesAcrossDirs) * 100 : 0,
+                          message: l10n.t(`Total Folders: {0}/{1} ({2}%). Total Files: {3}/{4} ({5}%).`,
+                            directoriesCompleted, directoriesToUpload.length, folderPercentage,
+                            totalFilesCompleted, totalFilesAcrossDirs, filePercentage)
+                        });
+                      }
+                    }
+                  });
+
+                  directoriesCompleted++;
                 }
               }
 
@@ -561,11 +721,66 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           items = getSelectedItems(singleItem).filter(reduceIFSPath);
         }
 
+        // Shortcuts point to real directories: make the user choose between removing the shortcut and deleting the directory
+        const selectedShortcuts = items.filter((item): item is IFSShortcutItem => item instanceof IFSShortcutItem);
+        if (selectedShortcuts.length) {
+          const removeShortcut = l10n.t(`Remove shortcut`);
+          const deleteDirectory = l10n.t(`Delete directory`);
+          let choice;
+          if (selectedShortcuts.some(shortcut => isProtected(shortcut.path))) {
+            // Protected directories can't be deleted: removing the shortcuts is the only option, so there is nothing to ask
+            choice = removeShortcut;
+          }
+          else {
+            const message = selectedShortcuts.length === 1 ?
+              l10n.t(`{0} is an IFS shortcut. Do you want to remove the shortcut or delete the directory and all its contents?`, selectedShortcuts[0].path) :
+              l10n.t(`{0} of the selected items are IFS shortcuts. Do you want to remove the shortcuts or delete the directories and all their contents?`, selectedShortcuts.length);
+            const detail = selectedShortcuts.length === 1 ? undefined : selectedShortcuts.map(i => `- ${i.path}`).join("\n");
+            choice = await vscode.window.showWarningMessage(message, { modal: true, detail }, removeShortcut, deleteDirectory);
+          }
+
+          if (choice === removeShortcut) {
+            await vscode.commands.executeCommand(`code-for-ibmi.removeIFSShortcut`, selectedShortcuts[0], selectedShortcuts);
+            items = items.filter(item => !(item instanceof IFSShortcutItem));
+          }
+          else if (choice !== deleteDirectory) {
+            vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
+            return;
+          }
+        }
+
         if (items && items.length) {
           if (!items.find(n => isProtected(n.path))) {
             let deletionConfirmed = false;
-            const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t("Are you sure you want to delete the {0} selected files?", items.length);
-            const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
+
+            // Count the entries of each directory, so the user knows when content will be deleted too
+            const contentCounts = new Map<string, number>();
+            const directories = items.filter(item => item.file.type === `directory`);
+            if (directories.length) {
+              const counts = await connection.getContent().countFiles(directories.map(directory => directory.path));
+              directories.forEach((directory, index) => {
+                if (counts[index] > 0) {
+                  contentCounts.set(directory.path, counts[index]);
+                }
+              });
+            }
+
+            let message;
+            let detail;
+            if (items.length === 1) {
+              const item = items[0];
+              message = item.file.type === `directory` ? l10n.t(`Are you sure you want to delete the directory {0}?`, item.path) : l10n.t(`Are you sure you want to delete {0}?`, item.path);
+              const count = contentCounts.get(item.path);
+              detail = count ? l10n.t(`It contains {0} item(s), which will be permanently deleted with it.`, count) : undefined;
+            }
+            else {
+              message = l10n.t(`Are you sure you want to delete these {0} elements?`, items.length);
+              detail = items.map(item => {
+                const count = contentCounts.get(item.path);
+                return `- ${item.path}${count ? ` ${l10n.t(`(contains {0} item(s))`, count)}` : ``}`;
+              }).join("\n");
+            }
+
             if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
               const toBeDeleted: string[] = [];
               for (const item of items) {
@@ -594,6 +809,11 @@ Please type "{0}" to confirm deletion.`, dirName);
                 }
               }
 
+              if (!toBeDeleted.length) {
+                vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
+                return;
+              }
+
               try {
                 const removeResult = await vscode.window.withProgress({ title: l10n.t(`Deleting {0} element(s)...`, toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
                   return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
@@ -609,6 +829,7 @@ Please type "{0}" to confirm deletion.`, dirName);
                   const detail = deletedShortcuts.length === 1 ? undefined : deletedShortcuts.map(i => `- ${i}`).join("\n");
                   if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
                     config.ifsShortcuts = shortcuts.filter(path => !deletedShortcuts.includes(path));
+                    await IBMi.connectionManager.update(config);
                   }
                 }
 
@@ -671,8 +892,16 @@ Please type "{0}" to confirm deletion.`, dirName);
 
           if (target) {
             const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
+            if (checkProtected(path.posix.dirname(trimPath(targetPath)))) {
+              return;
+            }
+
+            if (!await confirmOverwrite(connection, [node.path], targetPath)) {
+              return;
+            }
+
             try {
-              const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh" });
+              const moveResult = await connection.runCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`, environment: "qsh", noLibList: true });
               if (moveResult.code !== 0) {
                 throw moveResult.stderr;
               }
@@ -733,6 +962,14 @@ Please type "{0}" to confirm deletion.`, dirName);
 
         if (target) {
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
+          if (checkProtected(path.posix.dirname(trimPath(targetPath)))) {
+            return;
+          }
+
+          if (!await confirmOverwrite(connection, [node.path], targetPath)) {
+            return;
+          }
+
           try {
             const result = await connection.getContent().copy(node.path, targetPath);
             if (result.code !== 0) {
@@ -939,8 +1176,7 @@ Please type "{0}" to confirm deletion.`, dirName);
                   }
                   else {
                     if (!existsSync(target) || await vscode.window.showWarningMessage(l10n.t(`{0} already exists.
-Do you want to replace it?`, target), { modal: true }, l10n.t(`{0} already exists.
-Do you want to replace it?`, target))) {
+Do you want to replace it?`, target), { modal: true }, l10n.t(`Yes`))) {
                       await ibmi.getContent().downloadFile(target, targetPath);
                     }
                   }
@@ -1027,7 +1263,7 @@ async function doSearchInStreamfiles(searchTerm: string, searchPaths: string[]) 
       vscode.window.showInformationMessage(l10n.t(`No results found searching for "{0}".`, searchTerm));
     }
   } catch (e) {
-    vscode.window.showErrorMessage(l10n.t(`Error searching streamfiles.`));
+    vscode.window.showErrorMessage(l10n.t(`Error searching streamfiles: {0}`, String(e)));
   }
 }
 
@@ -1101,21 +1337,16 @@ export class ShortcutDecorationProvider implements FileDecorationProvider {
   private readonly _onDidChangeFileDecorations = new vscode.EventEmitter<vscode.Uri | vscode.Uri[] | undefined>();
   readonly onDidChangeFileDecorations = this._onDidChangeFileDecorations.event;
 
-  provideFileDecoration(uri: Uri, token: CancellationToken): ProviderResult<FileDecoration> {
-    if (uri.scheme === 'shortcut') {
-      return instance.getConnection()?.getContent().isDirectory(uri.path).then(isFound => {
-        if (!isFound) {
-          return {
-            badge: '⚠',
-            color: new ThemeColor('errorForeground'),
-            tooltip: l10n.t(`Directory does not exist.`)
-          };
-        }
-        return undefined;
-      });
+  async provideFileDecoration(uri: Uri, token: CancellationToken) {
+    if (uri.scheme === 'shortcut' && !await instance.getConnection()?.getContent().isDirectory(uri.path)) {
+      return {
+        badge: '⚠',
+        color: new ThemeColor('errorForeground'),
+        tooltip: l10n.t(`Directory does not exist.`)
+      };
     }
   }
-  
+
   refresh(uri?: vscode.Uri | vscode.Uri[]) {
     this._onDidChangeFileDecorations.fire(uri);
   }

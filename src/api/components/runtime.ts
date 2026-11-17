@@ -60,7 +60,7 @@ export class IBMiComponentRuntime {
   }
 
   async getCurrentState(){
-    return this.handleState(await this.component.getRemoteState(this.connection, await this.getInstallDirectory()));
+    return this.handleState(await this.component.getRemoteState(this.connection, this.getInstallDirectory()));
   }
 
   /**
@@ -85,7 +85,7 @@ export class IBMiComponentRuntime {
     const missingSignature = `WARNING: Component ${this.component.getIdentification().name} ` + 
       (local ? "does not define a local signature. If you're the maintainer of that component, please update it to return a signature when its 'getIdentification' method is called." :
         "did not return a remote signature. If you're the maintainer of that component, please update it to have the 'getRemoteState' and 'update' methods to return a SecureComponentState object.");
-    this.connection.appendOutput(missingSignature);
+    this.connection.appendOutput(`${missingSignature}\n\n`);
     console.warn(missingSignature);
   }
 

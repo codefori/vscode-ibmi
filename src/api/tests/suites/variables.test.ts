@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Variables } from '../../variables';
-import { disposeConnection, newConnection } from '../connection';
+import { disposeConnection, newConnection } from '../setup/connection';
 
 describe(`variables tests`, { concurrent: true }, () => {
   const variables = new Variables();

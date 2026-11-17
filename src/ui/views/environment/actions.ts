@@ -28,7 +28,7 @@ export class ActionsNode extends EnvironmentItem {
   private readonly foundActions: ActionItem[] = [];
   private revealIndex = -1;
 
-  private readonly children: ActionTypeNode[] = [];
+  private children: ActionTypeNode[] = [];
 
   constructor() {
     super(l10n.t("Actions"), { icon: "code-oss", state: vscode.TreeItemCollapsibleState.Collapsed });
@@ -47,12 +47,12 @@ export class ActionsNode extends EnvironmentItem {
         }
       }
 
-      this.children.push(
+      this.children = [
         new ActionTypeNode(this, l10n.t("Member"), 'file-code', 'member', actions),
         new ActionTypeNode(this, l10n.t("Object"), 'database', 'object', actions),
         new ActionTypeNode(this, l10n.t("Streamfile"), 'file-text', 'streamfile', actions),
         ...Array.from(localActions).map((([workspace, localActions]) => new ActionTypeNode(this, workspace.name, 'folder', 'file', localActions, workspace)))
-      );
+      ];
 
       if (vscode.window.activeTextEditor) {
         await this.activeEditorChanged(vscode.window.activeTextEditor)

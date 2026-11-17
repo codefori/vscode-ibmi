@@ -119,16 +119,21 @@ async function openNewIssue() {
     issueUrl = issueUrl.substring(0, 8130);
   }
 
-  const target = (await vscode.window.showQuickPick<vscode.QuickPickItem & { target: string }>([
-    { label: "Code for IBM i", target: 'vscode-ibmi' },
-    { label: "Db2 for IBM i", target: 'vscode-db2i' },
-    { label: "RPGLE language tools", target: 'vscode-rpgle' },
-    { label: "IBM i FileSystem", target: 'vscode-ibmi-fs' },
-    { label: "IBM i Debugger", target: 'vscode-ibmi-debug-issues' },
-  ], { title: l10n.t("Please pick the extension to report the issue on"), placeHolder: l10n.t("Report an issue on...") }))?.target;
+  if (vscode.extensions.getExtension('IBM.bob-code') === undefined) {
+    const target = (await vscode.window.showQuickPick<vscode.QuickPickItem & { target: string }>([
+      { label: "Code for IBM i", target: 'vscode-ibmi' },
+      { label: "Db2 for IBM i", target: 'vscode-db2i' },
+      { label: "RPGLE language tools", target: 'vscode-rpgle' },
+      { label: "IBM i FileSystem", target: 'vscode-ibmi-fs' },
+      { label: "IBM i Debugger", target: 'vscode-ibmi-debug-issues' },
+    ], { title: l10n.t("Please pick the extension to report the issue on"), placeHolder: l10n.t("Report an issue on...") }))?.target;
 
-  if (target) {
-    vscode.commands.executeCommand(`vscode.open`, `https://github.com/codefori/${target}/issues/new?body=${issueUrl}`);
+    if (target) {
+      vscode.commands.executeCommand(`vscode.open`, `https://github.com/codefori/${target}/issues/new?body=${issueUrl}`);
+    }
+  }
+  else{
+    vscode.commands.executeCommand(`vscode.open`, `https://github.com/IBM/ibm-bob/issues/new?body=${issueUrl}`);
   }
 }
 
@@ -230,15 +235,11 @@ async function downloadLogs() {
               zip.addFile(log.fileName, log.fileContent);
             }
 
-            const result = await zip.writeZipPromise(downloadLocation, { overwrite: false });
+            await zip.writeZipPromise(downloadLocation, { overwrite: false });
 
-            if (result) {
-              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile), vscode.l10n.t(`Open`));
-              if (result && result === vscode.l10n.t(`Open`)) {
-                vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(downloadLocation))
-              }
-            } else {
-              await vscode.window.showErrorMessage(vscode.l10n.t(`Failed to downloaded logs to {0}`, zipFile));
+            const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile), vscode.l10n.t(`Open`));
+            if (result && result === vscode.l10n.t(`Open`)) {
+              vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(downloadLocation))
             }
           } catch (error: any) {
             await vscode.window.showErrorMessage(vscode.l10n.t(`Failed to download logs to {0}. {1}`, zipFile, error));

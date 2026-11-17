@@ -7,6 +7,7 @@ const fs = require(`fs`);
 const path = require(`path`);
 
 const packageJson = require(`./package.json`);
+const { SERVER_FILE_PREFIX, VERSION } = require(`@ibm/mapepire-js`);
 const npm_runner = process.env[`npm_lifecycle_script`];
 const isProduction = (npm_runner && npm_runner.includes(`production`));
 
@@ -25,9 +26,10 @@ if (isProduction) {
 
 const dist = path.resolve(__dirname, `dist`);
 
-fs.mkdirSync(dist, {recursive: true});
-
-const files = [];
+fs.mkdirSync(dist, { recursive: true });
+const files = [
+  { name: `${SERVER_FILE_PREFIX}${VERSION}.jar`, relative: `node_modules/@ibm/mapepire-js/dist/${SERVER_FILE_PREFIX}${VERSION}.jar` }
+];
 
 for (const file of files) {
   const src = path.resolve(__dirname, file.relative);
@@ -38,7 +40,7 @@ for (const file of files) {
     // Overwrites by default
     fs.copyFileSync(src, dest);
   }
-  else{
+  else {
     throw `File ${src} not found for copy!`
   }
 }
@@ -88,6 +90,18 @@ const config = {
         test: /\.js$/,
         include: path.resolve(__dirname, `node_modules/@vscode-elements/elements/dist`),
         type: `asset/source`
+      },
+      {
+        // Codicon stylesheet, inlined into the webviews as a string
+        test: /\.css$/,
+        include: path.resolve(__dirname, `node_modules/@vscode/codicons/dist`),
+        type: `asset/source`
+      },
+      {
+        // Codicon font, inlined into the stylesheet above as a base64 data URI
+        test: /\.ttf$/,
+        include: path.resolve(__dirname, `node_modules/@vscode/codicons/dist`),
+        type: `asset/inline`
       },
       {
         test: /\.(ts|tsx)$/i,

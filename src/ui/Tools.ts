@@ -5,10 +5,15 @@ import vscode, { MarkdownString } from "vscode";
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 import { API, GitExtension } from "../filesystems/local/gitApi";
-import { ConnectionProfile, IBMiMember, IBMiObject, IFSFile } from '../typings';
+import { ConnectionProfile, IBMiMember, IBMiObject, IFSFile, ObjectFilters } from '../typings';
 
 let gitLookedUp: boolean;
 let gitAPI: API | undefined;
+
+const HEX_COLOR = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+/** The colour picker has no empty state, so black is what it reports when no colour was ever picked. */
+const NO_COLOR = `#000000`;
 
 export namespace VscodeTools {
   export function getGitAPI(): API | undefined {
@@ -24,6 +29,22 @@ export namespace VscodeTools {
       }
     }
     return gitAPI;
+  }
+
+  /**
+   * Normalizes a status bar colour into `#rrggbb`; returns undefined when it's empty, invalid or black,
+   * which leaves the status bar item with the colour of the current theme. Exposed so extensions (FS, DB2, ...)
+   * can colour their own status bar items to match the one picked in the connection settings.
+   */
+  export function parseStatusBarColor(color?: string) {
+    const trimmed = (color || ``).trim();
+    if (!HEX_COLOR.test(trimmed)) {
+      return undefined;
+    }
+
+    const hex = trimmed.substring(1);
+    const normalized = `#${hex.length === 3 ? hex.split(``).map(channel => channel + channel).join(``) : hex}`.toLowerCase();
+    return normalized === NO_COLOR ? undefined : normalized;
   }
 
   export function md5Hash(file: vscode.Uri): string {
@@ -191,9 +212,27 @@ export namespace VscodeTools {
 
   export function ifsFileToToolTip(path: string, ifsFile: IFSFile) {
     const tooltip = new MarkdownString(generateTooltipHtmlTable(path, {
+      "Symbolic link": ifsFile.symlink ? escapeHtml(ifsFile.symlink) : ifsFile.symlink === `` ? `?` : undefined,
       "Size": ifsFile.size,
       "Modified": ifsFile.modified ? safeIsoValue(new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000)) : ``,
       "Owner": ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
+
+  export function filterToToolTip(filter: ObjectFilters) {
+    const tooltip = new MarkdownString(generateTooltipHtmlTable(escapeHtml(filter.name), {
+      "Filtering type": filter.filterType === `regex` ? vscode.l10n.t(`Regex`) : vscode.l10n.t(`Simple`),
+      "Libraries": escapeHtml(filter.library),
+      "Objects": escapeHtml(filter.object),
+      "Object types": escapeHtml(filter.types.join(`, `)),
+      "Members": escapeHtml(filter.member),
+      "Member type": escapeHtml(filter.memberType || `*`),
+      "Member text": filter.memberText ? escapeHtml(filter.memberText) : undefined,
+      "Member created from": filter.memberCreated ? escapeHtml(filter.memberCreated) : undefined,
+      "Member changed from": filter.memberChanged ? escapeHtml(filter.memberChanged) : undefined,
+      "Protected": filter.protected ? vscode.l10n.t(`Yes`) : undefined
     }));
     tooltip.supportHtml = true;
     return tooltip;
@@ -209,6 +248,7 @@ export namespace VscodeTools {
       "Object Filters": profile.objectFilters.length,
       "IFS Shortcuts": profile.ifsShortcuts.length,
       "Custom Variables": profile.customVariables.length,
+      "Status Bar Color": parseStatusBarColor(profile.statusBarColor),
     }));
     tooltip.supportHtml = true;
     return tooltip;

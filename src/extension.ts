@@ -4,17 +4,15 @@ import { commands, ExtensionContext, l10n, languages, window, workspace } from "
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import path from "path";
 import IBMi from "./api/IBMi";
 import { registerCommandPrompter } from "./api/commandPrompter";
 import { SearchTools } from "./api/SearchTools";
 import { ActionTools } from "./api/actions";
 import { extensionComponentRegistry } from "./api/components/manager";
 import { Mapepire } from "./api/components/mapepire";
-import { SSHSQLJob } from "./api/components/mapepire/sshSqlJob";
 import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
-import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
+import { onCodeForIBMiConfigurationChange, ViewSettings } from "./config/Configuration";
 import { getStoredPassword } from "./config/passwords";
 import * as Debug from './debug';
 import { CustomEditor, CustomEditorProvider } from "./editors/customEditorProvider";
@@ -29,6 +27,7 @@ import { initialise } from "./testing";
 import { CodeForIBMi } from "./typings";
 import { VscodeTools } from "./ui/Tools";
 import { registerActionTools } from "./ui/actions";
+import { FrontendTables } from "./ui/frontendTables";
 import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
 import { initializeLibraryListView } from "./ui/views/LibraryListView";
 import { initializeDebugBrowser } from "./ui/views/debugView";
@@ -42,16 +41,17 @@ import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
 import { SettingsUI } from "./webviews/settings";
+import { JobLogUI } from "./webviews/wrkjob";
+
+let temporaryPassword: string | undefined;
+export let getPassword: (connection: IBMi, prompt: string) => Promise<string | undefined>;
+export const setTemporaryPassword = (password: string) => temporaryPassword = password;
+export const clearPassword = () => temporaryPassword = undefined;
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
-
-  SSHSQLJob.application = `${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`;
-  commands.registerCommand(`code-for-ibmi.sshSqlJob.appendApplicationName`, (applicationName: string) => {
-    SSHSQLJob.application = `${applicationName} | ${SSHSQLJob.application}`;
-  });
 
   await loadAllofExtension(context);
 
@@ -65,6 +65,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   };
 
   SettingsUI.init(context);
+  JobLogUI.init(context);
   initializeConnectionBrowser(context);
   initializeObjectBrowser(context)
   initializeIFSBrowser(context);
@@ -126,14 +127,29 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.environment.refresh");
     });
 
-  const mapepire = new Mapepire(path.join(context.extensionPath, `dist`), async (connection) => {
-    return await getStoredPassword(context, connection.currentConnectionName) ||
-      await window.showInputBox({
-        password: true,
-        prompt: l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName)
-      });
+  getPassword = async (connection, prompt) => {
+    let password = temporaryPassword ?? await getStoredPassword(context, connection.currentConnectionName);
+
+    if (password) {
+      return password;
+    }
+
+    return temporaryPassword = await window.showInputBox({
+      password: true,
+      prompt
+    });
+  }
+
+  const mapepire = new Mapepire(`${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`, async (connection) => {
+    return await getPassword(connection, l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName));
   });
   extensionComponentRegistry.registerComponent(context, mapepire);
+  
+  context.subscriptions.push(
+    commands.registerCommand(`code-for-ibmi.sshSqlJob.appendApplicationName`, (applicationName: string) => {
+      mapepire.application = applicationName;
+    })
+  );
 
   registerURIHandler(context,
     sandboxURIHandler,
@@ -150,11 +166,14 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     customEditor: (target, onSave, onClosed) => new CustomEditor(target, onSave, onClosed),
     evfeventParser: parseErrors,
     tools: VscodeTools,
+    frontendTables: FrontendTables,
+    viewSettings: ViewSettings,
     deployTools: DeployTools,
     actionTools: ActionTools,
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager,
     searchTools: SearchTools,
+    onCodeForIBMiConfigurationChange,
     registerCommandPrompter
   };
 }
