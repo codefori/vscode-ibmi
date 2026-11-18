@@ -45,8 +45,9 @@ export class Mapepire implements IBMiComponent {
         sshSingle: {
           ...createNodeSSHConnection(connection.client!),
           javaPath: getJavaPath(connection, options?.javaPath),
-          privateInstallDir: this.installDirectory
-        }
+          privateInstallDir: this.installDirectory,
+        },
+        sshSingleTechnique: "tcp"
       }, jdbcOptions);
     sqlJob.options.secure = sqlJob.options.secure || config.secureSQL;
     sqlJob.options.naming = sqlJob.options.naming || config.sqlJobNaming as ("sql" | "system" | undefined);
@@ -65,7 +66,7 @@ export class Mapepire implements IBMiComponent {
           user: connection.currentUser,
           password,
           rejectUnauthorized: (config.mapepireAllowSelfCert !== true),
-          port: config.mapepireServerPort
+          port: config.mapepireServerPort,
         },
         application
       );

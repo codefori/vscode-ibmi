@@ -125,7 +125,7 @@ describe('Content Tests', { concurrent: true }, () => {
       })
     }
   });
-  
+
   it('memberResolve with bad name', async () => {
     const content = connection.getContent();
 
@@ -208,7 +208,7 @@ describe('Content Tests', { concurrent: true }, () => {
 
       expect(lib).toBe(tempLib);
     }
-    finally{
+    finally {
       // Cleanup...
       await connection.runCommand({
         command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
@@ -690,11 +690,8 @@ describe('Content Tests', { concurrent: true }, () => {
     const sourceFile = `O_ABC`.concat(connection!.variantChars.local);
     const member = `O_ABC`.concat(connection!.variantChars.local);
 
-    const result = await connection!.runCommand({
-      command: `QSYS/CRTSRCPF ${library}/${sourceFile} MBR(${member})`,
-      environment: 'ile'
-    });
-    if (result.code === 0) {
+    const result = await connection.runCL(`QSYS/CRTSRCPF ${library}/${sourceFile} MBR(${member})`, true);
+    if (result.success) {
       const [memberInfoC] = await content.getMemberList({ library, sourceFile, members: member });
       expect(memberInfoC).toBeTruthy();
       expect(memberInfoC.library).toBe(library);
@@ -868,21 +865,21 @@ describe('Content Tests', { concurrent: true }, () => {
     await connection.withTempDirectory(async directory => {
       const source = `${directory}/vscodetemp-${id}.clle`;
       try {
-        await content.runStatements(
+        await content.runStatements(/* sql */
           `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
                            LINE => 'PGM', 
                            OVERWRITE => 'NONE', 
                            END_OF_LINE => 'CRLF')`,
+          /* sql */
           `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
                            LINE => 'ENDPGM', 
                            OVERWRITE => 'APPEND', 
                            END_OF_LINE => 'CRLF')`,
         );
 
-        await connection.runCommand({ environment: `ile`, command: `QSYS/CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')` })
+        await connection.runCL(`QSYS/CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`, true);
 
-        let exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
-
+        const exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
         expect(exports.length).toBe(1);
         expect(exports.at(0)?.symbolName).toBe(id);
       } finally {

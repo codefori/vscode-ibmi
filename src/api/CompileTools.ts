@@ -1,6 +1,5 @@
 
 import IBMi from './IBMi';
-import { SimpleQueue } from './queue';
 import { Tools } from './Tools';
 import { CommandResult, ILELibrarySettings, RemoteCommand, StandardIO } from './types';
 import { Variables } from './variables';
@@ -10,19 +9,11 @@ export namespace CompileTools {
   export const DID_NOT_RUN = -123;
   const HIDE_MESSAGE_IDS = [`CPF3485`, `SQL0462`];
 
-  const ileQueue = new SimpleQueue();
-
-  let jobLogOrdinal = 0;
 
   interface RunCommandEvents {
     writeEvent?: (content: string) => void
     commandConfirm?: (command: string) => Promise<string>
     updateProgress?: (message: string) => void
-  }
-
-  export function reset() {
-    ileQueue.clear();
-    jobLogOrdinal = 0;
   }
 
   /**
@@ -54,6 +45,7 @@ export namespace CompileTools {
 
       if (commandString) {
         const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
+        const callbacks: StandardIO = {};
 
         if (events.writeEvent) {
           if (options.environment === `ile` && !options.noLibList) {
@@ -64,16 +56,9 @@ export namespace CompileTools {
             events.writeEvent(`Working directory: ` + options.cwd + NEWLINE);
           }
           events.writeEvent(`Commands:\n${commands.map(command => `\t${command}\n`).join(``)}` + NEWLINE);
-        }
 
-        const callbacks: StandardIO = events.writeEvent ? {
-          onStdout: (data) => {
-            events.writeEvent!(data.toString().replaceAll(`\n`, NEWLINE));
-          },
-          onStderr: (data) => {
-            events.writeEvent!(data.toString().replaceAll(`\n`, NEWLINE));
-          }
-        } : {};
+          callbacks.onStdout = callbacks.onStderr = (data) => { events.writeEvent!(data.toString().replaceAll(`\n`, NEWLINE) + NEWLINE) };
+        }
 
         let commandResult: CommandResult;
         switch (options.environment) {
@@ -107,69 +92,83 @@ export namespace CompileTools {
               command: commands.join(`, `),
             };
 
-            await ileQueue.next(async () => {
-              const startTime = performance.now();
+            const startTime = performance.now();
+            //Set library list and current directory
+            const prepareContext: string[] = [];
 
-              const start = options.getSpooledFiles ? (await connection.runSQL('Values Current TimeStamp'))[0]["00001"] : undefined;
-              try {
-                await connection.runSQL([
-                  ...(cwd ? [`@QSYS/CHGCURDIR DIR('${cwd}')`] : []),
-                  ...(options.noLibList ? [] : [`@QSYS/CHGLIBL CURLIB(${ileSetup.currentLibrary || "*CRTDFT"}) LIBL(${ileSetup.libraryList.join(` `)})`]),
-                  ...commands.map(c => `@${c}`)
-                ]);
-              } catch (e: any) {
-                commandResult.stdout = e.message;
-                commandResult.code = 1;
-              }
+            let spooledUserData: string | undefined;
+            if (options.getSpooledFiles) {
+              spooledUserData = Tools.makeid().toUpperCase();
+              prepareContext.push(`QSYS/OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${spooledUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)`);
+              commands.push('QSYS/DLTOVR FILE(*PRTF) LVL(*JOB)');
+            }
 
-              // Then fetch the job log
-              try {
-                // We only care about messages since the last run :)
-                const lastJobLog = await connection.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) where ordinal_position > ${jobLogOrdinal}`);
-                if (lastJobLog?.length) {
-                  commandResult.stderr = lastJobLog
-                    .filter(r => !HIDE_MESSAGE_IDS.includes(r.MESSAGE_ID as string))
-                    .map(r => `${r.MESSAGE_ID}: ${r.MESSAGE_TEXT}`).join(`\n`);
-                  callbacks.onStderr?.(Buffer.from(commandResult.stderr));
-                  jobLogOrdinal = Number(lastJobLog[lastJobLog.length - 1].ORDINAL_POSITION);
-                } else {
-                  jobLogOrdinal = 0; // Reset if no job log
-                }
-              } catch (e) {
-                commandResult.code = 3;
-              }
+            if (!options.noLibList) {
+              prepareContext.push(`QSYS/CHGLIBL CURLIB(${ileSetup.currentLibrary || "*CRTDFT"}) LIBL(${ileSetup.libraryList.join(` `)})`);
+            }
 
-              // Fetch the spooled files if requested
-              if (start) {
+            if (cwd) {
+              prepareContext.push(`QSYS/CHGCURDIR DIR('${cwd}')`);
+            }
+
+            await new Promise<void>((done) => {
+              connection.asyncLock.acquire('ileCommand', async () => {
                 try {
-                  const spooledOutputs: string[] = [];
-                  const spooledFiles = await connection.runSQL(`SELECT QUALIFIED_JOB_NAME, SPOOLED_FILE_NAME,	SPOOLED_FILE_NUMBER FROM TABLE(QSYS2.SPOOLED_FILE_INFO(STARTING_TIMESTAMP => '${start}', USER_DATA => '${connection.splfUserData}', STATUS => '*HELD'))`);
-                  for (const spooledFile of spooledFiles) {
-                    spooledOutputs.push((await connection.runSQL(`SELECT spooled_data as LINE FROM TABLE(systools.spooled_file_data(
-                        job_name => '${spooledFile.QUALIFIED_JOB_NAME}',
-                        spooled_file_name => '${spooledFile.SPOOLED_FILE_NAME}', 
-                        spooled_file_number => ${spooledFile.SPOOLED_FILE_NUMBER})
-                      )`)).map(row => String(row.LINE).trimEnd()).join("\n"));
+                  const result = await connection.runCL([...prepareContext, ...commands]);
+                  //Put messages in standard error (as "system" did)
+                  commandResult.stderr = result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
+                  callbacks.onStdout?.(Buffer.from(commandResult.stderr));                  
+
+                  if (!result.success) {
+                    commandResult.code = 1;
+                    callbacks.onStderr?.(Buffer.from(result.error!)); //Print pretty error from cl/rccl Mapepire execution
                   }
-                  commandResult.stdout = spooledOutputs.join("\n\n");
-                  callbacks.onStdout?.(Buffer.from(commandResult.stdout));
-                } catch (e) {
-                  commandResult.code = 2;
-                  callbacks.onStderr?.(Buffer.from(`Failed to get spool output: ${JSON.stringify(e, undefined, 2)}`));
                 }
-              }
-              if (!start || !connection.getConfig().keepActionSpooledFiles) {
-                await connection.runSQL(`@QSYS/DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${connection.splfUserData})`);
-              }
-              commandResult.duration = Math.round(performance.now() - startTime);
+                catch (error: unknown) {
+                  //unexpected error (Mapepire exception, ...)
+                  commandResult.code = -1;
+                  commandResult.stderr = error instanceof Error ? error.message : String(error);
+                  callbacks.onStderr?.(Buffer.from(commandResult.stderr));
+                }
+                finally {                  
+                  done();
+                }
+              });
             });
 
+            // Fetch the spooled files if requested
+            if (spooledUserData) {
+              try {
+                commandResult.stdout = (await connection.runSQL(/* sql */ `
+                  select rtrim(SPOOLED_DATA) LINE
+                  from table(QSYS2.SPOOLED_FILE_INFO(
+                    USER_DATA => '${spooledUserData}',
+                    STATUS => '*HELD'
+                  ))
+                  cross join table(SYSTOOLS.SPOOLED_FILE_DATA(
+                    JOB_NAME => QUALIFIED_JOB_NAME,
+                    SPOOLED_FILE_NAME => SPOOLED_FILE_NAME,
+                    SPOOLED_FILE_NUMBER => SPOOLED_FILE_NUMBER
+                  ))                  
+                  order by CREATION_TIMESTAMP, SPOOLED_FILE_NUMBER, ORDINAL_POSITION
+                `)).map(row => row.LINE as string).join("\n");
+                callbacks.onStdout?.(Buffer.from(`\nSpooled files:\n${commandResult.stdout}`));
+              } catch (e) {
+                commandResult.code = 2;
+                callbacks.onStderr?.(Buffer.from(`Failed to get spool output: ${JSON.stringify(e, undefined, 2)}`));
+              }
+
+              if (!connection.getConfig().keepActionSpooledFiles) {
+                await connection.runCL(`QSYS/DLTSPLF FILE(*SELECT) SELECT(*CURRENT *ALL *ALL ${spooledUserData})`);
+              }
+            }
+
+            commandResult.duration = Math.round(performance.now() - startTime);
             break;
         }
 
         commandResult.command = commandString;
         return commandResult;
-
       } else {
         return {
           code: DID_NOT_RUN,
@@ -186,7 +185,7 @@ export namespace CompileTools {
   }
 
   function buildLibraryList(config: ILELibrarySettings): string[] {
-    //We have to reverse it because `liblist -a` adds the next item to the top always 
+    //We have to reverse it because `liblist -a` adds the next item to the top always
     return config.libraryList.slice(0).reverse();
   }
 
