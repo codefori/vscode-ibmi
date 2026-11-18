@@ -172,7 +172,7 @@ export class CustomHTML extends Section {
   }
 
   protected getHTML(panel: vscode.WebviewPanel, title: string) {
-    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`, 'browser', 'heading'] as FieldType[];
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`, 'browser', 'heading', 'table'] as FieldType[];
     const trees = this.fields.filter(field => [`tree`, 'browser'].includes(field.type));
 
     const complexTabFields = this.fields.filter(field => field.type === `complexTabs`).map(tabs => tabs.complexTabItems?.map(tab => tab.fields));
