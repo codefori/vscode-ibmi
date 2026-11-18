@@ -39,6 +39,13 @@ function trimPath(path: string) {
 }
 
 /**
+ * Normalizes an IFS directory path entered by the user (removes duplicate and trailing slashes)
+ */
+function normalizeDirectoryPath(directory: string) {
+  return trimPath(path.posix.normalize(directory.trim()));
+}
+
+/**
  * Checks whether copying or moving `sources` to `target` would overwrite existing items and asks confirmation
  */
 async function confirmOverwrite(connection: IBMi, sources: string[], target: string) {
@@ -339,12 +346,9 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         for (const uri of uris) {
           const member = connection.parserMemberPath(uri.path);
           const command: string = `QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath(member.library, member.file, member.name, member.asp)}') TOSTMF('${toDirectory.path}/${member.basename.toLocaleLowerCase()}') STMFCCSID(1208) ENDLINFMT(*LF)`;
-          const result = await connection.runCommand({
-            command: command,
-            noLibList: true
-          });
-          if (result.code !== 0) {
-            throw (l10n.t(`Error copying member(s) to {0}: {1}`, toDirectory.path, result!.stderr));
+          const result = await connection.runCL(command);
+          if (!result.success) {
+            throw (l10n.t(`Error copying member(s) to {0}: {1}`, toDirectory.path, result.error ?? l10n.t("unkown error")));
           }
         };
 
@@ -392,10 +396,11 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const config = connection.getConfig();
         const homeDirectory = config.homeDirectory;
 
-        const newDirectory = node?.path || await vscode.window.showInputBox({
+        const input = node?.path || await vscode.window.showInputBox({
           prompt: l10n.t(`Changing working directory`),
           value: homeDirectory
         });
+        const newDirectory = input?.trim() ? normalizeDirectoryPath(input) : undefined;
 
         try {
           if (newDirectory && newDirectory !== homeDirectory) {
@@ -414,13 +419,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (connection) {
         const config = connection.getConfig();
         const content = connection.getContent();
-        const newDirectory = (await vscode.window.showInputBox({
+        const input = (await vscode.window.showInputBox({
           prompt: l10n.t(`Path to IFS directory`),
           value: node ? node.path : undefined
         }))?.trim();
 
         try {
-          if (newDirectory) {
+          if (input) {
+            const newDirectory = normalizeDirectoryPath(input);
             const shortcuts = config.ifsShortcuts;
             if (await content.isDirectory(newDirectory) !== true) {
               throw (l10n.t(`{0} is not a directory.`, newDirectory));
@@ -721,11 +727,66 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           items = getSelectedItems(singleItem).filter(reduceIFSPath);
         }
 
+        // Shortcuts point to real directories: make the user choose between removing the shortcut and deleting the directory
+        const selectedShortcuts = items.filter((item): item is IFSShortcutItem => item instanceof IFSShortcutItem);
+        if (selectedShortcuts.length) {
+          const removeShortcut = l10n.t(`Remove shortcut`);
+          const deleteDirectory = l10n.t(`Delete directory`);
+          let choice;
+          if (selectedShortcuts.some(shortcut => isProtected(shortcut.path))) {
+            // Protected directories can't be deleted: removing the shortcuts is the only option, so there is nothing to ask
+            choice = removeShortcut;
+          }
+          else {
+            const message = selectedShortcuts.length === 1 ?
+              l10n.t(`{0} is an IFS shortcut. Do you want to remove the shortcut or delete the directory and all its contents?`, selectedShortcuts[0].path) :
+              l10n.t(`{0} of the selected items are IFS shortcuts. Do you want to remove the shortcuts or delete the directories and all their contents?`, selectedShortcuts.length);
+            const detail = selectedShortcuts.length === 1 ? undefined : selectedShortcuts.map(i => `- ${i.path}`).join("\n");
+            choice = await vscode.window.showWarningMessage(message, { modal: true, detail }, removeShortcut, deleteDirectory);
+          }
+
+          if (choice === removeShortcut) {
+            await vscode.commands.executeCommand(`code-for-ibmi.removeIFSShortcut`, selectedShortcuts[0], selectedShortcuts);
+            items = items.filter(item => !(item instanceof IFSShortcutItem));
+          }
+          else if (choice !== deleteDirectory) {
+            vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
+            return;
+          }
+        }
+
         if (items && items.length) {
           if (!items.find(n => isProtected(n.path))) {
             let deletionConfirmed = false;
-            const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t("Are you sure you want to delete the {0} selected files?", items.length);
-            const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
+
+            // Count the entries of each directory, so the user knows when content will be deleted too
+            const contentCounts = new Map<string, number>();
+            const directories = items.filter(item => item.file.type === `directory`);
+            if (directories.length) {
+              const counts = await connection.getContent().countFiles(directories.map(directory => directory.path));
+              directories.forEach((directory, index) => {
+                if (counts[index] > 0) {
+                  contentCounts.set(directory.path, counts[index]);
+                }
+              });
+            }
+
+            let message;
+            let detail;
+            if (items.length === 1) {
+              const item = items[0];
+              message = item.file.type === `directory` ? l10n.t(`Are you sure you want to delete the directory {0}?`, item.path) : l10n.t(`Are you sure you want to delete {0}?`, item.path);
+              const count = contentCounts.get(item.path);
+              detail = count ? l10n.t(`It contains {0} item(s), which will be permanently deleted with it.`, count) : undefined;
+            }
+            else {
+              message = l10n.t(`Are you sure you want to delete these {0} elements?`, items.length);
+              detail = items.map(item => {
+                const count = contentCounts.get(item.path);
+                return `- ${item.path}${count ? ` ${l10n.t(`(contains {0} item(s))`, count)}` : ``}`;
+              }).join("\n");
+            }
+
             if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
               const toBeDeleted: string[] = [];
               for (const item of items) {
@@ -754,6 +815,11 @@ Please type "{0}" to confirm deletion.`, dirName);
                 }
               }
 
+              if (!toBeDeleted.length) {
+                vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
+                return;
+              }
+
               try {
                 const removeResult = await vscode.window.withProgress({ title: l10n.t(`Deleting {0} element(s)...`, toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
                   return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
@@ -769,6 +835,7 @@ Please type "{0}" to confirm deletion.`, dirName);
                   const detail = deletedShortcuts.length === 1 ? undefined : deletedShortcuts.map(i => `- ${i}`).join("\n");
                   if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
                     config.ifsShortcuts = shortcuts.filter(path => !deletedShortcuts.includes(path));
+                    await IBMi.connectionManager.update(config);
                   }
                 }
 

@@ -3,6 +3,7 @@ import { ConfigurationChangeEvent, Disposable, Uri, WorkspaceFolder } from "vsco
 import Instance from "./Instance";
 import { SearchTools } from "./api/SearchTools";
 import { ActionTools } from "./api/actions";
+import { CommandPrompter } from "./api/commandPrompter";
 import { ComponentRegistry } from './api/components/manager';
 import { ConnectionManager } from "./api/configuration/config/ConnectionManager";
 import { DeploymentMethod, FileError } from "./api/types";
@@ -26,7 +27,8 @@ export interface CodeForIBMi {
   componentRegistry: ComponentRegistry,
   connectionManager: ConnectionManager,
   searchTools: typeof SearchTools,
-  onCodeForIBMiConfigurationChange: (props: string | string[], todo: (event: ConfigurationChangeEvent) => void) => Disposable
+  onCodeForIBMiConfigurationChange: (props: string | string[], todo: (event: ConfigurationChangeEvent) => void) => Disposable,
+  registerCommandPrompter: (prompter: CommandPrompter) => Disposable
 }
 
 export interface DeploymentParameters {

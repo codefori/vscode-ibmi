@@ -227,8 +227,6 @@ describe(`connection tests`, { concurrent: true }, () => {
   });
 
   it('runCommand (ILE, variable expansion)', async () => {
-    const config = connection.getConfig();
-
     const result = await CompileTools.runCommand(connection,
       {
         command: `QSYS/CRTDTAARA DTAARA(&SCOOBY/TEST) TYPE(*CHAR) LEN(10)`,
@@ -244,6 +242,19 @@ describe(`connection tests`, { concurrent: true }, () => {
     );
 
     expect(result?.code).toBe(0);
+  });
+
+  it('runCommand (ILE, failure on wrong library list)', async () => {
+    const config = connection.getConfig();
+    config.libraryList = ["NOWAY", "NOTEXISTS", "QTEMP"];
+    const result = await CompileTools.runCommand(connection,
+      {
+        command: `QSYS/DSPLIBL`,
+        environment: `ile`
+      }
+    );
+
+    expect(result?.code).toBe(1);
   });
 
   it('withTempDirectory and countFiles', async () => {
@@ -267,6 +278,11 @@ describe(`connection tests`, { concurrent: true }, () => {
 
       // Directory does not exist
       expect(await content.countFiles(`${tempDir}/${Tools.makeid(20)}`)).toBe(0);
+
+      // Several directories at once, in the same order, hidden entries included
+      const subDir = `${tempDir}/sub dir`;
+      expect((await connection.sendCommand({ command: `mkdir "${subDir}" && touch "${subDir}/a" "${subDir}/b" "${subDir}/.hidden"` })).code).toBe(0);
+      expect(await content.countFiles([tempDir, `${tempDir}/${Tools.makeid(20)}`, subDir])).toEqual([toCreate + 1, 0, 3]);
     });
 
     if (temp) {
@@ -339,28 +355,28 @@ describe('SSH Agent connection tests', { concurrent: false }, () => {
     }
 
     let sshAgentConnection: IBMi | undefined;
-    
+
     try {
       // Create a new connection with SSH agent
       sshAgentConnection = await newConnection();
-      
+
       // Verify connection is established
       expect(sshAgentConnection).toBeDefined();
       expect(sshAgentConnection.client).toBeDefined();
-      
+
       // Test basic command execution to verify the connection works
       const result = await sshAgentConnection.sendCommand({
         command: `echo "SSH Agent connection test"`,
       });
-      
+
       expect(result.code).toBe(0);
       expect(result.stdout).toBe('SSH Agent connection test');
-      
+
       // Verify connection properties are set correctly
       expect(sshAgentConnection.currentHost).toBe(process.env.VITE_SERVER);
       expect(sshAgentConnection.currentUser).toBe(process.env.VITE_DB_USER);
       expect(sshAgentConnection.currentPort).toBe(parseInt(process.env.VITE_DB_PORT || '22'));
-      
+
     } finally {
       if (sshAgentConnection) {
         await disposeConnection(sshAgentConnection);
@@ -379,7 +395,7 @@ describe('SSH Agent connection tests', { concurrent: false }, () => {
     // On Windows, the test will attempt to connect to the named pipe
     // and fail if SSH agent is not running
     const isWindows = process.platform === 'win32';
-    
+
     // Skip on Unix if SSH_AUTH_SOCK is set (agent is available)
     if (!isWindows && process.env.SSH_AUTH_SOCK) {
       console.log('Skipping SSH agent unavailable test - SSH_AUTH_SOCK is set on Unix system');
@@ -402,9 +418,9 @@ describe('SSH Agent connection tests', { concurrent: false }, () => {
     try {
       const result = await conn.connect(creds, {
         callbacks: {
-          message: (type: string, message: string) => {},
+          message: (type: string, message: string) => { },
           inputBox: async () => undefined,
-          progress: () => {},
+          progress: () => { },
           uiErrorHandler: async () => false,
         },
         reloadServerSettings: false,
@@ -414,16 +430,16 @@ describe('SSH Agent connection tests', { concurrent: false }, () => {
       // Connection should fail when SSH agent is not available
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
-      
+
       if (!isWindows) {
         // On Unix, error should mention SSH_AUTH_SOCK not being set
         expect(result.error).toContain('SSH_AUTH_SOCK');
       }
-      
+
     } catch (error: any) {
       // It's also acceptable for the connection to throw an error
       expect(error).toBeDefined();
-      
+
       if (!isWindows) {
         // On Unix, the error should mention SSH_AUTH_SOCK
         expect(error.message).toContain('SSH_AUTH_SOCK');

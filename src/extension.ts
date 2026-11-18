@@ -5,10 +5,12 @@ import { commands, ExtensionContext, l10n, languages, window, workspace } from "
 // your extension is activated the very first time the command is executed
 
 import IBMi from "./api/IBMi";
+import { registerCommandPrompter } from "./api/commandPrompter";
 import { SearchTools } from "./api/SearchTools";
 import { ActionTools } from "./api/actions";
 import { extensionComponentRegistry } from "./api/components/manager";
 import { Mapepire } from "./api/components/mapepire";
+import { ObjAttr } from "./api/components/objAttr";
 import { parseErrors } from "./api/errors/parser";
 import { CustomCLI } from "./api/tests/components/customCli";
 import { onCodeForIBMiConfigurationChange, ViewSettings } from "./config/Configuration";
@@ -142,8 +144,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   const mapepire = new Mapepire(`${context.extension.packageJSON.name} ${context.extension.packageJSON.version}`, async (connection) => {
     return await getPassword(connection, l10n.t(`Password for user profile {0} on {1} is required to connect to Mapepire Server.`, connection.currentUser, connection.currentConnectionName));
   });
+  extensionComponentRegistry.registerComponent(context, new ObjAttr());
   extensionComponentRegistry.registerComponent(context, mapepire);
-  
+
   context.subscriptions.push(
     commands.registerCommand(`code-for-ibmi.sshSqlJob.appendApplicationName`, (applicationName: string) => {
       mapepire.application = applicationName;
@@ -172,7 +175,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager,
     searchTools: SearchTools,
-    onCodeForIBMiConfigurationChange
+    onCodeForIBMiConfigurationChange,
+    registerCommandPrompter
   };
 }
 

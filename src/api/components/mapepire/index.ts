@@ -39,18 +39,20 @@ export class Mapepire implements IBMiComponent {
   public async newJob(connection: IBMi, options?: { javaPath?: string, jdbc?: JDBCOptions, application?: string }) {
     const config = connection.getConfig();
     const useServer = config.mapepireUseServer;
+    const jdbcOptions: JDBCOptions = { ...options?.jdbc };
     const sqlJob = useServer ?
       //websocket client
-      new SQLJob() :
+      new SQLJob(jdbcOptions) :
       //single mode
       SQLJob.withConfig({
         transport: "ssh-single",
         sshSingle: {
           ...createNodeSSHConnection(connection.client!),
           javaPath: getJavaPath(connection, options?.javaPath),
-          privateInstallDir: this.installDirectory
-        }
-      });
+          privateInstallDir: this.installDirectory,
+        },
+        sshSingleTechnique: "tcp"
+      }, jdbcOptions);
     sqlJob.options.secure = sqlJob.options.secure || config.secureSQL;
     sqlJob.options.naming = sqlJob.options.naming || config.sqlJobNaming as ("sql" | "system" | undefined);
     sqlJob.options["extended metadata"] = sqlJob.options["extended metadata"] ?? config.mapepireExtendedMetadata;
@@ -68,7 +70,7 @@ export class Mapepire implements IBMiComponent {
           user: connection.currentUser,
           password,
           rejectUnauthorized: (config.mapepireAllowSelfCert !== true),
-          port: config.mapepireServerPort
+          port: config.mapepireServerPort,
         },
         application
       );
