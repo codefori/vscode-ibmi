@@ -44,7 +44,7 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
       { label: l10n.t(`Filter`) },
     ];
     const objectFilterRows: TableRow[] = objectFilters.map(filter => ({
-      cells: [filter.name, VscodeTools.filterToDescription(filter)]
+      cells: [VscodeTools.escapeHtml(filter.name), VscodeTools.escapeHtml(VscodeTools.filterToDescription(filter))]
     }));
     editor.addTable(`objectFilters`, ``, objectFilterColumns, objectFilterRows);
   } else {
@@ -57,7 +57,7 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
 
   if (ifsShortcuts.length) {
     const ifsColumns: TableColumn[] = [{ label: l10n.t(`Shortcut`) }];
-    const ifsRows: TableRow[] = ifsShortcuts.map(shortcut => ({ cells: [shortcut] }));
+    const ifsRows: TableRow[] = ifsShortcuts.map(shortcut => ({ cells: [VscodeTools.escapeHtml(shortcut)] }));
     editor.addTable(`ifsShortcuts`, ``, ifsColumns, ifsRows);
   } else {
     editor.addParagraph(l10n.t("None"));
@@ -73,7 +73,7 @@ export function editConnectionProfile(profile: ConnectionProfile, doAfterSave?: 
       { label: l10n.t(`Value`) },
     ];
     const customVarRows: TableRow[] = customVariables.map(variable => ({
-      cells: [`&${variable.name}`, variable.value]
+      cells: [VscodeTools.escapeHtml(`&${variable.name}`), VscodeTools.escapeHtml(variable.value)]
     }));
     editor.addTable(`customVariables`, ``, customVarColumns, customVarRows);
   } else {
