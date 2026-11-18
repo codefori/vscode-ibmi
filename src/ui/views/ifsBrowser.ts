@@ -39,6 +39,13 @@ function trimPath(path: string) {
 }
 
 /**
+ * Normalizes an IFS directory path entered by the user (removes duplicate and trailing slashes)
+ */
+function normalizeDirectoryPath(directory: string) {
+  return trimPath(path.posix.normalize(directory.trim()));
+}
+
+/**
  * Checks whether copying or moving `sources` to `target` would overwrite existing items and asks confirmation
  */
 async function confirmOverwrite(connection: IBMi, sources: string[], target: string) {
@@ -392,10 +399,11 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const config = connection.getConfig();
         const homeDirectory = config.homeDirectory;
 
-        const newDirectory = node?.path || await vscode.window.showInputBox({
+        const input = node?.path || await vscode.window.showInputBox({
           prompt: l10n.t(`Changing working directory`),
           value: homeDirectory
         });
+        const newDirectory = input?.trim() ? normalizeDirectoryPath(input) : undefined;
 
         try {
           if (newDirectory && newDirectory !== homeDirectory) {
@@ -414,13 +422,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (connection) {
         const config = connection.getConfig();
         const content = connection.getContent();
-        const newDirectory = (await vscode.window.showInputBox({
+        const input = (await vscode.window.showInputBox({
           prompt: l10n.t(`Path to IFS directory`),
           value: node ? node.path : undefined
         }))?.trim();
 
         try {
-          if (newDirectory) {
+          if (input) {
+            const newDirectory = normalizeDirectoryPath(input);
             const shortcuts = config.ifsShortcuts;
             if (await content.isDirectory(newDirectory) !== true) {
               throw (l10n.t(`{0} is not a directory.`, newDirectory));
