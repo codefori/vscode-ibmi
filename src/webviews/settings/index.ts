@@ -355,8 +355,9 @@ export class SettingsUI {
               .addHeading(extensionName, 3)
               .addTable(`components-${extensionId}`, ``, tableColumns, tableRows);
           });
+          const hasActionable = states.some(c => c.id.userManaged && c.state.status !== `Installed`);
           componentsTab.addButtons(
-            { id: `installComponent`, label: `Install or update components` },
+            hasActionable ? { id: `installComponent`, label: `Install or update components` } : undefined,
             { id: `rescanComponents`, label: `Re-scan components` }
           );
         } else {
