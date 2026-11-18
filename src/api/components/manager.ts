@@ -196,8 +196,8 @@ export class ComponentManager {
    */
   async get<T extends IBMiComponent>(id: string, options: ComponentSearchProps = {}): Promise<T | undefined> {
     const componentEngine = this.registered.find(c => c.component.getIdentification().name === id);
-    if (componentEngine && (options.ignoreState || componentEngine.getState().status === `Installed`)) {
-      if (componentEngine.getState().status === `Installed` && this.mustCheck(id)) {
+    if (componentEngine && (options.ignoreState || [`Installed`, `UpdateAvailable`].includes(componentEngine.getState().status))) {
+      if ([`Installed`, `UpdateAvailable`].includes(componentEngine.getState().status) && this.mustCheck(id)) {
         const currentState = await componentEngine.getCurrentState();
         if (currentState.remoteSignature !== componentEngine.getState().remoteSignature) {
           const identification = componentEngine.component.getIdentification();
