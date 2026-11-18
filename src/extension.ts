@@ -5,6 +5,7 @@ import { commands, ExtensionContext, l10n, languages, window, workspace } from "
 // your extension is activated the very first time the command is executed
 
 import IBMi from "./api/IBMi";
+import { registerCommandPrompter } from "./api/commandPrompter";
 import { SearchTools } from "./api/SearchTools";
 import { ActionTools } from "./api/actions";
 import { extensionComponentRegistry } from "./api/components/manager";
@@ -174,7 +175,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     componentRegistry: extensionComponentRegistry,
     connectionManager: IBMi.connectionManager,
     searchTools: SearchTools,
-    onCodeForIBMiConfigurationChange
+    onCodeForIBMiConfigurationChange,
+    registerCommandPrompter
   };
 }
 

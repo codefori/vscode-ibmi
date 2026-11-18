@@ -3,6 +3,7 @@ import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem } from 'vscode';
 import { ActionTools } from '../../../api/actions';
 import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
+import { promptCommand } from '../../../api/commandPrompter';
 import IBMi from '../../../api/IBMi';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
@@ -457,9 +458,17 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
         const profile = profileItem && ("profile" in profileItem ? profileItem?.profile : profileItem) || getConnectionProfile(config.get);
 
         if (profile?.setLibraryListCommand) {
-          const command = profile.setLibraryListCommand.startsWith(`?`) ?
-            await vscode.window.showInputBox({ title: l10n.t(`Run Library List Command`), value: profile.setLibraryListCommand.substring(1) }) :
-            profile.setLibraryListCommand;
+          let command: string | undefined;
+
+          if (profile.setLibraryListCommand.startsWith(`?`)) {
+            const commandToPrompt = profile.setLibraryListCommand.substring(1);
+            command = await promptCommand(commandToPrompt, {
+              title: l10n.t(`Run Library List Command`)
+            });
+          } else {
+            // No prompting needed
+            command = profile.setLibraryListCommand;
+          }
 
           if (command) {
             return await vscode.window.withProgress({ title: l10n.t("Running {0} profile's Library List Command...", profile.name), location: vscode.ProgressLocation.Notification }, async () => {
@@ -470,7 +479,6 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
                 if (newSettings) {
                   config.libraryList = profile.libraryList = newSettings.libraryList;
                   config.currentLibrary = profile.currentLibrary = newSettings.currentLibrary;
-
                   await IBMi.connectionManager.update(config);
                   vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
 
