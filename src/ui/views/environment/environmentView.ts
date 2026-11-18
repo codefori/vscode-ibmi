@@ -478,7 +478,7 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
                 if (newSettings) {
                   config.libraryList = profile.libraryList = newSettings.libraryList;
-                  config.currentLibrary = profile.currentLibrary = newSettings.currentLibrary || config.currentLibrary;
+                  config.currentLibrary = profile.currentLibrary = newSettings.currentLibrary;
                   await IBMi.connectionManager.update(config);
                   vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
 
