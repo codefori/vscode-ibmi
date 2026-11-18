@@ -4,6 +4,7 @@ import { ComponentState, IBMiComponent, SecureComponentState } from "./component
 export class IBMiComponentRuntime {
   private state: SecureComponentState = { status: `NotChecked`, remoteSignature: "" };
   private cachedInstallDirectory: string | undefined;
+  private startUpTime?: number;
 
   constructor(protected readonly connection: IBMi, readonly component: IBMiComponent) { }
 
@@ -31,8 +32,10 @@ export class IBMiComponentRuntime {
   }
 
   async update() {
+    const startTime = Date.now();
     const newState = this.handleState(await this.component.update(this.connection, this.getInstallDirectory()));
     await this.setState(newState);
+    this.setStartUpTime(Date.now() - startTime);
   }
 
   async startupCheck() {
@@ -44,7 +47,7 @@ export class IBMiComponentRuntime {
 
       const newState = await this.getCurrentState();
       await this.setState(newState);
-      if (newState.status !== `Installed` && !identification.userManaged) {
+      if (newState.status !== `Installed` && newState.status !== `UpdateAvailable` && !identification.userManaged) {
         await this.update();
       }
     }
@@ -79,6 +82,14 @@ export class IBMiComponentRuntime {
     }
 
     return state;
+  }
+
+  getStartUpTime() {
+    return this.startUpTime;
+  }
+
+  setStartUpTime(startUpTime: number) {
+    this.startUpTime = startUpTime;
   }
 
   deprecationWarning(local?: boolean) {
