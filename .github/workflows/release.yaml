@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch:
   release:
     types: [created]
   
@@ -7,4 +8,5 @@ jobs:
     uses: codefori/.github/.github/workflows/release.yaml@main
     with:
        publish_types: true
+       is_prerelease: ${{ github.event_name != 'release' }}
     secrets: inherit
