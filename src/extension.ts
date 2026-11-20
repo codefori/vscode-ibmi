@@ -41,6 +41,7 @@ import { registerURIHandler } from "./uri";
 import { openURIHandler } from "./uri/handlers/open";
 import { initializeSandbox, sandboxURIHandler } from "./uri/handlers/sandbox";
 import { CustomUI } from "./webviews/CustomUI";
+import { ComponentsUI } from "./webviews/components";
 import { SettingsUI } from "./webviews/settings";
 import { JobLogUI } from "./webviews/wrkjob";
 
@@ -66,6 +67,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   };
 
   SettingsUI.init(context);
+  ComponentsUI.init(context);
   JobLogUI.init(context);
   initializeConnectionBrowser(context);
   initializeObjectBrowser(context)
