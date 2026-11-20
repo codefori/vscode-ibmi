@@ -312,6 +312,7 @@ export default class IBMi {
         this.client = new node_ssh.NodeSSH;
       }
 
+      let additionalAuthenticationFactor: string | undefined;
       if (connectionObject.enableMfa) {
         delete connectionObject.enableMfa;
 
@@ -319,9 +320,9 @@ export default class IBMi {
           callbacks.progress({
             message: `Prompting for additional factor.`
           });
-          const additionalFactor = await options.callbacks.inputBox(`Enter your additional factor or press "Enter" if within your TOTP interval`, `Additional Factor`, true);
-          if (additionalFactor) {
-            connectionObject.password = `${connectionObject.password}:${additionalFactor}`;
+          additionalAuthenticationFactor = await options.callbacks.inputBox(`Enter your additional factor or press "Enter" if within your TOTP interval`, `Additional Factor`, true);
+          if (additionalAuthenticationFactor) {
+            connectionObject.password = `${connectionObject.password}:${additionalAuthenticationFactor}`;
           }
         }
       }
@@ -666,7 +667,7 @@ export default class IBMi {
             throw new Error(`No Java installation found. SQL operations will not be available. Please install Java 8, 11, 17 or 21.`);
           }
 
-          this.sqlJob = await mapepire.newJob(this);
+          this.sqlJob = await mapepire.newJob(this, { jdbc: { additionalAuthenticationFactor } as any });
           if (this.sqlJob.id) {
             if (this.getConfig().mapepireUseServer) {
               //We have no control over the remote Mapepire version running in server mode
