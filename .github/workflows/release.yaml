@@ -6,9 +6,6 @@ on:
 jobs:
   publish-release:
     uses: codefori/.github/.github/workflows/release.yaml@main
-    permissions:
-      contents: write
-      id-token: write
     with:
        publish_types: true
        is_prerelease: ${{ github.event_name != 'release' }}
