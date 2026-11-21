@@ -8,6 +8,7 @@ import { registerConnectionCommands } from './commands/connection';
 import { registerOpenCommands } from './commands/open';
 import { registerPasswordCommands } from './commands/password';
 import { registerSnippetCommands } from './commands/snippets';
+import { registerSourceArchiveCommands } from './commands/sourceArchive';
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import { debugPTFInstalled, isDebugEngineRunning } from './debug/server';
 import { setupGitEventHandler } from './filesystems/local/git';
@@ -79,6 +80,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ...registerActionsCommands(instance),
 
     ...registerSnippetCommands(instance),
+
+    ...registerSourceArchiveCommands(instance),
 
     ...Terminal.registerTerminalCommands(context),
 
