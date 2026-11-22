@@ -564,17 +564,21 @@ export namespace FrontendTables {
     const visible = rowActions.actions.filter(action => !action.visible || action.visible(row));
     if (!visible.length) return '';
 
+    const args = rowActions.getArgs(row);
+
     // ftTable is added by the page when the menu opens (see the contextmenu listener)
     const context: Record<string, string | boolean> = {
       webviewSection: 'fastTableRow',
       preventDefaultContextMenuItems: true,
-      ftArgs: rowActions.getArgs(row)
+      ftArgs: args
     };
     visible.forEach(action => context[`ftAction_${action.action}`] = true);
 
-    // A double click is too easy to do by accident for an action that cannot be undone
+    // A double click is too easy to do by accident for an action that cannot be undone.
+    // The full href is stamped, so the page can click it as is.
     const primary = visible.find(action => action.primary && !action.destructive);
-    return ` tabindex="0" aria-haspopup="menu" data-vscode-context="${VscodeTools.escapeHtml(JSON.stringify(context))}"${primary ? ` data-primary="${VscodeTools.escapeHtml(primary.action)}"` : ''}`;
+    const primaryHref = primary ? `action:${primary.action}${args ? `?${args}` : ''}` : undefined;
+    return ` tabindex="0" aria-haspopup="menu" data-vscode-context="${VscodeTools.escapeHtml(JSON.stringify(context))}"${primaryHref ? ` data-primary="${VscodeTools.escapeHtml(primaryHref)}"` : ''}`;
   }
 
   /**
@@ -1518,23 +1522,27 @@ export namespace FrontendTables {
         }
       }
 
-      function runRowAction(action, args) {
-        if (!rowActionIds.includes(action)) return;
+      function clickActionHref(href) {
         const container = document.getElementById('fast-table${suffix}');
         if (!container) return;
         // Clicked in place: the handler is delegated on the document, so the element
         // has to be attached for the click to reach it.
         const link = document.createElement('span');
         link.hidden = true;
-        link.setAttribute('href', 'action:' + action + (args ? '?' + args : ''));
+        link.setAttribute('href', href);
         container.appendChild(link);
         link.click();
         link.remove();
       }
 
+      function runRowAction(action, args) {
+        if (!rowActionIds.includes(action)) return;
+        clickActionHref('action:' + action + (args ? '?' + args : ''));
+      }
+
+      // data-primary holds the complete href, built when the row was generated.
       function runPrimaryAction(row) {
-        const action = row.dataset.primary;
-        if (action) runRowAction(action, rowContext(row).ftArgs);
+        if (row.dataset.primary) clickActionHref(row.dataset.primary);
       }
 
       function clearContextRow() {
@@ -1557,7 +1565,6 @@ export namespace FrontendTables {
         tableBody.addEventListener('dblclick', (e) => {
           const row = actionRowOf(e.target);
           if (!row || e.target.closest(INTERACTIVE_SELECTOR)) return;
-          window.getSelection()?.removeAllRanges();
           runPrimaryAction(row);
         });
 
@@ -1591,21 +1598,23 @@ export namespace FrontendTables {
         window.addEventListener('focus', clearContextRow);
         document.addEventListener('mousedown', clearContextRow, true);
         document.addEventListener('keydown', clearContextRow, true);
-
-        window.addEventListener('message', (event) => {
-          const msg = event.data;
-          if (!msg || msg.command !== 'fastTableRowAction' || msg.tableToken !== tableToken) return;
-          clearContextRow();
-          runRowAction(msg.action, msg.args);
-        });
       }
 
-      // Incremental refresh: the extension answers search/pagination/auto-refresh
-      // with new rows instead of a new page, so the search box is never recreated
-      // and keeps both focus and whatever has been typed since the request went out.
       window.addEventListener('message', (event) => {
         const msg = event.data;
         if (!msg) return;
+
+        // A row action picked from VS Code's context menu (see generateFastTableRowAction).
+        if (msg.command === 'fastTableRowAction') {
+          if (msg.tableToken !== tableToken) return;
+          clearContextRow();
+          runRowAction(msg.action, msg.args);
+          return;
+        }
+
+        // Incremental refresh: the extension answers search/pagination/auto-refresh
+        // with new rows instead of a new page, so the search box is never recreated
+        // and keeps both focus and whatever has been typed since the request went out.
         if (msg.tableId !== '${id}') return;
 
         // The query failed: stop the indicator and keep the rows already on screen
