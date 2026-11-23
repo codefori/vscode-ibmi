@@ -117,7 +117,7 @@ async function updateConnectedBar() {
     const systemReadOnly = serverConfig?.codefori?.readOnlyMode || false;
     connectedBarItem.text = `$(${systemReadOnly ? "shield" : (config.readOnlyMode ? "lock" : "settings-gear")}) ${config.name}${config.currentProfile ? ` (${config.currentProfile})` : ''}`;
     const terminalMenuItem = systemReadOnly ? `` : `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`;
-    const actionsMenuItem = systemReadOnly ? `` : `[$(file-binary) Actions](command:code-for-ibmi.environment.actions.focus)`;
+    const componentsMenuItem = `[$(extensions) Components](command:code-for-ibmi.showComponents)`;
     const snippetsMenuItem = systemReadOnly ? `` : `[$(symbol-snippet) Snippets](command:code-for-ibmi.openSharedSnippets)`;
     const debugRunning = await isDebugEngineRunning();
     const connectedBarItemTooltips: String[] = systemReadOnly ? [`[System-wide read only](https://codefori.github.io/docs/settings/system/)`] : [];
@@ -139,7 +139,7 @@ async function updateConnectedBar() {
       jdbcInfo,
       `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
       terminalMenuItem,
-      actionsMenuItem,
+      componentsMenuItem,
       snippetsMenuItem,
       `[$(key) Change Password](command:code-for-ibmi.changePassword)`,
       debugPTFInstalled(connection) ?

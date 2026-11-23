@@ -1189,6 +1189,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.showComponents",
+				"title": "Show Components",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.showLoginSettings",
 				"title": "Login Settings",
 				"category": "IBM i"
@@ -2544,6 +2549,10 @@
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.showComponents",
 					"when": "code-for-ibmi:connected"
 				},
 				{
