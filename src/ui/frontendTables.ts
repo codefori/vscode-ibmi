@@ -193,6 +193,18 @@ export namespace FrontendTables {
     actions?: DetailTableAction[];
     /** Hide fields with null values (optional, default: false) */
     hideNullValues?: boolean;
+    /** Values to render as links, by column key (optional) */
+    valueLinks?: Record<string, string | DetailTableValueLink>;
+  }
+
+  /**
+   * Link configuration for a value of a detail table
+   */
+  export interface DetailTableValueLink {
+    /** Link target, e.g. `action:<action>?<args>` */
+    href: string;
+    /** Tooltip (optional) */
+    tooltip?: string;
   }
 
   /**
@@ -225,26 +237,32 @@ export namespace FrontendTables {
       customStyles = '',
       customScript = '',
       actions = [],
-      hideNullValues = false
+      hideNullValues = false,
+      valueLinks = {}
     } = options;
 
     // Format value with icons and styling
-    const formatValue = (value: any, isCodeColumn: boolean): string => {
+    const formatValue = (value: any, isCodeColumn: boolean, link?: string | DetailTableValueLink): string => {
       if (value === null || value === undefined || value.toString().trim() === '') {
         return EMPTY_VALUE_PLACEHOLDER;
       }
 
       const strValue = String(value).trim();
 
-      const commonFormat = formatYesNoOrNumber(strValue, isCodeColumn);
+      // Linked values are identifiers: shown verbatim
+      const commonFormat = link ? undefined : formatYesNoOrNumber(strValue, isCodeColumn);
       if (commonFormat) return commonFormat;
 
-      // Handle code columns
-      if (isCodeColumn) {
-        return `<code style="background: var(--vscode-textCodeBlock-background); padding: 4px 8px; border-radius: 4px; font-family: var(--vscode-editor-font-family); border: 1px solid var(--vscode-panel-border); display: block; width: 100%; white-space: pre-wrap; word-break: break-all; overflow-wrap: break-word; box-sizing: border-box;">${escapeHtml(value)}</code>`;
+      const text = isCodeColumn ?
+        `<code style="background: var(--vscode-textCodeBlock-background); padding: 4px 8px; border-radius: 4px; font-family: var(--vscode-editor-font-family); border: 1px solid var(--vscode-panel-border); display: block; width: 100%; white-space: pre-wrap; word-break: break-all; overflow-wrap: break-word; box-sizing: border-box;">${escapeHtml(value)}</code>` :
+        escapeHtml(value);
+
+      if (link) {
+        const { href, tooltip } = typeof link === 'string' ? { href: link, tooltip: undefined } : link;
+        return `<a class="detail-table-link" href="${VscodeTools.escapeHtml(href)}"${tooltip ? ` title="${VscodeTools.escapeHtml(tooltip)}"` : ''}>${text}</a>`;
       }
 
-      return escapeHtml(value);
+      return text;
     };
 
     // Generate table rows
@@ -258,7 +276,7 @@ export namespace FrontendTables {
           return;
         }
 
-        const displayValue = formatValue(value, codeColumns.includes(key));
+        const displayValue = formatValue(value, codeColumns.includes(key), valueLinks[key]);
 
         rows.push(`
         <vscode-table-row>
@@ -365,6 +383,22 @@ export namespace FrontendTables {
           overflow-wrap: break-word;
           display: block;
           width: 100%;
+        }
+
+        .detail-table-container a.detail-table-link {
+          color: var(--vscode-textLink-foreground);
+          text-decoration: none;
+          cursor: pointer;
+        }
+
+        .detail-table-container a.detail-table-link:hover {
+          color: var(--vscode-textLink-activeForeground);
+          text-decoration: underline;
+        }
+
+        .detail-table-container a.detail-table-link:focus-visible {
+          outline: 1px solid var(--vscode-focusBorder);
+          outline-offset: 2px;
         }
 
         .detail-table-actions {
