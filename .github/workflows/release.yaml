@@ -9,4 +9,4 @@ jobs:
     with:
        publish_types: true
        is_prerelease: ${{ github.event_name != 'release' }}
-    secrets: inherit
+    #secrets: inherit
