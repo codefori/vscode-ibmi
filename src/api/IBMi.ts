@@ -1584,6 +1584,22 @@ export default class IBMi {
     throw new Error(`There is no way to run SQL on this system.`);
   }
 
+  async getCLDoc(path: string) {
+    if(this.sqlJob) {
+      return this.sqlJob.getClDoc(path);
+    } else {
+      throw new Error(`There is no way to run SQL on this system.`);
+    }
+  }
+
+  async getCmdXml(path: string) {
+    if(this.sqlJob) {
+      return this.sqlJob.getCmdXml(path);
+    } else {
+      throw new Error(`There is no way to run SQL on this system.`);
+    }
+  }
+
   validQsysName(name: string): boolean {
     // First character can only be A-Z, or a variant character
     // The rest can be A-Z, 0-9, _, ., or a variant character
