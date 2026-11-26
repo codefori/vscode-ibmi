@@ -1,8 +1,0 @@
-on: workflow_dispatch
-
-jobs:
-  publish-pre-release:
-    uses: codefori/.github/.github/workflows/prerelease.yaml@main
-    with:
-       publish_types: true
-    secrets: inherit

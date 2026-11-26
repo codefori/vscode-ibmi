@@ -5,6 +5,7 @@ import { ComponentIdentification, IBMiComponent, SecureComponentState } from "..
 
 export class CustomCLI implements IBMiComponent {
   static DEFAULT_ID = "customCli";
+  static VERSION = 1;
   static SIGNATURE = "ForTests";
   id: string;
 
@@ -15,7 +16,7 @@ export class CustomCLI implements IBMiComponent {
   }
 
   getIdentification(): ComponentIdentification {
-    return { name: this.id, version: 1, userManaged: true, signature: CustomCLI.SIGNATURE };
+    return { name: this.id, version: CustomCLI.VERSION, userManaged: true, signature: CustomCLI.SIGNATURE };
   }
 
   getFileName() {
@@ -32,21 +33,21 @@ export class CustomCLI implements IBMiComponent {
     const result = await connection.getContent().testStreamFile(this.installPath, "r");
 
     if (!result) {
-      return { status: `NotInstalled`, remoteSignature: CustomCLI.SIGNATURE  };
+      return { status: `NotInstalled`, remoteSignature: CustomCLI.SIGNATURE };
     }
 
     const testResult = await connection.getContent().testStreamFile(this.installPath, "r");
 
     if (!testResult) {
-      return { status: `Error`, remoteSignature: CustomCLI.SIGNATURE  };
+      return { status: `Error`, remoteSignature: CustomCLI.SIGNATURE };
     }
 
-    return { status: `Installed`, remoteSignature: CustomCLI.SIGNATURE };
+    return { status: `Installed`, installedVersion: CustomCLI.VERSION, remoteSignature: CustomCLI.SIGNATURE };
   }
 
   async update(connection: IBMi): Promise<SecureComponentState> {
     await connection.getContent().writeStreamfileRaw(this.installPath, JSON.stringify(this.getIdentification()));
-    return { status: `Installed`, remoteSignature: CustomCLI.SIGNATURE };
+    return { status: `Installed`, installedVersion: CustomCLI.VERSION, remoteSignature: CustomCLI.SIGNATURE };
   }
 
   async uninstall(connection: IBMi): Promise<void> {

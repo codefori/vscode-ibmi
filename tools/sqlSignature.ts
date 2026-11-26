@@ -81,7 +81,7 @@ async function work() {
 
   loadEnv();
 
-  const { newConnection, disposeConnection } = await import(`../src/api/tests/connection`);
+  const { newConnection, disposeConnection } = await import(`../src/api/tests/setup/connection`);
 
   console.log(`Connecting to ${process.env.VITE_SERVER}...`);
   const connection = await newConnection();

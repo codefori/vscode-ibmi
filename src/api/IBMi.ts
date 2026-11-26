@@ -1,8 +1,10 @@
-import { BindingValue, SQLJob } from "@ibm/mapepire-js";
+import { BindingValue, CLCommandResult, CLMessage, SQLJob } from "@ibm/mapepire-js";
+import AsyncLock from "async-lock";
 import * as node_ssh from "node-ssh";
 import path, { parse as parsePath } from 'path';
 import { ClientErrorExtensions } from "ssh2";
 import { EventEmitter } from 'stream';
+import { SemanticVersion } from "../typings";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { Tools } from './Tools';
@@ -57,7 +59,7 @@ interface ConnectionCallbacks {
   onConnectedOperations?: Function[],
   onDisconnected?: DisconnectedCallback,
   uiErrorHandler: (connection: IBMi, error: ConnectionErrorCode, data?: any) => Promise<boolean>,
-  progress: (detail: { message: string }) => void,
+  progress: (detail: { message: string, increment?: number }) => void,
   message: (type: ConnectionMessageType, message: string) => void,
   inputBox: (prompt: string, placeHolder: string, ignoreFocusOut: boolean) => Promise<string | undefined>,
   cancelEmitter?: EventEmitter,
@@ -99,6 +101,7 @@ export default class IBMi {
   static readonly CCSID_SYSVAL = -2;
   static readonly bashShellPath = '/QOpenSys/pkgs/bin/bash';
   static readonly locale = 'LC_ALL=EN_US.UTF-8';
+  private static readonly CONNECT_PROGRESS_STEPS = 26;
 
   private systemVersion: number = 0;
   private qccsid: number = IBMi.CCSID_NOCONVERSION;
@@ -134,7 +137,8 @@ export default class IBMi {
   systemLibraries: string[] = [];
 
   private sqlJob: SQLJob | undefined;
-  splfUserData: string | undefined;
+  private noRCCLsupport = false;
+  asyncLock = new AsyncLock();
 
   private libraryAsps = new Map<string, string>();
 
@@ -155,17 +159,14 @@ export default class IBMi {
 
   ccsidCache: Map<string, CacheItem<number>> = new Map();
 
-  public appendOutput: (text: string) => void = (text) => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const hour = String(now.getHours()).padStart(2, '0');
-    const minute = String(now.getMinutes()).padStart(2, '0');
-    const second = String(now.getSeconds()).padStart(2, '0');
-    const millisecond = String(now.getMilliseconds()).padStart(3, '0');
-    const timestamp = `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
-    process.stdout.write(`[${timestamp}] ${text}`);
+  public appendOutput: (text: string) => void = (message) => {
+    if (message.trim() === ``) {
+      process.stdout.write(message);
+    } else {
+      const timestamp = Tools.getCurrentTimestamp();
+      const timestampedMessage = `[${timestamp}] ${message}`;
+      process.stdout.write(timestampedMessage);
+    }
   };
 
   /**
@@ -193,7 +194,7 @@ export default class IBMi {
       } catch (e) { }
 
       const stateError = currentConfig.getStateError();
-      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + (stateError ? ` (${stateError})` : ``) + `\n`);
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + (stateError ? ` (${stateError})` : ``) + `\n\n`);
     }
   }
 
@@ -283,7 +284,15 @@ export default class IBMi {
 
   async connect(connectionObject: ConnectionData, options: ConnectionOptions): Promise<ConnectionResult> {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
-    const callbacks = options.callbacks;
+    let connectPercentage = 0;
+    const callbacks: ConnectionCallbacks = {
+      ...options.callbacks,
+      progress: (task) => {
+        const increment = task.increment ?? 100 / IBMi.CONNECT_PROGRESS_STEPS;
+        connectPercentage = Math.min(100, Math.round(connectPercentage + increment));
+        options.callbacks.progress({ increment, ...task, message: `${connectPercentage}% - ${task.message}` });
+      }
+    };
 
     let wasCancelled = false;
 
@@ -293,7 +302,8 @@ export default class IBMi {
       configVars.replaceAll(connectionObject);
 
       callbacks.progress({
-        message: `Connecting via SSH.`
+        message: `Connecting via SSH.`,
+        increment: 0
       });
 
       if (callbacks.cancelEmitter) {
@@ -327,7 +337,7 @@ export default class IBMi {
         ...connectionObject,
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined,
         passphrase: connectionObject.privateKeyPath ? connectionObject.passphrase : undefined,
-        debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`\n[SSH debug] ${message}`) : undefined
+        debug: connectionObject.sshDebug ? (message: string) => this.appendOutput(`[SSH debug] ${message}\n`) : undefined
       };
 
       if (connectionObject.useSshAgent) {
@@ -563,7 +573,8 @@ export default class IBMi {
         for (const feature of remoteApps) {
           try {
             callbacks.progress({
-              message: `Checking installed components on host IBM i: ${feature.path}`
+              message: `Checking installed components on host IBM i: ${feature.path}`,
+              increment: 0
             });
 
             const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
@@ -604,7 +615,7 @@ export default class IBMi {
         ]);
       }
 
-      this.appendOutput(`\nIBM i components:\n`);
+      this.appendOutput(`IBM i components:\n`);
       for (const [feature, state] of Object.entries(this.remoteFeatures)) {
         this.appendOutput(`\t${feature}: ${state}\n`);
       }
@@ -650,7 +661,7 @@ export default class IBMi {
       }
 
       // Check Mapepire state after startup
-      this.appendOutput(`Mapepire state after startup: ${mapepireState?.status || 'not found'}\n`);
+      this.appendOutput(`Mapepire state after startup: ${mapepireState?.status || 'not found'}\n\n`);
 
       callbacks.progress({ message: `Starting Mapepire.` });
       const mapepire = await this.getComponent<Mapepire>(Mapepire.ID);
@@ -664,8 +675,18 @@ export default class IBMi {
 
           this.sqlJob = await mapepire.newJob(this);
           if (this.sqlJob.id) {
-            this.splfUserData = `C4I${this.sqlJob.id.substring(0, this.sqlJob.id.indexOf('/'))}`;
-            await this.sqlJob.execute(`CALL QSYS2.QCMDEXC('OVRPRTF FILE(*PRTF) SPOOL(*YES) HOLD(*YES) USRDTA(${this.splfUserData}) SPLFOWN(*CURUSRPRF) OVRSCOPE(*JOB)')`);
+            if (this.getConfig().mapepireUseServer) {
+              //We have no control over the remote Mapepire version running in server mode
+              //Since rccl support was added in 2.5, the remote version needs to be checked
+              const parts = (await this.sqlJob.getVersion()).version.split('.').map(s => Number(s));
+              const version: SemanticVersion = {
+                major: parts[0],
+                minor: parts[1],
+                patch: parts[2]
+              };
+              this.noRCCLsupport = version.major < 2 || (version.major == 2 && version.minor < 5);
+              this.appendOutput(`Mapepire server version: ${version.major}.${version.minor}.${version.patch} - rccl support: ${this.noRCCLsupport ? "no" : "yes"}\n\n`);
+            }
           }
         }
         else {
@@ -675,10 +696,11 @@ export default class IBMi {
       catch (e: any) {
         const error = e.message || e;
         callbacks.message(`error`, `Failed to start Mapepire SQL job: ${error}`);
-        this.appendOutput(`Mapepire error: ${error}\n`);
+        this.appendOutput(`Mapepire error: ${error}\n\n`);
         throw e;
       }
 
+      callbacks.progress({ message: `Setting current ASP.` });
       try {
         await this.setCurrentASP(this.getConfig().iasp);
       }
@@ -749,9 +771,7 @@ export default class IBMi {
           callbacks.uiErrorHandler(this, `ccsid_warning`, message);
         }
 
-        this.appendOutput(`\nCCSID information:\n`);
-        this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
-        this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
+        this.appendOutput(`CCSID information:\n\tQCCSID: ${this.qccsid}\n\tUser Job CCSID: ${this.userJobCcsid}\n\n`);
 
         // We only do this check if we're on 7.3 or below.
         if (this.systemVersion && this.systemVersion <= 7.3) {
@@ -777,12 +797,13 @@ export default class IBMi {
           message: `Fetching local encoding values.`
         });
 
-        const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-          + `  values ( cast( x'7B' as varchar(1) )`
-          + `         , cast( x'7C' as varchar(1) )`
-          + `         , cast( x'5B' as varchar(1) ) )`
-          + `)`
-          + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+        const [variants] = await this.runSQL(/* sql */`
+          WITH VARIANTS ( HASH, AT, DOLLARSIGN ) AS (
+            VALUES ( CAST( X'7B' AS VARCHAR(1) )
+                   , CAST( X'7C' AS VARCHAR(1) )
+                   , CAST( X'5B' AS VARCHAR(1) ) )
+          )
+          SELECT HASH CONCAT AT CONCAT DOLLARSIGN AS LOCAL FROM VARIANTS`);
 
         if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
           this.variantChars.local = variants.LOCAL;
@@ -800,7 +821,9 @@ export default class IBMi {
       this.defaultCurrentLibrary = undefined;
       this.systemLibraries = [];
 
-      const liblRows = await this.runSQL(`SELECT TYPE, SYSTEM_SCHEMA_NAME FROM TABLE(QSYS2.QSQLIBL())`);
+      const liblRows = await this.runSQL(/* sql */`
+        SELECT TYPE, SYSTEM_SCHEMA_NAME
+          FROM TABLE(QSYS2.QSQLIBL())`);
       for (const row of liblRows) {
         switch (row.TYPE) {
           case `USER`:
@@ -827,15 +850,11 @@ export default class IBMi {
           message: `Clearing temporary data.`
         });
 
-        this.runCommand({
-          command: `QSYS/DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
-          noLibList: true,
-        })
+        this.runCL(`QSYS/DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`)
           .then(result => {
             // All good!
-            if (result && result.stderr) {
-              const messages = Tools.parseMessages(result.stderr);
-              if (!messages.findId(`CPF2125`)) {
+            if (!result.success) {
+              if (!result.findMessage(`CPF2125`)) {
                 // @ts-ignore We know the config exists.
                 callbacks.message(`error`, `Temporary data not cleared from ${this.config.tempLibrary}.`);
               }
@@ -858,7 +877,9 @@ export default class IBMi {
       // Check the remaining components
       callbacks.progress({ message: `Checking Code for i components statuses.` });
       try {
-        await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : []);
+        await this.componentManager.startup(quickConnect() ? cachedServerSettings?.installedComponents : [], (name, current, total) => {
+          callbacks.progress({ message: `Component Scan: ${current}/${total} - ${name}`, increment: 0 });
+        });
       }
       catch (error: any) {
         if (!(error instanceof Error && error.cause === "component_signature_mismatch" && await callbacks.uiErrorHandler(this, error.cause, error.message))) {
@@ -867,7 +888,7 @@ export default class IBMi {
       }
 
       const componentStates = this.componentManager.getComponentStates();
-      this.appendOutput(`\nCode for IBM i components:\n`);
+      this.appendOutput(`Code for IBM i components:\n`);
       for (const state of componentStates) {
         this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state.status}\n`);
       }
@@ -875,7 +896,7 @@ export default class IBMi {
       this.appendOutput(`\n`);
 
       callbacks.progress({
-        message: `Checking temporary directory and temporary library configuration.`
+        message: `Checking default shell.`
       });
 
       const commandShellResult = await this.sendCommand({
@@ -895,21 +916,13 @@ export default class IBMi {
         });
 
 
-        const QCPTOIMPF = await this.runCommand({
-          command: `QSYS/CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-          noLibList: true
-        });
-
-        if (QCPTOIMPF?.code === 0) {
+        const QCPTOIMPF = await this.runCL(`QSYS/CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`);
+        if (QCPTOIMPF.success) {
           callbacks.uiErrorHandler(this, `QCPTOIMPF_exists`);
         }
 
-        const QCPFRMIMPF = await this.runCommand({
-          command: `QSYS/CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-          noLibList: true
-        })
-
-        if (QCPFRMIMPF?.code === 0) {
+        const QCPFRMIMPF = await this.runCL(`QSYS/CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`)
+        if (QCPFRMIMPF.success) {
           callbacks.uiErrorHandler(this, `QCPFRMIMPF_exists`);
         }
       }
@@ -996,8 +1009,8 @@ export default class IBMi {
 
           const result = await this.sendQsh({
             command: [
-              `liblist -d ` + IBMi.escapeForShell(this.defaultUserLibraries.join(` `)),
-              ...this.config.libraryList.map(lib => `liblist -a ` + IBMi.escapeForShell(lib))
+              `liblist -d ` + Tools.escapeForShell(this.defaultUserLibraries.join(` `)),
+              ...this.config.libraryList.map(lib => `liblist -a ` + Tools.escapeForShell(lib))
             ].join(`; `)
           });
 
@@ -1023,6 +1036,7 @@ export default class IBMi {
       let debugConfigLoaded = false
       if ((!quickConnect() || !cachedServerSettings?.debugConfigLoaded)) {
         if (this.debugPTFInstalled()) {
+          callbacks.progress({ message: `Loading debug service configuration.` });
           try {
             const debugServiceConfig = await new DebugConfiguration(this).load();
             delete this.config.debugCertDirectory;
@@ -1045,6 +1059,7 @@ export default class IBMi {
       }
 
       if (!options.reconnecting) {
+        callbacks.progress({ message: `Finalizing connection.` });
         for (const operation of callbacks.onConnectedOperations || []) {
           await operation();
         }
@@ -1085,10 +1100,7 @@ export default class IBMi {
         error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
       }
 
-      this.appendOutput(`${JSON.stringify(e)}`);
-      if (typeof e.stack === "string") {
-        this.appendOutput(`\n\n${e.stack}`);
-      }
+      this.appendOutput(`${JSON.stringify(e)}${typeof e.stack === "string" ? `\n\n${e.stack}` : ``}\n\n`);
 
       return {
         error,
@@ -1129,21 +1141,17 @@ export default class IBMi {
     }
     else {
       //Library doesn't exist
-      const createdTempLib = await this.runCommand({
-        command: `QSYS/CRTLIB LIB(${tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
-        noLibList: true
-      });
-
-      if (createdTempLib.code === 0) {
+      const createdTempLib = await this.runCL(`QSYS/CRTLIB LIB(${tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`);
+      if (createdTempLib.success) {
         await setLibraryUDA();
       }
       else if (fallbackTempLib && !fallbackTempLib.startsWith(`Q`)) {
         //Using current library as the temporary library for temporary data.
-        message('warning', `Could not create temporary library ${tempLibrary}; using ${fallbackTempLib} instead. (${createdTempLib.stderr})`);
+        message('warning', `Could not create temporary library ${tempLibrary}; using ${fallbackTempLib} instead. (${createdTempLib.error})`);
         this.config.tempLibrary = fallbackTempLib;
       }
       else {
-        message('error', `Could not create temporary library ${tempLibrary}: ${createdTempLib.stderr}`);
+        message('error', `Could not create temporary library ${tempLibrary}: ${createdTempLib.error}`);
         return false;
       }
     }
@@ -1196,8 +1204,9 @@ export default class IBMi {
     return CompileTools.runCommand(this, data);
   }
 
+  /** @deprecated Use `Tools.escapeForShell` instead */
   static escapeForShell(command: string) {
-    return command.replace(/\$/g, `\\$`)
+    return Tools.escapeForShell(command);
   }
 
   async sendQsh(options: CommandData) {
@@ -1219,10 +1228,10 @@ export default class IBMi {
     let commands: string[] = [];
     if (options.env) {
       if (this.usingBash()) {
-        commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value ? IBMi.escapeForShell(value) : ``}"`));
+        commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value ? Tools.escapeForShell(value) : ``}"`));
       } else {
         // bourne shell doesn't support the same export syntax as bash
-        commands.push(...Object.entries(options.env).map(([key, value]) => `${key}="${value ? IBMi.escapeForShell(value) : ``}" export ${key}`));
+        commands.push(...Object.entries(options.env).map(([key, value]) => `${key}="${value ? Tools.escapeForShell(value) : ``}" export ${key}`));
       }
     }
 
@@ -1232,28 +1241,29 @@ export default class IBMi {
     const directory = options.directory || this.config?.homeDirectory;
 
 
-    this.appendOutput(`${directory}: ${command}\n`);
-    if (options && options.stdin) {
-      this.appendOutput(`${options.stdin}\n`);
-    }
-
+    const start = performance.now();
     const result = await this.client!.execCommand(command, {
       cwd: directory,
       stdin: options.stdin,
       onStdout: options.onStdout,
       onStderr: options.onStderr,
     });
+    const duration = Math.round(performance.now() - start);
 
     // Some simplification
     if (result.code === null) result.code = 0;
     if (result.signal === `SIGABRT`) result.code = 127;
 
-    this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
-
-    return {
+    const commandResult: CommandResult = {
       ...result,
       code: result.code || 0,
+      duration
     };
+
+    // Log the command and its result as a single entry, so parallel commands don't interleave
+    this.appendOutput(`${directory}: ${command}\n${options.stdin ? `${options.stdin}\n` : ``}${JSON.stringify({ ...commandResult, duration: `${commandResult.duration} ms` }, null, 4)}\n\n`);
+
+    return commandResult;
   }
 
   async disconnect() {
@@ -1271,12 +1281,9 @@ export default class IBMi {
   }
 
   private async dispose() {
-    CompileTools.reset();
-
     //Clear connected resources
     if (this.sqlJob) {
       delete this.sqlJob;
-      delete this.splfUserData;
     }
     delete this.client;
   }
@@ -1307,12 +1314,10 @@ export default class IBMi {
    */
   getTempRemote(key: string) {
     if (this.tempRemoteFiles[key] !== undefined) {
-      // console.log(`Using existing temp: ${this.tempRemoteFiles[key]}`);
       return this.tempRemoteFiles[key];
     } else
       if (this.getConfig()) {
         let value = path.posix.join(this.getTempDirectory(), `vscodetemp-${Tools.makeid()}`);
-        // console.log(`Using new temp: ${value}`);
         this.tempRemoteFiles[key] = value;
         return value;
       }
@@ -1469,6 +1474,59 @@ export default class IBMi {
   }
 
   /**
+   * Run one or more commands en returns the result of the last run command.
+   * 
+   * @param commands one or more CL commands
+   * @param throughSQL forces the execution of the commands in the SQL job
+   * @returns the execution result of the last executed command 
+   */
+  async runCL(commands: string | string[], throughSQL?: boolean): Promise<CLCommandResult & { findMessage: (id: string) => CLMessage | undefined }> {
+    commands = Array.isArray(commands) ? commands : [commands];
+    if (!this.sqlJob) {
+      throw new Error(`There is no way to run CL on this system.`);
+    }
+    throughSQL = throughSQL === true || this.noRCCLsupport === true;
+    let result: CLCommandResult = {
+      id: "",
+      data: [],
+      execution_time: 0,
+      success: false
+    };
+    for (const command of commands) {
+      const log = `Running CL${throughSQL ? " through SQL" : ""}: ${command}\n\t`;
+      const commandResult = await (throughSQL ? this.sqlJob.clcommand(command) : this.sqlJob.rcclcommand(command));
+      if (this.noRCCLsupport) {
+        //Map the data from Mapepire < 2.5 format
+        commandResult.data = (commandResult.data as any[]).map(d => ({
+          id: d.MESSAGE_ID,
+          type: d.MESSAGE_TYPE,
+          severity: d.SEVERITY,
+          text: d.MESSAGE_TEXT,
+          help: d.MESSAGE_SECOND_LEVEL_TEXT,
+          time: new Date(d.MESSAGE_TIMESTAMP).getTime(),
+          messageLibrary: d.MESSAGE_LIBRARY,
+          messageFile: d.MESSAGE_FILE,
+          sendingProgram: d.FROM_PROGRAM,
+          sendingInstruction: d.FROM_INSTRUCTION,
+          receivingProgram: d.TO_PROGRAM,
+          receivingInstruction: d.TO_INSTRUCTION
+        }));
+      }
+      this.appendOutput(`${log}-> ${commandResult.success ? "OK" : "Failed"} (${commandResult.execution_time} ms)${commandResult.data.length ? "\n" + commandResult.data.map(message => `\t[${message.id}] ${message.text}`).join("\n") : ''}\n\n`);
+      
+      result = {...commandResult, ...{ data: [...result.data, ...commandResult.data] }};
+
+      if (!commandResult.success) {
+        break;
+      }
+    }
+    return {
+      ...result,
+      findMessage: id => result.data.find(message => message.id === id)
+    };
+  }
+
+  /**
    * Run SQL statements.
    * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
    * If a statement starts with @, it will be run as a CL command.
@@ -1485,31 +1543,7 @@ export default class IBMi {
       for (const statement of list) {
         if (statement.startsWith(`@`)) {
           const command = statement.substring(1);
-          const log = `Running CL through SQL: ${command}\n\t`;
-          try {
-            const result = await this.sqlJob.execute<{ MESSAGE_ID: string, MESSAGE_TEXT: string }>(command, { isClCommand: true });
-            this.appendOutput(`${log}-> OK${result.data.length ? "\n" + result.data.map(message => `\t[${message.MESSAGE_ID}] ${message.MESSAGE_TEXT}`).join("\n") : ''}`);
-          }
-          catch (e: any) {
-            // If the CL command errors in the job, then let's run another
-            // SQL statement to fetch the job log for the error.
-            const error = new Tools.SqlError(e.message);
-            this.appendOutput(`${log}-> Failed: ${error.message}`);
-
-            const jobLog = await this.runSQL(`select ORDINAL_POSITION, message_id, message_text from table(qsys2.joblog_info('*')) order by ORDINAL_POSITION desc limit 5`);
-            let logs = `${log}Job log:\n`
-            for (const row of jobLog) {
-              logs += `\t\t${row.MESSAGE_ID}: ${row.MESSAGE_TEXT}\n`
-            }
-            this.appendOutput(logs);
-
-            error.cause = {
-              command,
-              jobLog
-            }
-
-            throw error;
-          }
+          await this.runCL(command, true);
         } else {
           let query;
           let error: Tools.SqlError | undefined;
@@ -1519,10 +1553,10 @@ export default class IBMi {
             const rs = await query.execute(options.rows ?? 99999);
             if (rs.has_results) {
               lastResultSet.push(...rs.data);
-              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'}`);
+              this.appendOutput(`${log}-> ${lastResultSet.length ? `${lastResultSet.length} row(s) returned` : 'no rows returned'} (${rs.execution_time} ms)\n\n`);
             }
             else {
-              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted`);
+              this.appendOutput(`${log}-> ${rs.update_count} row(s) impacted (${rs.execution_time} ms)\n\n`);
             }
           } catch (e: any) {
             error = new Tools.SqlError(e.message);
@@ -1540,7 +1574,7 @@ export default class IBMi {
               }
             }
 
-            this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}`);
+            this.appendOutput(`${log}-> Failed: ${error.sqlstate ? `[${error.sqlstate}] ` : ''}${error.message}\n\n`);
           } finally {
             query?.close();
           }
@@ -1549,13 +1583,28 @@ export default class IBMi {
             throw error;
           }
         }
-        this.appendOutput("\n\n");
       }
 
       return lastResultSet;
     }
 
     throw new Error(`There is no way to run SQL on this system.`);
+  }
+
+  async getCLDoc(path: string) {
+    if(this.sqlJob) {
+      return this.sqlJob.getClDoc(path);
+    } else {
+      throw new Error(`There is no way to run SQL on this system.`);
+    }
+  }
+
+  async getCmdXml(path: string) {
+    if(this.sqlJob) {
+      return this.sqlJob.getCmdXml(path);
+    } else {
+      throw new Error(`There is no way to run SQL on this system.`);
+    }
   }
 
   validQsysName(name: string): boolean {

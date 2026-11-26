@@ -158,7 +158,7 @@ export namespace Tools {
     }
     return 0;
   }
-  
+
   /**
    * Validates a date used in a filter and returns it in its `YYYY-MM-DD` canonical form.
    * @param date a date string, expected to be in the `YYYY-MM-DD` format
@@ -186,10 +186,10 @@ export namespace Tools {
    */
   export function normalizePath(filePath: string) {
     //Test path in lowercase since os.homedir doesn't always has the same case as filePath on Windows
-    if(filePath.toLowerCase().startsWith(os.homedir().toLowerCase())){
+    if (filePath.toLowerCase().startsWith(os.homedir().toLowerCase())) {
       filePath = path.join(`~`, filePath.substring(os.homedir().length));
     }
-    
+
     return process.platform === "win32" ? filePath.replaceAll('\\', '/') : filePath;
   }
 
@@ -300,7 +300,23 @@ export namespace Tools {
    * Helper function to deal with *CRTDFT special value 
    * @returns `*CURLIB` if `value` is falsy or equal to *CRTDFT; returns `value` otherwise
    */
-  export function getCurLib(value?:string){
+  export function getCurLib(value?: string) {
     return !value || /\*CRTDFT/i.test(value) ? "*CURLIB" : value;
+  }
+
+  export function escapeForShell(command: string) {
+    return command.replace(/\$/g, `\\$`)
+  }
+
+  export function getCurrentTimestamp() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    const second = String(now.getSeconds()).padStart(2, '0');
+    const millisecond = String(now.getMilliseconds()).padStart(3, '0');
+    return `${year}-${month}-${day} ${hour}:${minute}:${second}.${millisecond}`;
   }
 }

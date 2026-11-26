@@ -1,6 +1,7 @@
 
 import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem, ThemeIcon, window } from 'vscode';
+import { promptCommand } from '../../../api/commandPrompter';
 import { assignProfile, cloneProfile, getAllConnectionProfiles, getConnectionProfile, getDefaultProfile, isActiveProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
@@ -606,9 +607,17 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
           (config.currentProfile ? await getConnectionProfile(config.currentProfile, config.currentProfileType || 'local') : undefined);
 
         if (profile?.setLibraryListCommand) {
-          const command = profile.setLibraryListCommand.startsWith(`?`) ?
-            await vscode.window.showInputBox({ title: l10n.t(`Run Library List Command`), value: profile.setLibraryListCommand.substring(1) }) :
-            profile.setLibraryListCommand;
+          let command: string | undefined;
+
+          if (profile.setLibraryListCommand.startsWith(`?`)) {
+            const commandToPrompt = profile.setLibraryListCommand.substring(1);
+            command = await promptCommand(commandToPrompt, {
+              title: l10n.t(`Run Library List Command`)
+            });
+          } else {
+            // No prompting needed
+            command = profile.setLibraryListCommand;
+          }
 
           if (command) {
             return await vscode.window.withProgress({ title: l10n.t("Running {0} profile's Library List Command...", profile.name), location: vscode.ProgressLocation.Notification }, async () => {

@@ -5,8 +5,8 @@ import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 import { instance } from '../instantiate';
 
-const PASE_INIT_FLAG = '#C4IINIT';
-const PASE_INIT_FLAG_REGEX = /#+C+4+I+I+N+I+T+$/
+const PASE_INIT_FLAG = 'C4IINIT';
+const PASE_INIT_TIMEOUT = 5000;
 
 function getOrDefaultToUndefined(value: string) {
   if (value && value !== `default`) {
@@ -120,17 +120,28 @@ export namespace Terminal {
     let ready = terminalSettings.type === TerminalType._5250;
     const writeEmitter = new vscode.EventEmitter<string>();
     const channel = await connection.client!.requestShell({ term: "xterm" });
+    let pending = ``;
+    let initTimeout: NodeJS.Timeout | undefined;
+    const setReady = (output: string) => {
+      ready = true;
+      clearTimeout(initTimeout);
+      pending = ``;
+      writeEmitter.fire(output);
+    };
     channel.on(`data`, (data: Buffer) => {
       const dataString = data.toString();
       if (ready) {
         if (dataString.includes(HALTED)) {
           setHalted(true);
         }
-        writeEmitter.fire(String(data));
-      }
-
-      if (!ready) {
-        ready = PASE_INIT_FLAG_REGEX.test(dataString.trim());
+        writeEmitter.fire(dataString);
+      } else {
+        pending += dataString;
+        const flagIndex = pending.indexOf(PASE_INIT_FLAG);
+        if (flagIndex >= 0) {
+          // trimStart: remove any \r\n following the flag
+          setReady(pending.substring(flagIndex + PASE_INIT_FLAG.length).trimStart());
+        }
       }
     });
 
@@ -180,6 +191,7 @@ export namespace Terminal {
     if (emulatorTerminal) {
       emulatorTerminal!.show(false);
       channel.on(`close`, () => {
+        clearTimeout(initTimeout);
         channel.destroy();
         writeEmitter.dispose();
       });
@@ -211,13 +223,14 @@ export namespace Terminal {
           `\n`
         ].join(` `));
       } else {
-        const initialCommands = [];
+        const initialCommands = [`echo "C4I""INIT"`];
         if (terminalSettings.currentDirectory) {
           initialCommands.push(`cd ${Tools.escapePath(terminalSettings.currentDirectory)}`);
         }
         initialCommands.push(`echo -e "\\0033[0;32mTerminal started, thanks for using \\0033[0;34mCode for IBM i. \\0033[0;32mCurrent directory is \\0033[0;34m"$(pwd)"\\0033[0m."`);
-        initialCommands.push([PASE_INIT_FLAG].join(" "));
         channel.write(`${initialCommands.join('; ')}\n`);
+        // Display something on the terminal anyway
+        initTimeout = setTimeout(() => setReady(pending), PASE_INIT_TIMEOUT);
       }
 
       instance.subscribe(

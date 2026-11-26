@@ -6,13 +6,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import IBMi from '../../IBMi';
 import { Tools } from '../../Tools';
 import { ModuleExport, ProgramExportImportInfo } from '../../types';
-import { CONNECTION_TIMEOUT, disposeConnection, newConnection } from '../connection';
+import { disposeConnection, envVars, newConnection } from '../setup/connection';
 
 describe('Content Tests', { concurrent: true }, () => {
   let connection: IBMi
   beforeAll(async () => {
     connection = await newConnection();
-  }, CONNECTION_TIMEOUT)
+  }, envVars.VITE_CONNECTION_TIMEOUT)
 
   afterAll(async () => {
     await disposeConnection(connection);
@@ -90,6 +90,42 @@ describe('Content Tests', { concurrent: true }, () => {
     }
   });
 
+  it.each(['$', '#', '#$'])('memberResolve with %s', async (prefix) => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempSPF = connection.sysNameInLocal(`${prefix}ABCD`).concat(connection.variantChars.local);
+    const tempMbr = tempSPF;
+
+    try {
+      const result = await connection.runCommand({
+        command: `QSYS/CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+        environment: 'ile'
+      });
+      expect(result.code).toBe(0);
+
+      const member = await content.memberResolve(tempMbr, [
+        { library: 'QSYSINC', name: 'MIH' }, // Doesn't exist here
+        { library: 'NOEXIST', name: 'SUP' }, // Doesn't exist here
+        { library: tempLib, name: tempSPF } // Does exist here
+      ]);
+
+      expect(member).toEqual({
+        asp: undefined,
+        library: tempLib,
+        file: tempSPF,
+        name: tempMbr,
+        extension: 'MBR',
+        basename: `${tempMbr}.MBR`
+      });
+    }
+    finally {
+      await connection.runCommand({
+        command: `QSYS/DLTF ${tempLib}/${tempSPF}`,
+        environment: 'ile'
+      })
+    }
+  });
+
   it('memberResolve with bad name', async () => {
     const content = connection.getContent();
 
@@ -149,6 +185,35 @@ describe('Content Tests', { concurrent: true }, () => {
         command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
         environment: 'ile'
       });
+    }
+  });
+
+  it.each(['$', '#', '#$'])('objectResolve with %s', async (prefix) => {
+    const content = connection.getContent();
+    const tempLib = connection.getConfig().tempLibrary;
+    const tempObj = connection.sysNameInLocal(`${prefix}ABCD`).concat(connection.variantChars.local);
+
+    try {
+      const result = await connection.runCommand({
+        command: `QSYS/CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+        environment: 'ile'
+      });
+      expect(result.code).toBe(0);
+
+      const lib = await content.objectResolve(tempObj, [
+        'QSYSINC', // Doesn't exist here
+        'QSYS2', // Doesn't exist here
+        tempLib // Does exist here
+      ]);
+
+      expect(lib).toBe(tempLib);
+    }
+    finally {
+      // Cleanup...
+      await connection.runCommand({
+        command: `QSYS/DLTDTAARA ${tempLib}/${tempObj}`,
+        environment: 'ile'
+      })
     }
   });
 
@@ -625,11 +690,8 @@ describe('Content Tests', { concurrent: true }, () => {
     const sourceFile = `O_ABC`.concat(connection!.variantChars.local);
     const member = `O_ABC`.concat(connection!.variantChars.local);
 
-    const result = await connection!.runCommand({
-      command: `QSYS/CRTSRCPF ${library}/${sourceFile} MBR(${member})`,
-      environment: 'ile'
-    });
-    if (result.code === 0) {
+    const result = await connection.runCL(`QSYS/CRTSRCPF ${library}/${sourceFile} MBR(${member})`, true);
+    if (result.success) {
       const [memberInfoC] = await content.getMemberList({ library, sourceFile, members: member });
       expect(memberInfoC).toBeTruthy();
       expect(memberInfoC.library).toBe(library);
@@ -803,21 +865,21 @@ describe('Content Tests', { concurrent: true }, () => {
     await connection.withTempDirectory(async directory => {
       const source = `${directory}/vscodetemp-${id}.clle`;
       try {
-        await content.runStatements(
+        await content.runStatements(/* sql */
           `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
                            LINE => 'PGM', 
                            OVERWRITE => 'NONE', 
                            END_OF_LINE => 'CRLF')`,
+          /* sql */
           `CALL QSYS2.IFS_WRITE(PATH_NAME =>'${source}', 
                            LINE => 'ENDPGM', 
                            OVERWRITE => 'APPEND', 
                            END_OF_LINE => 'CRLF')`,
         );
 
-        await connection.runCommand({ environment: `ile`, command: `QSYS/CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')` })
+        await connection.runCL(`QSYS/CRTCLMOD MODULE(${tempLib}/${id}) SRCSTMF('${source}')`, true);
 
-        let exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
-
+        const exports: ModuleExport[] = await content.getModuleExports(tempLib, id);
         expect(exports.length).toBe(1);
         expect(exports.at(0)?.symbolName).toBe(id);
       } finally {
@@ -916,6 +978,87 @@ describe('Content Tests', { concurrent: true }, () => {
       expect(memberInfo.extension).toBe(`RPGLE`);
     } finally {
       await connection.runCommand({ command: `QSYS/DLTF FILE(${tempLib}/${sourceFile})`, noLibList: true });
+    }
+  });
+
+  enum Protection {
+    Protected = 'protected',
+    NotProtected = 'not-protected'
+  }
+
+  it.each([
+    // protectedPath without a wildcard: exact path and everything beneath it
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/a', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/a/x/y', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/A', expected: Protection.Protected },    
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/abc', expected: Protection.NotProtected }, 
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/a.txt', expected: Protection.NotProtected },
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs/b', expected: Protection.NotProtected },
+  { protectedPath: '/home/USERNAME/docs/a', path: '/home/USERNAME/docs', expected: Protection.NotProtected }, 
+  // Trailing slash in the protectedPath behaves the same as without
+  { protectedPath: '/home/USERNAME/docs/a/', path: '/home/USERNAME/docs/a', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a/', path: '/home/USERNAME/docs/abc', expected: Protection.NotProtected },
+  // Explicit * wildcard: stays within one segment, plus everything beneath
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/a', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/abc', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/a.txt', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/abc/deep/file', expected: Protection.Protected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/b', expected: Protection.NotProtected },
+  { protectedPath: '/home/USERNAME/docs/a*', path: '/home/USERNAME/docs/ba', expected: Protection.NotProtected },
+  // Explicit ? wildcard: exactly one character
+  { protectedPath: '/tmp/file?', path: '/tmp/file1', expected: Protection.Protected },
+  { protectedPath: '/tmp/file?', path: '/tmp/file1/x', expected: Protection.Protected },
+  { protectedPath: '/tmp/file?', path: '/tmp/file', expected: Protection.NotProtected },
+  { protectedPath: '/tmp/file?', path: '/tmp/file12', expected: Protection.NotProtected },
+  // /QOpenSys paths are case-sensitive
+  { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secret', expected: Protection.Protected },
+  { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secret/x', expected: Protection.Protected },
+  { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/Secret', expected: Protection.NotProtected },
+  { protectedPath: '/qopensys/secret', path: '/QOpenSys/secret', expected: Protection.Protected },
+  { protectedPath: '/QOpenSys/secret', path: '/QOpenSys/secretary', expected: Protection.NotProtected },
+  // ...but not the QOpenSys name itself
+  { protectedPath: '/QOpenSys/secret', path: '/qopensys/secret', expected: Protection.Protected },
+  { protectedPath: '/QOpenSys/secret', path: '/QOPENSYS/secret/x', expected: Protection.Protected },
+  { protectedPath: '/qopensys/secret', path: '/qopensys/Secret', expected: Protection.NotProtected },
+  { protectedPath: '/qopensysdata/secret', path: '/QOpenSysData/Secret/x', expected: Protection.Protected },
+  // Root protects everything
+  { protectedPath: '/', path: '/anything/at/all', expected: Protection.Protected },
+  // No wildcards for libraries
+  { protectedPath: 'MYLIB', path: 'MYLIB', expected: Protection.Protected },
+  { protectedPath: 'PROD*', path: 'PRODLIB', expected: Protection.NotProtected },
+  { protectedPath: '*', path: '/home/USERNAME', expected: Protection.NotProtected }
+  ])
+  ('if $protectedPath, then $path is $expected', async ({protectedPath, path, expected}) => {
+    const content = connection.getContent();
+    const config = connection.getConfig();
+    const savedProtectedPaths = config.protectedPaths;
+    config.protectedPaths = [protectedPath];
+    try {      
+      const result = content.isProtectedPath(path) ? Protection.Protected : Protection.NotProtected;
+      expect(result).toBe(expected);
+    }
+    finally {
+      config.protectedPaths = savedProtectedPaths;
+    }
+  });
+
+  it('isProtectedPath picks up changes to the protected paths', () => {
+    const content = connection.getContent();
+    const config = connection.getConfig();
+    const savedProtectedPaths = config.protectedPaths;
+    try {
+      config.protectedPaths = ['/home/a'];
+      expect(content.isProtectedPath('/home/a/x')).toBe(true);
+      expect(content.isProtectedPath('/home/b/x')).toBe(false);
+
+      config.protectedPaths.push('/home/b');
+      expect(content.isProtectedPath('/home/b/x')).toBe(true);
+
+      config.protectedPaths = [];
+      expect(content.isProtectedPath('/home/a/x')).toBe(false);
+    }
+    finally {
+      config.protectedPaths = savedProtectedPaths;
     }
   });
 });

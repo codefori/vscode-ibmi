@@ -3,6 +3,7 @@ import { getConnectionProfile, isActiveProfile } from "../api/connectionProfiles
 import { instance } from "../instantiate";
 import { AnyConnectionProfile } from "../typings";
 import { VscodeTools } from "../ui/Tools";
+import { TableColumn, TableRow } from "../webviews/CustomUI";
 import { CustomEditor } from "./customEditorProvider";
 import { saveConnectionProfile, verifyLatestServerProfileState } from "../ui/views/environment/environmentView";
 import IBMi from "../api/IBMi";
@@ -69,19 +70,54 @@ function buildForm(profileEditor: CustomEditor<ConnectionProfileData>, profile: 
   }
   profileEditor
     .addInput("currentLibrary", l10n.t("Current Library"), l10n.t("Leave blank or use <code>*CRTDFT</code> to set no current library.<br/>Overwritten if <code>Library List Command</code> is set and run."), { minlength: 0, maxlength: 10, default: data.currentLibrary, readonly: activeProfile })
-    .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries.<br/>Overwritten if <code>Library List Command</code> is set and run."), { default: data.libraryList, readonly: activeProfile })
     .addInput("iasp", l10n.t("Current IASP"), l10n.t("The independent ASP to enable when using this profile. If the database name of this ASP is different from its name, make sure to use the database name here. Leave blank to use the system ASP."), { default: data.iasp, readonly: activeProfile })
+    .addInput("libraryList", l10n.t("Library List"), l10n.t("A comma-separated list of libraries.<br/>Overwritten if <code>Library List Command</code> is set and run."), { default: data.libraryList, readonly: activeProfile })
     .addInput("setLibraryListCommand", l10n.t("Library List Command"), l10n.t("Library List Command can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.<br/>Commands should be as explicit as possible.<br/>When refering to commands and objects, both should be qualified with a library.<br/>Put <code>?</code> in front of the command to prompt it before execution."), { default: data.setLibraryListCommand })
     .addInput("statusBarColor", l10n.t("Status bar color"), l10n.t("The color of the status bar items while this profile is active. Useful to tell your environments apart at a glance. Pick black to keep the color of the current theme."), { default: data.statusBarColor, inputType: "color" })
     .addHorizontalRule()
-    .addHeading(l10n.t("Object filters"), 3)
-    .addParagraph(objectFilters.length ? `<ul>${objectFilters.map(filter => `<li>${filter.name}: <code>${`${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`}</code></li>`).join('')}</ul>` : l10n.t("None"))
+    .addHeading(l10n.t("Object filters"), 3);
+
+  if (objectFilters.length) {
+    const objectFilterColumns: TableColumn[] = [
+      { label: l10n.t(`Name`) },
+      { label: l10n.t(`Filter`) },
+    ];
+    const objectFilterRows: TableRow[] = objectFilters.map(filter => ({
+      cells: [VscodeTools.escapeHtml(filter.name), VscodeTools.escapeHtml(VscodeTools.filterToDescription(filter))]
+    }));
+    profileEditor.addTable(`objectFilters`, ``, objectFilterColumns, objectFilterRows);
+  } else {
+    profileEditor.addParagraph(l10n.t("None"));
+  }
+
+  profileEditor
     .addHorizontalRule()
-    .addHeading(l10n.t("IFS shortcuts"), 3)
-    .addParagraph(ifsShortcuts.length ? `<ul>${ifsShortcuts.map(shortcut => `<li>${shortcut}</li>`).join('')}</ul>` : l10n.t("None"))
+    .addHeading(l10n.t("IFS shortcuts"), 3);
+
+  if (ifsShortcuts.length) {
+    const ifsColumns: TableColumn[] = [{ label: l10n.t(`Shortcut`) }];
+    const ifsRows: TableRow[] = ifsShortcuts.map(shortcut => ({ cells: [VscodeTools.escapeHtml(shortcut)] }));
+    profileEditor.addTable(`ifsShortcuts`, ``, ifsColumns, ifsRows);
+  } else {
+    profileEditor.addParagraph(l10n.t("None"));
+  }
+
+  profileEditor
     .addHorizontalRule()
-    .addHeading(l10n.t("Custom variables"), 3)
-    .addParagraph(customVariables.length ? `<ul>${customVariables.map(variable => `<li>&${variable.name}: <code>${variable.value}</code></li>`).join('')}</ul>` : l10n.t("None"));
+    .addHeading(l10n.t("Custom variables"), 3);
+
+  if (customVariables.length) {
+    const customVarColumns: TableColumn[] = [
+      { label: l10n.t(`Name`) },
+      { label: l10n.t(`Value`) },
+    ];
+    const customVarRows: TableRow[] = customVariables.map(variable => ({
+      cells: [VscodeTools.escapeHtml(`&${variable.name}`), VscodeTools.escapeHtml(variable.value)]
+    }));
+    profileEditor.addTable(`customVariables`, ``, customVarColumns, customVarRows);
+  } else {
+    profileEditor.addParagraph(l10n.t("None"));
+  }
 }
 
 /** Replaces the content of `profile` with the one of `from`; the unsaved values may already be set on `profile`, those `from` doesn't have must go too */

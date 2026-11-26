@@ -1,3 +1,4 @@
+import { CLCommandResult } from "@ibm/mapepire-js";
 import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
@@ -5,13 +6,14 @@ import vscode, { commands, DataTransferItem, l10n, Uri } from "vscode";
 import { parseFilter, singleGenericName } from "../../api/Filter";
 import IBMi, { MemberParts } from "../../api/IBMi";
 import { SortOptions, SortOrder } from "../../api/IBMiContent";
+import * as ObjectFilter from "../../api/objectFilters";
 import { SearchTools } from "../../api/SearchTools";
 import { Tools } from "../../api/Tools";
 import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
+import { checkObjectFilter, editObjectFilter, isFilterEdited } from "../../editors/filterEditor";
 import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 import { instance } from "../../instantiate";
-import { CommandResult, DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
-import { editFilter } from "../../webviews/filters";
+import { DefaultOpenMode, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectFilters, ObjectItem, WithLibrary } from "../../typings";
 import { VscodeTools } from "../Tools";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
@@ -180,12 +182,7 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
     this.contextValue = `filter${this.library ? "_library" : ''}${this.isProtected() ? `_readonly` : ``}`;
     const details = filterDetails();
     if (details !== `tooltip`) {
-      const memberTextSuffix = filter.memberText && !/^\*(?:ALL)?$/.test(filter.memberText.trim()) ? ` [${filter.memberText}]` : ``;
-      const dateSuffix = [
-        filter.memberCreated ? `created ≥ ${filter.memberCreated}` : ``,
-        filter.memberChanged ? `changed ≥ ${filter.memberChanged}` : ``
-      ].filter(Boolean).join(`, `);
-      this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})${memberTextSuffix}${dateSuffix ? ` {${dateSuffix}}` : ``}`;
+      this.description = VscodeTools.filterToDescription(filter);
     }
     this.tooltip = details !== `description` ? VscodeTools.filterToToolTip(filter) : ``;
 
@@ -425,16 +422,12 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     const connection = getConnection();
     const { library, file, name } = connection.parserMemberPath(this.path);
 
-    const removeResult = await connection.runCommand({
-      command: `QSYS/RMVM FILE(${library}/${file}) MBR(${name})`,
-      noLibList: true
-    });
-
-    if (removeResult.code !== 0) {
-      vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting member! {0}`, removeResult.stderr));
+    const removeResult = await connection.runCL(`QSYS/RMVM FILE(${library}/${file}) MBR(${name})`);
+    if (!removeResult.success) {
+      vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting member! {0}`, removeResult.error ?? l10n.t("unknown error")));
     }
 
-    return removeResult.code === 0;
+    return removeResult.success;
   }
 }
 
@@ -506,20 +499,24 @@ async function downloadMembersStructuredImpl(mode: `LIB` | `FILE`, node: ObjectI
   }
 
   await vscode.window.withProgress(
-    { title: vscode.l10n.t(`Downloading {0} member(s)`, toDownload.length), location: vscode.ProgressLocation.Notification },
-    async (progress) => {
+    { title: vscode.l10n.t(`Downloading`), location: vscode.ProgressLocation.Notification, cancellable: true },
+    async (progress, token) => {
       let done = 0;
       const errors: string[] = [];
       for (const member of toDownload) {
+        if (token.isCancellationRequested) {
+          break;
+        }
         const useLibrary = mode === `LIB` || collidingKeys.has(fileKey(member));
         const localDir = useLibrary
           ? path.join(rootPath, member.library.toUpperCase(), member.file.toUpperCase())
           : path.join(rootPath, member.file.toUpperCase());
         const localFile = path.join(localDir, `${member.name.toUpperCase()}.${(member.extension || `MBR`).toUpperCase()}`);
+        const memberLabel = useLibrary
+          ? `${member.library}/${member.file}/${member.name}.${member.extension || `MBR`}`
+          : `${member.file}/${member.name}.${member.extension || `MBR`}`;
         progress.report({
-          message: useLibrary
-            ? `${member.library}/${member.file}/${member.name}.${member.extension || `MBR`}`
-            : `${member.file}/${member.name}.${member.extension || `MBR`}`,
+          message: `${done + 1}/${toDownload.length} (${Math.round(((done + 1) / toDownload.length) * 100)}%) - ${memberLabel}`,
           increment: (100 / toDownload.length)
         });
         try {
@@ -534,7 +531,11 @@ async function downloadMembersStructuredImpl(mode: `LIB` | `FILE`, node: ObjectI
         done++;
       }
 
-      if (errors.length > 0) {
+      if (token.isCancellationRequested) {
+        vscode.window.showWarningMessage(
+          vscode.l10n.t(`Download cancelled. {0} of {1} member(s) downloaded.`, done - errors.length, toDownload.length)
+        );
+      } else if (errors.length > 0) {
         vscode.window.showWarningMessage(
           vscode.l10n.t(`{0} of {1} member(s) downloaded. {2} error(s).`, done - errors.length, toDownload.length, errors.length),
           vscode.l10n.t(`Show Details`)
@@ -582,15 +583,41 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       item.sortBy({ order: "date" });
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.createFilter`, async () => {
-      await editFilter();
-      objectBrowser.refresh();
+    vscode.commands.registerCommand(`code-for-ibmi.createFilter`, async (_node?: ObjectBrowserItem, from?: ObjectFilters) => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const existingNames = connection.getConfig().objectFilters.map(f => f.name) || [];
+        const name = await vscode.window.showInputBox({
+          title: l10n.t("Enter new Object Filter name"),
+          placeHolder: l10n.t("Object Filter name..."),
+          value: from?.name,
+          validateInput: name => ObjectFilter.validateFilterName(name, existingNames)
+        });
+
+        if (name) {
+          const newFilter: ObjectFilters = from ? ObjectFilter.cloneObjectFilter(from, name) : {
+            name,
+            filterType: 'simple',
+            library: `QGPL`,
+            object: `*`,
+            types: [`*SRCPF`],
+            member: `*`,
+            memberType: `*`,
+            memberText: `*`,
+            memberCreated: ``,
+            memberChanged: ``,
+            protected: false
+          }
+          await ObjectFilter.updateObjectFilter(newFilter);
+          objectBrowser.refresh();
+          editObjectFilter(newFilter, async () => objectBrowser.refresh());
+        }
+      }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createQuickFilter`, async () => {
-      const config = getConfig();
       const connection = getConnection();
-      const objectFilters = config.objectFilters;
+      const objectFilters = ObjectFilter.getObjectFilters();
 
       const LIBRARY_REGEX = /^(?<lib>[^/.() ]+)\*$/;
       const FILTER_REGEX = /^(?<lib>[^/.() ]+)(\/(?<obj>[^/.() ]+))?(\/(?<mbr>[^/.() ]+))?(\.(?<mbrType>[^/.() ]+))?( \((?<objType>[^/.()]+)\))?$/;
@@ -601,15 +628,18 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         validateInput: newFilter => {
           const libraryRegex = LIBRARY_REGEX.exec(connection.upperCaseName(newFilter));
           const filterRegex = FILTER_REGEX.exec(connection.upperCaseName(newFilter));
-          if (!libraryRegex && !filterRegex) return `Invalid filter: ${newFilter}. Use format LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`;
+          if (!libraryRegex && !filterRegex) {
+            return `Invalid filter: ${newFilter}. Use format LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`;
+          }
         }
       });
 
       if (newFilter) {
         let regex = LIBRARY_REGEX.exec(connection.upperCaseName(newFilter));
         const parsedFilter = regex?.groups;
+        let filter: ObjectFilters | undefined;
         if (regex && parsedFilter) {
-          const filter = {
+          filter = {
             name: `Filter ${objectFilters.length + 1}`,
             filterType: 'simple',
             library: `${parsedFilter.lib}*`,
@@ -619,12 +649,11 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             memberType: `*`,
             protected: false
           } as ObjectFilters;
-          objectFilters.push(filter);
         } else {
           regex = FILTER_REGEX.exec(connection.upperCaseName(newFilter));
           const parsedFilter = regex?.groups;
           if (regex && parsedFilter) {
-            const filter = {
+            filter = {
               name: `Filter ${objectFilters.length + 1}`,
               filterType: 'simple',
               library: parsedFilter.lib || `QGPL`,
@@ -634,28 +663,42 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               memberType: parsedFilter.mbrType || `*`,
               protected: false
             } as ObjectFilters;
-            objectFilters.push(filter);
           }
         }
 
-        config.objectFilters = objectFilters;
-        await IBMi.connectionManager.update(config);
-        objectBrowser.refresh();
+        if (filter) {
+          await checkObjectFilter(connection, filter);
+          await ObjectFilter.updateObjectFilter(filter);
+          objectBrowser.refresh();
+        }
       }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.copyFilter`, async (node: FilteredItem) => {
-      await editFilter(node.filter, true);
-      objectBrowser.refresh();
+      vscode.commands.executeCommand(`code-for-ibmi.createFilter`, undefined, node.filter);
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node?: FilteredItem, nodes?: FilteredItem[]) => {
-      if (node) {
-        (nodes || [node]).map(n => n.filter).forEach(filter => editFilter(filter).then(() => objectBrowser.refresh()));
+    vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node: FilteredItem, nodes?: FilteredItem[]) => {
+      (nodes || [node]).map(n => n.filter).forEach(filter => editObjectFilter(filter, async () => objectBrowser.refresh()));
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.renameFilter`, async (node: FilteredItem) => {
+      const currentName = node.filter.name;
+      if (isFilterEdited(node.filter)) {
+        vscode.window.showWarningMessage(l10n.t("Object Filter {0} is being edited. Please close its editor first.", currentName));
       }
       else {
-        await editFilter();
-        objectBrowser.refresh();
+        const existingNames = ObjectFilter.getObjectFilters().map(filter => filter.name).filter(name => name !== currentName);
+        const newName = await vscode.window.showInputBox({
+          title: l10n.t('Enter Object Filter {0} new name', currentName),
+          placeHolder: l10n.t("Object Filter name..."),
+          value: currentName,
+          validateInput: name => ObjectFilter.validateFilterName(name, existingNames)
+        });
+
+        if (newName) {
+          await ObjectFilter.updateObjectFilter(node.filter, { newName });
+          objectBrowser.refresh();
+        }
       }
     }),
 
@@ -735,20 +778,15 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const fullPath = toPath(fullName);
         const member = connection.parserMemberPath(fullPath);
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Creating member {0}...`, fullPath) }, async (progress) => {
-          const addResult = await connection.runCommand({
-            command: `QSYS/ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`,
-            noLibList: true
-          })
-
-          if (addResult.code === 0) {
+          const addResult = await connection.runCL(`QSYS/ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`);
+          if (addResult.success) {
             if (IBMi.connectionManager.get(`autoOpenFile`)) {
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
             objectBrowser.refresh(node);
-
           } else {
-            return addResult.stderr
+            return addResult.error;
           }
         });
 
@@ -796,40 +834,23 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const memberPath = connection.parserMemberPath(fullPath);
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Creating member {0}...`, fullPath.toUpperCase()) }, async (progress) => {
           try {
-            const checkResult = await connection.runCommand({
-              command: `QSYS/CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`,
-              noLibList: true
-            })
-
-            const newMemberExists = checkResult.code === 0;
-
-            if (newMemberExists) {
+            const checkResult = await connection.runCL(`QSYS/CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`);
+            if (checkResult.success) {
               const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Are you sure you want overwrite member {0}?`, memberPath.name), { modal: true }, vscode.l10n.t("Yes"));
               if (result === vscode.l10n.t(`Yes`)) {
-                await connection.runCommand({
-                  command: `QSYS/RMVM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name})`,
-                  noLibList: true
-                })
+                await connection.runCL(`QSYS/RMVM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name})`);
               } else {
                 throw vscode.l10n.t(`Member {0} already exists!`, memberPath.name)
               }
             }
 
-            const copyResult = await connection.runCommand({
-              command: `QSYS/CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`,
-              noLibList: true
-            })
-
-            const copyMessages = Tools.parseMessages(copyResult.stderr);
-            if (copyResult.code !== 0 && copyMessages.messages.length && !(copyMessages.findId(`CPF2869`) && copyMessages.findId(`CPF2817`))) {
-              throw (copyResult.stderr)
+            const copyResult = await connection.runCL(`QSYS/CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`);
+            if (!copyResult.success && copyResult.data.length && !(copyResult.findMessage(`CPF2869`) && copyResult.findMessage(`CPF2817`))) {
+              throw (copyResult.error)
             }
 
             if (oldMember.extension !== memberPath.extension) {
-              await connection.runCommand({
-                command: `QSYS/CHGPFM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name}) SRCTYPE(${memberPath.extension.length > 0 ? memberPath.extension : `*NONE`})`,
-                noLibList: true
-              });
+              await connection.runCL(`QSYS/CHGPFM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name}) SRCTYPE(${memberPath.extension.length > 0 ? memberPath.extension : `*NONE`})`);
             }
 
             if (IBMi.connectionManager.get(`autoOpenFile`)) {
@@ -875,18 +896,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const escapedText = newText.replace(/'/g, `''`);
         const connection = getConnection();
 
-        const changeResult = await connection.runCommand({
-          command: `QSYS/CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
-          noLibList: true
-        });
-
-        if (changeResult.code === 0) {
+        const changeResult = await connection.runCL(`QSYS/CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`);
+        if (changeResult.success) {
           //pre updating description to avoid old description when multiple updates are performed without refreshing
           node.description = newText.toUpperCase() !== `*BLANK` ? newText : ``;
           node.member.text = node.description;
           objectBrowser.refresh(node);
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t(`Error changing member description! {0}`, changeResult.stderr));
+          vscode.window.showErrorMessage(vscode.l10n.t(`Error changing member description! {0}`, changeResult.error ?? l10n.t("unknown error")));
         }
 
       }
@@ -943,28 +960,20 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           }
 
           if (newMember) {
-            let commandResult: CommandResult;
+            let commandResult: CLCommandResult;
 
             if (oldMember.name !== newMember.name) {
-              commandResult = await connection.runCommand({
-                command: `QSYS/RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
-                noLibList: true
-              });
-
-              if (commandResult.code !== 0) {
+              commandResult = await connection.runCL(`QSYS/RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`);
+              if (!commandResult.success) {
                 newNameOK = false;
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.stderr));
+                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.error ?? l10n.t("unknown error")));
               }
             }
             if (oldMember.extension !== newMember.extension) {
-              commandResult = await connection.runCommand({
-                command: `QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
-                noLibList: true
-              });
-
-              if (commandResult.code !== 0) {
+              commandResult = await connection.runCL(`QSYS/CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`);
+              if (!commandResult.success) {
                 newNameOK = false;
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.stderr));
+                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming member! {0}`, commandResult.error ?? l10n.t("unknown error")));
               }
             }
 
@@ -1116,12 +1125,16 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
                 .flatMap(item => {
                   const dbfCcsid = ccsidByFile.get(`${item.member.library}/${item.member.file}`) ?? config.sourceFileCCSID;
                   return [
-                    `@QSYS/RUNSQL SQL('DROP TABLE IF EXISTS QTEMP.QTEMPSRC') COMMIT(*NONE) NAMING(*SYS)`,
-                    `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(TEMPMBR) MBROPT(*REPLACE) CRTFILE(*YES)`,
-                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMBR")}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${dbfCcsid})`
+                    `QSYS/RUNSQL SQL('DROP TABLE IF EXISTS QTEMP.QTEMPSRC') COMMIT(*NONE) NAMING(*SYS)`,
+                    `QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(TEMPMBR) MBROPT(*REPLACE) CRTFILE(*YES)`,
+                    `QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMBR")}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${dbfCcsid})`
                   ];
                 });
-              await connection.runSQL(copyToStreamFiles);
+
+              const result = await connection.runCL(copyToStreamFiles);
+              if (!result.success) {
+                throw new Error(result.error);
+              }
 
               task.report({ message: vscode.l10n.t(`getting streamfiles`), increment: -1 })
               await connection.getContent().downloadDirectory(downloadLocation!, directory);
@@ -1246,14 +1259,8 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
       if (newLibrary) {
         const filters = config.objectFilters;
 
-        const createResult = await connection.runCommand({
-          command: `QSYS/CRTLIB LIB(${newLibrary})`,
-          noLibList: true
-        });
-
-
-        const isSuccess = createResult.code === 0;
-        if (isSuccess) {
+        const createResult = await connection.runCL(`QSYS/CRTLIB LIB(${newLibrary})`);
+        if (createResult.success) {
           const config = connection.getConfig();
           const libl = [config.currentLibrary || "", ...config.libraryList].map(library => connection.upperCaseName(library));
           const existsInLibl = libl.includes(connection.upperCaseName(newLibrary));
@@ -1291,7 +1298,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
               });
           }
         } else {
-          vscode.window.showErrorMessage(vscode.l10n.t(`Cannot create library "{0}": {1}`, newLibrary, createResult.stderr));
+          vscode.window.showErrorMessage(vscode.l10n.t(`Cannot create library "{0}": {1}`, newLibrary, createResult.error ?? l10n.t("unknown error")));
         }
       }
     }),
@@ -1312,15 +1319,11 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const uriPath = `${library}/${connection.upperCaseName(fileName)}`
 
           vscode.window.showInformationMessage(vscode.l10n.t(`Creating source file {0}.`, uriPath));
-          const createResult = await connection.runCommand({
-            command: `QSYS/CRTSRCPF FILE(${uriPath}) RCDLEN(112)`,
-            noLibList: true
-          });
-
-          if (createResult.code === 0) {
+          const createResult = await connection.runCL(`QSYS/CRTSRCPF FILE(${uriPath}) RCDLEN(112)`);
+          if (createResult.success) {
             objectBrowser.refresh(node);
           } else {
-            vscode.window.showErrorMessage(vscode.l10n.t(`Error creating source file! {0}`, createResult.stderr));
+            vscode.window.showErrorMessage(vscode.l10n.t(`Error creating source file! {0}`, createResult.error ?? l10n.t("unknown error")));
           }
         }
       }
@@ -1346,18 +1349,14 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const connection = getConnection();
 
           newTextOK = true;
-          const changeResult = await connection.runCommand({
-            command: `QSYS/CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
-            noLibList: true
-          });
-
-          if (changeResult.code === 0) {
+          const changeResult = await connection.runCL(`QSYS/CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`);
+          if (changeResult.success) {
             node.object.text = newText;
             node.updateDescription();
             objectBrowser.refresh(node);
             vscode.window.showInformationMessage(vscode.l10n.t(`Changed object description for {0} {1}.`, node.path, node.object.type.toUpperCase()));
           } else {
-            vscode.window.showErrorMessage(vscode.l10n.t(`Error changing description for {0}! {1}`, node.path, changeResult.stderr));
+            vscode.window.showErrorMessage(vscode.l10n.t(`Error changing description for {0}! {1}`, node.path, changeResult.error ?? l10n.t("unknown error")));
             newTextOK = false;
           }
         }
@@ -1395,13 +1394,8 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
             command = `QSYS/CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject}) ${node.object.type.toLocaleLowerCase() === '*file' ? 'DATA(*YES)' : ''}`
           }
 
-          const commandRes = await connection.runCommand({
-            command,
-            noLibList: true
-          });
-
-          if (commandRes.code === 0) {
-
+          const commandRes = await connection.runCL(command);
+          if (commandRes.success) {
             if (oldLibrary.toLocaleLowerCase() === newLibrary.toLocaleLowerCase()) {
               objectBrowser.refresh(node.parent);
             }
@@ -1409,7 +1403,7 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
               vscode.window.showInformationMessage(vscode.l10n.t(`Copied object {0} {1} to {2}. Refresh object browser.`, node.path, node.object.type.toUpperCase(), escapedPath));
             }
           } else {
-            vscode.window.showErrorMessage(vscode.l10n.t(`Error copying object {0}! {1}`, node.path, commandRes.stderr));
+            vscode.window.showErrorMessage(vscode.l10n.t(`Error copying object {0}! {1}`, node.path, commandRes.error ?? l10n.t("unknown error")));
             newPathOK = false;
           }
         }
@@ -1436,13 +1430,9 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const connection = getConnection();
           newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Renaming object {0} {1} to {2}...`, node.path, node.object.type.toUpperCase(), escapedObject.join('/')) }
             , async (progress) => {
-              const renameResult = await connection.runCommand({
-                command: `QSYS/RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`,
-                noLibList: true
-              });
-
-              if (renameResult.code !== 0) {
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming object {0}! {1}`, node.path, renameResult.stderr));
+              const renameResult = await connection.runCL(`QSYS/RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`);
+              if (!renameResult.success) {
+                vscode.window.showErrorMessage(vscode.l10n.t(`Error renaming object {0}! {1}`, node.path, renameResult.error ?? l10n.t("unknown error")));
                 return false;
               }
 
@@ -1476,14 +1466,10 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
           const connection = getConnection();
 
           newLibraryOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: vscode.l10n.t(`Moving object {0} {1} to {2}...`, node.path, node.object.type.toUpperCase(), escapedLibrary) }
-            , async (progress) => {
-              const moveResult = await connection.runCommand({
-                command: `QSYS/MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`,
-                noLibList: true
-              });
-
-              if (moveResult.code !== 0) {
-                vscode.window.showErrorMessage(vscode.l10n.t(`Error moving object {0}! {1}`, node.path, moveResult.stderr));
+            , async () => {
+              const moveResult = await connection.runCL(`QSYS/MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`);
+              if (!moveResult.success) {
+                vscode.window.showErrorMessage(vscode.l10n.t(`Error moving object {0}! {1}`, node.path, moveResult.error ?? l10n.t("unknown error")));
                 return false;
               }
 
@@ -1507,11 +1493,34 @@ Do you want to replace it?`, item.name), { modal: true }, skipAllLabel, overwrit
         candidates.push(...objectTreeViewer.selection.filter(i => i instanceof ObjectBrowserItem) as ObjectBrowserItem[]);
       }
 
-      const toBeDeleted = candidates.filter(item => item instanceof ObjectBrowserFilterItem || !item.isProtected());
-      const protectedItems = candidates.filter(item => !(item instanceof ObjectBrowserFilterItem) && item.isProtected());
+      const toBeDeleted: ObjectBrowserItem[] = [];
+      const protectedItems: ObjectBrowserItem[] = [];
+      const editedItems: ObjectBrowserItem[] = [];
+      candidates.forEach(item => {
+        if (item instanceof ObjectBrowserFilterItem && isFilterEdited(item.filter)) {
+          editedItems.push(item);
+        }
+        else if (!(item instanceof ObjectBrowserFilterItem) && item.isProtected()) {
+          protectedItems.push(item);
+        }
+        else {
+          toBeDeleted.push(item);
+        }
+      })
+
       if (protectedItems.length) {
         vscode.window.showWarningMessage(vscode.l10n.t(`{0} cannot be deleted because they are in a protected filter or library: {1}`, protectedItems.length, protectedItems.map(item => item.toString()).join(`, `)));
       }
+
+      if (editedItems.length) {
+        if (editedItems.length === 1) {
+          vscode.window.showWarningMessage(vscode.l10n.t(`Object Filter {0} cannot be deleted because it's being being edited.`, editedItems[0].filter.name));
+        }
+        else {
+          vscode.window.showWarningMessage(vscode.l10n.t(`Object Filters {0} cannot be deleted because they are being edited.`, editedItems.map(item => item.filter.name).join(`, `)));
+        }
+      }
+
       if (toBeDeleted.length) {
         const message = toBeDeleted.length === 1 ? vscode.l10n.t(`Are you sure you want to delete {0}?`, toBeDeleted[0].toString()) : vscode.l10n.t("Are you sure you want to delete these {0} elements?", toBeDeleted.length);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(item => `- ${item.toString()}`).join("\n");
@@ -1706,7 +1715,7 @@ async function doSearch(searchTerm: string, parameters: SearchParameters[]) {
     }
 
   } catch (e: any) {
-    vscode.window.showErrorMessage(vscode.l10n.t(`Error searching source members: {0}`, e));
+    vscode.window.showErrorMessage(vscode.l10n.t(`Error searching source members: {0}`, String(e)));
   }
 }
 
@@ -1719,21 +1728,16 @@ async function listObjects(item: ObjectBrowserFilterItem, filter?: ObjectFilters
 
 async function deleteObject(object: IBMiObject) {
   const connection = getConnection();
-  const deleteResult = await connection.runCommand({
-    command: `QSYS/DLTOBJ OBJ(${object.library}/${object.name}) OBJTYPE(${object.type})`,
-    noLibList: true
-  });
-
-  const isSuccess = deleteResult.code === 0;
-  if (isSuccess) {
+  const deleteResult = await connection.runCL(`QSYS/DLTOBJ OBJ(${object.library}/${object.name}) OBJTYPE(${object.type})`);
+  if (deleteResult.success) {
     const config = connection.getConfig();
     const libl = [config.currentLibrary || "", ...config.libraryList].map(library => connection.upperCaseName(library));
     if (libl.includes(connection.upperCaseName(object.name))) {
       commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
     }
   } else {
-    vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting object! {0}`, deleteResult.stderr));
+    vscode.window.showErrorMessage(vscode.l10n.t(`Error deleting object! {0}`, deleteResult.error ?? l10n.t("unknown error")));
   }
 
-  return isSuccess;
+  return deleteResult.success;
 }

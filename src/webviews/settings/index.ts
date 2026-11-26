@@ -1,7 +1,6 @@
 import { existsSync } from "fs";
-import vscode, { window } from "vscode";
+import vscode from "vscode";
 import { CCSIDS } from "../../api/CCSIDs";
-import { extensionComponentRegistry } from "../../api/components/manager";
 import IBMi, { CLIENT_ONLY_SETTINGS } from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { deleteStoredPassphrase, deleteStoredPassword, getStoredPassphrase, getStoredPassword, setStoredPassphrase, setStoredPassword } from "../../config/passwords";
@@ -227,7 +226,7 @@ export class SettingsUI {
             }
           ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
           .addHorizontalRule()
-          .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
+          .addInput(`protectedPaths`, `Protected paths`, vscode.l10n.t(`A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. Wildcards (<code>*</code> for any characters, <code>?</code> for a single character) are only supported for IFS directories: libraries must be listed by their exact name. (Example: <code>QGPL, MYLIB, /home/QSECOFR, /home/app*, /QIBM</code>)`), { default: config.protectedPaths.join(`, `) });
 
         setFieldsReadOnly(sourceTab);
 
@@ -283,7 +282,6 @@ export class SettingsUI {
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
 
           if (!isManaged()) {
-            debuggerTab.addHorizontalRule();
             if (await certificates.remoteCertificatesExists()) {
               let localCertificateIssue;
               try {
@@ -292,6 +290,7 @@ export class SettingsUI {
               catch (error) {
                 localCertificateIssue = `${String(error)}. Debugging will not function correctly.`;
               }
+              debuggerTab.addHorizontalRule();
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
                 .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
                 .addButtons(
@@ -308,30 +307,6 @@ export class SettingsUI {
 
         setFieldsReadOnly(debuggerTab);
 
-        const componentsTab = new Section();
-        if (connection) {
-          const states = connection.getComponentManager().getComponentStates();
-          componentsTab.addParagraph(`The following extensions contribute these components:`);
-          extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
-            const extension = vscode.extensions.getExtension(extensionId);
-            componentsTab.addParagraph(`<p>
-              <h3 style="padding-bottom: 1em;">${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
-              <ul>
-              ${components.map(component => `<li>${component?.getIdentification().name} (version ${component?.getIdentification().version}): ${states.find(c => c.id.name === component.getIdentification().name)?.state.status} (${component.getIdentification().userManaged ? `optional` : `required`})</li>`).join(``)}
-              </ul>
-              </p>`);
-          });
-
-          const userInstallableComponents = states.filter(c => c.id.userManaged && c.state.status !== `Installed`);
-          if (userInstallableComponents.length) {
-            componentsTab.addButtons({ id: `installComponent`, label: `Install component` })
-          }
-        } else {
-          componentsTab.addParagraph('Connect to the server to see these settings.');
-        }
-
-        setFieldsReadOnly(componentsTab);
-
         const tabs: ComplexTab[] = [
           { label: `Mapepire`, fields: mapepireTab.fields },
           { label: `Features`, fields: featuresTab.fields },
@@ -339,7 +314,6 @@ export class SettingsUI {
           { label: `Terminals`, fields: terminalsTab.fields },
           { label: `Debugger`, fields: debuggerTab.fields },
           { label: `Temporary Data`, fields: tempDataTab.fields },
-          { label: `Components`, fields: componentsTab.fields },
         ];
 
         const ui = new CustomUI();
@@ -382,12 +356,6 @@ export class SettingsUI {
 
                 case `clearAllowedExts`:
                   instance.getStorage()?.revokeAllExtensionAuthorisations();
-                  break;
-
-                case `installComponent`:
-                  if (connection) {
-                    installComponentsQuickPick(connection);
-                  }
                   break;
 
                 default:
@@ -564,38 +532,4 @@ export class SettingsUI {
       })
     )
   }
-}
-
-function installComponentsQuickPick(connection: IBMi) {
-  const components = connection.getComponentManager().getComponentStates();
-  const installable = components.filter(c => c.id.userManaged && c.state.status !== `Installed`);
-
-  if (installable.length === 0) {
-    return;
-  }
-
-  const withS = installable.length > 1 ? `s` : ``;
-  window.showQuickPick(installable.map(c => ({
-    label: c.id.name,
-    description: c.state.status,
-    id: c.id.name
-  })), {
-    title: `Install component${withS}`,
-    canPickMany: true,
-    placeHolder: `Select component${withS} to install`
-  }).then(async result => {
-    if (result) {
-      window.withProgress({ title: `Component${withS}`, location: vscode.ProgressLocation.Notification }, async (progress) => {
-        for (const item of result) {
-          progress.report({ message: `Installing ${item.label}...` });
-          try {
-            await connection.getComponentManager().installComponent(item.id);
-          } catch (e) {
-            // TODO: handle errors!
-          }
-        }
-      });
-    }
-  })
-
 }
