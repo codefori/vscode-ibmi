@@ -2,8 +2,8 @@
 import { parse as parseQuery } from "querystring";
 import vscode, { l10n, QuickPickItem } from 'vscode';
 import { ActionTools } from '../../../api/actions';
-import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import { promptCommand } from '../../../api/commandPrompter';
+import { assignProfile, cloneProfile, getConnectionProfile, getConnectionProfiles, getDefaultProfile, updateConnectionProfile } from '../../../api/connectionProfiles';
 import IBMi from '../../../api/IBMi';
 import { onCodeForIBMiConfigurationChange } from "../../../config/Configuration";
 import { editAction, isActionEdited } from '../../../editors/actionEditor';
@@ -17,7 +17,7 @@ import { CustomVariableItem, CustomVariables, CustomVariablesNode } from './cust
 import { EnvironmentItem } from './environmentItem';
 
 const SQL_JOB_DOUBLE_CLICK_WINDOW_MS = 500;
-let lastSqlJobClick: { jobName: string; clickedAt: number } | undefined;
+let lastSqlJobClick: number | undefined;
 
 class ConnectionNode extends EnvironmentItem {
   constructor() {
@@ -143,8 +143,8 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.environment.refresh", () => environmentView.refresh()),
     vscode.commands.registerCommand("code-for-ibmi.environment.refresh.item", (item: BrowserItem) => environmentView.refresh(item)),
     vscode.commands.registerCommand("code-for-ibmi.environment.reveal", (item: BrowserItem, options?: FocusOptions) => environmentTreeViewer.reveal(item, options)),
-    vscode.commands.registerCommand("code-for-ibmi.environment.connection.showJobLog", async (jobName?: string) => {
-      const sqlJobId = jobName || instance.getConnection()?.getSqlJobId();
+    vscode.commands.registerCommand("code-for-ibmi.environment.connection.showJobLog", async () => {
+      const sqlJobId = instance.getConnection()?.getSqlJobId();
       if (!sqlJobId) {
         vscode.window.showWarningMessage(l10n.t("No active SQL job found."));
         return;
@@ -152,20 +152,15 @@ export function initializeEnvironmentView(context: vscode.ExtensionContext) {
 
       await vscode.commands.executeCommand("code-for-ibmi.showJobLog", sqlJobId);
     }),
-    vscode.commands.registerCommand("code-for-ibmi.environment.connection.showJobLogOnDoubleClick", async (jobName?: string) => {
-      const sqlJobId = jobName || instance.getConnection()?.getSqlJobId();
-      if (!sqlJobId) {
-        return;
-      }
-
+    vscode.commands.registerCommand("code-for-ibmi.environment.connection.showJobLogOnDoubleClick", async () => {
       const now = Date.now();
-      if (lastSqlJobClick && lastSqlJobClick.jobName === sqlJobId && (now - lastSqlJobClick.clickedAt) <= SQL_JOB_DOUBLE_CLICK_WINDOW_MS) {
+      if (lastSqlJobClick && (now - lastSqlJobClick) <= SQL_JOB_DOUBLE_CLICK_WINDOW_MS) {
         lastSqlJobClick = undefined;
-        await vscode.commands.executeCommand("code-for-ibmi.environment.connection.showJobLog", sqlJobId);
+        await vscode.commands.executeCommand("code-for-ibmi.environment.connection.showJobLog");
         return;
       }
 
-      lastSqlJobClick = { jobName: sqlJobId, clickedAt: now };
+      lastSqlJobClick = now;
     }),
     vscode.commands.registerCommand("code-for-ibmi.environment.connection.disconnect", async (connectionName?: string) => {
       const connectedName = instance.getConnection()?.currentConnectionName;
