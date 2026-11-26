@@ -164,7 +164,7 @@ class CreateFilterItem extends BrowserItem {
   constructor() {
     super(`${vscode.l10n.t(`Create new filter`)}...`, { icon: "add" });
     this.command = {
-      command: `code-for-ibmi.maintainFilter`,
+      command: `code-for-ibmi.createFilter`,
       title: `Create new filter`
     };
   }
@@ -761,7 +761,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         return;
       }
       const connection = getConnection();
-      const toPath = (value: string) => connection.upperCaseName(`${node.path}/${value}`);
+      const aspPrefix = node.object.asp ? `${node.object.asp}/` : ``;
+      const toPath = (value: string) => connection.upperCaseName(`${aspPrefix}${node.path}/${value}`);
       fullName = await vscode.window.showInputBox({
         prompt: vscode.l10n.t(`Name of new source member (member.ext)`),
         value: fullName,
@@ -951,7 +952,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
         if (newBasename) {
           newNameOK = true;
-          newMemberPath = library + `/` + sourceFile + `/` + newBasename;
+          newMemberPath = (oldMember.asp ? oldMember.asp + `/` : ``) + library + `/` + sourceFile + `/` + newBasename;
           try {
             newMember = connection.parserMemberPath(newMemberPath);
           } catch (e: any) {
