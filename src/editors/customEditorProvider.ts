@@ -7,8 +7,9 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
   private data: T = {} as T;
   valid?: boolean;
   dirty = false;
+  private panel?: vscode.WebviewPanel;
 
-  constructor(target: string, private readonly onSave: (data: T) => Promise<void>, private readonly onClosed?: () => void) {
+  constructor(target: string, private readonly onSave: (data: T) => Promise<void>, private readonly onClosed?: () => void, private readonly onRevert?: () => Promise<void>) {
     super();
     this.uri = vscode.Uri.from({ scheme: "code4i", path: `/${target}` });
   }
@@ -43,6 +44,7 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
   }
 
   load(webviewPanel: vscode.WebviewPanel) {
+    this.panel = webviewPanel;
     const webview = webviewPanel.webview;
     webview.options = {
       enableScripts: true,
@@ -61,6 +63,28 @@ export class CustomEditor<T> extends CustomHTML implements vscode.CustomDocument
 
   async save() {
     await this.onSave(this.data);
+  }
+
+  async revert() {
+    if (!this.onRevert) {
+      throw new Error("Revert not supported.");
+    }
+    await this.onRevert();
+  }
+
+  /**
+   * Replaces the editor's content: `build` adds the fields again and `data` is what they now hold.
+   * @param dirty `true` to keep the document dirty, so the new content can be saved right away
+   */
+  rebuild(build: (editor: this) => void, data: T, dirty: boolean) {
+    this.fields.length = 0;
+    build(this);
+    this.data = data;
+    this.valid = true;
+    this.dirty = dirty;
+    if (this.panel) {
+      this.panel.webview.html = this.getHTML(this.panel, this.uri.path);
+    }
   }
 
   dispose() {
@@ -114,8 +138,14 @@ export class CustomEditorProvider implements vscode.CustomEditorProvider<CustomE
   saveCustomDocumentAs(document: CustomEditor<any>, destination: vscode.Uri, cancellation: vscode.CancellationToken): Thenable<void> {
     throw new Error("Save As is not supported.");
   }
-  revertCustomDocument(document: CustomEditor<any>, cancellation: vscode.CancellationToken): Thenable<void> {
-    throw new Error("Revert is not supported.");
+  async revertCustomDocument(document: CustomEditor<any>, cancellation: vscode.CancellationToken) {
+    try {
+      await document.revert();
+    } catch (error: any) {
+      // VS Code doesn't report a failed revert: without this, nothing would seem to happen
+      vscode.window.showErrorMessage(String(error.message || error));
+      throw error;
+    }
   }
   backupCustomDocument(document: CustomEditor<any>, context: vscode.CustomDocumentBackupContext, cancellation: vscode.CancellationToken): Thenable<vscode.CustomDocumentBackup> {
     throw new Error("Backup is not supported.");
