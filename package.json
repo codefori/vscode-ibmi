@@ -3010,6 +3010,10 @@
 				{
 					"command": "code-for-ibmi.changePassword",
 					"when": "never"
+				},
+				{
+				"command": "code-for-ibmi.environment.connection.showJobLog",
+					"when": "never"
 				}
 			],
 			"view/title": [
