@@ -52,8 +52,9 @@ export class IBMiComponentRuntime {
       }
     }
     catch (error) {
-      console.log(`Error occurred while checking component ${this.toString()}`);
-      console.log(error);
+      const message = `Error occurred while checking component ${this.toString()}: ${error instanceof Error ? error.message : error}`;
+      this.connection.appendOutput(message);
+      console.log(message);
 
       this.state = { status: `Error`, remoteSignature: "" };
       this.setState(this.state);
@@ -62,7 +63,7 @@ export class IBMiComponentRuntime {
     return this;
   }
 
-  async getCurrentState(){
+  async getCurrentState() {
     return this.handleState(await this.component.getRemoteState(this.connection, this.getInstallDirectory()));
   }
 
@@ -93,7 +94,7 @@ export class IBMiComponentRuntime {
   }
 
   deprecationWarning(local?: boolean) {
-    const missingSignature = `WARNING: Component ${this.component.getIdentification().name} ` + 
+    const missingSignature = `WARNING: Component ${this.component.getIdentification().name} ` +
       (local ? "does not define a local signature. If you're the maintainer of that component, please update it to return a signature when its 'getIdentification' method is called." :
         "did not return a remote signature. If you're the maintainer of that component, please update it to have the 'getRemoteState' and 'update' methods to return a SecureComponentState object.");
     this.connection.appendOutput(`${missingSignature}\n\n`);
