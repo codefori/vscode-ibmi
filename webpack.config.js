@@ -26,6 +26,7 @@ if (isProduction) {
 
 const dist = path.resolve(__dirname, `dist`);
 
+fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
 const files = [
   { name: `${SERVER_FILE_PREFIX}${VERSION}.jar`, relative: `node_modules/@ibm/mapepire-js/dist/${SERVER_FILE_PREFIX}${VERSION}.jar` }
