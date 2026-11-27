@@ -1692,9 +1692,11 @@ export default class IBMi {
    */
   async setCurrentASP(asp?: string) {
     if (asp !== this.currentASP) {
-      await Promise.all([
-        this.runSQL('connect reset').then(() => asp ? this.runSQL(`connect to ${asp}`) : undefined),
-      ]);
+      await this.runSQL('connect reset').then(() => asp ? this.runSQL(`connect to ${asp}`) : undefined);
+      if(!this.noRCCLsupport){
+        const result = await this.runCL(`QSYS/SETASPGRP ASPGRP(${asp || "*NONE"})`);
+        console.log(result);
+      }
       this.currentASP = asp;
       this.appendOutput(`Switched to ${asp || 'default'} ASP\n`);
     }
