@@ -7,6 +7,7 @@ import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
+import { saveSourceMbrToHost } from "./sourceMemberSave";
 
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -118,6 +119,16 @@ export class ExtendedIBMiContent {
     const connection = instance.getConnection();
     if (connection) {
       const config = connection.getConfig();
+      const useMapepireForSourceMemberSaves = config.useMapepireForSourceMemberSaves === true;
+
+      if (useMapepireForSourceMemberSaves) {
+        connection.appendOutput(`[Source save] Using Mapepire SQL path.\n`);
+        await this.saveSourceMbrToHost(connection, uri, body);
+        return;
+      }
+
+      connection.appendOutput(`[Source save] Using legacy RUNSQLSTM path.\n`);
+
       const setccsid = connection.remoteFeatures.setccsid;
 
       const alias = getAliasName(uri);
@@ -221,6 +232,18 @@ export class ExtendedIBMiContent {
         }
       }
     }
+  }
+
+  private async saveSourceMbrToHost(connection: IBMi, uri: vscode.Uri, body: string) {
+    await saveSourceMbrToHost({
+      connection,
+      uri,
+      body,
+      sourceDateHandler: this.sourceDateHandler,
+      ensureBaseSourceLoaded: async () => {
+        await this.downloadMemberContentWithDates(uri);
+      }
+    });
   }
 }
 
