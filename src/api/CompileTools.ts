@@ -114,7 +114,7 @@ export namespace CompileTools {
             await new Promise<void>((done) => {
               connection.asyncLock.acquire('ileCommand', async () => {
                 try {
-                  const result = await connection.runCL([...prepareContext, ...commands]);
+                  const result = await connection.runCL([...prepareContext, ...commands], options.throughSQL);
                   //Put messages in standard error (as "system" did)
                   commandResult.stderr = result.data.filter(message => !HIDE_MESSAGE_IDS.includes(message.id)).map(message => `${message.id}: ${message.text}`).join("\n");
                   callbacks.onStdout?.(Buffer.from(commandResult.stderr));                  
