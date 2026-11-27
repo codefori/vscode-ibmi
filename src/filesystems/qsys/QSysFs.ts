@@ -1,15 +1,14 @@
-import { parse as parsePath } from "path";
 import { parse, ParsedUrlQueryInput, stringify } from "querystring";
 import vscode, { FilePermission, FileSystemError, l10n } from "vscode";
-import IBMi from "../../api/IBMi";
+import { ObjAttr } from "../../api/components/objAttr";
+import IBMi, { MemberParts } from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { onCodeForIBMiConfigurationChange } from "../../config/Configuration";
 import { instance } from "../../instantiate";
-import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
+import { IBMiMember, QsysFsOptions } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { waitOnReconnect } from "./FSUtils";
 import { SourceDateHandler } from "./sourceDateHandler";
-import { ObjAttr } from "../../api/components/objAttr";
 
 export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
     return getUriFromPath(`${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`, options);
@@ -123,16 +122,15 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
 
             if (type === vscode.FileType.File) {
-                const member = parsePath(path).name;
-                const qsysPath = { ...Tools.parseQSysPath(path), member };
-                const attributes = await this.getMemberAttributes(connection, qsysPath);
+                const member = await this.parseMemberPath(connection, path);
+                const attributes = await this.getMemberAttributes(connection, member);
                 if (attributes) {
                     return {
                         ctime: Number(attributes.CREATE_TIME),
                         mtime: Number(attributes.MODIFY_TIME),
                         size: Number(attributes.DATA_SIZE),
                         type,
-                        permissions: member && !this.savedAsMembers.has(uri.path) ? getFilePermission(uri) : undefined
+                        permissions: member.name && !this.savedAsMembers.has(uri.path) ? getFilePermission(uri) : undefined
                     }
                 } else {
                     throw FileSystemError.FileNotFound(uri);
@@ -149,18 +147,16 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
     }
 
-    private toQSysPathName(path: QsysPath & { member?: string }) {
-        const aspPrefix = path.asp ? `/${path.asp}` : ``;
-        const memberSuffix = path.member ? `/${path.member}.MBR` : ``;
-        return `${aspPrefix}/QSYS.LIB/${path.library}.LIB/${path.name}.FILE${memberSuffix}`;
+    private toQSysPathName(member: MemberParts) {
+        return `${member.asp ? `/${member.asp}` : ``}/QSYS.LIB/${member.library}.LIB/${member.file}.FILE/${member.name}.MBR`;
     }
 
-    async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
+    async getMemberAttributes(connection: IBMi, member: MemberParts) {
         const udfLibrary = connection.getConfig().tempLibrary.toUpperCase();
-        const pathName = connection.sysNameInAmerican(this.toQSysPathName(path));
-        const [attributes] = await connection.runSQL(
+        const pathName = connection.sysNameInAmerican(this.toQSysPathName(member));
+        const [attributes] = await connection.runSQL(/* sql */
             `select extract(epoch from created_date) * 1000 as CREATE_TIME,
-                extract(epoch from coalesce(data_changed_date, changed_date, created_date)) * 1000 as MODIFY_TIME,
+                    extract(epoch from coalesce(data_changed_date, changed_date, created_date)) * 1000 as MODIFY_TIME,
                     data_size as DATA_SIZE
              from table(${udfLibrary}.${ObjAttr.SPECIFIC_NAME}(PATH_NAME => ?))`,
             {
