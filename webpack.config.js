@@ -26,6 +26,7 @@ if (isProduction) {
 
 const dist = path.resolve(__dirname, `dist`);
 
+fs.rmSync(dist, { recursive: true, force: true });
 fs.mkdirSync(dist, { recursive: true });
 const files = [
   { name: `${SERVER_FILE_PREFIX}${VERSION}.jar`, relative: `node_modules/@ibm/mapepire-js/dist/${SERVER_FILE_PREFIX}${VERSION}.jar` }
@@ -102,6 +103,11 @@ const config = {
         test: /\.ttf$/,
         include: path.resolve(__dirname, `node_modules/@vscode/codicons/dist`),
         type: `asset/inline`
+      },
+      {
+        // RPGLE source code
+        test: /\.(sql)?rpgle/i,
+        type: `asset/source`
       },
       {
         test: /\.(ts|tsx)$/i,
