@@ -104,6 +104,11 @@ const config = {
         type: `asset/inline`
       },
       {
+        // RPGLE source code
+        test: /\.(sql)?rpgle/i,
+        type: `asset/source`
+      },
+      {
         test: /\.(ts|tsx)$/i,
         exclude: /node_modules/,
         use: [
